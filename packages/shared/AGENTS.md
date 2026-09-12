@@ -9,4 +9,3 @@
 ## Distribution
 
 - Source-based workspace. Consumers import the TS source directly via Bun/Next.
-- `tsdown` was evaluated but not adopted — there is no consuming artifact yet. Revisit when an npm-published package boundary appears.

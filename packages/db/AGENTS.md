@@ -14,4 +14,3 @@
 - Source-based workspace. Consumers import the TS source directly via Bun/Next.
 - `tsdown` was evaluated and rejected: Prisma 7's generated client carries runtime-config
   artifacts (inline schema, engine metadata) that must not be inlined into a bundle.
-  Revisit only if a consuming artifact requires a prebuilt db package.
