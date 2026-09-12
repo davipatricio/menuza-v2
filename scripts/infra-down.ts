@@ -2,12 +2,36 @@
 /**
  * Stop Postgres + Redis containers. Volumes are preserved (no --volumes).
  */
-import { $ } from "bun";
-
 const winRoot = process.cwd();
 
-const wslRoot = await $`wsl wslpath -a "${winRoot}"`.text();
+if (process.platform === "win32") {
+  const winPosix = winRoot.replaceAll("\\", "/");
+  const pathProc = Bun.spawnSync(["wsl", "wslpath", "-a", winPosix]);
 
-await $`wsl -e bash -lc "cd '${wslRoot.trim()}' && podman-compose -f infra/compose.yaml stop"`.quiet();
+  if ((pathProc.exitCode ?? 1) !== 0) throw new Error("wslpath failed");
+
+  const wslRoot = pathProc.stdout.toString().trim();
+  const stop = Bun.spawnSync([
+    "wsl",
+    "-e",
+    "bash",
+    "-lc",
+    `cd '${wslRoot}' && podman-compose -f '${wslRoot}/infra/compose.yaml' stop`,
+  ]);
+
+  if ((stop.exitCode ?? 1) !== 0) {
+    console.error(stop.stderr?.toString());
+    process.exit(1);
+  }
+} else {
+  const stop = Bun.spawnSync(["podman-compose", "-f", "infra/compose.yaml", "stop"], {
+    cwd: winRoot,
+  });
+
+  if ((stop.exitCode ?? 1) !== 0) {
+    console.error(stop.stderr?.toString());
+    process.exit(1);
+  }
+}
 
 console.log("[infra] containers stopped (volumes preserved)");

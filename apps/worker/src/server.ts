@@ -15,7 +15,7 @@ import { initSentry } from "@menuza/orpc-server";
 
 initSentry({ service: "worker" });
 
-const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
+const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6380";
 
 const connection: ConnectionOptions = new IORedis(redisUrl, {
   maxRetriesPerRequest: null,
