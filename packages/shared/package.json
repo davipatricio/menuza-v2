@@ -1,0 +1,29 @@
+{
+  "name": "@menuza/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/commerce/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    "./commerce": "./src/commerce/index.ts",
+    "./tenant": "./src/tenant/index.ts"
+  },
+  "scripts": {
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@orpc/contract": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

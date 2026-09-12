@@ -1,0 +1,40 @@
+{
+  "name": "@menuza/offline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./persister": "./src/persister.ts",
+    "./sync-queue": "./src/sync-queue.ts",
+    "./sw-client": "./src/sw-client.ts",
+    "./worker-queue": "./src/worker-queue.ts"
+  },
+  "scripts": {
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/query-persist-client-core": "5.102.8",
+    "@tanstack/query-sync-storage-persister": "5.102.8",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-query-persist-client": "5.102.8",
+    "idb-keyval": "6.3.0"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "bun-types": "catalog:",
+    "fake-indexeddb": "6.2.5",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

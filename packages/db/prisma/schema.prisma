@@ -1,0 +1,34 @@
+// Prisma ORM v7 — generator config follows the v7 default ESM-first output.
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/client"
+  runtime  = "bun"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Foundation schema: only the minimum required for host-based tenant routing.
+// No business domain (catalog, orders, payments) yet — those are deferred.
+
+model Tenant {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  displayName String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  domains     Domain[]
+}
+
+// Normalized host ownership: lowercase host, no port.
+model Domain {
+  id        String   @id @default(cuid())
+  host      String   @unique
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}

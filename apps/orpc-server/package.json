@@ -1,0 +1,34 @@
+{
+  "name": "@menuza/orpc-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./fetch": "./src/fetch.ts"
+  },
+  "scripts": {
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@orpc/contract": "catalog:",
+    "@orpc/server": "catalog:",
+    "@sentry/bun": "10.73.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "@types/node": "catalog:",
+    "bun-types": "1.4.1",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

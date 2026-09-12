@@ -1,0 +1,34 @@
+{
+  "name": "@menuza/tenant",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "dev": "bun --filter '@menuza/api-tenant' dev",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "start": "bun --filter '@menuza/api-tenant' start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@menuza/api-tenant": "workspace:*",
+    "@menuza/db": "workspace:*",
+    "@menuza/orpc-server": "workspace:*"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "@types/node": "catalog:",
+    "bun-types": "1.4.1",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "name": "menuza",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "bun@1.4.3",
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "typescript": "7.0.2",
+      "@types/node": "22.10.5",
+      "@types/bun": "1.4.1",
+      "bun-types": "1.4.1",
+      "@types/react": "19.2.18",
+      "zod": "4.5.4",
+      "@orpc/server": "1.15.0",
+      "@orpc/contract": "1.15.0",
+      "@tanstack/react-query": "5.102.8",
+      "@tanstack/react-query-persist-client": "5.102.8",
+      "@tanstack/query-persist-client-core": "5.102.8",
+      "@tanstack/query-sync-storage-persister": "5.102.8",
+      "idb-keyval": "6.3.0",
+      "oxlint": "1.82.0",
+      "oxfmt": "0.67.0",
+      "@oxlint/plugins": "1.82.0"
+    }
+  },
+  "scripts": {
+    "dev": "bun run scripts/dev.ts",
+    "dev:web": "bun --filter '@menuza/web' dev",
+    "dev:commerce": "bun --filter '@menuza/commerce' dev",
+    "dev:tenant": "bun --filter '@menuza/tenant' dev",
+    "dev:worker": "bun --filter '@menuza/worker' dev",
+    "typecheck": "bun run scripts/typecheck.ts",
+    "test": "bun test",
+    "test:integration": "bun run scripts/test-integration.ts",
+    "build": "bun run db:generate && bun run typegen && bun --filter '@menuza/web' build",
+    "typegen": "bun --filter '@menuza/web' typegen",
+    "db:generate": "bun --filter '@menuza/db' db:generate",
+    "db:migrate": "bun --filter '@menuza/db' db:migrate",
+    "db:deploy": "bun --filter '@menuza/db' db:deploy",
+    "db:studio": "bun --filter '@menuza/db' db:studio",
+    "infra:up": "bun run scripts/infra-up.ts",
+    "infra:down": "bun run scripts/infra-down.ts",
+    "lint": "bunx turbo run lint --filter='@menuza/*'",
+    "fmt": "bunx turbo run fmt --filter='@menuza/*'",
+    "lint:fix": "bunx turbo run lint:fix --filter='@menuza/*'",
+    "fmt:check": "bunx turbo run fmt:check --filter='@menuza/*'"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "turbo": "2.10.12"
+  }
+}

@@ -1,0 +1,34 @@
+node_modules/
+.bun/
+*.log
+*.tsbuildinfo
+.turbo/
+
+# Local env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build artifacts
+.next/
+out/
+dist/
+
+# Prisma generated client
+packages/db/prisma/generated/
+
+# shadcn registry cache
+apps/web/.shadcn-cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local infra data (Compose volumes are outside repo, but ignore host volume mounts if used)
+.podman-data/

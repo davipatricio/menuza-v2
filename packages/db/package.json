@@ -1,0 +1,40 @@
+{
+  "name": "@menuza/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "pg": "8.13.1"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "8.11.10",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "prisma": "7.10.0",
+    "typescript": "catalog:"
+  },
+  "prisma": {
+    "seed": "bun run prisma/seed.ts"
+  }
+}

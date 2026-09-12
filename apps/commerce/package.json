@@ -1,0 +1,35 @@
+{
+  "name": "@menuza/commerce",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "dev": "bun --filter '@menuza/api-commerce' dev",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "start": "bun --filter '@menuza/api-commerce' start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@menuza/api-commerce": "workspace:*",
+    "@menuza/db": "workspace:*",
+    "@menuza/orpc-server": "workspace:*"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "bun-types": "1.4.1",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}
