@@ -6,4 +6,4 @@ export {
   healthOutput,
 } from "./contract.ts";
 
-export type { CommerceContractShape } from "./contract.ts";
+export type { CommerceRouterContract } from "./contract.ts";

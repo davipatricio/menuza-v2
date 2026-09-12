@@ -6,4 +6,4 @@ export {
   healthOutput,
 } from "./contract.ts";
 
-export type { TenantContractShape } from "./contract.ts";
+export type { TenantRouterContract } from "./contract.ts";

@@ -26,4 +26,4 @@ export const tenantContractObject = {
   health,
 };
 
-export type TenantContractShape = typeof tenantContractObject;
+export type TenantRouterContract = typeof tenantContractObject;

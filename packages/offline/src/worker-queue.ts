@@ -8,7 +8,8 @@
  * is still the source of truth for in-page drains.
  */
 import { get as idbGet, set as idbSet, del as idbDel, createStore } from "idb-keyval";
-import type { QueuedMutation, DrainResult } from "./sync-queue.ts";
+import type { QueuedMutation, DrainResult, NotificationDetail } from "./sync-queue.ts";
+import type { ReplayHeaders } from "./sync-queue.ts";
 
 const STORE = createStore("menuza-mutation-queue", "queue");
 
@@ -27,7 +28,7 @@ async function persistState(state: QueuedMutation[]): Promise<void> {
   else await idbSet(KEY, state, STORE);
 }
 
-async function notifyClients(type: string, detail: Record<string, unknown>): Promise<void> {
+async function notifyClients(type: string, detail: NotificationDetail): Promise<void> {
   if (typeof self === "undefined" || !self.clients) return;
   const clients = await self.clients.matchAll({ includeUncontrolled: true });
 
@@ -49,9 +50,11 @@ export async function workerDrainQueue(): Promise<DrainResult> {
     let stopReason: string | null = null;
 
     try {
-      const headers: Record<string, string> = { "content-type": "application/json" };
+      const headers: ReplayHeaders = { "content-type": "application/json" };
 
-      if (item.ifMatch) headers["if-match"] = item.ifMatch;
+      if (item.ifMatch) {
+        headers["if-match"] = item.ifMatch;
+      }
 
       const res = await fetch(item.url, {
         method: item.method,

@@ -20,17 +20,25 @@
  */
 import { get as idbGet, set as idbSet, del as idbDel, createStore } from "idb-keyval";
 
-export interface QueuedMutation<T = unknown> {
+export interface QueuedMutation {
   id: string;
   url: string;
   method: "POST" | "PUT" | "PATCH" | "DELETE";
-  body: T;
+  /** Arbitrary JSON payload. Readers only serialize it; never inspect it. */
+  body: unknown;
   ifMatch?: string;
   attempts: number;
   nextAttemptAt: number;
   enqueuedAt: number;
 }
 
+/** Headers for the queue's replay requests: JSON plus an optional ETag. */
+export type ReplayHeaders = globalThis.HeadersInit & {
+  "content-type": "application/json";
+  "if-match"?: string;
+};
+
+/** Result tallies for one drain run. */
 export interface DrainResult {
   ok: number;
   conflicts: number;
@@ -40,6 +48,11 @@ export interface DrainResult {
 }
 
 const STORE = createStore("menuza-mutation-queue", "queue");
+
+/** Background Sync surface missing from this TS version's lib.dom. */
+interface SyncCapable {
+  readonly sync?: { register: (tag: string) => Promise<void> };
+}
 
 const KEY = "queue";
 
@@ -67,13 +80,13 @@ async function persistState(state: QueuedMutation[]): Promise<void> {
   }
 }
 
-export async function enqueueMutation<T>(
-  mutation: Omit<QueuedMutation<T>, "id" | "attempts" | "enqueuedAt" | "nextAttemptAt">,
+export async function enqueueMutation(
+  mutation: Omit<QueuedMutation, "id" | "attempts" | "enqueuedAt" | "nextAttemptAt">,
 ): Promise<string> {
   const state = await load();
   const id = crypto.randomUUID();
 
-  const entry: QueuedMutation<T> = {
+  const entry: QueuedMutation = {
     ...mutation,
     id,
     attempts: 0,
@@ -81,7 +94,7 @@ export async function enqueueMutation<T>(
     enqueuedAt: Date.now(),
   };
 
-  await persistState([...state, entry as QueuedMutation]);
+  await persistState([...state, entry]);
 
   return id;
 }
@@ -94,11 +107,33 @@ export async function clearQueue(): Promise<void> {
   await persistState([]);
 }
 
+/** Fetch-compatible signature for the queue's replay requests: the drain always
+ *  calls it with a URL string plus a `{ method, headers, body }` init, and the
+ *  native `fetch` is assigned at the default site (structurally compatible). */
+export interface QueueFetcher {
+  (
+    input: string,
+    init: {
+      method: QueuedMutation["method"];
+      headers: ReplayHeaders;
+      body: string;
+    },
+  ): Promise<Response>;
+}
+
 export interface DrainOptions {
   /** Override for tests. Defaults to `fetch` in the global scope. */
-  fetcher?: typeof fetch;
+  fetcher?: QueueFetcher;
   /** Override for tests. Defaults to `dispatchEvent` on `window`. */
-  notify?: (type: string, detail: Record<string, unknown>) => void;
+  notify?: (type: string, detail: NotificationDetail) => void;
+}
+
+/** Structured detail attached to `menuza:*` queue events (id + url, plus status for session expiry). */
+export interface NotificationDetail {
+  [key: string]: string | number | undefined;
+  id: string;
+  url: string;
+  status?: number;
 }
 
 export async function drainQueue(opts: DrainOptions = {}): Promise<DrainResult> {
@@ -132,9 +167,11 @@ async function runDrain(opts: DrainOptions): Promise<DrainResult> {
     let stopReason: string | null = null;
 
     try {
-      const headers: Record<string, string> = { "content-type": "application/json" };
+      const headers: ReplayHeaders = { "content-type": "application/json" };
 
-      if (item.ifMatch) headers["if-match"] = item.ifMatch;
+      if (item.ifMatch) {
+        headers["if-match"] = item.ifMatch;
+      }
 
       const res = await fetcher(item.url, {
         method: item.method,
@@ -201,7 +238,7 @@ async function runDrain(opts: DrainOptions): Promise<DrainResult> {
   return result;
 }
 
-function defaultNotify(type: string, detail: Record<string, unknown>): void {
+function defaultNotify(type: string, detail: NotificationDetail): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(type, { detail }));
 }
@@ -221,7 +258,11 @@ export function startQueueDrainer(): () => void {
   window.addEventListener("online", onOnline);
 
   const onSwMessage = (event: MessageEvent) => {
-    if ((event.data as { type?: string } | null)?.type === "menuqueue-drain") {
+    // SAFETY: only `data.type` is read and compared by strict equality; any
+    // other message shape is ignored, so no structural assumption is made.
+    const data = event.data as { type?: string } | null;
+
+    if (data?.type === "menuqueue-drain") {
       void drainQueue();
     }
   };
@@ -236,11 +277,15 @@ export function startQueueDrainer(): () => void {
     if (!("serviceWorker" in navigator) || !("SyncManager" in window)) return;
     navigator.serviceWorker.ready
       .then(async (reg) => {
-        const syncReg = reg as ServiceWorkerRegistration & {
-          sync?: { register: (tag: string) => Promise<void> };
-        };
+        // The Background Sync API is not in lib.dom for this TS version, so
+        // the optional `sync` surface is declared structurally.
+        // SAFETY: `reg` comes from `navigator.serviceWorker.ready` and is a
+        // real `ServiceWorkerRegistration`. Only the optional `sync.register`
+        // method is read; absent support the call is skipped.
+        const syncCapable = reg as ServiceWorkerRegistration & SyncCapable;
+        const sync = syncCapable.sync;
 
-        await syncReg.sync?.register("menuqueue-replay");
+        if (sync) await sync.register("menuqueue-replay");
       })
       .catch(() => {});
   };

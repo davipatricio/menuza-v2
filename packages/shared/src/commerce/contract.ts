@@ -22,9 +22,9 @@ export const commerceContract = oc.errors({
 
 export const health = commerceContract.input(healthInput).output(healthOutput);
 
-// Object shape consumed by `createORPCClient<typeof contract>`.
+// Object consumed by `createORPCClient<typeof contract>`.
 export const commerceContractObject = {
   health,
 };
 
-export type CommerceContractShape = typeof commerceContractObject;
+export type CommerceRouterContract = typeof commerceContractObject;

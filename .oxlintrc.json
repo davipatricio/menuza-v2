@@ -117,6 +117,17 @@
       }
     },
     {
+      "files": ["packages/offline/src/sw-client.ts", "packages/offline/tests/sync-queue.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": [
+          "error",
+          {
+            "allowInTypeGuards": true
+          }
+        ]
+      }
+    },
+    {
       "files": ["**/*.test.ts", "**/*.spec.ts", "scripts/**"],
       "env": {
         "node": true,

@@ -34,7 +34,11 @@ self.addEventListener(
 // Best-effort: ask open pages to drain immediately on `online` (saves the
 // SW registration round-trip).
 self.addEventListener("message", (event: ExtendableMessageEvent) => {
-  if ((event.data as { type?: string } | null)?.type === "menuqueue-drain") {
+  // SAFETY: SW messages are untrusted; only the `type` field is read and it is
+  // compared by strict equality against known tags. Unknown shapes are ignored.
+  const data = event.data as { type?: string } | null;
+
+  if (data?.type === "menuqueue-drain") {
     event.waitUntil(workerDrainQueue());
   }
 });

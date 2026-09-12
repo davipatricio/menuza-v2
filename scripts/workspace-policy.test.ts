@@ -25,7 +25,22 @@ interface PackageJson {
   workspaces?: { packages?: string[]; catalog?: DepMap };
 }
 
-const readJson = (p: string) => JSON.parse(readFileSync(p, "utf8")) as PackageJson;
+const readJson = (p: string) => {
+  const raw = readFileSync(p, "utf8");
+  // SAFETY: every manifest on disk is a JSON object (JSON.parse of an object
+  // literal per the npm manifest spec). A non-object manifest fails the field
+  // reads below loudly, which is the desired behavior for policy checks.
+  const manifest = JSON.parse(raw) as PackageJson;
+
+  return {
+    name: manifest.name,
+    scripts: manifest.scripts,
+    dependencies: manifest.dependencies,
+    devDependencies: manifest.devDependencies,
+    peerDependencies: manifest.peerDependencies,
+    workspaces: manifest.workspaces,
+  } satisfies PackageJson;
+};
 
 const root = readJson(join(ROOT, "package.json"));
 

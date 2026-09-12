@@ -4,13 +4,48 @@
  */
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-const REDACT_KEYS = new Set(["authorization", "cookie", "set-cookie"]);
+/** Header map consumed by `redactHeaders`. Keys are raw header names. */
+export interface HeaderMap {
+  readonly [name: string]: string | undefined;
+}
 
-export function redactHeaders(headers: Record<string, string | undefined>): Record<string, string> {
-  const out: Record<string, string> = {};
+export type RedactedHeaderMap = { [name: string]: string };
+
+/** Log payload: JSON-serializable primitives plus redacted header maps. */
+export type LogValue = string | number | boolean | null | undefined | RedactedHeaderMap;
+
+/** Known header names for redaction checks. */
+const SENSITIVE_HEADERS = ["authorization", "cookie", "set-cookie"] as const;
+
+type SensitiveHeader = (typeof SENSITIVE_HEADERS)[number];
+
+const SENSITIVE_HEADER_SET: ReadonlySet<SensitiveHeader> = new Set(SENSITIVE_HEADERS);
+
+/** Header names `redactHeaders` accepts: the sensitive names plus any other name. */
+export type RedactableHeader = SensitiveHeader | (string & {});
+
+export function redactHeaders(headers: HeaderMap): RedactedHeaderMap {
+  const redacted = buildRedactedHeaders(headers);
+
+  return redacted;
+}
+
+/** Named redaction result: one entry per input header, sensitive values masked. */
+export interface RedactedHeaders {
+  [name: string]: string;
+}
+
+/** Copy `headers`, replacing the values of the sensitive names. */
+function buildRedactedHeaders(headers: HeaderMap): RedactedHeaders {
+  const out: RedactedHeaders = {};
 
   for (const [k, v] of Object.entries(headers)) {
-    out[k] = REDACT_KEYS.has(k.toLowerCase()) ? "<redacted>" : (v ?? "");
+    // SAFETY: the membership check runs against the closed
+    // `SENSITIVE_HEADERS` tuple. Only the three known sensitive header names
+    // are ever redacted; all other names pass through as-is.
+    const sensitive = SENSITIVE_HEADER_SET.has(k.toLowerCase() as SensitiveHeader);
+
+    out[k] = sensitive ? "<redacted>" : (v ?? "");
   }
 
   return out;
@@ -20,7 +55,7 @@ export interface LogFields {
   requestId: string;
   level?: LogLevel;
   msg: string;
-  [k: string]: unknown;
+  readonly [key: string]: LogValue;
 }
 
 export function log(fields: LogFields): void {

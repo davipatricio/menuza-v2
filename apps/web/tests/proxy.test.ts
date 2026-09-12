@@ -61,6 +61,8 @@ describe("proxy logic", () => {
   });
 
   test("isAllowed root is permitted in every mode", () => {
+    // SAFETY: the array literal is a closed set of the three known `Mode`
+    // values, so the assertion covers exactly the union members.
     for (const m of ["landing", "storefront", "management"] as Mode[]) {
       expect(isAllowed(m, "/")).toBe(true);
     }

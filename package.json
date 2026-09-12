@@ -1,9 +1,7 @@
 {
   "name": "menuza",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
-  "packageManager": "bun@1.4.3",
+  "private": true,
   "workspaces": {
     "packages": [
       "apps/*",
@@ -28,30 +26,32 @@
       "@oxlint/plugins": "1.82.0"
     }
   },
+  "type": "module",
   "scripts": {
-    "dev": "bun run scripts/dev.ts",
-    "dev:web": "bun --filter '@menuza/web' dev",
-    "dev:commerce": "bun --filter '@menuza/commerce' dev",
-    "dev:tenant": "bun --filter '@menuza/tenant' dev",
-    "dev:worker": "bun --filter '@menuza/worker' dev",
-    "typecheck": "bun run scripts/typecheck.ts",
-    "test": "bun test",
-    "test:integration": "bun run scripts/test-integration.ts",
     "build": "bun run db:generate && bun run typegen && bun --filter '@menuza/web' build",
-    "typegen": "bun --filter '@menuza/web' typegen",
+    "db:deploy": "bun --filter '@menuza/db' db:deploy",
     "db:generate": "bun --filter '@menuza/db' db:generate",
     "db:migrate": "bun --filter '@menuza/db' db:migrate",
-    "db:deploy": "bun --filter '@menuza/db' db:deploy",
     "db:studio": "bun --filter '@menuza/db' db:studio",
-    "infra:up": "bun run scripts/infra-up.ts",
-    "infra:down": "bun run scripts/infra-down.ts",
-    "lint": "bunx turbo run lint --filter='@menuza/*'",
+    "dev": "bun run scripts/dev.ts",
+    "dev:commerce": "bun --filter '@menuza/commerce' dev",
+    "dev:tenant": "bun --filter '@menuza/tenant' dev",
+    "dev:web": "bun --filter '@menuza/web' dev",
+    "dev:worker": "bun --filter '@menuza/worker' dev",
     "fmt": "bunx turbo run fmt --filter='@menuza/*'",
+    "fmt:check": "bunx turbo run fmt:check --filter='@menuza/*'",
+    "infra:down": "bun run scripts/infra-down.ts",
+    "infra:up": "bun run scripts/infra-up.ts",
+    "lint": "bunx turbo run lint --filter='@menuza/*'",
     "lint:fix": "bunx turbo run lint:fix --filter='@menuza/*'",
-    "fmt:check": "bunx turbo run fmt:check --filter='@menuza/*'"
+    "test": "bun test",
+    "test:integration": "bun run scripts/test-integration.ts",
+    "typecheck": "bun run scripts/typecheck.ts",
+    "typegen": "bun --filter '@menuza/web' typegen"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "turbo": "2.10.12"
-  }
+  },
+  "packageManager": "bun@1.4.3"
 }
