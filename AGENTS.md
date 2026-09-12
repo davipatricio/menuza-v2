@@ -61,6 +61,11 @@
 - API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
 - CI compiles the binaries in the `build` job but does not build or publish images yet.
 
+### Deferred: turbo prune + bytecode
+
+- **turbo prune** (validated 2026-09-12): `bunx turbo prune <app> --docker --out-dir .turbo/prune/<app>` works with the bun lockfile — worker prunes to 2 workspaces, `bun install --frozen-lockfile` installs 84 pkgs in 1.7s (vs 342 full). Adoption: build from the pruned context (`podman build -f apps/<app>/Containerfile .turbo/prune/<app>/full`) with manifests copied from `../json`; shrinks context and isolates per-service install layers. Do it when 9p context transfer or shared-install invalidation actually hurts — until then the shared manifest+install cache across the four images is the dominant win and already works.
+- **bytecode** (`bun build --compile --bytecode`): currently blocked — all three Bun entries use top-level await, which bytecode cannot compile (parse error at the first top-level `await`). Path: wrap each entry in `async function main() { … } main();`, then add `--bytecode` to the three `build` scripts (platform-specific bytecode is fine since images build for linux/amd64). Only worth it if cold-start latency matters; no ESM/TLA support means no drop-in today.
+
 ## Commands
 
 - `bun run dev` — concurrent runnable app processes.
