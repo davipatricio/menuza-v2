@@ -9,3 +9,4 @@
   end-to-end. The queue is `obliterate`d in the same process run — there is no leftover state.
 - Do NOT add email, dashboard, or business handlers without a real product requirement.
 - `initSentry({ service: "worker" })` is called at startup. No-op without `SENTRY_DSN`.
+- Compiled artifact: `bun run build` → `dist/worker` via `bun build --compile` (no tsdown). `Containerfile` (context: repo root) builds the image; no HTTP port, no HOST env.

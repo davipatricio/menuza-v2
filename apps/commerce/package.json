@@ -10,12 +10,13 @@
     "./server": "./src/server.ts"
   },
   "scripts": {
-    "dev": "bun --filter '@menuza/api-commerce' dev",
+    "build": "bun build --compile src/server.ts --outfile dist/commerce",
+    "dev": "bun --env-file-if-exists=../../.env --watch src/server.ts",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "start": "bun --filter '@menuza/api-commerce' start",
+    "start": "bun --env-file-if-exists=../../.env src/server.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

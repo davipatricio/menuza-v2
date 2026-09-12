@@ -120,6 +120,11 @@ jobs:
         run: bun run db:generate
       - name: Next build (type checking enabled)
         run: bun run build
+      - name: Compile Bun services
+        run: |
+          bun run --filter '@menuza/commerce' build
+          bun run --filter '@menuza/tenant' build
+          bun run --filter '@menuza/worker' build
       - uses: actions/upload-artifact@v4
         with:
           name: next-build

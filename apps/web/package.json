@@ -20,6 +20,7 @@
     "@menuza/shared": "workspace:*",
     "@orpc/client": "1.15.0",
     "@orpc/contract": "catalog:",
+    "@serwist/next": "9.5.12",
     "@serwist/turbopack": "9.5.12",
     "@tanstack/query-persist-client-core": "5.102.8",
     "@tanstack/query-sync-storage-persister": "5.102.8",

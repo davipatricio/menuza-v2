@@ -16,12 +16,14 @@ import { commerceDomainRouter } from "@menuza/api-commerce";
 initSentry({ service: "commerce" });
 
 const port = Number(process.env.COMMERCE_PORT ?? 3001);
+// Loopback by default; Docker sets HOST=0.0.0.0 to publish the port.
+const hostname = process.env.HOST ?? "127.0.0.1";
 
 const rpcFetch = buildRpcFetch(commerceDomainRouter, { service: "commerce" });
 
 const server = Bun.serve({
   port,
-  hostname: "127.0.0.1",
+  hostname,
   fetch: async (req) => {
     const url = new URL(req.url);
 

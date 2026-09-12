@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
+    "build": "bun build --compile src/server.ts --outfile dist/worker",
     "dev": "bun run src/server.ts",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",

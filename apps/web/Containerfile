@@ -1,0 +1,38 @@
+# Web (Next.js) image. Build context: repo root.
+#   podman build -f apps/web/Containerfile -t menuza-web .
+# Uses Next standalone output (.next/standalone) — no node_modules in the
+# runtime layer beyond what standalone embeds. Runs on Bun.
+FROM docker.io/oven/bun:1.4.2 AS build
+WORKDIR /app
+
+# Manifests first so `bun install` caches across source changes.
+COPY package.json bun.lock ./
+COPY apps/web/package.json apps/web/
+COPY apps/commerce/package.json apps/commerce/
+COPY apps/tenant/package.json apps/tenant/
+COPY apps/worker/package.json apps/worker/
+COPY apps/orpc-server/package.json apps/orpc-server/
+COPY packages/db/package.json packages/db/
+COPY packages/shared/package.json packages/shared/
+COPY packages/api-commerce/package.json packages/api-commerce/
+COPY packages/api-tenant/package.json packages/api-tenant/
+COPY packages/offline/package.json packages/offline/
+RUN bun install --frozen-lockfile
+
+COPY . .
+# Type checking is on; db:generate is required for the typecheck graph.
+RUN bun run db:generate
+RUN bun run typegen
+RUN bun run --filter '@menuza/web' build
+
+FROM docker.io/oven/bun:1.4.2-slim
+WORKDIR /app
+USER bun
+ENV NODE_ENV=production \
+  HOSTNAME=0.0.0.0 \
+  PORT=3000
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/apps/web/public ./apps/web/public
+EXPOSE 3000
+CMD ["bun", "apps/web/server.js"]

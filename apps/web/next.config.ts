@@ -7,6 +7,8 @@ const tenantInternal = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // Self-contained server for the web image (.next/standalone).
+  output: "standalone",
   experimental: {
     // Per PLAN §4: verified against next@16.4.0-canary.19 + typescript@7.0.2.
     useTypeScriptCli: true,

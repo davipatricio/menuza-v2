@@ -9,12 +9,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "dev": "bun --filter '@menuza/commerce' dev",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "start": "bun --filter '@menuza/commerce' start",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

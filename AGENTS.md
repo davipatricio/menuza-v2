@@ -52,6 +52,15 @@
 - Bring infrastructure up: `bun run infra:up`. Down (preserves volumes): `bun run infra:down`.
 - If running on a host without WSL, install `podman-compose` standalone and call `podman-compose -f infra/compose.yaml up -d` from the repo root.
 
+## Container images
+
+- One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Build context is always the **repo root**: `podman build -f apps/<app>/Containerfile -t menuza-<app> .`
+- Bun services (commerce, tenant, worker) ship as `bun build --compile` binaries — no tsdown, no node_modules in the runtime layer (`debian:bookworm-slim` + binary + ca-certificates).
+- Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:1.4.2-slim`; 1.4.3 is a canary pin with no Docker tag — revisit when stable 1.4.3 publishes).
+- Images are hermetic from env: scripts use `--env-file-if-exists`, so builds work without `.env`; runtime config is env-only. Never bake `.env`.
+- API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
+- CI compiles the binaries in the `build` job but does not build or publish images yet.
+
 ## Commands
 
 - `bun run dev` — concurrent runnable app processes.
@@ -62,6 +71,29 @@
 - `bun run db:generate` / `db:migrate` / `db:deploy` / `db:studio` — Prisma lifecycle.
 - `bun run infra:up` / `infra:down` — Postgres + Redis.
 - `bunx turbo run <task>` — Turborepo task DAG with local cache (e.g. `turbo run build`, `turbo run typecheck`).
+
+## Codebase memory (codebase-memory-mcp)
+
+The repo is indexed in codebase-memory-mcp (project `C-Users-davip-Documents-Projetos-menuza`, root `C:\Users\davip\Documents\Projetos\menuza`). Background watcher auto-refreshes on git changes. Prefer graph tools for structural discovery; fall back to grep/glob for string literals, config values, and non-code files.
+
+### Indexing
+
+- Automatic: watcher + `auto_index` keep it fresh; no manual step needed in normal sessions.
+- Manual re-index (CLI, one-shot): `& "$env:LOCALAPPDATA\Programs\codebase-memory-mcp\codebase-memory-mcp.exe" cli index_repository --repo-path . --progress`
+- Status: `cli index_status --project C-Users-davip-Documents-Projetos-menuza` / MCP `index_status`. Check `parse_partial` and `skipped` before trusting negative claims.
+- Excluded by design: `.git`, `node_modules`, `.next`, `.turbo`, `dist`, `packages/db/prisma/generated`, vendored oxlint plugins.
+
+### Searching (MCP via Code Mode: `tools["codebase-memory"].*`)
+
+- `search_graph` — find symbols by pattern, e.g. `name_pattern: ".*Handler.*"`.
+- `trace_path` — callers (`direction: "inbound"`) or callees (`"outbound"`) of a function.
+- `get_code_snippet` — exact source of a symbol by `qualified_name`.
+- `get_architecture` — orientation: entry points, routes, hotspots, layers.
+- `query_graph` — Cypher, e.g. `MATCH (f:Function)-[:CALLS]->(g) WHERE f.name='buildRpcFetch' RETURN g.name`.
+- `detect_changes` — map uncommitted diff to affected symbols with risk.
+- `check_index_coverage` — required before negative/exhaustive claims; read flagged ranges directly.
+
+Session rule: at start or after compaction, confirm project + generation with `index_status`, then pick a tier: Scout (quick lookup, provisional) → Verify (default: traces + snippets for material claims) → Auditor (bounded full verification, disclose limits).
 
 ## Security
 

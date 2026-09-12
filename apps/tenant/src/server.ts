@@ -17,12 +17,14 @@ import { tenantDomainRouter } from "@menuza/api-tenant";
 initSentry({ service: "tenant" });
 
 const port = Number(process.env.TENANT_PORT ?? 3002);
+// Loopback by default; Docker sets HOST=0.0.0.0 to publish the port.
+const hostname = process.env.HOST ?? "127.0.0.1";
 
 const rpcFetch = buildRpcFetch(tenantDomainRouter, { service: "tenant" });
 
 const server = Bun.serve({
   port,
-  hostname: "127.0.0.1",
+  hostname,
   fetch: async (req) => {
     const url = new URL(req.url);
 

@@ -1,0 +1,22 @@
+# Build context for all Containerfiles is the repo root.
+# Source-only context: dependencies and artifacts are regenerated inside the image.
+.git
+.github
+**/node_modules
+.next
+**/dist
+**/.turbo
+**/.next
+packages/db/prisma/generated
+apps/web/.shadcn-cache
+.podman-data
+
+# Local env — never baked into images
+.env
+.env.*
+!.env.example
+
+# Noise
+*.log
+*.exe
+*.tsbuildinfo

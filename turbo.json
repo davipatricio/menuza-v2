@@ -5,7 +5,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build", "db:generate", "typegen"],
-      "outputs": ["$TURBO_ROOT$/apps/web/.next/**"]
+      "outputs": ["$TURBO_ROOT$/apps/web/.next/**", "dist/**"]
     },
     "typecheck": {
       "dependsOn": ["db:generate", "typegen"],

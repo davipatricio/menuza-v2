@@ -1,0 +1,31 @@
+# Worker image. Build context: repo root.
+#   podman build -f apps/worker/Containerfile -t menuza-worker .
+# The compiled binary embeds the Bun runtime; no node_modules ships.
+FROM docker.io/oven/bun:1.4.2 AS build
+WORKDIR /app
+
+# Manifests first so `bun install` caches across source changes.
+COPY package.json bun.lock ./
+COPY apps/web/package.json apps/web/
+COPY apps/commerce/package.json apps/commerce/
+COPY apps/tenant/package.json apps/tenant/
+COPY apps/worker/package.json apps/worker/
+COPY apps/orpc-server/package.json apps/orpc-server/
+COPY packages/db/package.json packages/db/
+COPY packages/shared/package.json packages/shared/
+COPY packages/api-commerce/package.json packages/api-commerce/
+COPY packages/api-tenant/package.json packages/api-tenant/
+COPY packages/offline/package.json packages/offline/
+RUN bun install --frozen-lockfile
+
+COPY . .
+RUN cd apps/worker && bun run build
+
+FROM docker.io/library/debian:bookworm-slim
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+RUN useradd --system --no-create-home app
+COPY --from=build /app/apps/worker/dist/worker /usr/local/bin/worker
+USER app
+CMD ["worker"]
