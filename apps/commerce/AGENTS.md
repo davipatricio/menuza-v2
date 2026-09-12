@@ -5,7 +5,7 @@
   imports it and wires it into `Bun.serve`.
 - Loopback-bound in development. Reachable in production only via internal rewrite from `apps/web`.
 - Uses `registerShutdown` from `@menuza/orpc-server` for graceful shutdown (flush in-flight requests + Sentry).
-- Compiled artifact: `bun run build` → `dist/commerce` via `bun build --compile` (no tsdown). `Containerfile` (context: repo root) builds the image.
+- Compiled artifact: `bun run build` → `dist/commerce` via `bun build --compile --bytecode --format=esm --minify --sourcemap` (no tsdown). Images build via `bun run scripts/docker-build.ts commerce`.
 - `HOST` env (default `127.0.0.1`) exists for Docker; the image sets `HOST=0.0.0.0`. Dev stays loopback.
 - Buyer-session boundary lives at the host layer (`apps/web/proxy.ts`); this server does NOT trust
   client-supplied `tenantId`/`Host`/forwarded headers.

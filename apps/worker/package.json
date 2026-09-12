@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "bun build --compile src/server.ts --outfile dist/worker",
+    "build": "bun build --compile --bytecode --format=esm --minify --sourcemap src/server.ts --outfile dist/worker",
     "dev": "bun run src/server.ts",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",
@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "@menuza/orpc-server": "workspace:*",
-    "bullmq": "6.3.4",
-    "ioredis": "5.4.2"
+    "bullmq": "6.3.4"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

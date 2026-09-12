@@ -9,20 +9,17 @@
  * (PID + boot nanos) and cleaned up at shutdown so concurrent workers do not
  * interfere with each other.
  */
-import { Queue, QueueEvents, Worker, type ConnectionOptions } from "bullmq";
-import IORedis from "ioredis";
+import { RedisClient } from "bun";
+import { Queue, QueueEvents, Worker, createBunRedisClient } from "bullmq";
 import { initSentry } from "@menuza/orpc-server";
 
 initSentry({ service: "worker" });
 
-const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6380";
+const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
-const connection: ConnectionOptions = new IORedis(redisUrl, {
-  maxRetriesPerRequest: null,
-  lazyConnect: true,
-});
-
-await connection.connect();
+// Bun's built-in Redis client via BullMQ's adapter (drops ioredis).
+// Shutdown MUST go through the wrapper — never close the raw client.
+const connection = createBunRedisClient(new RedisClient(redisUrl));
 
 console.log("[worker] redis connected");
 
@@ -64,7 +61,7 @@ const shutdown = async (signal: string) => {
   } catch (err) {
     console.error("[worker] shutdown error:", err);
   } finally {
-    if (connection instanceof IORedis) await connection.quit();
+    await connection.quit();
     process.exit(0);
   }
 };

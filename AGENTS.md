@@ -54,17 +54,17 @@
 
 ## Container images
 
-- One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Build context is always the **repo root**: `podman build -f apps/<app>/Containerfile -t menuza-<app> .`
+- One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Builds go through `bun run scripts/docker-build.ts <app>`; the context is the pruned monorepo, not the repo root.
 - Bun services (commerce, tenant, worker) ship as `bun build --compile` binaries — no tsdown, no node_modules in the runtime layer (`debian:bookworm-slim` + binary + ca-certificates).
 - Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:1.4.2-slim`; 1.4.3 is a canary pin with no Docker tag — revisit when stable 1.4.3 publishes).
 - Images are hermetic from env: scripts use `--env-file-if-exists`, so builds work without `.env`; runtime config is env-only. Never bake `.env`.
 - API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
 - CI compiles the binaries in the `build` job but does not build or publish images yet.
 
-### Deferred: turbo prune + bytecode
+### Build pipeline: turbo prune + bytecode
 
-- **turbo prune** (validated 2026-09-12): `bunx turbo prune <app> --docker --out-dir .turbo/prune/<app>` works with the bun lockfile — worker prunes to 2 workspaces, `bun install --frozen-lockfile` installs 84 pkgs in 1.7s (vs 342 full). Adoption: build from the pruned context (`podman build -f apps/<app>/Containerfile .turbo/prune/<app>/full`) with manifests copied from `../json`; shrinks context and isolates per-service install layers. Do it when 9p context transfer or shared-install invalidation actually hurts — until then the shared manifest+install cache across the four images is the dominant win and already works.
-- **bytecode** (`bun build --compile --bytecode`): currently blocked — all three Bun entries use top-level await, which bytecode cannot compile (parse error at the first top-level `await`). Path: wrap each entry in `async function main() { … } main();`, then add `--bytecode` to the three `build` scripts (platform-specific bytecode is fine since images build for linux/amd64). Only worth it if cold-start latency matters; no ESM/TLA support means no drop-in today.
+- **Builds go through `bun run scripts/docker-build.ts <app>`** — runs `turbo prune <app> --docker` into `.turbo/prune/<app>` (json/ = pruned manifests + lockfile, full/ = source), then builds `apps/<app>/Containerfile` with the pruned dir as context. Context is tiny and install layers are per-service (worker: 84 pkgs). Prune output is gitignored.
+- **Bytecode is on** (`--compile --bytecode --format=esm --minify --sourcemap` in the three Bun `build` scripts). ESM bytecode requires `--compile` + `--format=esm`; without `--format=esm` the CJS default fails on top-level `await`. Bytecode is tied to the exact Bun version — images bake `oven/bun:1.4.2`, so bytecode regenerates on every image build; bump the base image tag and rebuild together. Never commit `.jsc`/embedded bytecode as a release artifact outside images.
 
 ## Commands
 

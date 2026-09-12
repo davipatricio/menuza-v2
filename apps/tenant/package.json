@@ -10,7 +10,7 @@
     "./server": "./src/server.ts"
   },
   "scripts": {
-    "build": "bun build --compile src/server.ts --outfile dist/tenant",
+    "build": "bun build --compile --bytecode --format=esm --minify --sourcemap src/server.ts --outfile dist/tenant",
     "dev": "bun --env-file-if-exists=../../.env --watch src/server.ts",
     "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check .",

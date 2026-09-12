@@ -1,24 +1,15 @@
-# Worker image. Build context: repo root.
-#   podman build -f apps/worker/Containerfile -t menuza-worker .
-# The compiled binary embeds the Bun runtime; no node_modules ships.
+# Worker image. Built via scripts/docker-build.ts (turbo prune --docker → tiny per-app context).
+#   bun run scripts/docker-build.ts worker
+# The compiled binary embeds the Bun runtime + bytecode; no node_modules ships.
 FROM docker.io/oven/bun:1.4.2 AS build
 WORKDIR /app
 
-# Manifests first so `bun install` caches across source changes.
-COPY package.json bun.lock ./
-COPY apps/web/package.json apps/web/
-COPY apps/commerce/package.json apps/commerce/
-COPY apps/tenant/package.json apps/tenant/
-COPY apps/worker/package.json apps/worker/
-COPY apps/orpc-server/package.json apps/orpc-server/
-COPY packages/db/package.json packages/db/
-COPY packages/shared/package.json packages/shared/
-COPY packages/api-commerce/package.json packages/api-commerce/
-COPY packages/api-tenant/package.json packages/api-tenant/
-COPY packages/offline/package.json packages/offline/
+# json/: root manifest, pruned bun.lock, pruned workspace manifests.
+COPY json/ ./
 RUN bun install --frozen-lockfile
 
-COPY . .
+# full/: source of the pruned graph.
+COPY full/ .
 RUN cd apps/worker && bun run build
 
 FROM docker.io/library/debian:bookworm-slim

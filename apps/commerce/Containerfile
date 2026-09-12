@@ -1,26 +1,17 @@
-# Commerce API image. Build context: repo root.
-#   podman build -f apps/commerce/Containerfile -t menuza-commerce .
-# The compiled binary embeds the Bun runtime and the Prisma generated client
-# (regenerated here for the target platform); no node_modules ships.
+# Commerce API image. Built via scripts/docker-build.ts (turbo prune --docker).
+#   bun run scripts/docker-build.ts commerce
+# The compiled binary embeds the Bun runtime + bytecode and the Prisma
+# generated client (regenerated here); no node_modules ships.
 FROM docker.io/oven/bun:1.4.2 AS build
 WORKDIR /app
 
-# Manifests first so `bun install` caches across source changes.
-COPY package.json bun.lock ./
-COPY apps/web/package.json apps/web/
-COPY apps/commerce/package.json apps/commerce/
-COPY apps/tenant/package.json apps/tenant/
-COPY apps/worker/package.json apps/worker/
-COPY apps/orpc-server/package.json apps/orpc-server/
-COPY packages/db/package.json packages/db/
-COPY packages/shared/package.json packages/shared/
-COPY packages/api-commerce/package.json packages/api-commerce/
-COPY packages/api-tenant/package.json packages/api-tenant/
-COPY packages/offline/package.json packages/offline/
+# json/: root manifest, pruned bun.lock, pruned workspace manifests.
+COPY json/ ./
 RUN bun install --frozen-lockfile
 
-COPY . .
-RUN bun run db:generate
+# full/: source of the pruned graph.
+COPY full/ .
+RUN bun run --filter '@menuza/db' db:generate
 RUN cd apps/commerce && bun run build
 
 FROM docker.io/library/debian:bookworm-slim
