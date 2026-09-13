@@ -3,7 +3,7 @@
  * injects it into the procedure context. The web proxy writes this header
  * server-side from the host->tenant map; clients never set it directly.
  *
- * Reads `context.reqHeaders`, which `@orpc/server`'s `RequestHeadersPlugin`
+ * Reads `context.reqHeaders`, which `@orpc/server`'s `RequestHeadersHandlerPlugin`
  * populates per request. Without the plugin the header is invisible and the
  * middleware always falls back to the missing-tenant branch.
  *
@@ -14,7 +14,7 @@
  * code to the typesafe error.
  */
 import { ORPCError, os } from "@orpc/server";
-import type { RequestHeadersPluginContext } from "@orpc/server/plugins";
+import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import type { OptionalTenantContext, TenantContext } from "./types.ts";
 
@@ -31,7 +31,7 @@ type TenantContextOf<TRequire extends "tenant" | "optional"> = TRequire extends 
   : OptionalTenantContext;
 
 /** Context the middleware reads from and injects into. */
-type TenantMiddlewareContext = RequestHeadersPluginContext & OptionalTenantContext;
+type TenantMiddlewareContext = RequestHeadersHandlerPluginContext & OptionalTenantContext;
 
 /**
  * Returns an oRPC middleware that:

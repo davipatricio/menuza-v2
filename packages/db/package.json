@@ -21,8 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "7.10.0",
-    "@prisma/client": "7.10.0",
+    "@prisma/orm-postgres": "^8.0.0-rc.10",
     "pg": "8.13.1"
   },
   "devDependencies": {
@@ -31,7 +30,7 @@
     "@types/pg": "8.11.10",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "prisma": "7.10.0",
+    "prisma": "^8.0.0-rc.14",
     "typescript": "catalog:"
   },
   "prisma": {

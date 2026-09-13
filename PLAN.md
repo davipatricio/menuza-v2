@@ -463,7 +463,7 @@ Spoke and Asaas commercial gates do not block this local technical foundation; t
 | React / React DOM                | 19.2.8                                                                              | catalog entry                                                                |
 | Tailwind CSS                     | 4.3.3 v4                                                                            | catalog entry; CSS-first config                                              |
 | shadcn CLI / Base UI             | shadcn 4.21.0 (`@base-ui/react` 1.8.0)                                              | `bunx shadcn@latest add …` produced Base-UI-only components                  |
-| oRPC packages                    | 1.15.0 (`@orpc/server`, `@orpc/client`, `@orpc/contract`, `@orpc/zod`)              | contract-first RPC verified end-to-end via `curl POST /rpc/health {json:{}}` |
+| oRPC packages                    | 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`)                    | contract-first RPC verified end-to-end via `curl POST /rpc/health {json:{}}` |
 | Prisma CLI/client/adapter        | 7.10.0 (CLI/client/adapter-pg)                                                      | `prisma generate` + adapter-pg import OK                                     |
 | PostgreSQL image                 | `docker.io/library/postgres:18-alpine`                                              | compose.yaml                                                                 |
 | Redis image                      | `docker.io/library/redis:7.4-alpine`                                                | compose.yaml                                                                 |
@@ -482,6 +482,7 @@ Spoke and Asaas commercial gates do not block this local technical foundation; t
 | 2026-09-06 | Phase 4 themes        | `next-themes` 0.4.6 added locally; ThemeProvider in root layout; ThemeToggle in both shells                                       | No new catalog entries (single-consumer)                                                        |
 | 2026-09-06 | Phase 5 worker        | BullMQ 6.3.4 + ioredis 5.4.2 wired; smoke queue proves lifecycle                                                                  | No business jobs; documented in apps/worker/AGENTS.md                                           |
 | 2026-09-06 | tsdown evaluation     | Bundled `packages/shared` (works) and `packages/db` (Prisma runtime-config inlining unacceptable)                                 | Both reverted to source-based consumption; recorded in AGENTS                                   |
+| 2026-09-13 | oRPC v2 migration    | catalog → 2.0.0-beta.35; `RPCLink` origin+url split; `RouterContractClient`; `RequestHeadersHandlerPlugin`; `Router<any>`; object interceptor; added RequestLimit/Timeout/PrototypePollution plugins; typecheck + 26 unit tests + live curl smoke (200/413/400/404) | Server and client wire format now v2 — deploy together |
 
 ### Compatibility findings
 

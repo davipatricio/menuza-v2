@@ -9,8 +9,12 @@
  */
 import { RPCHandler } from "@orpc/server/fetch";
 import type { Router } from "@orpc/server";
-import { onError as onRpcError } from "@orpc/server";
-import { RequestHeadersPlugin } from "@orpc/server/plugins";
+import {
+  PrototypePollutionProtectionHandlerPlugin,
+  RequestHeadersHandlerPlugin,
+  RequestLimitHandlerPlugin,
+  TimeoutHandlerPlugin,
+} from "@orpc/server/plugins";
 import { context, trace, type Tracer } from "@opentelemetry/api";
 import * as Sentry from "@sentry/bun";
 import { log, newRequestId, redactHeaders } from "./logging.ts";
@@ -23,34 +27,10 @@ export interface BuildOptions {
   tracer?: Tracer;
 }
 
-/** Structural view of the oRPC error passed to `onRpcError` interceptors. */
+/** Structural view of the oRPC error passed to error interceptors. */
 export interface OrpcError extends Error {
   /** oRPC error code, e.g. `UNAUTHORIZED`. Absent on non-oRPC throws. */
   readonly code?: string;
-}
-
-/** Second `onRpcError` argument: oRPC handler options. The per-request context
- *  (including `requestId`) lives here, NOT on the thrown error. */
-interface InterceptorOptions {
-  readonly context?: { readonly requestId?: string };
-}
-
-/** `onRpcError` callback args: the thrown error, then handler options. */
-type InterceptorArgs = [error: unknown, options?: InterceptorOptions];
-
-/** Read the thrown error positionally. */
-function readInterceptorError(args: InterceptorArgs): OrpcError {
-  const [error] = args;
-
-  // SAFETY: oRPC forwards the thrown handler error unchanged as the first
-  // positional argument. `OrpcError` only declares an optional `code`, so
-  // reading through it cannot misinterpret the value.
-  return error as OrpcError;
-}
-
-/** Read the request id from the interceptor's second argument. */
-function readInterceptorRequestId(args: InterceptorArgs): string | undefined {
-  return args[1]?.context?.requestId;
 }
 
 /**
@@ -88,19 +68,36 @@ export function reportRpcError(error: OrpcError, opts: BuildOptions, requestId?:
   }
 }
 
-export function buildRpcFetch(router: Router<any, any>, opts: BuildOptions) {
+export function buildRpcFetch(router: Router<any>, opts: BuildOptions) {
   const tracer = opts.tracer ?? trace.getTracer(`@menuza/api-${opts.service}`);
 
-  const onErrorInterceptor = (...args: InterceptorArgs): void => {
-    reportRpcError(readInterceptorError(args), opts, readInterceptorRequestId(args));
-  };
-
+  // Object-style handler interceptor: runs only for matched requests. oRPC
+  // forwards the thrown error unchanged; the per-request context (including
+  // `requestId`) lives on the interceptor options, NOT on the thrown error.
+  // SAFETY: `OrpcError` only declares an optional `code`, so casting the
+  // unknown thrown value cannot misinterpret it.
   const handler = new RPCHandler(router, {
-    // RequestHeadersPlugin exposes `context.reqHeaders`; the tenant middleware
-    // reads `x-menuza-tenant-id` from it. Without this plugin the header is
-    // invisible and `require: "tenant"` always fails.
-    plugins: [new RequestHeadersPlugin()],
-    interceptors: [onRpcError(onErrorInterceptor)],
+    // RequestHeadersHandlerPlugin exposes `context.reqHeaders`; the tenant
+    // middleware reads `x-menuza-tenant-id` from it. Without this plugin the
+    // header is invisible and `require: "tenant"` always fails.
+    plugins: [
+      new RequestHeadersHandlerPlugin(),
+      new RequestLimitHandlerPlugin({ maxBodySize: 1024 * 1024 }),
+      new TimeoutHandlerPlugin({ timeout: 30_000 }),
+      new PrototypePollutionProtectionHandlerPlugin(),
+    ],
+    interceptors: [
+      async ({ next, context }) => {
+        try {
+          return await next();
+        } catch (error) {
+          // SAFETY: oRPC forwards the thrown handler error unchanged. `OrpcError`
+          // only declares an optional `code`, so this cast cannot misinterpret it.
+          reportRpcError(error as OrpcError, opts, context?.requestId);
+          throw error;
+        }
+      },
+    ],
   });
 
   return async function fetch(request: Request, prefix: `/${string}`): Promise<Response> {

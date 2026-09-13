@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { FC, useEffect, useRef } from "react"
-import { HTMLMotionProps, motion, useAnimation, useInView } from "motion/react"
+import { type FC, useRef } from "react";
+import { type HTMLMotionProps, motion } from "motion/react";
 
 type AnimationType =
   | "fadeIn"
@@ -11,13 +11,13 @@ type AnimationType =
   | "rollIn"
   | "whipIn"
   | "whipInUp"
-  | "calmInUp"
+  | "calmInUp";
 
 interface Props extends HTMLMotionProps<"div"> {
-  text: string
-  type?: AnimationType
-  delay?: number
-  duration?: number
+  text: string;
+  type?: AnimationType;
+  delay?: number;
+  duration?: number;
 }
 
 const animationVariants = {
@@ -195,27 +195,20 @@ const animationVariants = {
       },
     },
   },
-}
+};
 
 // A framer motion text animation component
 // https://www.cult-ui.com/docs/components/text-animate
-const TextAnimate: FC<Props> = ({
-  text,
-  type = "whipInUp",
-  ...props
-}: Props) => {
+const TextAnimate: FC<Props> = ({ text, type = "whipInUp", ...props }: Props) => {
   //   const { ref, inView } = useInView({
   //     threshold: 0.5,
   //     triggerOnce: true,
   //   });
 
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+  const ref = useRef(null);
 
-  const letters = Array.from(text)
-  const { container, child } = animationVariants[type]
-
-  const ctrls = useAnimation()
+  const letters = Array.from(text);
+  const { container, child } = animationVariants[type];
 
   //   useEffect(() => {
   //     if (isInView) {
@@ -228,12 +221,12 @@ const TextAnimate: FC<Props> = ({
 
   if (type === "rollIn" || type === "whipIn") {
     return (
-      <h2 className="mt-10 text-3xl font-black text-black dark:text-neutral-100 py-5 pb-8 px-8 md:text-5xl">
+      <h2 className="mt-10 px-8 py-5 pb-8 text-3xl font-black text-black md:text-5xl dark:text-neutral-100">
         {text.split(" ").map((word, index) => {
           return (
             <motion.span
               ref={ref}
-              className="inline-block mr-[0.25em] whitespace-nowrap"
+              className="mr-[0.25em] inline-block whitespace-nowrap"
               aria-hidden="true"
               key={index}
               initial="hidden"
@@ -252,27 +245,26 @@ const TextAnimate: FC<Props> = ({
                     aria-hidden="true"
                     key={index}
                     variants={child}
-                    className="inline-block -mr-[0.01em]"
+                    className="-mr-[0.01em] inline-block"
                   >
                     {character}
                   </motion.span>
-                )
+                );
               })}
             </motion.span>
-          )
+          );
         })}
       </h2>
-    )
+    );
   }
 
   return (
     <motion.h2
       style={{ display: "flex", overflow: "hidden" }}
-      role="heading"
       variants={container}
       initial="hidden"
       animate="visible"
-      className="mt-10 text-4xl font-black text-black dark:text-neutral-100 py-5 pb-8 px-8 md:text-5xl"
+      className="mt-10 px-8 py-5 pb-8 text-4xl font-black text-black md:text-5xl dark:text-neutral-100"
       {...props}
     >
       {letters.map((letter, index) => (
@@ -281,8 +273,9 @@ const TextAnimate: FC<Props> = ({
         </motion.span>
       ))}
     </motion.h2>
-  )
-}
+  );
+};
 
-export { TextAnimate }
-export default TextAnimate
+export { TextAnimate };
+
+export default TextAnimate;

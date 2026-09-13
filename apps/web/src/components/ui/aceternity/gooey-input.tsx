@@ -1,38 +1,18 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  useId,
-  useMemo,
-  useCallback,
-  type ChangeEvent,
-} from "react";
+import { useState, useRef, useEffect, useId, useMemo, useCallback, type ChangeEvent } from "react";
 import { motion } from "motion/react";
-import { cn } from "@/lib/utils";
-
+import { cn } from "cn";
 
 // A search-style input that expands with a gooey SVG filter and shared layout animation
 // https://ui.aceternity.com/components/gooey-input
-function GooeyFilter({
-  filterId,
-  blur,
-}: {
-  filterId: string;
-  blur: number;
-}) {
+function GooeyFilter({ filterId, blur }: { filterId: string; blur: number }) {
   return (
     <svg className="absolute hidden h-0 w-0" aria-hidden>
       <defs>
         <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur in="SourceGraphic" stdDeviation={blur} result="blur" />
-          <feColorMatrix
-            in="blur"
-            type="matrix"
-            values="1 0  20 -10"
-            result="goo"
-          />
+          <feColorMatrix in="blur" type="matrix" values="1 0  20 -10" result="goo" />
           <feComposite in="SourceGraphic" in2="goo" operator="atop" />
         </filter>
       </defs>
@@ -132,6 +112,7 @@ export function GooeyInput({
       if (!isControlled) {
         setUncontrolledValue(next);
       }
+
       onValueChange?.(next);
     },
     [isControlled, onValueChange],
@@ -151,6 +132,7 @@ export function GooeyInput({
     } else if (prevExpandedRef.current) {
       setSearchText("");
     }
+
     prevExpandedRef.current = isExpanded;
   }, [isExpanded, setSearchText]);
 
@@ -181,20 +163,11 @@ export function GooeyInput({
     "bg-oklch(0.145 0 0) text-oklch(1 0 0) shadow-sm ring-1 ring-oklch(0.922 0 0)/60 dark:bg-oklch(0.985 0 0) dark:text-oklch(0.145 0 0) dark:ring-oklch(1 0 0 / 10%)/60";
 
   return (
-    <div
-      className={cn(
-        "relative flex items-center justify-center",
-        className,
-        classNames?.root,
-      )}
-    >
+    <div className={cn("relative flex items-center justify-center", className, classNames?.root)}>
       <GooeyFilter filterId={filterId} blur={gooeyBlur} />
 
       <div
-        className={cn(
-          "relative flex h-10 items-center justify-center",
-          classNames?.filterWrap,
-        )}
+        className={cn("relative flex h-10 items-center justify-center", classNames?.filterWrap)}
         style={{ filter: `url(#${filterId})` }}
       >
         <motion.div
@@ -214,9 +187,7 @@ export function GooeyInput({
               classNames?.trigger,
             )}
           >
-            {!isExpanded ? (
-              <SearchIcon layoutId={iconLayoutId} />
-            ) : null}
+            {!isExpanded ? <SearchIcon layoutId={iconLayoutId} /> : null}
             <motion.input
               layoutId={inputLayoutId}
               ref={inputRef}

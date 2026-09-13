@@ -3,7 +3,7 @@
  *
  * Each case composes a one-shot procedure with the middleware via `.use(...)`,
  * then calls it with a stub `Headers` as the request header source (what
- * `RequestHeadersPlugin` injects as `context.reqHeaders`).
+ * `RequestHeadersHandlerPlugin` injects as `context.reqHeaders`).
  */
 import { describe, expect, test } from "bun:test";
 import { call, os, ORPCError } from "@orpc/server";

@@ -9,18 +9,18 @@
  */
 import { RPCLink } from "@orpc/client/fetch";
 import { createORPCClient } from "@orpc/client";
-import type { ContractRouterClient } from "@orpc/contract";
+import type { RouterContractClient } from "@orpc/contract";
 import { commerceContractObject } from "@menuza/shared/commerce";
 import { tenantContractObject } from "@menuza/shared/tenant";
 
-function newCommerceClient(origin: string): ContractRouterClient<typeof commerceContractObject> {
-  const link = new RPCLink({ url: `${origin}/rpc` });
+function newCommerceClient(origin: string): RouterContractClient<typeof commerceContractObject> {
+  const link = new RPCLink({ origin, url: "/rpc" });
 
   return createORPCClient(link);
 }
 
-function newTenantClient(origin: string): ContractRouterClient<typeof tenantContractObject> {
-  const link = new RPCLink({ url: `${origin}/rpc` });
+function newTenantClient(origin: string): RouterContractClient<typeof tenantContractObject> {
+  const link = new RPCLink({ origin, url: "/rpc" });
 
   return createORPCClient(link);
 }

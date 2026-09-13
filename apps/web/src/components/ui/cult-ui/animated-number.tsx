@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
 import { useEffect } from "react"
-import { motion, MotionValue, useSpring, useTransform } from "motion/react"
+import { motion, type MotionValue, useSpring, useTransform } from "motion/react";
 
 interface AnimatedNumberProps {
-  value: number
-  mass?: number
-  stiffness?: number
-  damping?: number
-  precision?: number
-  format?: (value: number) => string
-  onAnimationStart?: () => void
-  onAnimationComplete?: () => void
+  value: number;
+  mass?: number;
+  stiffness?: number;
+  damping?: number;
+  precision?: number;
+  format?: (value: number) => string;
+  onAnimationStart?: () => void;
+  onAnimationComplete?: () => void;
 }
 
 // A simple animated number animation
@@ -26,19 +26,23 @@ export function AnimatedNumber({
   onAnimationStart,
   onAnimationComplete,
 }: AnimatedNumberProps) {
-  const spring = useSpring(value, { mass, stiffness, damping })
+  const spring = useSpring(value, { mass, stiffness, damping });
+
   const display: MotionValue<string> = useTransform(spring, (current) =>
-    format(parseFloat(current.toFixed(precision)))
-  )
+    format(parseFloat(current.toFixed(precision))),
+  );
 
   useEffect(() => {
-    spring.set(value)
-    if (onAnimationStart) onAnimationStart()
-    const unsubscribe = spring.on("change", () => {
-      if (spring.get() === value && onAnimationComplete) onAnimationComplete()
-    })
-    return () => unsubscribe()
-  }, [spring, value, onAnimationStart, onAnimationComplete])
+    spring.set(value);
 
-  return <motion.span>{display}</motion.span>
+    if (onAnimationStart) onAnimationStart();
+
+    const unsubscribe = spring.on("change", () => {
+      if (spring.get() === value && onAnimationComplete) onAnimationComplete();
+    });
+
+    return () => unsubscribe();
+  }, [spring, value, onAnimationStart, onAnimationComplete]);
+
+  return <motion.span>{display}</motion.span>;
 }

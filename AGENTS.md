@@ -25,7 +25,8 @@
 - React 19.2.8, React DOM 19.2.8.
 - Tailwind 4.3.3 + `@tailwindcss/postcss` 4.3.3.
 - shadcn (Base UI variant on `@base-ui/react` 1.8.0; components in `apps/web/src/components/ui/`).
-- oRPC 1.15.0 (`@orpc/server`, `@orpc/client`, `@orpc/contract`).
+- oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`). v2 wire
+  format is incompatible with v1 — server and client deploy together.
 - Prisma 7.10.0 (CLI/client/adapter-pg).
 - BullMQ 6.3.4 over Bun's built-in `RedisClient` (adapter; ioredis removed).
 - Turborepo 2.10.12 (task DAG + local cache; no remote cache).

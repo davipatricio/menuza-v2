@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider.tsx";
 import { QueryProvider } from "@/components/query-provider.tsx";
 import { OfflineListener } from "@/components/offline-listener.tsx";
 import { SerwistProvider } from "@serwist/turbopack/react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 export const metadata: Metadata = {
   title: "Menuza",
@@ -26,8 +27,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SerwistProvider swUrl="/serwist/sw.js">
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <QueryProvider>
-              <OfflineListener />
-              {children}
+              <NuqsAdapter>
+                <OfflineListener />
+                {children}
+              </NuqsAdapter>
             </QueryProvider>
           </ThemeProvider>
         </SerwistProvider>
