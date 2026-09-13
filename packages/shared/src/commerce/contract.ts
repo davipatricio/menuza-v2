@@ -1,24 +1,24 @@
 /**
- * Public commerce contract. Browser-safe: types and Zod schemas only.
+ * Public commerce contract. Browser-safe: types and Valibot schemas only.
  * NO server-only imports, NO database access, NO env reads.
  */
 import { oc } from "@orpc/contract";
-import { z } from "zod";
+import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
 
-export const healthInput = z.object({}).strict();
+export const healthInput = v.strictObject({});
 
-export const healthOutput = z.object({
-  status: z.literal("ok"),
-  service: z.literal("commerce"),
-  timestamp: z.string().datetime(),
+export const healthOutput = v.object({
+  status: v.literal("ok"),
+  service: v.literal("commerce"),
+  timestamp: v.pipe(v.string(), v.isoTimestamp()),
 });
 
 export const commerceContract = oc.errors({
   ...sharedErrorCodes,
   INVALID_INPUT: {
     message: "Entrada inválida.",
-    data: z.object({ issues: z.array(z.object({ path: z.string(), message: z.string() })) }),
+    data: v.object({ issues: v.array(v.object({ path: v.string(), message: v.string() })) }),
   },
 });
 

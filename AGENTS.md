@@ -23,6 +23,9 @@
 - TypeScript 7.0.2 only. No TS 5/6 fallback.
 - Next `16.4.0-canary.19` with `experimental.useTypeScriptCli: true`.
 - React 19.2.8, React DOM 19.2.8.
+- Valibot 1.5.0 (catalog; Standard Schema for all oRPC `.input`/`.output`/error
+  `data` schemas). No Zod in first-party code — transitive Zod remains via
+  `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
 - Tailwind 4.3.3 + `@tailwindcss/postcss` 4.3.3.
 - shadcn (Base UI variant on `@base-ui/react` 1.8.0; components in `apps/web/src/components/ui/`).
 - oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`). v2 wire

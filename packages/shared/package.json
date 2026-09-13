@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@orpc/contract": "catalog:",
-    "zod": "catalog:"
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

@@ -22,7 +22,7 @@
     "@orpc/contract": "catalog:",
     "@orpc/server": "catalog:",
     "@sentry/bun": "10.73.0",
-    "zod": "catalog:"
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

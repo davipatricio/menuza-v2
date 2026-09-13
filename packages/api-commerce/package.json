@@ -20,7 +20,7 @@
     "@menuza/shared": "workspace:*",
     "@menuza/tenant-context": "workspace:*",
     "@orpc/server": "catalog:",
-    "zod": "catalog:"
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

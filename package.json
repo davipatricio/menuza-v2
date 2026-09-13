@@ -13,7 +13,7 @@
       "@types/bun": "1.4.1",
       "bun-types": "1.4.1",
       "@types/react": "19.2.18",
-      "zod": "4.5.4",
+      "valibot": "1.5.0",
       "@orpc/server": "2.0.0-beta.35",
       "@orpc/contract": "2.0.0-beta.35",
       "@tanstack/react-query": "5.102.8",

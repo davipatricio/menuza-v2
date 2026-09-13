@@ -38,7 +38,7 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "serwist": "9.5.12",
-    "zod": "catalog:"
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
