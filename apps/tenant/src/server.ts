@@ -10,8 +10,7 @@ import {
   newRequestId,
   registerShutdown,
 } from "@menuza/orpc-server";
-import { disconnectDb } from "@menuza/db/client";
-import { prisma } from "@menuza/db";
+import { disconnectDb, pingDb } from "@menuza/db";
 import { tenantDomainRouter } from "@menuza/api-tenant";
 
 initSentry({ service: "tenant" });
@@ -33,7 +32,7 @@ const server = Bun.serve({
 
     if (url.pathname === "/readyz") {
       try {
-        await prisma.$queryRaw`SELECT 1`;
+        await pingDb();
 
         return new Response("ok", { status: 200 });
       } catch {

@@ -10,18 +10,20 @@
     "./client": "./src/client.ts"
   },
   "scripts": {
-    "db:deploy": "bun --env-file-if-exists=../../.env run prisma migrate deploy",
-    "db:generate": "bun --env-file-if-exists=../../.env run prisma generate",
-    "db:migrate": "bun --env-file-if-exists=../../.env run prisma migrate dev",
-    "db:studio": "bun --env-file-if-exists=../../.env run prisma studio",
-    "fmt": "oxfmt .",
-    "fmt:check": "oxfmt --check .",
+    "db:deploy": "prisma db migrate",
+    "db:emit": "prisma contract emit",
+    "db:generate": "prisma contract emit",
+    "db:migrate": "prisma migration plan",
+    "db:seed": "bun run prisma/seed.ts",
+    "db:verify": "prisma db verify",
+    "fmt": "oxfmt . \"!migrations/**\"",
+    "fmt:check": "oxfmt --check . \"!migrations/**\"",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@prisma/orm-postgres": "^8.0.0-rc.10",
+    "@prisma/orm-postgres": "8.0.0-rc.10",
     "pg": "8.13.1"
   },
   "devDependencies": {
@@ -30,10 +32,7 @@
     "@types/pg": "8.11.10",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "prisma": "^8.0.0-rc.14",
+    "prisma": "8.0.0-rc.14",
     "typescript": "catalog:"
-  },
-  "prisma": {
-    "seed": "bun run prisma/seed.ts"
   }
 }

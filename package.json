@@ -32,7 +32,6 @@
     "db:deploy": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:deploy",
     "db:generate": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:generate",
     "db:migrate": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:migrate",
-    "db:studio": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:studio",
     "docker:build": "bun run scripts/docker-build.ts",
     "dev": "bun --env-file-if-exists=.env run scripts/dev.ts",
     "dev:commerce": "bun --env-file-if-exists=.env run --filter '@menuza/commerce' dev",

@@ -9,8 +9,7 @@ import {
   newRequestId,
   registerShutdown,
 } from "@menuza/orpc-server";
-import { disconnectDb } from "@menuza/db/client";
-import { prisma } from "@menuza/db";
+import { disconnectDb, pingDb } from "@menuza/db";
 import { commerceDomainRouter } from "@menuza/api-commerce";
 
 initSentry({ service: "commerce" });
@@ -33,7 +32,7 @@ const server = Bun.serve({
     if (url.pathname === "/readyz") {
       // Real readiness: the process is only "ready" when the DB answers.
       try {
-        await prisma.$queryRaw`SELECT 1`;
+        await pingDb();
 
         return new Response("ok", { status: 200 });
       } catch {

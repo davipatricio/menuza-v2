@@ -1,0 +1,256 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.Domain",
+    "label": "Create table \"Domain\"",
+    "summary": "Creates table \"Domain\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Domain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Domain\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Domain\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Domain\"",
+        "sql": "CREATE TABLE \"public\".\"Domain\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"host\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  CONSTRAINT \"Domain_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Domain\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Domain\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.Tenant",
+    "label": "Create table \"Tenant\"",
+    "summary": "Creates table \"Tenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Tenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Tenant\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tenant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Tenant\"",
+        "sql": "CREATE TABLE \"public\".\"Tenant\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"displayName\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"slug\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  CONSTRAINT \"Tenant_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Tenant\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tenant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Domain.Domain_host_key",
+    "label": "Create index \"Domain_host_key\" on \"Domain\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Domain_host_key",
+        "table": "Domain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Domain_host_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Domain_host_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Domain_host_key\"",
+        "sql": "CREATE UNIQUE INDEX \"Domain_host_key\" ON \"public\".\"Domain\" (\"host\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Domain_host_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Domain_host_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Domain.Domain_tenantId_idx",
+    "label": "Create index \"Domain_tenantId_idx\" on \"Domain\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Domain_tenantId_idx",
+        "table": "Domain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Domain_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Domain_tenantId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Domain_tenantId_idx\"",
+        "sql": "CREATE INDEX \"Domain_tenantId_idx\" ON \"public\".\"Domain\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Domain_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Domain_tenantId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Tenant.Tenant_slug_key",
+    "label": "Create index \"Tenant_slug_key\" on \"Tenant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Tenant_slug_key",
+        "table": "Tenant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Tenant_slug_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tenant_slug_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Tenant_slug_key\"",
+        "sql": "CREATE UNIQUE INDEX \"Tenant_slug_key\" ON \"public\".\"Tenant\" (\"slug\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Tenant_slug_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tenant_slug_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Domain.Domain_tenantId_fkey",
+    "label": "Add foreign key \"Domain_tenantId_fkey\" on \"Domain\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Domain_tenantId_fkey",
+        "table": "Domain"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Domain_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Domain_tenantId_fkey",
+          "public",
+          "\"public\".\"Domain\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Domain_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Domain\"\nADD CONSTRAINT \"Domain_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Domain_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Domain_tenantId_fkey",
+          "public",
+          "\"public\".\"Domain\""
+        ]
+      }
+    ]
+  }
+]

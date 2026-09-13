@@ -127,6 +127,12 @@
       "skillPath": "skills/orpc-openapi/SKILL.md",
       "computedHash": "1554fc8ba7a7a62c70927f99ed51ff5b6baf613deed092400460bbf9dc4a3927"
     },
+    "prisma-8": {
+      "source": "prisma/orm",
+      "sourceType": "github",
+      "skillPath": "skills/prisma-8/SKILL.md",
+      "computedHash": "3b96e6b7742eabbda6d4e4f2c54b2c930066907806a5ea5cf038a618ee74a856"
+    },
     "shadcn": {
       "source": "shadcn-ui/ui",
       "sourceType": "github",

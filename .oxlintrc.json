@@ -57,6 +57,7 @@
     "**/dist/**",
     "**/.turbo/**",
     "packages/db/prisma/generated/**",
+    "packages/db/migrations/**",
     "apps/web/.next/**",
     "**/*.tsbuildinfo",
     "**/*.min.*",

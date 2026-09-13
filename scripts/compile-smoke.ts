@@ -1,9 +1,11 @@
-// Verifies @menuza/db (Prisma 7 + driver adapter) survives `bun build --compile`.
+// Verifies @menuza/db (Prisma ORM 8 + pg driver) survives `bun build --compile`.
 // Run: bun run scripts/compile-smoke.ts (compiles to %TEMP%/opencode, executes, prints result)
-import { prisma } from "../packages/db/src/client";
+import { db, pingDb, disconnectDb } from "../packages/db/src/client";
 
-const rows = await prisma.$queryRaw<Array<{ ok: number }>>`SELECT 1 AS ok`;
+await pingDb();
 
-console.log("SMOKE_OK", JSON.stringify(rows));
+const { total } = await db.orm.public.Tenant.aggregate((a) => ({ total: a.count() }));
 
-await prisma.$disconnect();
+console.log("SMOKE_OK", JSON.stringify({ tenants: total }));
+
+await disconnectDb();

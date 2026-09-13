@@ -23,7 +23,7 @@
  * cannot spoof the host.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@menuza/db";
+import { db } from "@menuza/db";
 
 type Mode = "landing" | "storefront" | "management";
 
@@ -73,10 +73,7 @@ async function resolveTenantId(host: string): Promise<string | null> {
 
   if (cached !== undefined) return cached;
 
-  const domain = await prisma.domain.findUnique({
-    where: { host },
-    select: { tenantId: true },
-  });
+  const domain = await db.orm.public.Domain.where({ host }).select("tenantId").first();
 
   const tenantId = domain?.tenantId ?? null;
 

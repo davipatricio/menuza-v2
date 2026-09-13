@@ -1,0 +1,29 @@
+// use prisma-8
+// Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
+
+model Tenant {
+  id          String       @id(map: "Tenant_pkey")
+  slug        String
+  displayName String
+  createdAt   Timestamp(3) @default(now())
+  updatedAt   Timestamp(3)
+  domains     Domain[]
+
+  @@index([slug], map: "Tenant_slug_key", unique: true)
+
+  @@map("Tenant")
+}
+
+model Domain {
+  id        String       @id(map: "Domain_pkey")
+  host      String
+  tenantId  String
+  createdAt Timestamp(3) @default(now())
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Domain_tenantId_fkey")
+
+  @@index([host], map: "Domain_host_key", unique: true)
+  @@index([tenantId], map: "Domain_tenantId_idx")
+
+  @@map("Domain")
+}
+

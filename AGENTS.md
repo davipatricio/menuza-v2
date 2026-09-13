@@ -13,7 +13,7 @@
 - Shared contracts in `@menuza/shared` (`/commerce`, `/tenant` entrypoints).
   `apps/orpc-server` holds side-effect-free fetch/RPC plumbing and a tiny logger.
 - Browser-side offline support in `@menuza/offline` (IndexedDB persister, mutation queue, Background Sync drain).
-- Database in `@menuza/db` (Prisma 7 + `@prisma/adapter-pg`).
+- Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based).
 - One BullMQ worker process (`apps/worker`).
 - Local infrastructure: Postgres + Redis via Podman Compose (`infra/compose.yaml`).
 
@@ -27,7 +27,8 @@
 - shadcn (Base UI variant on `@base-ui/react` 1.8.0; components in `apps/web/src/components/ui/`).
 - oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`). v2 wire
   format is incompatible with v1 — server and client deploy together.
-- Prisma 7.10.0 (CLI/client/adapter-pg).
+- Prisma CLI `8.0.0-rc.14`, `@prisma/orm-postgres` `8.0.0-rc.10` (RC pin; bump CLI and
+  ORM package together — wire/marker formats are versioned together).
 - BullMQ 6.3.4 over Bun's built-in `RedisClient` (adapter; ioredis removed).
 - Turborepo 2.10.12 (task DAG + local cache; no remote cache).
 - OpenTelemetry API 1.9.1 (no SDK/exporter).
@@ -74,7 +75,7 @@
 - `bun run test:integration` — infra-backed checks.
 - `bun run build` — Prisma generate, Next typegen, Next build with type checking.
 - `bun run lint` / `bun run fmt:check` — oxlint + oxfmt via turbo.
-- `bun run db:generate` / `db:migrate` / `db:deploy` / `db:studio` — Prisma lifecycle.
+- `bun run db:generate` (contract emit) / `db:migrate` (migration plan) / `db:deploy` (db migrate) — Prisma 8 lifecycle.
 - `bun run infra:up` / `infra:down` — Postgres + Redis.
 - `bunx turbo run <task>` — Turborepo task DAG with local cache (e.g. `turbo run build`, `turbo run typecheck`).
 

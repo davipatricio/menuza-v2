@@ -1,9 +1,11 @@
 /**
- * Singleton Prisma client with the PostgreSQL driver adapter.
- * Connection lifecycle: ONE process-wide client. Use $disconnect on shutdown.
+ * Singleton Prisma ORM 8 client (PostgreSQL).
+ * Connection lifecycle: ONE process-wide client; runtime connects lazily on first query.
+ * Call disconnectDb() on shutdown.
  */
-import { PrismaClient } from "../prisma/generated/client/client.ts";
-import { PrismaPg } from "@prisma/adapter-pg";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "../prisma/generated/client/contract.ts";
+import contractJson from "../prisma/generated/client/contract.json" with { type: "json" };
 
 const url = process.env.DATABASE_URL;
 
@@ -11,19 +13,25 @@ if (!url) {
   throw new Error("DATABASE_URL is required");
 }
 
+export type Db = ReturnType<typeof postgres<Contract>>;
+
 declare global {
   // eslint-disable-next-line no-var
-  var __menuzaPrisma: PrismaClient | undefined;
+  var __menuzaPrisma: Db | undefined;
 }
 
-const adapter = new PrismaPg({ connectionString: url });
-
-export const prisma: PrismaClient = globalThis.__menuzaPrisma ?? new PrismaClient({ adapter });
+export const db: Db = globalThis.__menuzaPrisma ?? postgres<Contract>({ contractJson, url });
 
 if (process.env.NODE_ENV !== "production") {
-  globalThis.__menuzaPrisma = prisma;
+  globalThis.__menuzaPrisma = db;
+}
+
+/** Readiness probe: a raw SELECT 1 through the lazily-built runtime. Throws if the DB is unreachable. */
+export async function pingDb(): Promise<void> {
+  const plan = db.raw.sql`SELECT 1 AS ok`.returnsRow({ ok: "pg/int4@1" }).build();
+  await db.runtime().query(plan);
 }
 
 export async function disconnectDb(): Promise<void> {
-  await prisma.$disconnect();
+  await db.close();
 }

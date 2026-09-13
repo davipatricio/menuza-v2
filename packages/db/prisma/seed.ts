@@ -6,9 +6,14 @@
  * WEB_HOST_MAP semantics: `host=mode` where mode is "landing"|"storefront"|"management".
  * Each unique host maps to exactly one tenant. Distinct storefront hosts are NOT
  * collapsed into a single tenant — the host itself identifies the tenant locally.
+ *
+ * Prisma 8 has no @default(cuid()) or @updatedAt: ids and updatedAt are set here
+ * (updatedAt in UTC-naive to match the values the v7 client wrote).
  */
-import { PrismaClient } from "./generated/client/client.ts";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { randomUUID } from "node:crypto";
+import postgres from "@prisma/orm-postgres/runtime";
+import type { Contract } from "./generated/client/contract.ts";
+import contractJson from "./generated/client/contract.json" with { type: "json" };
 
 const url = process.env.DATABASE_URL;
 
@@ -17,9 +22,7 @@ if (!url) {
   process.exit(1);
 }
 
-const adapter = new PrismaPg({ connectionString: url });
-
-const prisma = new PrismaClient({ adapter });
+const db = postgres<Contract>({ contractJson, url });
 
 const map = (process.env.WEB_HOST_MAP ?? "")
   .split(",")
@@ -60,10 +63,7 @@ let reused = 0;
 let conflicts = 0;
 
 for (const { host, mode } of hosts.values()) {
-  const existing = await prisma.domain.findUnique({
-    where: { host },
-    include: { tenant: true },
-  });
+  const existing = await db.orm.public.Domain.where({ host }).include("tenant").first();
 
   if (existing) {
     // Preserve existing ownership. Only report.
@@ -75,17 +75,26 @@ for (const { host, mode } of hosts.values()) {
   // New host. Slug derives from the host so distinct storefront hosts get distinct tenants.
   const slug = host.split(".")[0] ?? host;
 
-  const tenant = await prisma.tenant.upsert({
-    where: { slug },
+  const tenant = await db.orm.public.Tenant.upsert({
     update: {},
-    create: { slug, displayName: slug },
+    create: {
+      id: randomUUID(),
+      slug,
+      displayName: slug,
+      updatedAt: Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime(),
+    },
+    conflictOn: { slug },
   });
 
-  await prisma.domain.create({ data: { host, tenantId: tenant.id } });
+  await db.orm.public.Domain.create({
+    id: randomUUID(),
+    host,
+    tenantId: tenant.id,
+  });
   created++;
   console.log(`[db:seed] ${host} → tenant "${slug}" (${mode}) created`);
 }
 
 console.log(`[db:seed] done: ${created} created, ${reused} reused, ${conflicts} conflicts`);
 
-await prisma.$disconnect();
+await db.close();
