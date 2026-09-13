@@ -4,6 +4,7 @@
  */
 import { oc } from "@orpc/contract";
 import { z } from "zod";
+import { sharedErrorCodes } from "../errors/index.ts";
 
 export const healthInput = z.object({}).strict();
 
@@ -14,6 +15,7 @@ export const healthOutput = z.object({
 });
 
 export const commerceContract = oc.errors({
+  ...sharedErrorCodes,
   INVALID_INPUT: {
     message: "Entrada inválida.",
     data: z.object({ issues: z.array(z.object({ path: z.string(), message: z.string() })) }),

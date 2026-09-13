@@ -6,6 +6,7 @@
  */
 import { oc } from "@orpc/contract";
 import { z } from "zod";
+import { sharedErrorCodes } from "../errors/index.ts";
 
 export const healthInput = z.object({}).strict();
 
@@ -16,8 +17,7 @@ export const healthOutput = z.object({
 });
 
 export const tenantContract = oc.errors({
-  UNAUTHORIZED: { message: "Sessão ausente ou inválida." },
-  FORBIDDEN: { message: "Operação não autorizada para esta sessão." },
+  ...sharedErrorCodes,
 });
 
 export const health = tenantContract.input(healthInput).output(healthOutput);

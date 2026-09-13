@@ -18,6 +18,7 @@
   "dependencies": {
     "@menuza/orpc-server": "workspace:*",
     "@menuza/shared": "workspace:*",
+    "@menuza/tenant-context": "workspace:*",
     "@orpc/server": "catalog:",
     "zod": "catalog:"
   },

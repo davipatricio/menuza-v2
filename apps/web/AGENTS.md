@@ -13,11 +13,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Next.js 16.x (canary), App Router, Server Components by default.
 - TypeScript v7 only — `experimental.useTypeScriptCli: true` is set in `next.config.ts` and verified against `next@16.4.0-canary.19`.
 - Build type checking is enabled (`typescript.ignoreBuildErrors: false`).
-- Host-aware routing in `proxy.ts`. Three modes:
+- Host-aware routing in `src/proxy.ts`. Three modes:
   - `landing` → marketing (pages at `/`, `/about`, `/pricing`, `/contact`)
   - `storefront` → buyer-facing store (`/store`, `/menu`, `/cart`, `/checkout`)
   - `management` → store admin (`/manage`, `/admin`)
-    Unknown hosts return 403; cross-mode path access returns 404.
+    Unknown hosts return 403; cross-mode path access returns 404. The proxy also
+    resolves `host → tenantId` from the `Domain` table and injects
+    `x-menuza-tenant-id`; a storefront/management host with no `Domain` row returns 404.
 - Document language: `pt-BR`. User-facing content stays in Portuguese.
 - UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog` in `src/components/ui/`.
 - Theme toggle (`next-themes`) lives in both shell headers; root layout provides `ThemeProvider` with `attribute="class"`.
@@ -27,7 +29,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Browser clients hit same-origin `/commerce/...` and `/tenant/...` (rewritten to loopback APIs by `next.config.ts`).
 - Build artifact: `output: "standalone"` emits `.next/standalone/apps/web/server.js`; runs on Bun in `Containerfile`; images build via `bun run scripts/docker-build.ts web`.
 - Server clients use `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` and a per-request client. No shared cookies/tenant context across requests.
-- NEVER import `@menuza/db`, Prisma, or `@menuza/orpc-server` from client or shared code.
+- NEVER import `@menuza/db`, Prisma, or `@menuza/orpc-server` from client or shared code. (`src/proxy.ts` is the one server-only exception: it reads `Domain` for tenant resolution.)
 - No secrets in `NEXT_PUBLIC_*` variables.
 
 ## Compatibility flags

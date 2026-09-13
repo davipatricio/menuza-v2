@@ -3,7 +3,7 @@
 ## Architecture
 
 - Monorepo with Bun workspaces (`apps/*`, `packages/*`).
-- One Next.js app (`apps/web`) renders three shells via host-aware routing (`apps/web/proxy.ts`):
+- One Next.js app (`apps/web`) renders three shells via host-aware routing (`apps/web/src/proxy.ts`):
   - `landing` (`/`, `/about`, `/pricing`, `/contact`) — marketing site
   - `storefront` (`/store/*`, `/menu/*`, `/cart`, `/checkout`) — buyer-facing store
   - `management` (`/manage/*`, `/admin`) — store admin

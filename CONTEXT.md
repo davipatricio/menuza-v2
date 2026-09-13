@@ -18,6 +18,10 @@ _Avoid_: Usuário, Colaborador
 A predefined access profile within a tenant.
 _Avoid_: Cargo, Perfil
 
+**Membership**:
+The link binding a member to a tenant with a role; a member holds one membership per tenant they operate in.
+_Avoid_: Vínculo, Associação
+
 **Customer**:
 A person buying from a store.
 _Avoid_: Comprador, Client, Buyer

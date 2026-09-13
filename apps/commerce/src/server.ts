@@ -16,6 +16,7 @@ import { commerceDomainRouter } from "@menuza/api-commerce";
 initSentry({ service: "commerce" });
 
 const port = Number(process.env.COMMERCE_PORT ?? 3001);
+
 // Loopback by default; Docker sets HOST=0.0.0.0 to publish the port.
 const hostname = process.env.HOST ?? "127.0.0.1";
 

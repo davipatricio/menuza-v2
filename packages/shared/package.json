@@ -7,6 +7,7 @@
   "exports": {
     "./package.json": "./package.json",
     "./commerce": "./src/commerce/index.ts",
+    "./errors": "./src/errors/index.ts",
     "./tenant": "./src/tenant/index.ts"
   },
   "scripts": {

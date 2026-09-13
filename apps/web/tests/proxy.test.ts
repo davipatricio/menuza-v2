@@ -4,7 +4,7 @@
  */
 import { describe, expect, test } from "bun:test";
 
-// Re-implement the same logic as `apps/web/proxy.ts` for unit testing without
+// Re-implement the same logic as `apps/web/src/proxy.ts` for unit testing without
 // importing Next-specific types. The production file remains the source of
 // truth; this re-implementation must be kept in sync.
 const ALWAYS_ALLOW = ["/serwist", "/manifest.webmanifest", "/favicon.ico"];

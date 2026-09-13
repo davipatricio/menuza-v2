@@ -33,7 +33,7 @@ bun run dev
 
 ## Local hosts
 
-The web app resolves hosts via `apps/web/proxy.ts` using the `WEB_HOST_MAP` env var.
+The web app resolves hosts via `apps/web/src/proxy.ts` using the `WEB_HOST_MAP` env var.
 On Windows, add these entries to `C:\Windows\System32\drivers\etc\hosts` (run as Administrator):
 
 ```

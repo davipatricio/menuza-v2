@@ -17,6 +17,7 @@ import { tenantDomainRouter } from "@menuza/api-tenant";
 initSentry({ service: "tenant" });
 
 const port = Number(process.env.TENANT_PORT ?? 3002);
+
 // Loopback by default; Docker sets HOST=0.0.0.0 to publish the port.
 const hostname = process.env.HOST ?? "127.0.0.1";
 

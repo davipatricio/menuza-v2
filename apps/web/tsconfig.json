@@ -17,7 +17,6 @@
     ".next/types/**/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "next.config.ts",
-    "proxy.ts"
+    "next.config.ts"
   ]
 }

@@ -1,13 +1,12 @@
 {
-  "name": "@menuza/orpc-server",
+  "name": "@menuza/tenant-context",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
     "./package.json": "./package.json",
-    ".": "./src/index.ts",
-    "./fetch": "./src/fetch.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "fmt": "oxfmt .",
@@ -18,16 +17,13 @@
   },
   "dependencies": {
     "@menuza/shared": "workspace:*",
-    "@opentelemetry/api": "1.9.1",
-    "@orpc/contract": "catalog:",
-    "@orpc/server": "catalog:",
-    "@sentry/bun": "10.73.0",
-    "zod": "catalog:"
+    "@orpc/server": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
+    "@types/bun": "catalog:",
     "@types/node": "catalog:",
-    "bun-types": "1.4.1",
+    "bun-types": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

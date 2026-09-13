@@ -10,12 +10,20 @@
  * /_next/static, /_next/image) are always permitted regardless of mode.
  * Unknown hosts return 403; cross-mode path access returns 404.
  *
+ * Tenant resolution: after the mode is known, the host is looked up in the
+ * `Domain` table to obtain its `tenantId`; the result is injected as the
+ * server-only `x-menuza-tenant-id` header on the request forwarded to the
+ * internal APIs. A known storefront/management host with no `Domain` row is
+ * unknown and returns 404. Landing hosts may resolve to `null`. Lookups are
+ * cached in-process (small, manually invalidated on tenant/domain changes).
+ *
  * Forwarded-host handling: requires TRUSTED_PROXY_HOP_IPS to be a non-empty
  * comma-separated list of trusted reverse-proxy IPs. Without it, no
  * forwarded header is honored. Client-supplied headers from arbitrary IPs
  * cannot spoof the host.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@menuza/db";
 
 type Mode = "landing" | "storefront" | "management";
 
@@ -47,6 +55,35 @@ const PREFIXES = {
   storefront: ["/store", "/menu", "/cart", "/checkout"],
   management: ["/manage", "/admin"],
 } as const;
+
+/**
+ * Host -> tenantId lookup cache. The set of hosts is small and changes rarely,
+ * so entries never expire. Callers that add/change a `Domain` row must call
+ * `invalidateTenantCache` to keep this fresh.
+ */
+const tenantCache = new Map<string, string | null>();
+
+export function invalidateTenantCache(host?: string): void {
+  if (host) tenantCache.delete(host.toLowerCase());
+  else tenantCache.clear();
+}
+
+async function resolveTenantId(host: string): Promise<string | null> {
+  const cached = tenantCache.get(host);
+
+  if (cached !== undefined) return cached;
+
+  const domain = await prisma.domain.findUnique({
+    where: { host },
+    select: { tenantId: true },
+  });
+
+  const tenantId = domain?.tenantId ?? null;
+
+  tenantCache.set(host, tenantId);
+
+  return tenantId;
+}
 
 function isAlwaysAllowed(pathname: string): boolean {
   if (ALWAYS_ALLOW.includes(pathname)) return true;
@@ -85,7 +122,7 @@ function resolveHost(req: NextRequest): string {
   return (req.headers.get("host") ?? "").toLowerCase().split(":")[0]!;
 }
 
-export function proxy(req: NextRequest): NextResponse {
+export async function proxy(req: NextRequest): Promise<NextResponse> {
   const pathname = req.nextUrl.pathname;
 
   if (isAlwaysAllowed(pathname)) return NextResponse.next();
@@ -101,9 +138,22 @@ export function proxy(req: NextRequest): NextResponse {
     return new NextResponse("Não encontrado.", { status: 404 });
   }
 
+  const tenantId = await resolveTenantId(host);
+
+  // Storefront and management hosts must own a tenant. Landing hosts are
+  // allowed to have none (marketing has no tenant).
+  if (!tenantId && (mode === "storefront" || mode === "management")) {
+    return new NextResponse("Host desconhecido.", { status: 404 });
+  }
+
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-menuza-mode", mode);
   requestHeaders.set("x-menuza-host", host);
+
+  // Always overwrite: a client-supplied `x-menuza-tenant-id` must never
+  // survive, even when the proxy itself resolved no tenant (defense-in-depth;
+  // downstream middleware treats any non-empty value as resolved).
+  requestHeaders.set("x-menuza-tenant-id", tenantId ?? "");
 
   return NextResponse.next({ request: { headers: requestHeaders } });
 }

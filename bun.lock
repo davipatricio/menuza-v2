@@ -31,6 +31,7 @@
       "name": "@menuza/orpc-server",
       "version": "0.0.0",
       "dependencies": {
+        "@menuza/shared": "workspace:*",
         "@opentelemetry/api": "1.9.1",
         "@orpc/contract": "catalog:",
         "@orpc/server": "catalog:",
@@ -68,6 +69,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "1.8.0",
+        "@menuza/db": "workspace:*",
         "@menuza/offline": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@orpc/client": "1.15.0",
@@ -124,6 +126,7 @@
       "dependencies": {
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
+        "@menuza/tenant-context": "workspace:*",
         "@orpc/server": "catalog:",
         "zod": "catalog:",
       },
@@ -201,6 +204,23 @@
       },
       "devDependencies": {
         "@oxlint/plugins": "catalog:",
+        "oxfmt": "catalog:",
+        "oxlint": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
+    "packages/tenant-context": {
+      "name": "@menuza/tenant-context",
+      "version": "0.0.0",
+      "dependencies": {
+        "@menuza/shared": "workspace:*",
+        "@orpc/server": "catalog:",
+      },
+      "devDependencies": {
+        "@oxlint/plugins": "catalog:",
+        "@types/bun": "catalog:",
+        "@types/node": "catalog:",
+        "bun-types": "catalog:",
         "oxfmt": "catalog:",
         "oxlint": "catalog:",
         "typescript": "catalog:",
@@ -385,6 +405,8 @@
     "@menuza/shared": ["@menuza/shared@workspace:packages/shared"],
 
     "@menuza/tenant": ["@menuza/tenant@workspace:apps/tenant"],
+
+    "@menuza/tenant-context": ["@menuza/tenant-context@workspace:packages/tenant-context"],
 
     "@menuza/web": ["@menuza/web@workspace:apps/web"],
 
