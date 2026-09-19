@@ -11,9 +11,12 @@
  */
 import { RedisClient } from "bun";
 import { Queue, QueueEvents, Worker, createBunRedisClient } from "bullmq";
-import { initSentry } from "@menuza/orpc-server";
+import { BullMQOtel } from "bullmq-otel";
+import { initOtel, initSentry, shutdownOtel } from "@menuza/orpc-server";
 
 initSentry({ service: "worker" });
+
+initOtel({ service: "worker" });
 
 const redisUrl = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
@@ -26,7 +29,10 @@ console.log("[worker] redis connected");
 // Unique per process run so we never touch other workers' queues.
 const smokeName = `smoke-${process.pid}-${process.hrtime.bigint().toString(36)}`;
 
-const smokeQueue = new Queue(smokeName, { connection });
+// Traces only — metrics stay off until a meter reader exists.
+const telemetry = new BullMQOtel({ tracerName: "worker" });
+
+const smokeQueue = new Queue(smokeName, { connection, telemetry });
 
 const events = new QueueEvents(smokeName, { connection });
 
@@ -39,7 +45,7 @@ const worker = new Worker(
 
     return { echo: job.data };
   },
-  { connection },
+  { connection, telemetry },
 );
 
 await events.waitUntilReady();
@@ -58,6 +64,8 @@ const shutdown = async (signal: string) => {
     await smokeQueue.drain(true);
     await events.close();
     await smokeQueue.obliterate({ force: true });
+    // Flush buffered spans before the OTLP transport goes away.
+    await shutdownOtel();
   } catch (err) {
     console.error("[worker] shutdown error:", err);
   } finally {

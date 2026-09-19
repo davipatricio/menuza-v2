@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Bring up Postgres + Redis via Podman Compose.
+ * Bring up Postgres + Redis + Jaeger via Podman Compose.
  *
  * Native Linux/macOS: calls `podman-compose` directly.
  * Windows: runs via `wsl -e bash` in the Debian/Ubuntu WSL2 distro that has
@@ -77,6 +77,7 @@ const psOut = ps.code === 0 ? ps.out : "";
 const alreadyUp =
   psOut.includes("menuza-postgres") &&
   psOut.includes("menuza-redis") &&
+  psOut.includes("menuza-jaeger") &&
   !/exit|dead/i.test(psOut);
 
 if (!alreadyUp) {

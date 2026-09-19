@@ -4,15 +4,19 @@
  */
 import {
   buildRpcFetch,
+  initOtel,
   initSentry,
   log,
   newRequestId,
   registerShutdown,
+  shutdownOtel,
 } from "@menuza/orpc-server";
 import { disconnectDb, pingDb } from "@menuza/db";
 import { commerceDomainRouter } from "@menuza/api-commerce";
 
 initSentry({ service: "commerce" });
+
+initOtel({ service: "commerce" });
 
 const port = Number(process.env.COMMERCE_PORT ?? 3001);
 
@@ -50,6 +54,7 @@ registerShutdown({
   service: "commerce",
   server,
   onShutdown: async () => {
+    await shutdownOtel();
     await disconnectDb();
   },
 });

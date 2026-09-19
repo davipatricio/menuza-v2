@@ -417,7 +417,8 @@ Acceptance: Redis connectivity and the minimal worker lifecycle are verified; no
 - Asaas/Spoke credentials and integration validation.
 - Offline persistence, background sync, web push, PWA install prompts (Serwist shell + manifest exist; sync layer is later).
 - TanStack Query/DB/Table/Form data tables — only the Query provider shell is added; no queries yet.
-- Full OpenTelemetry exporters — only API/no-op instrumentation hooks are added; collector wiring is later.
+- OpenTelemetry metrics/logs and browser tracing — trace export is wired (OTLP HTTP, off
+  unless configured) with a local Jaeger collector in compose; the rest is later.
 - Full OpenAPI documentation publishing, rate limiting, production distributed cache invalidation.
 - Shared UI package, generic config packages, tsdown bundling for db/shared, public package publishing.
 
@@ -428,7 +429,7 @@ These remain roadmap requirements where already approved; deferral means outside
 The following were added on explicit request even though they have zero consumers in the foundation. Each is wired as a **shell only** (no fake data, no fake endpoints, no synthetic integrations):
 
 - **Turborepo** — `turbo.json` wraps the existing root scripts (`dev`, `typecheck`, `test`, `build`, `db:generate`, `infra:up`) with a dependency graph. No remote cache configured.
-- **OpenTelemetry** — `@opentelemetry/api` instrumented at the API process boundaries (`apps/commerce`, `apps/tenant`, `apps/worker`). No exporter installed. Hooks no-op until an exporter is configured.
+- **OpenTelemetry** — `@opentelemetry/api` instrumented at the API process boundaries (`apps/commerce`, `apps/tenant`, `apps/worker`). The trace SDK + OTLP HTTP exporter and child-span instrumentation (Prisma, BullMQ, outbound `fetch`) live in `apps/orpc-server`; everything is a no-op until `OTEL_EXPORTER_OTLP_ENDPOINT` is set. A local Jaeger collector (OTLP HTTP + UI) ships in `infra/compose.yaml`.
 - **Sentry** — `@sentry/bun` initialized in each server process; reads `SENTRY_DSN` from env. If unset, init is a no-op (no fake DSN).
 - **TanStack Query** — `QueryClientProvider` added to `apps/web` root layout. Zero queries/hooks in use.
 - **Serwist (PWA)** — `serwist` next plugin configured with a minimal manifest. No service worker routes added yet.
@@ -498,4 +499,4 @@ Spoke and Asaas commercial gates do not block this local technical foundation; t
 - Pending verification: `bun run infra:up` against podman-compose (machine preconditions documented).
 - Next authorized action: run `bun run db:generate && bun run typegen && bun run build` and exercise `bun run dev`.
 - Files changed for this request: PLAN.md.
-- Tooling shells added per explicit user override of §13: Turborepo 2.10.12, `@opentelemetry/api` 1.9.1 (no exporter), `@sentry/bun` 10.73.0 (no DSN → no-op), TanStack Query 5.102.8 (provider only), Serwist 9.5.12 (`@serwist/turbopack`, SW at `/serwist/sw.js`), esbuild 0.28.2, GitHub Actions. Each is a shell with zero consumers in this phase; no fake data, no fake DSN, no fake routes.
+- Tooling shells added per explicit user override of §13: Turborepo 2.10.12, `@opentelemetry/api` 1.9.1, `@sentry/bun` 10.73.0 (no DSN → no-op), TanStack Query 5.102.8 (provider only), Serwist 9.5.12 (`@serwist/turbopack`, SW at `/serwist/sw.js`), esbuild 0.28.2, GitHub Actions. Each is a shell with zero consumers in this phase; no fake data, no fake DSN, no fake routes.

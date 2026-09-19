@@ -10,6 +10,7 @@
 - Buyer-session boundary lives at the host layer (`apps/web/src/proxy.ts`); this server does NOT trust
   client-supplied `tenantId`/`Host`/forwarded headers.
 - Input validation happens in the oRPC layer (Valibot).
-- `initSentry({ service: "commerce" })` runs at startup.
+- `initSentry({ service: "commerce" })` and `initOtel({ service: "commerce" })` run at
+  startup; `shutdownOtel()` flushes pending spans on shutdown.
 - `/livez` returns 200 once the process boots; `/readyz` returns 200 when the DB
   answers (`SELECT 1`), 503 otherwise.

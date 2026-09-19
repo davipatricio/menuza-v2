@@ -6,6 +6,7 @@
 import postgres from "@prisma/orm-postgres/runtime";
 import type { Contract } from "../prisma/generated/client/contract.ts";
 import contractJson from "../prisma/generated/client/contract.json" with { type: "json" };
+import { otelQueryMiddleware } from "./otel-middleware.ts";
 
 const url = process.env.DATABASE_URL;
 
@@ -20,7 +21,9 @@ declare global {
   var __menuzaPrisma: Db | undefined;
 }
 
-export const db: Db = globalThis.__menuzaPrisma ?? postgres<Contract>({ contractJson, url });
+export const db: Db =
+  globalThis.__menuzaPrisma ??
+  postgres<Contract>({ contractJson, url, middleware: [otelQueryMiddleware()] });
 
 if (process.env.NODE_ENV !== "production") {
   globalThis.__menuzaPrisma = db;

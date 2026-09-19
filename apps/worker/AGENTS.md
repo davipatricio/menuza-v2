@@ -8,6 +8,8 @@
 - This phase only contains a disposable `smoke` queue used to prove enqueue/consume/shutdown
   end-to-end. The queue is `obliterate`d in the same process run — there is no leftover state.
 - Do NOT add email, dashboard, or business handlers without a real product requirement.
-- `initSentry({ service: "worker" })` is called at startup.
+- `initSentry({ service: "worker" })` and `initOtel({ service: "worker" })` run at startup;
+  `Queue`/`Worker` carry `BullMQOtel` telemetry, and `shutdownOtel()` flushes buffered spans
+  during shutdown. Traces are emitted only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 - Redis via Bun's built-in `RedisClient` + BullMQ `createBunRedisClient` (ioredis removed). `REDIS_URL` default `redis://127.0.0.1:6379`.
 - Compiled artifact: `bun run build` → `dist/worker` (compile flags owned by root AGENTS.md). Images build via `bun run scripts/docker-build.ts worker`; no HTTP port, no HOST env.

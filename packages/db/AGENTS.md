@@ -14,6 +14,9 @@
 - Singleton client lives in `src/client.ts` (`postgres<Contract>(...)`, lazy
   connection). Importing consumers must call `disconnectDb()` on shutdown.
   Use `pingDb()` for readiness probes.
+- Query spans: `src/otel-middleware.ts` records one CLIENT span per query/execute, but
+  only when a span is already active. Statement text is truncated; bound parameters are
+  never recorded.
 - Tenant-scoped queries MUST include an explicit `where` on `tenantId`. Middleware
   does NOT scope queries automatically.
 - `DATABASE_URL` comes from the repo-root `.env` in both places that need it:

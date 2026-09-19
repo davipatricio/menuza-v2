@@ -18,6 +18,7 @@ import {
 import { context, trace, type Tracer } from "@opentelemetry/api";
 import * as Sentry from "@sentry/bun";
 import { log, newRequestId, redactHeaders } from "./logging.ts";
+import { extractParentContext } from "./otel.ts";
 import { isFourXxCode } from "@menuza/shared/errors";
 
 export { log, newRequestId, redactHeaders };
@@ -104,22 +105,25 @@ export function buildRpcFetch(router: Router<any>, opts: BuildOptions) {
     const url = new URL(request.url);
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
 
-    return context.with(
-      trace.setSpan(context.active(), tracer.startSpan(`rpc ${request.method} ${url.pathname}`)),
-      async () => {
-        const span = trace.getActiveSpan();
-        span?.setAttribute("service", opts.service);
-        span?.setAttribute("request.id", requestId);
+    // Continue an upstream trace when `traceparent` is present; otherwise root
+    // a new one.
+    const parent = extractParentContext(request.headers);
+    const span = tracer.startSpan(`rpc ${request.method} ${url.pathname}`, {}, parent);
 
-        log({
-          requestId,
-          msg: "request",
-          service: opts.service,
-          method: request.method,
-          url: url.pathname,
-          headers: redactHeaders(Object.fromEntries(request.headers)),
-        });
+    return context.with(trace.setSpan(parent, span), async () => {
+      span.setAttribute("service", opts.service);
+      span.setAttribute("request.id", requestId);
 
+      log({
+        requestId,
+        msg: "request",
+        service: opts.service,
+        method: request.method,
+        url: url.pathname,
+        headers: redactHeaders(Object.fromEntries(request.headers)),
+      });
+
+      try {
         const { matched, response } = await handler.handle(request, {
           prefix,
           context: { requestId },
@@ -128,14 +132,18 @@ export function buildRpcFetch(router: Router<any>, opts: BuildOptions) {
         const finalResponse = matched ? response : new Response("Not Found", { status: 404 });
 
         log({ requestId, msg: "response", service: opts.service, status: finalResponse.status });
-        span?.setAttribute("http.status_code", finalResponse.status);
-        span?.end();
+        span.setAttribute("http.status_code", finalResponse.status);
 
         // Echo the request id so the page can correlate when it logs.
         finalResponse.headers.set("x-request-id", requestId);
 
         return finalResponse;
-      },
-    );
+      } catch (error) {
+        span.setAttribute("error.type", error instanceof Error ? error.name : "unknown");
+        throw error;
+      } finally {
+        span.end();
+      }
+    });
   };
 }
