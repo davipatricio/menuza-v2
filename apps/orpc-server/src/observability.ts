@@ -30,7 +30,7 @@ export function initSentry(opts: { dsn?: string; service: string; release?: stri
   if (!dsn) return;
   Sentry.init({
     dsn,
-    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0),
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? 0.1),
     release: opts.release,
     serverName: opts.service,
     environment: process.env.SENTRY_ENV ?? process.env.NODE_ENV ?? "development",

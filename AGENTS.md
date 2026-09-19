@@ -151,7 +151,9 @@ Bias toward caution over speed. For trivial tasks, use judgment.
   Jaeger collector (OTLP HTTP + UI) ships in `infra/compose.yaml`.
 - **Sentry**: `@sentry/bun` initialized in commerce/tenant/worker and
   `@sentry/nextjs` in `apps/web` (client + server + edge). **No-op without the
-  DSN** (`SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`). Never commit a DSN. All SDKs
+  DSN** (`SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`). Never commit a DSN. Tracing
+  samples 10% by default (`SENTRY_TRACES_SAMPLE_RATE`); set `0` to rely on
+  OpenTelemetry only. All SDKs
   share the LGPD lock-down in `@menuza/shared/sentry-privacy` (`dataCollection`
   off + `beforeSend` scrubber). Web source maps upload only when
   `SENTRY_AUTH_TOKEN` is set. **API source maps are not uploaded**: the

@@ -31,12 +31,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Server clients use `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` and a per-request client. No shared cookies/tenant context across requests.
 - NEVER import `@menuza/db`, Prisma, or `@menuza/orpc-server` from client or shared code. (`src/proxy.ts` is the one server-only exception: it reads `Domain` for tenant resolution.)
 - No secrets in `NEXT_PUBLIC_*` variables.
-- Sentry: `instrumentation-client.ts` (browser), `instrumentation.ts` + `sentry.server.config.ts`/`sentry.edge.config.ts` (server/edge), `global-error.tsx` (root boundary). `next.config.ts` is wrapped by `withSentryConfig`; source map upload and release creation run only when `SENTRY_AUTH_TOKEN` is set. Browser DSN is `NEXT_PUBLIC_SENTRY_DSN` (public by design). Tracing is off by default (`*_TRACES_SAMPLE_RATE=0`). LGPD scrubbing is shared via `@menuza/shared/sentry-privacy`. The Sentry tunnel route is intentionally off: `src/proxy.ts` does not exempt `/monitoring`.
+- Sentry: `instrumentation-client.ts` (browser), `instrumentation.ts` + `sentry.server.config.ts`/`sentry.edge.config.ts` (server/edge), `global-error.tsx` (root boundary). `next.config.ts` is wrapped by `withSentryConfig`; source map upload and release creation run only when `SENTRY_AUTH_TOKEN` is set. Browser DSN is `NEXT_PUBLIC_SENTRY_DSN` (public by design). Tracing samples 10% by default (`*_TRACES_SAMPLE_RATE=0.1`); set `0` to rely on OpenTelemetry tracing only. LGPD scrubbing is shared via `@menuza/shared/sentry-privacy`. The Sentry tunnel route is intentionally off: `src/proxy.ts` does not exempt `/monitoring`.
 
 ## Compatibility flags
 
 - `experimental.useTypeScriptCli: true` — required because TS 7 does not expose the legacy compiler API. Documented by Next (https://github.com/vercel/next.js/blob/canary/packages/next/src/lib/typescript/runTypeScriptCli.ts). Removal condition: when Next ships a non-CLI type-check path that supports TS 7 without this flag.
-- `typedRoutes` is OFF until verified working with the selected canary + TS7.
+- `typedRoutes: true` — verified working with the selected canary + TS7; missing routes fail the build.
 - `cacheComponents: true` — required for the app's static shells and Partial Prefetching.
 - `partialPrefetching: true` — required; prefetches static route parts by default.
 - No `ignoreBuildErrors: true`. Type errors must be fixed, not suppressed.
