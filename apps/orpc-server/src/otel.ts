@@ -13,6 +13,7 @@ import {
   context,
   propagation,
   trace,
+  type Span,
   type TextMapGetter,
   type TextMapSetter,
 } from "@opentelemetry/api";
@@ -67,6 +68,15 @@ export function otelEndpoint(): string | undefined {
  */
 export function extractParentContext(headers: Headers) {
   return propagation.extract(context.active(), headers, headerGetter);
+}
+
+/**
+ * Inject the W3C trace context for `span` itself (not the active one) into
+ * `carrier`, so the downstream service parents under this span instead of
+ * beside it.
+ */
+export function injectSpanContext(carrier: Headers, span: Span): void {
+  propagation.inject(trace.setSpan(context.active(), span), carrier, headerSetter);
 }
 
 /**
@@ -153,7 +163,7 @@ function instrumentFetch(): void {
       );
 
       try {
-        const response = await base(...injectTraceparent(input, init));
+        const response = await base(...injectTraceparent(input, init, span));
 
         span.setAttribute("http.response.status_code", response.status);
 
@@ -178,11 +188,11 @@ function unwrapFetch(): void {
   originalFetch = undefined;
 }
 
-/** Copy the outbound request with a `traceparent` header added. */
-function injectTraceparent(input: FetchArgs[0], init: FetchArgs[1]): FetchArgs {
+/** Copy the outbound request with a `traceparent` header for `span` added. */
+function injectTraceparent(input: FetchArgs[0], init: FetchArgs[1], span: Span): FetchArgs {
   const headers = new Headers(input instanceof Request ? input.headers : init?.headers);
 
-  propagation.inject(context.active(), headers, headerSetter);
+  injectSpanContext(headers, span);
 
   if (input instanceof Request) {
     try {

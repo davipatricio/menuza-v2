@@ -7,8 +7,9 @@
  *   `podman-compose` installed. Uses Bun.spawnSync with an argv array so no
  *   shell quoting crosses the Win32 -> WSL boundary.
  *
- * The script blocks until both services answer their healthchecks, then exits 0.
- * If both are already running, exits 0 without touching them.
+ * The script blocks until Postgres and Redis answer their healthchecks and the
+ * Jaeger UI is reachable, then exits 0. If all containers are already running,
+ * exits 0 without touching them.
  */
 
 const winRoot = process.cwd();
@@ -72,6 +73,7 @@ function cachedWslRoot(): string {
 }
 
 const ps = compose("ps");
+
 const psOut = ps.code === 0 ? ps.out : "";
 
 const alreadyUp =
@@ -127,6 +129,20 @@ async function redisReady(): Promise<boolean> {
   return /^pong$/im.test(r.out.trim());
 }
 
-const ok = (await waitFor("postgres", postgresReady)) && (await waitFor("redis", redisReady));
+/** Jaeger publishes its UI on the host loopback, so probe it from here. */
+async function jaegerReady(): Promise<boolean> {
+  try {
+    const res = await fetch("http://127.0.0.1:16686/", { signal: AbortSignal.timeout(2_000) });
+
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+const ok =
+  (await waitFor("postgres", postgresReady)) &&
+  (await waitFor("redis", redisReady)) &&
+  (await waitFor("jaeger", jaegerReady));
 
 if (!ok) process.exit(1);

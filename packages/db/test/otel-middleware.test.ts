@@ -129,3 +129,38 @@ test("marks an incomplete query as an error", () => {
 
   expect(recorded[0]?.status?.code).toBe(SpanStatusCode.ERROR);
 });
+
+test("detaches the abort listener once the query completes", () => {
+  const recorded: Recorded[] = [];
+  const middleware = otelQueryMiddleware(fakeTracer(recorded));
+
+  let added = 0;
+  let removed = 0;
+
+  const signal: Pick<AbortSignal, "aborted" | "addEventListener" | "removeEventListener"> = {
+    aborted: false,
+    addEventListener: () => {
+      added += 1;
+    },
+    removeEventListener: () => {
+      removed += 1;
+    },
+  };
+
+  // SAFETY: the middleware only reads `planExecutionId` and calls the signal's
+  // listener methods; `signal` carries exactly those members.
+  const ctx = { planExecutionId: "p4", signal: signal as AbortSignal };
+
+  withActiveSpan(() => {
+    middleware.beforeQuery?.({ sql: "SELECT 1" }, ctx);
+    middleware.afterQuery?.(
+      { sql: "SELECT 1" },
+      { rowCount: 0, completed: true, source: "driver" },
+      ctx,
+    );
+  });
+
+  expect(added).toBe(1);
+  expect(removed).toBe(1);
+  expect(recorded[0]?.ended).toBe(true);
+});

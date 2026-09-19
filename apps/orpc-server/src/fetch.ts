@@ -15,7 +15,7 @@ import {
   RequestLimitHandlerPlugin,
   TimeoutHandlerPlugin,
 } from "@orpc/server/plugins";
-import { context, trace, type Tracer } from "@opentelemetry/api";
+import { SpanKind, context, trace, type Tracer } from "@opentelemetry/api";
 import * as Sentry from "@sentry/bun";
 import { log, newRequestId, redactHeaders } from "./logging.ts";
 import { extractParentContext } from "./otel.ts";
@@ -108,7 +108,12 @@ export function buildRpcFetch(router: Router<any>, opts: BuildOptions) {
     // Continue an upstream trace when `traceparent` is present; otherwise root
     // a new one.
     const parent = extractParentContext(request.headers);
-    const span = tracer.startSpan(`rpc ${request.method} ${url.pathname}`, {}, parent);
+
+    const span = tracer.startSpan(
+      `rpc ${request.method} ${url.pathname}`,
+      { kind: SpanKind.SERVER },
+      parent,
+    );
 
     return context.with(trace.setSpan(parent, span), async () => {
       span.setAttribute("service", opts.service);
@@ -132,7 +137,7 @@ export function buildRpcFetch(router: Router<any>, opts: BuildOptions) {
         const finalResponse = matched ? response : new Response("Not Found", { status: 404 });
 
         log({ requestId, msg: "response", service: opts.service, status: finalResponse.status });
-        span.setAttribute("http.status_code", finalResponse.status);
+        span.setAttribute("http.response.status_code", finalResponse.status);
 
         // Echo the request id so the page can correlate when it logs.
         finalResponse.headers.set("x-request-id", requestId);

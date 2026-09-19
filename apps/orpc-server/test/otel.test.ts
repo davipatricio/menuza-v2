@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { initOtel, otelEndpoint } from "../src/otel.ts";
+import { context, propagation, trace, type Span, type TextMapPropagator } from "@opentelemetry/api";
+
+import { injectSpanContext, initOtel, otelEndpoint } from "../src/otel.ts";
 
 const ENDPOINTS = ["OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] as const;
 
@@ -11,6 +13,13 @@ function setEnv(key: string, value?: string): void {
 
   if (value === undefined) delete process.env[key];
   else process.env[key] = value;
+}
+
+function fakeSpan(spanId: string): Span {
+  // SAFETY: `injectSpanContext` only reads `spanContext()`.
+  return {
+    spanContext: () => ({ traceId: "0".repeat(32), spanId, traceFlags: 1 }),
+  } as Span;
 }
 
 afterEach(() => {
@@ -50,5 +59,29 @@ describe("initOtel", () => {
     for (const key of ENDPOINTS) setEnv(key, undefined);
 
     expect(initOtel({ service: "test" })).toBe(false);
+  });
+});
+
+describe("injectSpanContext", () => {
+  test("injects the given span's context, not the active one", () => {
+    const seen: string[] = [];
+
+    const recording: TextMapPropagator = {
+      inject: (ctx, carrier, setter) => {
+        seen.push(trace.getSpan(ctx)?.spanContext().spanId ?? "none");
+        setter.set(carrier, "traceparent", "x");
+      },
+      extract: (_ctx, _carrier, _getter) => context.active(),
+      fields: () => ["traceparent"],
+    };
+
+    propagation.setGlobalPropagator(recording);
+
+    const carrier = new Headers();
+
+    injectSpanContext(carrier, fakeSpan("fetch-span-id"));
+
+    expect(seen).toEqual(["fetch-span-id"]);
+    expect(carrier.get("traceparent")).toBe("x");
   });
 });

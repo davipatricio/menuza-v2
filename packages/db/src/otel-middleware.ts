@@ -19,18 +19,29 @@ const MAX_STATEMENT = 512;
 
 const DB_SYSTEM = "postgresql";
 
+/** A span plus the abort wiring needed to detach it when the query ends. */
+interface LiveSpan {
+  readonly span: Span;
+  readonly signal?: AbortSignal;
+  readonly onAbort: () => void;
+}
+
 export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db")): SqlMiddleware {
   /** Live spans keyed by `ctx.planExecutionId`. */
-  const spans = new Map<string, Span>();
+  const spans = new Map<string, LiveSpan>();
 
   const end = (id: string, apply?: (span: Span) => void): void => {
-    const span = spans.get(id);
+    const live = spans.get(id);
 
-    if (!span) return;
+    if (!live) return;
 
     spans.delete(id);
-    apply?.(span);
-    span.end();
+
+    // Detach the abort listener so it does not accumulate on a long-lived
+    // request signal across every query the request makes.
+    if (live.signal) live.signal.removeEventListener("abort", live.onAbort);
+    apply?.(live.span);
+    live.span.end();
   };
 
   const start = (
@@ -51,19 +62,17 @@ export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db
       },
     });
 
-    spans.set(ctx.planExecutionId, span);
-
     // The runtime may abort between the before and after hooks; end the span
     // here so an aborted operation cannot leak one.
-    ctx.signal?.addEventListener(
-      "abort",
-      () => {
-        end(ctx.planExecutionId, (aborted) => {
-          aborted.setStatus({ code: SpanStatusCode.ERROR, message: "aborted" });
-        });
-      },
-      { once: true },
-    );
+    const onAbort = (): void => {
+      end(ctx.planExecutionId, (aborted) => {
+        aborted.setStatus({ code: SpanStatusCode.ERROR, message: "aborted" });
+      });
+    };
+
+    spans.set(ctx.planExecutionId, { span, signal: ctx.signal, onAbort });
+
+    ctx.signal?.addEventListener("abort", onAbort, { once: true });
   };
 
   return {
