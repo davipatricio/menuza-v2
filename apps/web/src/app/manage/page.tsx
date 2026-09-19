@@ -11,7 +11,9 @@ export default function ManagementHome() {
         Sessões e RBAC ainda não estão ativos. As APIs de gestão respondem apenas a verificações de
         saúde e rejeitam operações anônimas.
       </p>
-      <Suspense fallback={<output>Carregando status do serviço de gestão…</output>}>
+      <Suspense
+        fallback={<output className="block">Carregando status do serviço de gestão…</output>}
+      >
         <TenantStatusCard />
       </Suspense>
     </section>

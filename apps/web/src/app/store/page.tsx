@@ -13,7 +13,9 @@ export default function StorefrontHome() {
         fluxos de catálogo sejam entregues.
       </p>
       <Button disabled>Acessar catálogo (em breve)</Button>
-      <Suspense fallback={<output>Carregando status do serviço de comércio…</output>}>
+      <Suspense
+        fallback={<output className="block">Carregando status do serviço de comércio…</output>}
+      >
         <CommerceStatusCard />
       </Suspense>
     </section>
