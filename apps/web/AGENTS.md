@@ -36,5 +36,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - `experimental.useTypeScriptCli: true` — required because TS 7 does not expose the legacy compiler API. Documented by Next (https://github.com/vercel/next.js/blob/canary/packages/next/src/lib/typescript/runTypeScriptCli.ts). Removal condition: when Next ships a non-CLI type-check path that supports TS 7 without this flag.
 - `typedRoutes` is OFF until verified working with the selected canary + TS7.
-- `cacheComponents` is OFF until host/request dynamic usage is confirmed compatible.
+- `cacheComponents: true` — required for the app's static shells and Partial Prefetching.
+- `partialPrefetching: true` — required; prefetches static route parts by default.
 - No `ignoreBuildErrors: true`. Type errors must be fixed, not suppressed.

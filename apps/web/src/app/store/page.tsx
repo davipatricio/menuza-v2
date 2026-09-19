@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { CommerceStatusCard } from "@/components/commerce-status-card.tsx";
 import { Button } from "@/components/ui/button.tsx";
 
@@ -12,7 +13,9 @@ export default function StorefrontHome() {
         fluxos de catálogo sejam entregues.
       </p>
       <Button disabled>Acessar catálogo (em breve)</Button>
-      <CommerceStatusCard />
+      <Suspense fallback={<p role="status">Carregando status do serviço de comércio…</p>}>
+        <CommerceStatusCard />
+      </Suspense>
     </section>
   );
 }

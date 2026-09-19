@@ -9,6 +9,9 @@ const config: NextConfig = {
   reactStrictMode: true,
   // Self-contained server for the web image (.next/standalone).
   output: "standalone",
+  typedRoutes: true,
+  cacheComponents: true,
+  partialPrefetching: true,
   experimental: {
     // Per PLAN §4: verified against next@16.4.0-canary.19 + typescript@7.0.2.
     useTypeScriptCli: true,

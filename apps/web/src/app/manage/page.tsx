@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { TenantStatusCard } from "@/components/tenant-status-card.tsx";
 
 export default function ManagementHome() {
@@ -10,7 +11,9 @@ export default function ManagementHome() {
         Sessões e RBAC ainda não estão ativos. As APIs de gestão respondem apenas a verificações de
         saúde e rejeitam operações anônimas.
       </p>
-      <TenantStatusCard />
+      <Suspense fallback={<p role="status">Carregando status do serviço de gestão…</p>}>
+        <TenantStatusCard />
+      </Suspense>
     </section>
   );
 }

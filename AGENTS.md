@@ -33,7 +33,7 @@
 - Prisma CLI `8.0.0-rc.14`, `@prisma/orm-postgres` `8.0.0-rc.10` (RC pin; bump CLI and
   ORM package together — wire/marker formats are versioned together).
 - BullMQ 6.3.4 over Bun's built-in `RedisClient` (adapter; ioredis removed).
-- Turborepo 2.10.12 (task DAG + local cache; no remote cache).
+- Turborepo 2.11.0 (task DAG + local cache; no remote cache).
 - OpenTelemetry API 1.9.1 (no SDK/exporter).
 - Sentry Bun 10.73.0 (init is no-op without `SENTRY_DSN`).
 - TanStack Query 5.102.8 (provider shell only; no queries yet).
@@ -151,6 +151,10 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 ### Issue tracker
 
 Issues live in Linear (workspace Menuza, team Menuza) via Linear MCP tools. See `docs/agents/issue-tracker.md`.
+
+When reporting on issues to the user, never cite an identifier alone (`MEN-179`): always pair it with the issue title
+(or a short summary of it), e.g. `MEN-179 — Next.js 16.4 canary + RSC + Cache Components`. Applies to lists, tables and
+prose. The identifier goes first so it stays copy-pasteable; the title makes it readable without opening Linear.
 
 ### Triage labels
 
