@@ -16,6 +16,13 @@ the contract).
 Severity classifier `isFourXxCode` flags codes that should not hit Sentry
 (4xx) vs codes that should (5xx and unknown).
 
+## Subpath: @menuza/shared/sentry-privacy
+
+LGPD-oriented Sentry helpers shared by the web and API SDKs: `sentryPiiSafeDataCollection`
+(conservative `dataCollection`), `scrubSentryEvent`/`scrubSentryBreadcrumb` (beforeSend
+filters) and `scrubPiiText` (CPF/CNPJ/e-mail/phone/card redaction). Pure and Sentry-free
+so both `@sentry/bun` and `@sentry/nextjs` consumers can import it.
+
 ## Distribution
 
 - Source-based workspace. Consumers import the TS source directly via Bun/Next.

@@ -120,6 +120,12 @@ jobs:
         run: bun run db:generate
       - name: Next build (type checking enabled)
         run: bun run build
+        env:
+          # Empty secrets disable source map upload; see apps/web/next.config.ts.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
       - name: Compile Bun services
         run: |
           bun run --filter '@menuza/commerce' build

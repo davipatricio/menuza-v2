@@ -5,7 +5,18 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build", "db:generate", "typegen"],
-      "outputs": ["$TURBO_ROOT$/apps/web/.next/**", "dist/**"]
+      "outputs": ["$TURBO_ROOT$/apps/web/.next/**", "dist/**"],
+      "env": [
+        "SENTRY_AUTH_TOKEN",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT",
+        "SENTRY_DSN",
+        "SENTRY_ENV",
+        "SENTRY_TRACES_SAMPLE_RATE",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "NEXT_PUBLIC_SENTRY_ENV",
+        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
+      ]
     },
     "typecheck": {
       "dependsOn": ["db:generate", "typegen"],

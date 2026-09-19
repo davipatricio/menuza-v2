@@ -15,7 +15,7 @@
 - Browser-side offline support in `@menuza/offline` (IndexedDB persister, mutation queue, Background Sync drain).
 - Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based).
 - One BullMQ worker process (`apps/worker`).
-- Local infrastructure: Postgres + Redis via Podman Compose (`infra/compose.yaml`).
+- Local infrastructure: Postgres + Redis + Jaeger via Podman Compose (`infra/compose.yaml`).
 
 ## Versions (locked)
 
@@ -34,8 +34,10 @@
   ORM package together — wire/marker formats are versioned together).
 - BullMQ 6.3.4 over Bun's built-in `RedisClient` (adapter; ioredis removed).
 - Turborepo 2.11.0 (task DAG + local cache; no remote cache).
-- OpenTelemetry API 1.9.1 (no SDK/exporter).
-- Sentry Bun 10.73.0 (init is no-op without `SENTRY_DSN`).
+- OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.11.0 / 0.222.0) and
+  `bullmq-otel` 2.0.1.
+- Sentry Bun 10.73.0 (APIs) + Sentry Next.js 10.73.0 (web); init is a no-op
+  without the DSN. LGPD PII scrubbing lives in `@menuza/shared/sentry-privacy`.
 - TanStack Query 5.102.8 (provider shell only; no queries yet).
 - Serwist 9.5.12 (`@serwist/next`, `@serwist/turbopack`; SW compiled by esbuild and served at `/serwist/sw.js`).
 - esbuild 0.28.2 (Serwist SW bundler).
@@ -79,7 +81,7 @@
 - `bun run build` — Prisma generate, Next typegen, Next build with type checking.
 - `bun run lint` / `bun run fmt:check` — oxlint + oxfmt via turbo.
 - `bun run db:generate` (contract emit) / `db:migrate` (migration plan) / `db:deploy` (db migrate) — Prisma 8 lifecycle.
-- `bun run infra:up` / `infra:down` — Postgres + Redis.
+- `bun run infra:up` / `infra:down` — Postgres + Redis + Jaeger.
 - `bunx turbo run <task>` — Turborepo task DAG with local cache (e.g. `turbo run build`, `turbo run typecheck`).
 
 ## Codebase memory
@@ -140,8 +142,21 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 ## Tooling state
 
 - **Turborepo**: local cache only; wraps existing scripts. No remote cache.
-- **OpenTelemetry**: `@opentelemetry/api` used inside `@menuza/orpc-server` (tracer in RPC plumbing). No exporter.
-- **Sentry**: `@sentry/bun` initialized in commerce/tenant/worker. **No-op without `SENTRY_DSN` env.** Never commit a DSN.
+- **OpenTelemetry**: manual SDK wiring in `@menuza/orpc-server`
+  (`initOtel`/`shutdownOtel`) — `TracerProvider` + `BatchSpanProcessor` + OTLP HTTP
+  exporter, W3C `traceparent` propagation, `AsyncLocalStorageContextManager`. Child
+  spans for RPC requests (continuing an inbound trace), Prisma queries (`packages/db`),
+  BullMQ jobs (`bullmq-otel`), and outbound `fetch`. **No-op unless
+  `OTEL_EXPORTER_OTLP_ENDPOINT` is set.** No metrics/logs SDK, no browser tracing. A local
+  Jaeger collector (OTLP HTTP + UI) ships in `infra/compose.yaml`.
+- **Sentry**: `@sentry/bun` initialized in commerce/tenant/worker and
+  `@sentry/nextjs` in `apps/web` (client + server + edge). **No-op without the
+  DSN** (`SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`). Never commit a DSN. All SDKs
+  share the LGPD lock-down in `@menuza/shared/sentry-privacy` (`dataCollection`
+  off + `beforeSend` scrubber). Web source maps upload only when
+  `SENTRY_AUTH_TOKEN` is set. **API source maps are not uploaded**: the
+  `bun build --compile` binary embeds its map and Sentry cannot symbolicate a
+  compiled executable; the `--sourcemap` flag stays for Bun-native traces.
 - **TanStack Query**: `QueryProvider` in `apps/web` root layout (persisted via IndexedDB). No queries yet.
 - **Serwist (PWA)**: `next.config.ts` wrapped with `withSerwist`; service worker at `/serwist/sw.js`; manifest at `/manifest.webmanifest`; `SerwistProvider` in root layout. Background Sync drain wired; no push.
 - **GitHub Actions**: `.github/workflows/ci.yml` runs install → policy → typecheck → test → lint → fmt:check → build. No image pipeline, no deploy.

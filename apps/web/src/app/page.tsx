@@ -7,12 +7,15 @@ export default function LandingPage() {
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-6">
         <h1 className="text-xl font-semibold">Menuza</h1>
         <nav aria-label="Principal" className="flex gap-4 text-sm">
+          {/* @ts-expect-error - /about route not implemented yet */}
           <Link href="/about" className="hover:underline">
             Sobre
           </Link>
+          {/* @ts-expect-error - /pricing route not implemented yet */}
           <Link href="/pricing" className="hover:underline">
             Planos
           </Link>
+          {/* @ts-expect-error - /contact route not implemented yet */}
           <Link href="/contact" className="hover:underline">
             Contato
           </Link>
