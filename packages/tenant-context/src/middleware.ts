@@ -17,6 +17,7 @@ import { ORPCError, os } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import type { OptionalTenantContext, TenantContext } from "./types.ts";
+import { withTenant } from "./scope.ts";
 
 export interface TenantMiddlewareOptions {
   require: "tenant" | "optional";
@@ -58,7 +59,17 @@ export function tenantMiddleware<TRequire extends "tenant" | "optional">(
 
     // SAFETY: the branch above guarantees `tenantId` is a string whenever
     // `require` is "tenant"; "optional" intentionally allows `undefined`.
-    return next({
+    if (tenantId) {
+      return await withTenant(tenantId, async () => {
+        // SAFETY: tenantId is guaranteed non-empty string when present.
+        return await next({
+          context: { tenantId } as TenantContextOf<TRequire>,
+        });
+      });
+    }
+
+    // SAFETY: optional mode intentionally permits undefined tenantId.
+    return await next({
       context: { tenantId } as TenantContextOf<TRequire>,
     });
   });

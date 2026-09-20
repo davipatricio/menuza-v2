@@ -17,6 +17,7 @@
   },
   "rules": {
     "eslint/no-unused-vars": "warn",
+    "jsx-a11y/prefer-tag-over-role": "off",
     "oxc/no-accumulating-spread": "error",
     "anti-slop/no-array-filter-map": "error",
     "anti-slop/no-reduce-accumulator-copy": "error",

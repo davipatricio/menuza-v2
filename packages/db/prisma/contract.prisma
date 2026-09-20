@@ -2,12 +2,13 @@
 // Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
 
 model Tenant {
-  id          String       @id(map: "Tenant_pkey")
+  id          String             @id(map: "Tenant_pkey")
   slug        String
   displayName String
-  createdAt   Timestamp(3) @default(now())
+  createdAt   Timestamp(3)       @default(now())
   updatedAt   Timestamp(3)
   domains     Domain[]
+  memberships TenantMembership[]
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -25,5 +26,49 @@ model Domain {
   @@index([tenantId], map: "Domain_tenantId_idx")
 
   @@map("Domain")
+}
+
+model Member {
+  id           String             @id(map: "Member_pkey")
+  email        String
+  passwordHash String
+  createdAt    Timestamp(3)       @default(now())
+  updatedAt    Timestamp(3)
+  sessions     Session[]
+  memberships  TenantMembership[]
+
+  @@index([email], map: "Member_email_key", unique: true)
+
+  @@map("Member")
+}
+
+model Session {
+  id        String        @id(map: "Session_pkey")
+  memberId  String
+  namespace String
+  expiresAt Timestamp(3)
+  revokedAt Timestamp(3)?
+  createdAt Timestamp(3)  @default(now())
+  member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Session_memberId_fkey")
+
+  @@index([memberId], map: "Session_memberId_idx")
+  @@index([expiresAt], map: "Session_expiresAt_idx")
+
+  @@map("Session")
+}
+
+model TenantMembership {
+  id        String       @id(map: "TenantMembership_pkey")
+  memberId  String
+  tenantId  String
+  role      String
+  createdAt Timestamp(3) @default(now())
+  member    Member       @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "TenantMembership_memberId_fkey")
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "TenantMembership_tenantId_fkey")
+
+  @@index([memberId, tenantId], map: "TenantMembership_memberId_tenantId_key", unique: true)
+  @@index([tenantId], map: "TenantMembership_tenantId_idx")
+
+  @@map("TenantMembership")
 }
 

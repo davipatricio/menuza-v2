@@ -23,7 +23,7 @@
  * cannot spoof the host.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@menuza/db";
+import { db, unscoped } from "@menuza/db";
 
 type Mode = "landing" | "storefront" | "management";
 
@@ -73,7 +73,9 @@ async function resolveTenantId(host: string): Promise<string | null> {
 
   if (cached !== undefined) return cached;
 
-  const domain = await db.orm.public.Domain.where({ host }).select("tenantId").first();
+  const domain = await unscoped(() =>
+    db.orm.public.Domain.where({ host }).select("tenantId").first(),
+  );
 
   const tenantId = domain?.tenantId ?? null;
 

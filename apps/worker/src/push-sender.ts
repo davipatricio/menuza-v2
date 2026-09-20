@@ -54,7 +54,11 @@ export function isAllowedPushEndpoint(endpoint: string): boolean {
 
     if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
 
-    if (host.startsWith("10.") || host.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(host)) {
+    if (
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+    ) {
       return false;
     }
 

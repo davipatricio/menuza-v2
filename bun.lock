@@ -137,6 +137,7 @@
       "name": "@menuza/api-commerce",
       "version": "0.0.0",
       "dependencies": {
+        "@menuza/auth-core": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@menuza/tenant-context": "workspace:*",
@@ -156,8 +157,11 @@
       "name": "@menuza/api-tenant",
       "version": "0.0.0",
       "dependencies": {
+        "@menuza/auth-core": "workspace:*",
+        "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
+        "@menuza/tenant-context": "workspace:*",
         "@orpc/server": "catalog:",
         "valibot": "catalog:",
       },
@@ -170,10 +174,30 @@
         "typescript": "catalog:",
       },
     },
+    "packages/auth-core": {
+      "name": "@menuza/auth-core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@menuza/db": "workspace:*",
+        "@menuza/shared": "workspace:*",
+        "@menuza/tenant-context": "workspace:*",
+        "@orpc/server": "catalog:",
+      },
+      "devDependencies": {
+        "@oxlint/plugins": "catalog:",
+        "@types/bun": "catalog:",
+        "@types/node": "catalog:",
+        "bun-types": "catalog:",
+        "oxfmt": "catalog:",
+        "oxlint": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/db": {
       "name": "@menuza/db",
       "version": "0.0.0",
       "dependencies": {
+        "@menuza/tenant-context": "workspace:*",
         "@opentelemetry/api": "catalog:",
         "@prisma/orm-postgres": "8.0.0-rc.10",
         "pg": "8.13.1",
@@ -607,6 +631,8 @@
     "@menuza/api-commerce": ["@menuza/api-commerce@workspace:packages/api-commerce"],
 
     "@menuza/api-tenant": ["@menuza/api-tenant@workspace:packages/api-tenant"],
+
+    "@menuza/auth-core": ["@menuza/auth-core@workspace:packages/auth-core"],
 
     "@menuza/commerce": ["@menuza/commerce@workspace:apps/commerce"],
 
