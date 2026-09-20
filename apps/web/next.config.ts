@@ -9,7 +9,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   // Self-contained server for the web image (.next/standalone).
   output: "standalone",
-  typedRoutes: true,
+  typedRoutes: false,
   cacheComponents: true,
   partialPrefetching: true,
   experimental: {

@@ -1,0 +1,479 @@
+[
+  {
+    "id": "table.Member",
+    "label": "Create table \"Member\"",
+    "summary": "Creates table \"Member\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Member"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Member\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Member\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Member\"",
+        "sql": "CREATE TABLE \"public\".\"Member\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"passwordHash\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  CONSTRAINT \"Member_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Member\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Member\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.Session",
+    "label": "Create table \"Session\"",
+    "summary": "Creates table \"Session\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Session\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Session\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Session\"",
+        "sql": "CREATE TABLE \"public\".\"Session\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamp(3) NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"namespace\" text NOT NULL,\n  \"revokedAt\" timestamp(3),\n  CONSTRAINT \"Session_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Session\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Session\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.TenantMembership",
+    "label": "Create table \"TenantMembership\"",
+    "summary": "Creates table \"TenantMembership\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "TenantMembership"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"TenantMembership\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"TenantMembership\"",
+        "sql": "CREATE TABLE \"public\".\"TenantMembership\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"role\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  CONSTRAINT \"TenantMembership_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"TenantMembership\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Member.Member_email_key",
+    "label": "Create index \"Member_email_key\" on \"Member\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Member_email_key",
+        "table": "Member"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Member_email_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Member_email_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Member_email_key\"",
+        "sql": "CREATE UNIQUE INDEX \"Member_email_key\" ON \"public\".\"Member\" (\"email\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Member_email_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Member_email_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Session.Session_expiresAt_idx",
+    "label": "Create index \"Session_expiresAt_idx\" on \"Session\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Session_expiresAt_idx",
+        "table": "Session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Session_expiresAt_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Session_expiresAt_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Session_expiresAt_idx\"",
+        "sql": "CREATE INDEX \"Session_expiresAt_idx\" ON \"public\".\"Session\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Session_expiresAt_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Session_expiresAt_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Session.Session_memberId_idx",
+    "label": "Create index \"Session_memberId_idx\" on \"Session\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Session_memberId_idx",
+        "table": "Session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Session_memberId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Session_memberId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Session_memberId_idx\"",
+        "sql": "CREATE INDEX \"Session_memberId_idx\" ON \"public\".\"Session\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Session_memberId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Session_memberId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.TenantMembership.TenantMembership_memberId_idx_76b3c263",
+    "label": "Create index \"TenantMembership_memberId_idx_76b3c263\" on \"TenantMembership\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "TenantMembership_memberId_idx_76b3c263",
+        "table": "TenantMembership"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"TenantMembership_memberId_idx_76b3c263\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership_memberId_idx_76b3c263\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"TenantMembership_memberId_idx_76b3c263\"",
+        "sql": "CREATE INDEX \"TenantMembership_memberId_idx_76b3c263\" ON \"public\".\"TenantMembership\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"TenantMembership_memberId_idx_76b3c263\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership_memberId_idx_76b3c263\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.TenantMembership.TenantMembership_memberId_tenantId_key",
+    "label": "Create index \"TenantMembership_memberId_tenantId_key\" on \"TenantMembership\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "TenantMembership_memberId_tenantId_key",
+        "table": "TenantMembership"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"TenantMembership_memberId_tenantId_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership_memberId_tenantId_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"TenantMembership_memberId_tenantId_key\"",
+        "sql": "CREATE UNIQUE INDEX \"TenantMembership_memberId_tenantId_key\" ON \"public\".\"TenantMembership\" (\"memberId\", \"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"TenantMembership_memberId_tenantId_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership_memberId_tenantId_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.TenantMembership.TenantMembership_tenantId_idx",
+    "label": "Create index \"TenantMembership_tenantId_idx\" on \"TenantMembership\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "TenantMembership_tenantId_idx",
+        "table": "TenantMembership"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"TenantMembership_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership_tenantId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"TenantMembership_tenantId_idx\"",
+        "sql": "CREATE INDEX \"TenantMembership_tenantId_idx\" ON \"public\".\"TenantMembership\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"TenantMembership_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TenantMembership_tenantId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Session.Session_memberId_fkey",
+    "label": "Add foreign key \"Session_memberId_fkey\" on \"Session\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Session_memberId_fkey",
+        "table": "Session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Session_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Session_memberId_fkey",
+          "public",
+          "\"public\".\"Session\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Session_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Session\"\nADD CONSTRAINT \"Session_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"Member\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Session_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Session_memberId_fkey",
+          "public",
+          "\"public\".\"Session\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.TenantMembership.TenantMembership_memberId_fkey",
+    "label": "Add foreign key \"TenantMembership_memberId_fkey\" on \"TenantMembership\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "TenantMembership_memberId_fkey",
+        "table": "TenantMembership"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"TenantMembership_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TenantMembership_memberId_fkey",
+          "public",
+          "\"public\".\"TenantMembership\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"TenantMembership_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"TenantMembership\"\nADD CONSTRAINT \"TenantMembership_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"Member\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"TenantMembership_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TenantMembership_memberId_fkey",
+          "public",
+          "\"public\".\"TenantMembership\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.TenantMembership.TenantMembership_tenantId_fkey",
+    "label": "Add foreign key \"TenantMembership_tenantId_fkey\" on \"TenantMembership\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "TenantMembership_tenantId_fkey",
+        "table": "TenantMembership"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"TenantMembership_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TenantMembership_tenantId_fkey",
+          "public",
+          "\"public\".\"TenantMembership\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"TenantMembership_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"TenantMembership\"\nADD CONSTRAINT \"TenantMembership_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"TenantMembership_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TenantMembership_tenantId_fkey",
+          "public",
+          "\"public\".\"TenantMembership\""
+        ]
+      }
+    ]
+  }
+]

@@ -1,5 +1,5 @@
 {
-  "name": "@menuza/api-commerce",
+  "name": "@menuza/auth-core",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,15 +16,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@menuza/auth-core": "workspace:*",
-    "@menuza/orpc-server": "workspace:*",
+    "@menuza/db": "workspace:*",
     "@menuza/shared": "workspace:*",
     "@menuza/tenant-context": "workspace:*",
-    "@orpc/server": "catalog:",
-    "valibot": "catalog:"
+    "@orpc/server": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
+    "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "bun-types": "catalog:",
     "oxfmt": "catalog:",

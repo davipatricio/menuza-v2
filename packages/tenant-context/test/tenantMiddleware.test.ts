@@ -8,7 +8,13 @@
 import { describe, expect, test } from "bun:test";
 import { call, os, ORPCError } from "@orpc/server";
 import { sharedErrorCodes } from "@menuza/shared/errors";
-import { tenantMiddleware } from "../src/index.ts";
+import {
+  getActiveTenantId,
+  isUnscoped,
+  tenantMiddleware,
+  unscoped,
+  withTenant,
+} from "../src/index.ts";
 
 function reqHeaders(headers: Record<string, string> = {}): Headers {
   return new Headers(headers);
@@ -66,5 +72,43 @@ describe("tenantMiddleware", () => {
     });
 
     expect(result).toEqual({ tenantId: "tenant-xyz" });
+  });
+
+  test("scopes execution within active tenant during procedure execution", async () => {
+    let capturedActiveTenantId: string | undefined;
+
+    const proc = os.use(tenantMiddleware({ require: "tenant" })).handler(({ context }) => {
+      capturedActiveTenantId = getActiveTenantId();
+
+      return { tenantId: context.tenantId };
+    });
+
+    await call(proc, undefined, {
+      context: { reqHeaders: reqHeaders({ "x-menuza-tenant-id": "tenant-scope-1" }) },
+    });
+
+    expect(capturedActiveTenantId).toBe("tenant-scope-1");
+    expect(getActiveTenantId()).toBeUndefined();
+  });
+
+  test("supports explicit unscoped execution", async () => {
+    expect(isUnscoped()).toBe(false);
+
+    const result = await unscoped(() => {
+      expect(isUnscoped()).toBe(true);
+      expect(getActiveTenantId()).toBeUndefined();
+
+      return "unscoped-ok";
+    });
+
+    expect(result).toBe("unscoped-ok");
+    expect(isUnscoped()).toBe(false);
+  });
+
+  test("tenantId named 'UNSCOPED' does not trigger isUnscoped", async () => {
+    await withTenant("UNSCOPED", () => {
+      expect(isUnscoped()).toBe(false);
+      expect(getActiveTenantId()).toBe("UNSCOPED");
+    });
   });
 });

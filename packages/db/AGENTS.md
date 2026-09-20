@@ -14,8 +14,11 @@
 - Singleton client lives in `src/client.ts` (`postgres<Contract>(...)`, lazy
   connection). Importing consumers must call `disconnectDb()` on shutdown.
   Use `pingDb()` for readiness probes.
-- Tenant-scoped queries MUST include an explicit `where` on `tenantId`. Middleware
-  does NOT scope queries automatically.
+- Tenant-scoped queries MUST include an explicit `where` on `tenantId`. The runtime
+  `tenantIsolationMiddleware()` is fail-closed: querying or mutating a tenant-scoped
+  model without `tenantId` (or with a cross-tenant ID under an active tenant scope)
+  throws `TenantIsolationError`. Intentionally global lookups (e.g. proxy host resolution)
+  must use `unscoped()`.
 - `DATABASE_URL` comes from the repo-root `.env` in both places that need it:
   `prisma.config.ts` self-loads it via `process.loadEnvFile`, and runtime callers
   must export it before importing the client (`bun --env-file-if-exists=...` wrappers).
