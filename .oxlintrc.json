@@ -113,7 +113,10 @@
       }
     },
     {
-      "files": ["apps/web/src/components/ui/theme-toggle.tsx"],
+      "files": [
+        "apps/web/src/components/ui/theme-toggle.tsx",
+        "apps/web/src/components/push-notifications-card.tsx"
+      ],
       "rules": {
         "react/set-state-in-effect": "off"
       }

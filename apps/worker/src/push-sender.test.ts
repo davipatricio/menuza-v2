@@ -1,7 +1,8 @@
 /* eslint-disable anti-slop/no-chained-type-assertions */
 import { describe, expect, mock, test } from "bun:test";
 import webPush from "web-push";
-import { isAllowedPushEndpoint, loadVapidFromEnv, sendPushNotification } from "./push-sender.ts";
+import { isAllowedPushEndpoint } from "@menuza/shared/push";
+import { loadVapidFromEnv, sendPushNotification } from "./push-sender.ts";
 
 describe("push-sender", () => {
   test("loadVapidFromEnv returns null when env is missing", () => {
@@ -15,16 +16,30 @@ describe("push-sender", () => {
     }
   });
 
-  test("isAllowedPushEndpoint rejects private and insecure URLs", () => {
+  test("isAllowedPushEndpoint accepts documented provider hosts and subdomains", () => {
+    expect(isAllowedPushEndpoint("https://fcm.googleapis.com/fcm/send/abc")).toBe(true);
+    expect(isAllowedPushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/abc")).toBe(
+      true,
+    );
+    expect(isAllowedPushEndpoint("https://wns2-par02p.notify.windows.com/w/?token=abc")).toBe(true);
+    expect(isAllowedPushEndpoint("https://web.push.apple.com/QGVsbG8")).toBe(true);
+  });
+
+  test("isAllowedPushEndpoint rejects lookalike, local, and malformed endpoints", () => {
+    expect(isAllowedPushEndpoint("https://evil-fcm.googleapis.com.attacker.tld/fcm/send")).toBe(
+      false,
+    );
+    expect(
+      isAllowedPushEndpoint("https://updates.push.services.mozilla.com.attacker.tld/wpush"),
+    ).toBe(false);
     expect(isAllowedPushEndpoint("http://fcm.googleapis.com/test")).toBe(false);
     expect(isAllowedPushEndpoint("https://localhost/test")).toBe(false);
     expect(isAllowedPushEndpoint("https://127.0.0.1/test")).toBe(false);
     expect(isAllowedPushEndpoint("https://192.168.1.50/test")).toBe(false);
     expect(isAllowedPushEndpoint("https://10.0.0.1/test")).toBe(false);
-    expect(isAllowedPushEndpoint("https://fcm.googleapis.com/fcm/send/abc")).toBe(true);
-    expect(isAllowedPushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/abc")).toBe(
-      true,
-    );
+    expect(isAllowedPushEndpoint("https://user:pass@fcm.googleapis.com/test")).toBe(false);
+    expect(isAllowedPushEndpoint("https://fcm.googleapis.com:8443/test")).toBe(false);
+    expect(isAllowedPushEndpoint("not-a-url")).toBe(false);
   });
 
   test("classifies 410 as expired", async () => {

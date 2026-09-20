@@ -2,13 +2,15 @@
 // Contract inferred from the live database schema. Edit as needed, then run `prisma contract emit`.
 
 model Tenant {
-  id          String             @id(map: "Tenant_pkey")
-  slug        String
-  displayName String
-  createdAt   Timestamp(3)       @default(now())
-  updatedAt   Timestamp(3)
-  domains     Domain[]
-  memberships TenantMembership[]
+  id                String             @id(map: "Tenant_pkey")
+  slug              String
+  displayName       String
+  createdAt         Timestamp(3)       @default(now())
+  updatedAt         Timestamp(3)
+  domains           Domain[]
+  memberships       TenantMembership[]
+  pushSubscriptions PushSubscription[]
+  pushPreferences   PushPreference[]
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -29,13 +31,15 @@ model Domain {
 }
 
 model Member {
-  id           String             @id(map: "Member_pkey")
-  email        String
-  passwordHash String
-  createdAt    Timestamp(3)       @default(now())
-  updatedAt    Timestamp(3)
-  sessions     Session[]
-  memberships  TenantMembership[]
+  id                String             @id(map: "Member_pkey")
+  email             String
+  passwordHash      String
+  createdAt         Timestamp(3)       @default(now())
+  updatedAt         Timestamp(3)
+  sessions          Session[]
+  memberships       TenantMembership[]
+  pushSubscriptions PushSubscription[]
+  pushPreferences   PushPreference[]
 
   @@index([email], map: "Member_email_key", unique: true)
 
@@ -71,4 +75,40 @@ model TenantMembership {
 
   @@map("TenantMembership")
 }
+
+model PushSubscription {
+  id             String        @id(map: "PushSubscription_pkey")
+  tenantId       String
+  memberId       String
+  endpoint       String
+  p256dh         String
+  auth           String
+  expirationTime Timestamp(3)?
+  createdAt      Timestamp(3)  @default(now())
+  updatedAt      Timestamp(3)
+  member         Member        @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PushSubscription_memberId_fkey")
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PushSubscription_tenantId_fkey")
+
+  @@index([endpoint], map: "PushSubscription_endpoint_key", unique: true)
+  @@index([tenantId, memberId], map: "PushSubscription_tenantId_memberId_idx")
+  @@index([tenantId], map: "PushSubscription_tenantId_idx")
+
+  @@map("PushSubscription")
+}
+
+model PushPreference {
+  id        String       @id(map: "PushPreference_pkey")
+  tenantId  String
+  memberId  String
+  event     String
+  createdAt Timestamp(3) @default(now())
+  member    Member       @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PushPreference_memberId_fkey")
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PushPreference_tenantId_fkey")
+
+  @@index([tenantId, memberId, event], map: "PushPreference_tenantId_memberId_event_key", unique: true)
+  @@index([tenantId], map: "PushPreference_tenantId_idx")
+
+  @@map("PushPreference")
+}
+
 

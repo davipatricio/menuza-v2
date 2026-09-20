@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import { PushNotificationsCard } from "@/components/push-notifications-card.tsx";
 import { DataTable } from "@/components/ui/data-table.tsx";
 import { type AuditLogItem, MOCK_AUDIT_LOGS } from "@/lib/mock-management-data.ts";
 
@@ -38,6 +39,8 @@ export default function AuditManagePage() {
           Trilha de eventos e operações administrativas (dados demonstrativos UI-only).
         </p>
       </div>
+
+      <PushNotificationsCard />
 
       <DataTable
         columns={columns}

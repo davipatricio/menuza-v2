@@ -1,4 +1,5 @@
 import webPush from "web-push";
+import { isAllowedPushEndpoint } from "@menuza/shared/push";
 
 export interface VapidConfig {
   subject: string;
@@ -41,31 +42,6 @@ export function loadVapidFromEnv(): VapidConfig | null {
   }
 
   return { subject, publicKey, privateKey };
-}
-
-export function isAllowedPushEndpoint(endpoint: string): boolean {
-  try {
-    const url = new URL(endpoint);
-
-    if (url.protocol !== "https:") return false;
-
-    // Reject localhost / private IP addresses to prevent SSRF
-    const host = url.hostname.toLowerCase();
-
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
-
-    if (
-      host.startsWith("10.") ||
-      host.startsWith("192.168.") ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(host)
-    ) {
-      return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export async function sendPushNotification(

@@ -1,18 +1,25 @@
 /**
- * Worker foundation. NO business jobs in this phase.
+ * Worker foundation.
  * Verifies Redis connectivity, brings up BullMQ's standard infrastructure,
- * and waits for SIGTERM to shut down cleanly.
+ * processes durable push-notification jobs, and waits for SIGTERM to shut
+ * down cleanly.
  *
- * Per PLAN §9, we DO NOT enqueue fake emails, dashboards, or any handler without
- * a real requirement. The single disposable queue (`smoke`) exists only to prove
- * enqueue/consume/shutdown work end-to-end. It is named uniquely per process start
- * (PID + boot nanos) and cleaned up at shutdown so concurrent workers do not
- * interfere with each other.
+ * The disposable `smoke` queue exists only to prove enqueue/consume/shutdown
+ * work end-to-end. It is named uniquely per process start (PID + boot nanos)
+ * and cleaned up at shutdown so concurrent workers do not interfere. The
+ * `push-notifications` queue is durable and shared across workers.
  */
 import { RedisClient } from "bun";
 import { Queue, QueueEvents, Worker, createBunRedisClient } from "bullmq";
 import { BullMQOtel } from "bullmq-otel";
 import { initOtel, initSentry, shutdownOtel } from "@menuza/orpc-server";
+import { disconnectDb } from "@menuza/db";
+import { type PushJobPayload, parsePushJobPayload } from "@menuza/shared/push";
+import {
+  createPushEventPayload,
+  dispatchPushEvent,
+  PUSH_NOTIFICATIONS_QUEUE,
+} from "./push-dispatcher.ts";
 
 initSentry({ service: "worker" });
 
@@ -48,9 +55,47 @@ const worker = new Worker(
   { connection, telemetry },
 );
 
+const pushQueue = new Queue<PushJobPayload>(PUSH_NOTIFICATIONS_QUEUE, {
+  connection,
+  telemetry,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: { type: "exponential", delay: 1000 },
+    removeOnComplete: true,
+    removeOnFail: false,
+  },
+});
+
+const pushWorker = new Worker<PushJobPayload>(
+  PUSH_NOTIFICATIONS_QUEUE,
+  async (job) => {
+    const jobData = parsePushJobPayload(job.data);
+
+    const payload = jobData.payload ?? createPushEventPayload(jobData.event);
+
+    const result = await dispatchPushEvent({
+      tenantId: jobData.tenantId,
+      event: jobData.event,
+      targetMemberIds: jobData.targetMemberIds,
+      payload,
+    });
+
+    // Transient send failures must not complete the job: throwing hands it back
+    // to BullMQ for the bounded retry/backoff configured on the queue.
+    if (result.failedCount > 0) {
+      throw new Error(
+        `push dispatch transient failures: ${result.failedCount} (sent ${result.sentCount}, expired ${result.expiredCount})`,
+      );
+    }
+
+    return result;
+  },
+  { connection, telemetry },
+);
+
 await events.waitUntilReady();
 
-console.log(`[worker] queues ready (disposable ${smokeName})`);
+console.log(`[worker] queues ready (disposable ${smokeName}, durable ${PUSH_NOTIFICATIONS_QUEUE})`);
 
 let shuttingDown = false;
 
@@ -64,6 +109,9 @@ const shutdown = async (signal: string) => {
     await smokeQueue.drain(true);
     await events.close();
     await smokeQueue.obliterate({ force: true });
+    await pushWorker.close();
+    await pushQueue.close();
+    await disconnectDb();
     // Flush buffered spans before the OTLP transport goes away.
     await shutdownOtel();
   } catch (err) {

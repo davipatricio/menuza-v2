@@ -15,7 +15,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@menuza/db": "workspace:*",
     "@menuza/orpc-server": "workspace:*",
+    "@menuza/shared": "workspace:*",
+    "@menuza/tenant-context": "workspace:*",
     "@types/web-push": "3.6.4",
     "bullmq": "6.3.4",
     "bullmq-otel": "2.0.1",

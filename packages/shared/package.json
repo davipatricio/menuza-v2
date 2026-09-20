@@ -8,6 +8,7 @@
     "./package.json": "./package.json",
     "./commerce": "./src/commerce/index.ts",
     "./errors": "./src/errors/index.ts",
+    "./push": "./src/push/index.ts",
     "./sentry-privacy": "./src/sentry-privacy/index.ts",
     "./tenant": "./src/tenant/index.ts"
   },

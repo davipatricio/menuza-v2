@@ -1,0 +1,521 @@
+[
+  {
+    "id": "table.PushPreference",
+    "label": "Create table \"PushPreference\"",
+    "summary": "Creates table \"PushPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "PushPreference"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"PushPreference\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"PushPreference\"",
+        "sql": "CREATE TABLE \"public\".\"PushPreference\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"event\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  CONSTRAINT \"PushPreference_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"PushPreference\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.PushSubscription",
+    "label": "Create table \"PushSubscription\"",
+    "summary": "Creates table \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"PushSubscription\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"PushSubscription\"",
+        "sql": "CREATE TABLE \"public\".\"PushSubscription\" (\n  \"auth\" text NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"endpoint\" text NOT NULL,\n  \"expirationTime\" timestamp(3),\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"p256dh\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  CONSTRAINT \"PushSubscription_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"PushSubscription\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushPreference.PushPreference_memberId_idx_76b3c263",
+    "label": "Create index \"PushPreference_memberId_idx_76b3c263\" on \"PushPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushPreference_memberId_idx_76b3c263",
+        "table": "PushPreference"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushPreference_memberId_idx_76b3c263\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference_memberId_idx_76b3c263\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushPreference_memberId_idx_76b3c263\"",
+        "sql": "CREATE INDEX \"PushPreference_memberId_idx_76b3c263\" ON \"public\".\"PushPreference\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushPreference_memberId_idx_76b3c263\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference_memberId_idx_76b3c263\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushPreference.PushPreference_tenantId_idx",
+    "label": "Create index \"PushPreference_tenantId_idx\" on \"PushPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushPreference_tenantId_idx",
+        "table": "PushPreference"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushPreference_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference_tenantId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushPreference_tenantId_idx\"",
+        "sql": "CREATE INDEX \"PushPreference_tenantId_idx\" ON \"public\".\"PushPreference\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushPreference_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference_tenantId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushPreference.PushPreference_tenantId_memberId_event_key",
+    "label": "Create index \"PushPreference_tenantId_memberId_event_key\" on \"PushPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushPreference_tenantId_memberId_event_key",
+        "table": "PushPreference"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushPreference_tenantId_memberId_event_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference_tenantId_memberId_event_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushPreference_tenantId_memberId_event_key\"",
+        "sql": "CREATE UNIQUE INDEX \"PushPreference_tenantId_memberId_event_key\" ON \"public\".\"PushPreference\" (\"tenantId\", \"memberId\", \"event\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushPreference_tenantId_memberId_event_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushPreference_tenantId_memberId_event_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushSubscription.PushSubscription_endpoint_key",
+    "label": "Create index \"PushSubscription_endpoint_key\" on \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushSubscription_endpoint_key",
+        "table": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushSubscription_endpoint_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_endpoint_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushSubscription_endpoint_key\"",
+        "sql": "CREATE UNIQUE INDEX \"PushSubscription_endpoint_key\" ON \"public\".\"PushSubscription\" (\"endpoint\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushSubscription_endpoint_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_endpoint_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushSubscription.PushSubscription_memberId_idx_76b3c263",
+    "label": "Create index \"PushSubscription_memberId_idx_76b3c263\" on \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushSubscription_memberId_idx_76b3c263",
+        "table": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushSubscription_memberId_idx_76b3c263\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_memberId_idx_76b3c263\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushSubscription_memberId_idx_76b3c263\"",
+        "sql": "CREATE INDEX \"PushSubscription_memberId_idx_76b3c263\" ON \"public\".\"PushSubscription\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushSubscription_memberId_idx_76b3c263\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_memberId_idx_76b3c263\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushSubscription.PushSubscription_tenantId_idx",
+    "label": "Create index \"PushSubscription_tenantId_idx\" on \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushSubscription_tenantId_idx",
+        "table": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushSubscription_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_tenantId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushSubscription_tenantId_idx\"",
+        "sql": "CREATE INDEX \"PushSubscription_tenantId_idx\" ON \"public\".\"PushSubscription\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushSubscription_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_tenantId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PushSubscription.PushSubscription_tenantId_memberId_idx",
+    "label": "Create index \"PushSubscription_tenantId_memberId_idx\" on \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PushSubscription_tenantId_memberId_idx",
+        "table": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PushSubscription_tenantId_memberId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_tenantId_memberId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PushSubscription_tenantId_memberId_idx\"",
+        "sql": "CREATE INDEX \"PushSubscription_tenantId_memberId_idx\" ON \"public\".\"PushSubscription\" (\"tenantId\", \"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PushSubscription_tenantId_memberId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PushSubscription_tenantId_memberId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PushPreference.PushPreference_memberId_fkey",
+    "label": "Add foreign key \"PushPreference_memberId_fkey\" on \"PushPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PushPreference_memberId_fkey",
+        "table": "PushPreference"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PushPreference_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushPreference_memberId_fkey",
+          "public",
+          "\"public\".\"PushPreference\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PushPreference_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PushPreference\"\nADD CONSTRAINT \"PushPreference_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"Member\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PushPreference_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushPreference_memberId_fkey",
+          "public",
+          "\"public\".\"PushPreference\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PushPreference.PushPreference_tenantId_fkey",
+    "label": "Add foreign key \"PushPreference_tenantId_fkey\" on \"PushPreference\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PushPreference_tenantId_fkey",
+        "table": "PushPreference"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PushPreference_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushPreference_tenantId_fkey",
+          "public",
+          "\"public\".\"PushPreference\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PushPreference_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PushPreference\"\nADD CONSTRAINT \"PushPreference_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PushPreference_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushPreference_tenantId_fkey",
+          "public",
+          "\"public\".\"PushPreference\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PushSubscription.PushSubscription_memberId_fkey",
+    "label": "Add foreign key \"PushSubscription_memberId_fkey\" on \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PushSubscription_memberId_fkey",
+        "table": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PushSubscription_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushSubscription_memberId_fkey",
+          "public",
+          "\"public\".\"PushSubscription\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PushSubscription_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PushSubscription\"\nADD CONSTRAINT \"PushSubscription_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"Member\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PushSubscription_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushSubscription_memberId_fkey",
+          "public",
+          "\"public\".\"PushSubscription\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PushSubscription.PushSubscription_tenantId_fkey",
+    "label": "Add foreign key \"PushSubscription_tenantId_fkey\" on \"PushSubscription\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PushSubscription_tenantId_fkey",
+        "table": "PushSubscription"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PushSubscription_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushSubscription_tenantId_fkey",
+          "public",
+          "\"public\".\"PushSubscription\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PushSubscription_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PushSubscription\"\nADD CONSTRAINT \"PushSubscription_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PushSubscription_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PushSubscription_tenantId_fkey",
+          "public",
+          "\"public\".\"PushSubscription\""
+        ]
+      }
+    ]
+  }
+]

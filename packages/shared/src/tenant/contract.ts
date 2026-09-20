@@ -7,6 +7,7 @@
 import { oc } from "@orpc/contract";
 import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
+import { pushContractObject } from "../push/contracts.ts";
 
 export const healthInput = v.strictObject({});
 
@@ -24,6 +25,7 @@ export const health = tenantContract.input(healthInput).output(healthOutput);
 
 export const tenantContractObject = {
   health,
+  push: pushContractObject,
 };
 
 export type TenantRouterContract = typeof tenantContractObject;
