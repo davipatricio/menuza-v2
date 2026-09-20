@@ -25,6 +25,7 @@
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
+    "bun-types": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

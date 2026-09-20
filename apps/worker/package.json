@@ -16,7 +16,9 @@
   },
   "dependencies": {
     "@menuza/orpc-server": "workspace:*",
-    "bullmq": "6.3.4"
+    "@types/web-push": "3.6.4",
+    "bullmq": "6.3.4",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
