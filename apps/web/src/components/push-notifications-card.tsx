@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PUSH_EVENTS, type PushEvent } from "@menuza/shared/push";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import {
   type PushState,
@@ -105,19 +106,19 @@ export function PushNotificationsCard() {
         <CardTitle id="push-notifications-heading">Notificações push</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-muted-foreground">
           Receba avisos dos pedidos em tempo real neste navegador.
         </p>
 
         {unsupported ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-muted-foreground">
             Este navegador não oferece suporte a notificações push. Use um navegador atualizado em
             uma conexão segura (HTTPS).
           </p>
         ) : null}
 
         {state === "denied" ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <p className="text-sm text-muted-foreground">
             As notificações estão bloqueadas. Habilite-as nas configurações de notificações do
             navegador para este site.
           </p>
@@ -134,17 +135,20 @@ export function PushNotificationsCard() {
         ) : null}
 
         {subscribed ? (
-          <fieldset className="space-y-2" disabled={busy}>
+          <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Avisar sobre</legend>
             {PUSH_EVENTS.map((event) => (
-              <Label key={event} className="font-normal">
-                <input
-                  type="checkbox"
+              <div key={event} className="flex items-center gap-2">
+                <Checkbox
+                  id={`push-event-${event}`}
                   checked={events.includes(event)}
-                  onChange={(changeEvent) => handleEventToggle(event, changeEvent.target.checked)}
+                  onCheckedChange={(checked) => handleEventToggle(event, checked === true)}
+                  disabled={busy}
                 />
-                {EVENT_LABELS[event]}
-              </Label>
+                <Label htmlFor={`push-event-${event}`} className="font-normal">
+                  {EVENT_LABELS[event]}
+                </Label>
+              </div>
             ))}
           </fieldset>
         ) : null}

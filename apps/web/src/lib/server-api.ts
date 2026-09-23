@@ -11,15 +11,8 @@ import { RPCLink } from "@orpc/client/fetch";
 import { createORPCClient } from "@orpc/client";
 import type { RouterContractClient } from "@orpc/contract";
 import { commerceContractObject } from "@menuza/shared/commerce";
-import { tenantContractObject } from "@menuza/shared/tenant";
 
 function newCommerceClient(origin: string): RouterContractClient<typeof commerceContractObject> {
-  const link = new RPCLink({ origin, url: "/rpc" });
-
-  return createORPCClient(link);
-}
-
-function newTenantClient(origin: string): RouterContractClient<typeof tenantContractObject> {
   const link = new RPCLink({ origin, url: "/rpc" });
 
   return createORPCClient(link);
@@ -37,19 +30,6 @@ export async function getCommerceStatus(): Promise<
   try {
     const origin = process.env.COMMERCE_INTERNAL_URL ?? "http://127.0.0.1:3001";
     const data = await newCommerceClient(origin).health({});
-
-    return { ok: true, data };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-export async function getTenantStatus(): Promise<
-  { ok: true; data: HealthOk } | { ok: false; error: string }
-> {
-  try {
-    const origin = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002";
-    const data = await newTenantClient(origin).health({});
 
     return { ok: true, data };
   } catch (err) {

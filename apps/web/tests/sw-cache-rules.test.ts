@@ -74,7 +74,9 @@ describe("sw-cache-rules", () => {
     test("rejects private paths even with image destination", () => {
       expect(
         isPublicImageRequest(
-          createReq("https://app.menuza.com/manage/receipt.png", { destination: "image" }),
+          createReq("https://app.menuza.com/dashboard/mawifoods/receipt.png", {
+            destination: "image",
+          }),
         ),
       ).toBe(false);
     });
@@ -119,9 +121,11 @@ describe("sw-cache-rules", () => {
   });
 
   describe("isNetworkOnlyRequest", () => {
-    test("forces management, cart, checkout, APIs, RSC to NetworkOnly", () => {
-      expect(isNetworkOnlyRequest(createReq("https://app.menuza.com/manage/orders"))).toBe(true);
-      expect(isNetworkOnlyRequest(createReq("https://app.menuza.com/admin/settings"))).toBe(true);
+    test("forces dashboard, cart, checkout, APIs, RSC to NetworkOnly", () => {
+      expect(
+        isNetworkOnlyRequest(createReq("https://app.menuza.com/dashboard/mawifoods/orders")),
+      ).toBe(true);
+      expect(isNetworkOnlyRequest(createReq("https://app.menuza.com/dashboard"))).toBe(true);
       expect(isNetworkOnlyRequest(createReq("https://app.menuza.com/cart"))).toBe(true);
       expect(isNetworkOnlyRequest(createReq("https://app.menuza.com/checkout"))).toBe(true);
       expect(isNetworkOnlyRequest(createReq("https://app.menuza.com/commerce/orders"))).toBe(true);

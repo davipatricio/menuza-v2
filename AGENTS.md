@@ -3,10 +3,11 @@
 ## Architecture
 
 - Monorepo with Bun workspaces (`apps/*`, `packages/*`).
-- One Next.js app (`apps/web`) renders three shells via host-aware routing (`apps/web/src/proxy.ts`):
-  - `landing` (`/`, `/about`, `/pricing`, `/contact`) — marketing site
-  - `storefront` (`/store/*`, `/menu/*`, `/cart`, `/checkout`) — buyer-facing store
-  - `management` (`/manage/*`, `/admin`) — store admin
+- One Next.js app (`apps/web`) with three route groups (`apps/web/src/app/`):
+  - `(marketing)` (`/`, `/about`, `/pricing`, `/contact`) — marketing site
+  - `(storefront)` (`/store/*`, plus `/menu/*`, `/cart`, `/checkout`) — buyer-facing store
+  - `(dashboard)` (`/dashboard`, `/dashboard/[storeSlug]`) — store admin on the main
+    domain only (see ADR-0005; tenant hosts serve the storefront only)
 - Two Bun.serve APIs (`apps/commerce`, `apps/tenant`) are thin shells; the actual
   router implementations live in `@menuza/api-commerce` and `@menuza/api-tenant`
   (layout documented in those workspaces' AGENTS.md).

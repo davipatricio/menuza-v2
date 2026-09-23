@@ -113,9 +113,20 @@
       }
     },
     {
+      "files": ["apps/web/src/components/ui/**", "apps/web/src/hooks/use-mobile.ts"],
+      "rules": {
+        "jsx-a11y/click-events-have-key-events": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/require-readable-spacing": "off",
+        "anti-slop/require-safety-comment-for-type-assertion": "off"
+      }
+    },
+    {
       "files": [
         "apps/web/src/components/ui/theme-toggle.tsx",
-        "apps/web/src/components/push-notifications-card.tsx"
+        "apps/web/src/components/push-notifications-card.tsx",
+        "apps/web/src/hooks/use-mobile.ts"
       ],
       "rules": {
         "react/set-state-in-effect": "off"

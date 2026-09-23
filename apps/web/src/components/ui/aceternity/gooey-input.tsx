@@ -12,7 +12,12 @@ function GooeyFilter({ filterId, blur }: { filterId: string; blur: number }) {
       <defs>
         <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur in="SourceGraphic" stdDeviation={blur} result="blur" />
-          <feColorMatrix in="blur" type="matrix" values="1 0  20 -10" result="goo" />
+          <feColorMatrix
+            in="blur"
+            type="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+            result="goo"
+          />
           <feComposite in="SourceGraphic" in2="goo" operator="atop" />
         </filter>
       </defs>
@@ -25,7 +30,7 @@ function SearchIcon({ layoutId }: { layoutId: string }) {
     <motion.svg
       layoutId={layoutId}
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 24"
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeLinecap="round"
@@ -159,8 +164,7 @@ export function GooeyInput({
     if (!searchText) setExpanded(false);
   }, [searchText, setExpanded]);
 
-  const surfaceClass =
-    "bg-oklch(0.145 0 0) text-oklch(1 0 0) shadow-sm ring-1 ring-oklch(0.922 0 0)/60 dark:bg-oklch(0.985 0 0) dark:text-oklch(0.145 0 0) dark:ring-oklch(1 0 0 / 10%)/60";
+  const surfaceClass = "bg-foreground text-background shadow-sm ring-1 ring-border";
 
   return (
     <div className={cn("relative flex items-center justify-center", className, classNames?.root)}>
@@ -182,7 +186,7 @@ export function GooeyInput({
             disabled={disabled}
             onClick={handleExpand}
             className={cn(
-              "flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-[color,box-shadow] focus-visible:ring-2 focus-visible:ring-oklch(0.708 0 0) focus-visible:ring-offset-2 focus-visible:ring-offset-oklch(1 0 0) disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-oklch(0.556 0 0) dark:focus-visible:ring-offset-oklch(0.145 0 0)",
+              "flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm font-medium outline-none transition-[color,box-shadow] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
               surfaceClass,
               classNames?.trigger,
             )}
@@ -200,10 +204,10 @@ export function GooeyInput({
               disabled={disabled || !isExpanded}
               placeholder={placeholder}
               className={cn(
-                "h-full min-w-0 flex-1 bg-transparent text-sm text-oklch(1 0 0) outline-none dark:text-oklch(0.145 0 0)",
+                "h-full min-w-0 flex-1 bg-transparent text-sm text-background outline-none",
                 isExpanded
-                  ? "placeholder:text-oklch(1 0 0)/50 dark:placeholder:text-oklch(1 0 0)/45 dark:placeholder:text-oklch(0.145 0 0)/50 dark:dark:placeholder:text-oklch(0.145 0 0)/45"
-                  : "pointer-events-none placeholder:text-oklch(1 0 0)/80 dark:placeholder:text-oklch(1 0 0)/70 dark:placeholder:text-oklch(0.145 0 0)/80 dark:dark:placeholder:text-oklch(0.145 0 0)/70",
+                  ? "placeholder:text-background/50"
+                  : "pointer-events-none placeholder:text-background/80",
                 classNames?.input,
               )}
             />

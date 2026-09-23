@@ -33,16 +33,15 @@ bun run dev
 
 ## Local hosts
 
-The web app resolves hosts via `apps/web/src/proxy.ts` using the `WEB_HOST_MAP` env var.
+The web app resolves storefront hosts via `apps/web/src/proxy.ts` using the `WEB_HOST_MAP` env var (only `storefront` entries take effect; any other host is the main domain).
 On Windows, add these entries to `C:\Windows\System32\drivers\etc\hosts` (run as Administrator):
 
 ```
 127.0.0.1   menuza.localhost
 127.0.0.1   store.localhost
-127.0.0.1   admin.localhost
 ```
 
-Then visit `http://menuza.localhost:3000` (landing), `http://store.localhost:3000/store` (storefront), and `http://admin.localhost:3000/manage` (management).
+Then visit `http://menuza.localhost:3000` (marketing), `http://menuza.localhost:3000/dashboard` (painel), and `http://store.localhost:3000/store` (storefront).
 
 ## Scripts
 

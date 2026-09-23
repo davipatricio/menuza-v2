@@ -16,6 +16,10 @@ const config: NextConfig = {
   experimental: {
     // Per PLAN §4: verified against next@16.4.0-canary.19 + typescript@7.0.2.
     useTypeScriptCli: true,
+    // Native forbidden()/unauthorized() pages for the dashboard (MEN-224).
+    // Experimental upstream and not recommended for production; the real
+    // 403 check belongs in proxy.ts (MEN-225).
+    authInterrupts: true,
   },
   typescript: {
     // Per PLAN §4: do not disable type checking. Leave undefined (= enabled).

@@ -1,21 +1,28 @@
 /**
- * Host-aware routing.
+ * Main-domain + storefront routing.
  *
- * Resolves the request's normalized host to one of three modes:
- *   - "landing"       — marketing site (/, /about, /pricing, /contact)
- *   - "storefront"    — buyer-facing store (/store, /menu, /cart, /checkout)
- *   - "management"    — store admin (/manage, /admin)
+ * The app serves three surfaces by path on the main domain (marketing,
+ * dashboard, storefront alias) while tenant hosts serve the storefront only:
+ *   - "main"         — marketing (/, /about, /pricing, /contact), dashboard
+ *                      (/dashboard), and the storefront path alias
+ *                      (/store, /menu, /cart, /checkout)
+ *   - "storefront"   — buyer-facing store on a tenant host
+ *                      (/store, /menu, /cart, /checkout)
  *
  * Infrastructure paths (/serwist/*, /manifest.webmanifest, /favicon.ico,
  * /_next/static, /_next/image) are always permitted regardless of mode.
- * Unknown hosts return 403; cross-mode path access returns 404.
+ * Any host that is not a known storefront host is treated as the main
+ * domain (fail-open): unknown-host and cross-mode responses are 404, there
+ * is no 403. See ADR-0005 for the model and MEN-225 for the phishing
+ * follow-up this implies.
  *
- * Tenant resolution: after the mode is known, the host is looked up in the
- * `Domain` table to obtain its `tenantId`; the result is injected as the
- * server-only `x-menuza-tenant-id` header on the request forwarded to the
- * internal APIs. A known storefront/management host with no `Domain` row is
- * unknown and returns 404. Landing hosts may resolve to `null`. Lookups are
- * cached in-process (small, manually invalidated on tenant/domain changes).
+ * Tenant resolution: a storefront host is looked up in the `Domain` table to
+ * obtain its `tenantId`; the result is injected as the server-only
+ * `x-menuza-tenant-id` header on the request forwarded to the internal APIs.
+ * A storefront host with no `Domain` row is unknown and returns 404. The
+ * main domain never resolves a tenant (dashboard tenant resolution by
+ * `storeSlug` is MEN-225). Lookups are cached in-process (small, manually
+ * invalidated on tenant/domain changes).
  *
  * Forwarded-host handling: requires TRUSTED_PROXY_HOP_IPS to be a non-empty
  * comma-separated list of trusted reverse-proxy IPs. Without it, no
@@ -25,21 +32,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, unscoped } from "@menuza/db";
 
-type Mode = "landing" | "storefront" | "management";
+type Mode = "main" | "storefront";
 
-const HOST_MAP = (process.env.WEB_HOST_MAP ?? "")
-  .split(",")
-  .map((s) => s.trim().toLowerCase())
-  .filter(Boolean)
-  .reduce<Record<string, Mode>>((acc, entry) => {
-    const [host, mode] = entry.split("=");
+// Hosts that serve the storefront. Any other host — including hosts absent
+// from the map — is treated as the main domain (fail-open; see ADR-0005).
+// `WEB_HOST_MAP` keeps its `host=mode` CSV shape; only `storefront` entries
+// take effect. `WEB_MAIN_DOMAIN` and `WEB_STORE_DOMAIN_SUFFIX` name the main
+// domain and the store subdomain pattern; they are documented now and
+// consumed by the MEN-225 cutover.
+const STOREFRONT_HOSTS = new Set(
+  (process.env.WEB_HOST_MAP ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .flatMap((entry) => {
+      const [host, mode] = entry.split("=");
 
-    if (host && (mode === "landing" || mode === "storefront" || mode === "management")) {
-      acc[host] = mode;
-    }
-
-    return acc;
-  }, {});
+      return host && mode === "storefront" ? [host] : [];
+    }),
+);
 
 const TRUSTED_PROXY_HOPS = Math.max(0, Number(process.env.TRUSTED_PROXY_HOPS ?? 0));
 
@@ -51,9 +62,8 @@ const TRUSTED_PROXY_IPS = (process.env.TRUSTED_PROXY_HOP_IPS ?? "")
 const ALWAYS_ALLOW = ["/serwist", "/manifest.webmanifest", "/favicon.ico"];
 
 const PREFIXES = {
-  landing: ["/about", "/pricing", "/contact"],
+  main: ["/about", "/pricing", "/contact", "/dashboard"],
   storefront: ["/store", "/menu", "/cart", "/checkout"],
-  management: ["/manage", "/admin"],
 } as const;
 
 /**
@@ -95,7 +105,7 @@ function isAlwaysAllowed(pathname: string): boolean {
 }
 
 function isAllowed(mode: Mode, pathname: string): boolean {
-  // The root is allowed for every mode (each mode has its own landing page).
+  // The root is allowed for every mode.
   if (pathname === "/") return true;
   const list = PREFIXES[mode];
 
@@ -127,21 +137,17 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   if (isAlwaysAllowed(pathname)) return NextResponse.next();
 
   const host = resolveHost(req);
-  const mode = HOST_MAP[host];
-
-  if (!mode) {
-    return new NextResponse("Host desconhecido.", { status: 403 });
-  }
+  const mode: Mode = STOREFRONT_HOSTS.has(host) ? "storefront" : "main";
 
   if (!isAllowed(mode, pathname)) {
     return new NextResponse("Não encontrado.", { status: 404 });
   }
 
-  const tenantId = await resolveTenantId(host);
+  // Only storefront hosts resolve a tenant. The main domain never does.
+  const tenantId = mode === "storefront" ? await resolveTenantId(host) : null;
 
-  // Storefront and management hosts must own a tenant. Landing hosts are
-  // allowed to have none (marketing has no tenant).
-  if (!tenantId && (mode === "storefront" || mode === "management")) {
+  // A storefront host must own a tenant.
+  if (!tenantId && mode === "storefront") {
     return new NextResponse("Host desconhecido.", { status: 404 });
   }
 

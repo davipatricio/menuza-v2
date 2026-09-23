@@ -10,9 +10,8 @@ import { describe, expect, test } from "bun:test";
 const ALWAYS_ALLOW = ["/serwist", "/manifest.webmanifest", "/favicon.ico"];
 
 const PREFIXES = {
-  landing: ["/about", "/pricing", "/contact"],
+  main: ["/about", "/pricing", "/contact", "/dashboard"],
   storefront: ["/store", "/menu", "/cart", "/checkout"],
-  management: ["/manage", "/admin"],
 } as const;
 
 type Mode = keyof typeof PREFIXES;
@@ -32,6 +31,10 @@ function isAllowed(mode: Mode, pathname: string): boolean {
   const list = PREFIXES[mode];
 
   return list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function resolveMode(host: string, storefrontHosts: Set<string>): Mode {
+  return storefrontHosts.has(host) ? "storefront" : "main";
 }
 
 function resolveHost(
@@ -61,21 +64,38 @@ describe("proxy logic", () => {
   });
 
   test("isAllowed root is permitted in every mode", () => {
-    // SAFETY: the array literal is a closed set of the three known `Mode`
+    // SAFETY: the array literal is a closed set of the two known `Mode`
     // values, so the assertion covers exactly the union members.
-    for (const m of ["landing", "storefront", "management"] as Mode[]) {
+    for (const m of ["main", "storefront"] as Mode[]) {
       expect(isAllowed(m, "/")).toBe(true);
     }
   });
 
-  test("storefront cannot reach /manage", () => {
-    expect(isAllowed("storefront", "/manage")).toBe(false);
-    expect(isAllowed("storefront", "/manage/users")).toBe(false);
+  test("main reaches marketing and dashboard paths", () => {
+    expect(isAllowed("main", "/about")).toBe(true);
+    expect(isAllowed("main", "/dashboard")).toBe(true);
+    expect(isAllowed("main", "/dashboard/mawifoods/orders")).toBe(true);
   });
 
-  test("management cannot reach /store", () => {
-    expect(isAllowed("management", "/store")).toBe(false);
-    expect(isAllowed("management", "/cart")).toBe(false);
+  test("main cannot reach storefront paths", () => {
+    expect(isAllowed("main", "/store")).toBe(false);
+    expect(isAllowed("main", "/cart")).toBe(false);
+  });
+
+  test("storefront reaches store paths but not dashboard or marketing", () => {
+    expect(isAllowed("storefront", "/store")).toBe(true);
+    expect(isAllowed("storefront", "/menu/pizza")).toBe(true);
+    expect(isAllowed("storefront", "/dashboard")).toBe(false);
+    expect(isAllowed("storefront", "/dashboard/mawifoods")).toBe(false);
+    expect(isAllowed("storefront", "/about")).toBe(false);
+  });
+
+  test("unknown hosts resolve to main (fail-open)", () => {
+    const storefrontHosts = new Set(["store.localhost"]);
+
+    expect(resolveMode("store.localhost", storefrontHosts)).toBe("storefront");
+    expect(resolveMode("menuza.localhost", storefrontHosts)).toBe("main");
+    expect(resolveMode("anything-else.example.com", storefrontHosts)).toBe("main");
   });
 
   test("trusted forwarding requires TRUSTED_PROXY_HOP_IPS", () => {

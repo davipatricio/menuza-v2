@@ -48,8 +48,8 @@ export function isPublicImageRequest({ url, request }: RouteMatchContext): boole
 
   const p = url.pathname;
 
-  // Never cache images from private/admin sections
-  if (p.startsWith("/manage/") || p.startsWith("/admin/")) return false;
+  // Never cache images from private sections
+  if (p.startsWith("/dashboard/")) return false;
 
   if (p.startsWith("/_next/image")) return true;
 
@@ -84,8 +84,8 @@ export function isNetworkOnlyRequest({ url, request }: RouteMatchContext): boole
 
   const p = url.pathname;
 
-  // Private / transactional management routes
-  if (p === "/manage" || p.startsWith("/manage/") || p === "/admin" || p.startsWith("/admin/")) {
+  // Private dashboard routes
+  if (p === "/dashboard" || p.startsWith("/dashboard/")) {
     return true;
   }
 
@@ -115,7 +115,7 @@ export function isNetworkOnlyRequest({ url, request }: RouteMatchContext): boole
 
 export function createMenuzaRuntimeCaching(): RuntimeCaching[] {
   return [
-    // 1. Explicit NetworkOnly for private/management routes, commerce APIs, cart, checkout, RSC payloads
+    // 1. Explicit NetworkOnly for private dashboard routes, commerce APIs, cart, checkout, RSC payloads
     {
       matcher: isNetworkOnlyRequest,
       handler: new NetworkOnly(),
