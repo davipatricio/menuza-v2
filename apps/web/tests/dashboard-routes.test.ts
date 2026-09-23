@@ -22,6 +22,7 @@ import {
   getStoreProducts,
 } from "../src/lib/mock-dashboard-data.ts";
 import { MOCK_CUSTOMERS, MOCK_ORDERS } from "../src/lib/mock-store-data.ts";
+import { initials } from "../src/lib/format.ts";
 
 const DASHBOARD_LEAVES = [
   "",
@@ -40,6 +41,21 @@ const DASHBOARD_LEAVES = [
 describe("dashboard structure", () => {
   test("picker lists exactly the two fixture stores", () => {
     expect(MOCK_STORES.map((s) => s.slug)).toEqual(["mawifoods", "nova-loja"]);
+  });
+
+  test("every store declares a role for the fake session", () => {
+    for (const store of MOCK_STORES) {
+      expect(store.role.length).toBeGreaterThan(0);
+    }
+
+    expect(getStore("mawifoods")?.role).toBe("Proprietária");
+  });
+
+  test("initials takes at most two letters, uppercased", () => {
+    expect(initials("Mawifoods")).toBe("M");
+    expect(initials("Nova Loja")).toBe("NL");
+    expect(initials("Marina Lopes")).toBe("ML");
+    expect(initials("  ")).toBe("");
   });
 
   test("getStore resolves known slugs and misses unknown ones", () => {

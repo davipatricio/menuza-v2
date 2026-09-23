@@ -21,12 +21,17 @@ import {
 export interface DashboardStore {
   slug: string;
   displayName: string;
+  /** Papel do usuário nesta loja. Exibido no picker e no menu da conta. */
+  role: string;
 }
 
 export const MOCK_STORES: DashboardStore[] = [
-  { slug: "mawifoods", displayName: "Mawifoods" },
-  { slug: "nova-loja", displayName: "Nova Loja" },
+  { slug: "mawifoods", displayName: "Mawifoods", role: "Proprietária" },
+  { slug: "nova-loja", displayName: "Nova Loja", role: "Administrador" },
 ];
+
+/** Usuário demonstrado no mockup. Ainda não há sessão real (MEN-225). */
+export const MOCK_CURRENT_USER = { name: "Marina Lopes" } as const;
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: "Pendente",

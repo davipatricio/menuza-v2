@@ -35,7 +35,10 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar.tsx";
+import { Button } from "@/components/ui/button.tsx";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
+import { initials } from "@/lib/format.ts";
+import { MOCK_CURRENT_USER } from "@/lib/mock-dashboard-data.ts";
 import { StoreSwitcher } from "./store-switcher.tsx";
 import { UserMenu } from "./user-menu.tsx";
 
@@ -60,16 +63,6 @@ const SETTINGS_CHILDREN: Array<{ href: string; label: string }> = [
   { href: "notifications", label: "Notificações" },
   { href: "team", label: "Equipe" },
 ];
-
-function storeInitials(displayName: string): string {
-  return displayName
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 function isActivePath(pathname: string, href: string, exact?: boolean): boolean {
   if (exact) return pathname === href;
@@ -189,11 +182,15 @@ export function AppSidebar({
   basePath,
   storeName,
   currentSlug,
+  role,
 }: {
   basePath: string;
   storeName: string;
   currentSlug: string;
+  role: string;
 }) {
+  const { setOpen } = useSidebar();
+
   const groups: NavGroup[] = [
     {
       label: "Operação",
@@ -219,18 +216,16 @@ export function AppSidebar({
         <div className="group-data-[collapsible=icon]:hidden">
           <StoreSwitcher currentSlug={currentSlug} />
         </div>
-        <Link
-          href={basePath}
-          aria-label={`Visão geral de ${storeName}`}
-          className="hidden items-center justify-center rounded-lg transition-colors outline-none group-data-[collapsible=icon]:flex hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Trocar de loja. Loja atual: ${storeName}`}
+          title={storeName}
+          onClick={() => setOpen(true)}
+          className="hidden bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground transition-transform duration-200 ease-out group-data-[collapsible=icon]:flex motion-reduce:transition-none"
         >
-          <span
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground"
-          >
-            {storeInitials(storeName)}
-          </span>
-        </Link>
+          <span aria-hidden="true">{initials(storeName)}</span>
+        </Button>
       </SidebarHeader>
       <SidebarContent>
         {groups.map((group) => (
@@ -262,7 +257,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
-        <UserMenu userName="Marina Lopes" />
+        <UserMenu userName={MOCK_CURRENT_USER.name} role={role} />
         <div className="group-data-[collapsible=icon]:hidden">
           <ThemeToggle />
         </div>

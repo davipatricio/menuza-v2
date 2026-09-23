@@ -12,26 +12,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
+import { initials } from "@/lib/format.ts";
 
-export function UserMenu({ userName }: { userName: string }) {
-  const initials = userName
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("");
-
+export function UserMenu({ userName, role }: { userName: string; role: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label={`Menu da conta de ${userName}`}
-        className="flex w-full min-w-0 items-center gap-2 rounded-lg p-2 text-left text-sm transition-colors outline-none group-data-[collapsible=icon]:justify-center hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="group/user-menu flex w-full min-w-0 items-center gap-2 rounded-lg p-2 text-left text-sm transition-colors outline-none group-data-[collapsible=icon]:justify-center hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/50"
       >
-        <Avatar size="sm">
-          <AvatarFallback>{initials}</AvatarFallback>
+        <Avatar
+          size="sm"
+          className="transition-transform duration-200 ease-out group-hover/user-menu:scale-105 motion-reduce:transition-none motion-reduce:group-hover/user-menu:scale-100"
+        >
+          <AvatarFallback>{initials(userName)}</AvatarFallback>
         </Avatar>
-        <span className="min-w-0 flex-1 truncate font-medium group-data-[collapsible=icon]:hidden">
-          {userName}
+        <span className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">
+          <span className="truncate font-medium">{userName}</span>
+          <span className="truncate text-xs text-muted-foreground">{role}</span>
         </span>
         <ChevronsUpDown
           aria-hidden="true"
@@ -40,7 +38,10 @@ export function UserMenu({ userName }: { userName: string }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="top" className="min-w-56">
         <DropdownMenuGroup>
-          <DropdownMenuLabel>{userName}</DropdownMenuLabel>
+          <DropdownMenuLabel className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">{userName}</span>
+            <span>{role}</span>
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             nativeButton={false}
@@ -52,6 +53,7 @@ export function UserMenu({ userName }: { userName: string }) {
           <DropdownMenuItem disabled>
             <LogOut aria-hidden="true" />
             Sair
+            <span className="ml-auto text-xs text-muted-foreground">Em breve</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

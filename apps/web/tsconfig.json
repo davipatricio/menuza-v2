@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "ESNext"],
     "jsx": "preserve",
-    "types": ["react", "react-dom", "node"],
+    "types": ["react", "react-dom", "react/canary", "node"],
     "allowJs": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,

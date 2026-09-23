@@ -43,11 +43,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div
-      role="group"
-      aria-label="Tema"
-      className="flex items-center gap-0.5 rounded-lg bg-muted p-0.5"
-    >
+    <div role="group" aria-label="Tema" className="flex items-center gap-1 rounded-lg bg-muted p-1">
       {THEMES.map((option) => {
         const Icon = option.icon;
         const active = mounted && theme === option.value;
