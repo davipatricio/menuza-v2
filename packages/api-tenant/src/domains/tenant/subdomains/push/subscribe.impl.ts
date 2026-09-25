@@ -3,8 +3,8 @@ import { implement, ORPCError } from "@orpc/server";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import { isAllowedPushEndpoint } from "@menuza/shared/push";
-import { tenantMiddleware } from "@menuza/tenant-context";
-import { authMiddleware } from "@menuza/auth-core";
+import { tenantMiddleware } from "@menuza/orpc-server/tenant";
+import { authMiddleware } from "@menuza/orpc-server/auth";
 import { db, unscoped } from "@menuza/db";
 
 const os = implement(tenantContractObject.push.subscribe);

@@ -7,7 +7,9 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./fetch": "./src/fetch.ts"
+    "./fetch": "./src/fetch.ts",
+    "./tenant": "./src/tenant/index.ts",
+    "./auth": "./src/auth/index.ts"
   },
   "scripts": {
     "fmt": "oxfmt . \"!openapi/**\"",
@@ -18,6 +20,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@menuza/db": "workspace:*",
     "@menuza/shared": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/context-async-hooks": "2.11.0",

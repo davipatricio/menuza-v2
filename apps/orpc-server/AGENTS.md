@@ -3,7 +3,12 @@
 - This workspace is a **library**, NOT a deployable service.
 - It has no listening process, dev server, or Docker artifact.
 - Side-effect-free imports: do NOT read env, open DB connections, or initialize singletons at import time.
-- Contains the shared fetch/RPC plumbing (`buildRpcFetch`) and a tiny structured logger.
+- Contains the shared fetch/RPC plumbing (`buildRpcFetch`), tiny structured logger,
+  and shared API middlewares under subpaths:
+  - `@menuza/orpc-server/tenant`: `tenantMiddleware`, wraps execution in `@menuza/db/scope`.
+  - `@menuza/orpc-server/auth`: sessions, argon2id password hashing, cookies, and `authMiddleware`.
+  The root export stays side-effect-free (no DB connection on import); only subpaths `./auth`
+  and `./tenant` access database helpers.
 - Router implementations live in the library packages (`packages/api-commerce`,
   `packages/api-tenant`) under `src/domains/<domain>/subdomains/<subdomain>/contracts/`
   (Valibot + oRPC contract) and `<subdomain>/<name>.impl.ts` (procedure implementation).

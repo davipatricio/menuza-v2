@@ -32,3 +32,15 @@ for state-changing auth requests, failing closed. Session rows written before th
 hold raw ids and are therefore unusable — lookups hash the presented token first, so those
 rows simply miss and the change fails closed. The decision text above is preserved as
 originally recorded.
+
+## Amendment — 2026-09-25
+
+Consolidated library packages:
+- `@menuza/tenant-context` was eliminated: AsyncLocalStorage scoping (`withTenant`, `unscoped`)
+  moved directly into `@menuza/db/scope` (and re-exported by `@menuza/db`), while `tenantMiddleware`
+  moved into `@menuza/orpc-server/tenant`.
+- `@menuza/auth-core` was eliminated: session management, argon2id hashing, cookie serialization,
+  and `authMiddleware` moved into `@menuza/orpc-server/auth`.
+- `@menuza/offline` was eliminated: browser-only offline mutation queue and IndexedDB persister
+  moved directly into `apps/web/src/offline`.
+All semantics, isolation rules, and security boundaries remain identical.

@@ -3,7 +3,7 @@
  */
 import { implement } from "@orpc/server";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { tenantMiddleware } from "@menuza/tenant-context";
+import { tenantMiddleware } from "@menuza/orpc-server/tenant";
 
 const os = implement(tenantContractObject);
 

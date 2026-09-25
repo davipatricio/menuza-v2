@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-runtime-typeof */
 /**
  * Sync queue unit tests.
  *
@@ -7,8 +8,8 @@
  */
 import "fake-indexeddb/auto";
 import { describe, expect, test, beforeEach } from "bun:test";
-import { drainQueue, enqueueMutation, clearQueue } from "@menuza/offline/sync-queue";
-import type { NotificationDetail } from "@menuza/offline/sync-queue";
+import { drainQueue, enqueueMutation, clearQueue } from "../src/offline/sync-queue.ts";
+import type { NotificationDetail } from "../src/offline/sync-queue.ts";
 
 const FAKE_ORIGIN = "https://test.local";
 

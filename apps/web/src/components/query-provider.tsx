@@ -3,7 +3,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { indexedDbPersister, startQueueDrainer } from "@menuza/offline";
+import { indexedDbPersister, startQueueDrainer } from "../offline";
 
 /**
  * TanStack Query + offline persistence + background sync drain.

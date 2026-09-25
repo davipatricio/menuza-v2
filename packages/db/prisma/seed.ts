@@ -119,7 +119,7 @@ const DEMO_PASSWORD = "menuza-demo";
 const now = () => Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
 
 // Real demo identity backing the dashboard's MOCK_CURRENT_USER. Upserted by
-// email so re-runs do not duplicate. Hashing mirrors @menuza/auth-core
+// email so re-runs do not duplicate. Hashing mirrors @menuza/orpc-server/auth
 // (argon2id, 64 MiB, t=3) without importing it; hash only when creating.
 const memberBefore = await db.orm.public.Member.where({ email: DEMO_EMAIL }).first();
 

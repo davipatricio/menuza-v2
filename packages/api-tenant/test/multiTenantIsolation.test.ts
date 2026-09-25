@@ -2,8 +2,13 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { call, ORPCError, os } from "@orpc/server";
 import { db, TenantIsolationError, unscoped } from "@menuza/db";
-import { tenantMiddleware } from "@menuza/tenant-context";
-import { authMiddleware, createSession, hashPassword, TENANT_COOKIE_NAME } from "@menuza/auth-core";
+import { tenantMiddleware } from "@menuza/orpc-server/tenant";
+import {
+  authMiddleware,
+  createSession,
+  hashPassword,
+  TENANT_COOKIE_NAME,
+} from "@menuza/orpc-server/auth";
 
 function reqHeaders(headers: Record<string, string> = {}): Headers {
   return new Headers(headers);
@@ -57,7 +62,7 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Multi-Tenant Isolation End-to-En
       id: randomUUID(),
       memberId: memberAId,
       tenantId: tenantAId,
-      role: "Owner",
+      role: "owner",
     });
 
     // 4. Create session for Member A in tenant namespace
@@ -128,7 +133,7 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Multi-Tenant Isolation End-to-En
     });
 
     expect(result.tenantId).toBe(tenantAId);
-    expect(result.role).toBe("Owner");
+    expect(result.role).toBe("owner");
     expect(result.domains).toHaveLength(1);
     expect(result.domains[0]).toContain(`store-a-${tenantAId.slice(0, 8)}`);
   });

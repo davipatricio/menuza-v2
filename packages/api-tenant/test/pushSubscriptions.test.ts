@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { call, ORPCError } from "@orpc/server";
 import { db } from "@menuza/db";
-import { TENANT_COOKIE_NAME, hashSessionToken } from "@menuza/auth-core";
+import { TENANT_COOKIE_NAME, hashSessionToken } from "@menuza/orpc-server/auth";
 import { pushSubdomainRouter } from "../src/domains/tenant/subdomains/push/router.ts";
 
 function reqHeaders(headers: Record<string, string> = {}): Headers {

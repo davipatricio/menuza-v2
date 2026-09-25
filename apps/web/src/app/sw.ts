@@ -3,7 +3,7 @@
 /* eslint-disable no-restricted-globals */
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
-import { workerDrainQueue } from "@menuza/offline/worker-queue";
+import { workerDrainQueue } from "../offline/worker-queue.ts";
 import { cleanupOutdatedMenuzaCaches, createMenuzaRuntimeCaching } from "@/lib/sw-cache-rules.ts";
 
 declare global {

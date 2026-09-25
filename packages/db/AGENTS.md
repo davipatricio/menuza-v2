@@ -22,6 +22,9 @@
   model without `tenantId` (or with a cross-tenant ID under an active tenant scope)
   throws `TenantIsolationError`. Intentionally global lookups (e.g. proxy host resolution)
   must use `unscoped()`.
+- AsyncLocalStorage tenant scoping (`withTenant`, `unscoped`, `getActiveTenantId`,
+  `isUnscoped`) is owned here and exported from `@menuza/db/scope` (and re-exported on `@menuza/db`).
+  Worker and server APIs import it directly. Do NOT create separate packages for tenant scoping.
 - `DATABASE_URL` comes from the repo-root `.env` in both places that need it:
   `prisma.config.ts` self-loads it via `process.loadEnvFile`, and runtime callers
   must export it before importing the client (`bun --env-file-if-exists=...` wrappers).

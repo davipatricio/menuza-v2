@@ -16,8 +16,8 @@
 import { ORPCError, os } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { sharedErrorCodes } from "@menuza/shared/errors";
-import type { OptionalTenantContext, TenantContext } from "./types.ts";
-import { withTenant } from "./scope.ts";
+import { withTenant } from "@menuza/db/scope";
+import type { OptionalTenantContext, TenantContext } from "@menuza/db/scope";
 
 export interface TenantMiddlewareOptions {
   require: "tenant" | "optional";

@@ -63,6 +63,26 @@ const workspaces = [
 
 const problems: string[] = [];
 
+// Explicit canonical workspace allowlist: blocks accidental or speculative packages
+const ALLOWED_WORKSPACES = new Set([
+  "apps/web",
+  "apps/commerce",
+  "apps/tenant",
+  "apps/worker",
+  "apps/orpc-server",
+  "packages/shared",
+  "packages/db",
+  "packages/api-commerce",
+  "packages/api-tenant",
+]);
+
+for (const ws of workspaces) {
+  const normalizedWs = ws.replace(/\\/g, "/");
+  if (!ALLOWED_WORKSPACES.has(normalizedWs)) {
+    problems.push(`unrecognized workspace "${ws}". Do not create micro-packages without explicit approval`);
+  }
+}
+
 const directDeps = new Set<string>();
 
 const externalUsage = new Map<string, Set<string>>();

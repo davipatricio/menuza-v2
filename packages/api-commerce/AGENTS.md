@@ -5,6 +5,7 @@
   `src/domains/<domain>/router.ts`. Domain routers aggregate subdomain implementations.
 - `dev`/`start` delegate to `@menuza/commerce` (which owns the Bun.serve process).
 - Server-only: do NOT import from `apps/web` or any client code.
+- Middlewares: import `tenantMiddleware` and `authMiddleware` from `@menuza/orpc-server/tenant` and `@menuza/orpc-server/auth`. Do NOT create dedicated packages for middleware or auth. Contracts come from `@menuza/shared/commerce`.
 
 ## Subdomain convention
 

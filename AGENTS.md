@@ -12,9 +12,9 @@
   router implementations live in `@menuza/api-commerce` and `@menuza/api-tenant`
   (layout documented in those workspaces' AGENTS.md).
 - Shared contracts in `@menuza/shared` (`/commerce`, `/tenant` entrypoints).
-  `apps/orpc-server` holds side-effect-free fetch/RPC plumbing and a tiny logger.
-- Browser-side offline support in `@menuza/offline` (IndexedDB persister, mutation queue, Background Sync drain).
-- Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based).
+- Shared server and auth/tenant procedure plumbing in `@menuza/orpc-server` (`/fetch`, `/tenant`, `/auth`).
+- Browser-side offline support directly in `apps/web/src/offline` (IndexedDB persister, mutation queue, Background Sync drain).
+- Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based, owns async tenant scoping).
 - One BullMQ worker process (`apps/worker`).
 - Local infrastructure: Postgres + Redis + Jaeger via Podman Compose (`infra/compose.yaml`).
 
@@ -134,6 +134,9 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 ## Anti-patterns
 
 - No empty abstraction packages ("for later").
+- No single-consumer packages: code consumed by only one app lives directly in that app (e.g. offline queue in `apps/web/src/offline`).
+- No micro-packages for middleware or utilities: shared server middleware/auth lives in `@menuza/orpc-server/*` or `@menuza/db/scope`, not in separate `packages/auth-core` or `packages/tenant-context`.
+- New packages require explicit justification and must be registered in `scripts/workspace-policy.test.ts` allowlist.
 - No factory/config abstractions around a single value.
 - No features, flexibility, or configurability beyond what was asked.
 - No error handling for impossible scenarios.

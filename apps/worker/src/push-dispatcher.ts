@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { db } from "@menuza/db";
-import { withTenant } from "@menuza/tenant-context";
+import { withTenant } from "@menuza/db/scope";
 import type { PushEvent, PushJobPayload } from "@menuza/shared/push";
 import {
   type PushNotificationPayload,

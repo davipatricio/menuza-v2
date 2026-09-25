@@ -6,6 +6,7 @@
 - `dev`/`start` delegate to `@menuza/tenant` (which owns the Bun.serve process).
 - Deny-by-default: only the health probe is exposed in this phase.
 - Server-only: do NOT import from `apps/web` or any client code.
+- Middlewares: import `tenantMiddleware` and `authMiddleware` from `@menuza/orpc-server/tenant` and `@menuza/orpc-server/auth`. Do NOT create dedicated packages for middleware or auth. Contracts come from `@menuza/shared/tenant`.
 
 ## Subdomain convention
 

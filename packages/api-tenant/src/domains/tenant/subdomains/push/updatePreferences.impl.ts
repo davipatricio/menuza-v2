@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { tenantMiddleware } from "@menuza/tenant-context";
-import { authMiddleware } from "@menuza/auth-core";
+import { tenantMiddleware } from "@menuza/orpc-server/tenant";
+import { authMiddleware } from "@menuza/orpc-server/auth";
 import { db } from "@menuza/db";
 
 const os = implement(tenantContractObject.push.updatePreferences);

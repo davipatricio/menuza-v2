@@ -7,7 +7,8 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./scope": "./src/scope/index.ts"
   },
   "scripts": {
     "db:deploy": "prisma db migrate",
@@ -23,7 +24,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@menuza/tenant-context": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@prisma/orm-postgres": "8.0.0-rc.10",
     "pg": "8.13.1"

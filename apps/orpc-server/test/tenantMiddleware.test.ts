@@ -14,7 +14,7 @@ import {
   tenantMiddleware,
   unscoped,
   withTenant,
-} from "../src/index.ts";
+} from "../src/tenant/index.ts";
 
 function reqHeaders(headers: Record<string, string> = {}): Headers {
   return new Headers(headers);

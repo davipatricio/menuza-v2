@@ -10,6 +10,8 @@ export {
   tenantIsolationMiddleware,
 } from "./tenantIsolation.ts";
 
-export { withTenant, unscoped, getActiveTenantId, isUnscoped } from "@menuza/tenant-context";
+export { withTenant, unscoped, getActiveTenantId, isUnscoped } from "./scope/scope.ts";
+
+export type { TenantContext, OptionalTenantContext } from "./scope/types.ts";
 
 export type { Contract, Models } from "../prisma/generated/client/contract.ts";

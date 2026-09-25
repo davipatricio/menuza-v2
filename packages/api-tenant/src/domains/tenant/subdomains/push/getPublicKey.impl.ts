@@ -1,7 +1,7 @@
 import { implement, ORPCError } from "@orpc/server";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { sharedErrorCodes } from "@menuza/shared/errors";
-import { tenantMiddleware } from "@menuza/tenant-context";
+import { tenantMiddleware } from "@menuza/orpc-server/tenant";
 
 const os = implement(tenantContractObject.push.getPublicKey);
 

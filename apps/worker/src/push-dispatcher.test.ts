@@ -1,7 +1,7 @@
 /* eslint-disable anti-slop/no-chained-type-assertions */
 import { describe, expect, mock, test } from "bun:test";
 import { randomUUID } from "node:crypto";
-import { getActiveTenantId } from "@menuza/tenant-context";
+import { getActiveTenantId } from "@menuza/db/scope";
 import {
   createPushEventPayload,
   dispatchPushEvent,

@@ -9,7 +9,7 @@
  *    the `tenantId` MUST match the active tenant scope (rejecting cross-tenant queries).
  *  - Global queries (e.g. proxy domain-by-host lookup) must be explicitly marked via `unscoped()`.
  */
-import { getActiveTenantId, isUnscoped } from "@menuza/tenant-context";
+import { getActiveTenantId, isUnscoped } from "./scope/scope.ts";
 import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
 import contractJson from "../prisma/generated/client/contract.json" with { type: "json" };
 

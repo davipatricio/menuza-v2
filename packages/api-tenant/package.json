@@ -16,11 +16,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@menuza/auth-core": "workspace:*",
     "@menuza/db": "workspace:*",
     "@menuza/orpc-server": "workspace:*",
     "@menuza/shared": "workspace:*",
-    "@menuza/tenant-context": "workspace:*",
     "@orpc/server": "catalog:",
     "valibot": "catalog:"
   },

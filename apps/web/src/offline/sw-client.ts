@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-runtime-typeof */
 /**
  * Client-side bridge between TanStack Query mutations and the background sync queue.
  *

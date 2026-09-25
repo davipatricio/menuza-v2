@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { drainQueue } from "@menuza/offline";
+import { drainQueue } from "../offline";
 
 /**
  * Bridges three drain triggers into the React tree:

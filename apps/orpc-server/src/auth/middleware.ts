@@ -1,7 +1,7 @@
 import { ORPCError, os } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { sharedErrorCodes } from "@menuza/shared/errors";
-import type { OptionalTenantContext } from "@menuza/tenant-context";
+import type { OptionalTenantContext } from "@menuza/db/scope";
 import { getCookieName, getSession, getTenantMembership, parseCookies } from "./session.ts";
 import type { AuthContext, AuthNamespace, AuthSessionContext } from "./types.ts";
 

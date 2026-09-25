@@ -19,7 +19,7 @@
       },
       "devDependencies": {
         "@oxlint/plugins": "catalog:",
-        "@types/bun": "catalog:",
+        "@types/bun": "1.4.1",
         "@types/node": "catalog:",
         "bun-types": "1.4.1",
         "oxfmt": "catalog:",
@@ -31,6 +31,7 @@
       "name": "@menuza/orpc-server",
       "version": "0.0.0",
       "dependencies": {
+        "@menuza/db": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@opentelemetry/api": "catalog:",
         "@opentelemetry/context-async-hooks": "2.11.0",
@@ -77,7 +78,6 @@
       "dependencies": {
         "@base-ui/react": "1.8.0",
         "@menuza/db": "workspace:*",
-        "@menuza/offline": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@orpc/client": "2.0.0-beta.35",
         "@orpc/contract": "catalog:",
@@ -86,7 +86,7 @@
         "@serwist/turbopack": "9.5.12",
         "@tanstack/query-persist-client-core": "5.102.8",
         "@tanstack/query-sync-storage-persister": "5.102.8",
-        "@tanstack/react-query": "catalog:",
+        "@tanstack/react-query": "5.102.8",
         "@tanstack/react-query-persist-client": "5.102.8",
         "@tanstack/react-table": "9.2.4",
         "class-variance-authority": "^0.7.1",
@@ -106,9 +106,10 @@
         "@oxlint/plugins": "catalog:",
         "@tailwindcss/postcss": "4.3.3",
         "@types/node": "catalog:",
-        "@types/react": "catalog:",
+        "@types/react": "19.2.18",
         "@types/react-dom": "19.2.7",
         "esbuild": "^0.28.2",
+        "fake-indexeddb": "6.2.5",
         "oxfmt": "catalog:",
         "oxlint": "catalog:",
         "shadcn": "^4.21.0",
@@ -123,7 +124,6 @@
         "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
-        "@menuza/tenant-context": "workspace:*",
         "@types/web-push": "3.6.4",
         "bullmq": "6.3.4",
         "bullmq-otel": "2.0.1",
@@ -142,10 +142,8 @@
       "name": "@menuza/api-commerce",
       "version": "0.0.0",
       "dependencies": {
-        "@menuza/auth-core": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
-        "@menuza/tenant-context": "workspace:*",
         "@orpc/server": "catalog:",
         "valibot": "catalog:",
       },
@@ -162,11 +160,9 @@
       "name": "@menuza/api-tenant",
       "version": "0.0.0",
       "dependencies": {
-        "@menuza/auth-core": "workspace:*",
         "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
-        "@menuza/tenant-context": "workspace:*",
         "@orpc/server": "catalog:",
         "valibot": "catalog:",
       },
@@ -179,30 +175,10 @@
         "typescript": "catalog:",
       },
     },
-    "packages/auth-core": {
-      "name": "@menuza/auth-core",
-      "version": "0.0.0",
-      "dependencies": {
-        "@menuza/db": "workspace:*",
-        "@menuza/shared": "workspace:*",
-        "@menuza/tenant-context": "workspace:*",
-        "@orpc/server": "catalog:",
-      },
-      "devDependencies": {
-        "@oxlint/plugins": "catalog:",
-        "@types/bun": "catalog:",
-        "@types/node": "catalog:",
-        "bun-types": "catalog:",
-        "oxfmt": "catalog:",
-        "oxlint": "catalog:",
-        "typescript": "catalog:",
-      },
-    },
     "packages/db": {
       "name": "@menuza/db",
       "version": "0.0.0",
       "dependencies": {
-        "@menuza/tenant-context": "workspace:*",
         "@opentelemetry/api": "catalog:",
         "@prisma/orm-postgres": "8.0.0-rc.10",
         "pg": "8.13.1",
@@ -214,28 +190,6 @@
         "oxfmt": "catalog:",
         "oxlint": "catalog:",
         "prisma": "8.0.0-rc.14",
-        "typescript": "catalog:",
-      },
-    },
-    "packages/offline": {
-      "name": "@menuza/offline",
-      "version": "0.0.0",
-      "dependencies": {
-        "@tanstack/query-persist-client-core": "5.102.8",
-        "@tanstack/query-sync-storage-persister": "5.102.8",
-        "@tanstack/react-query": "catalog:",
-        "@tanstack/react-query-persist-client": "5.102.8",
-        "idb-keyval": "6.3.0",
-      },
-      "devDependencies": {
-        "@oxlint/plugins": "catalog:",
-        "@types/bun": "catalog:",
-        "@types/node": "catalog:",
-        "@types/react": "catalog:",
-        "bun-types": "catalog:",
-        "fake-indexeddb": "6.2.5",
-        "oxfmt": "catalog:",
-        "oxlint": "catalog:",
         "typescript": "catalog:",
       },
     },
@@ -254,23 +208,6 @@
         "typescript": "catalog:",
       },
     },
-    "packages/tenant-context": {
-      "name": "@menuza/tenant-context",
-      "version": "0.0.0",
-      "dependencies": {
-        "@menuza/shared": "workspace:*",
-        "@orpc/server": "catalog:",
-      },
-      "devDependencies": {
-        "@oxlint/plugins": "catalog:",
-        "@types/bun": "catalog:",
-        "@types/node": "catalog:",
-        "bun-types": "catalog:",
-        "oxfmt": "catalog:",
-        "oxlint": "catalog:",
-        "typescript": "catalog:",
-      },
-    },
   },
   "catalog": {
     "@opentelemetry/api": "1.9.1",
@@ -278,15 +215,8 @@
     "@orpc/openapi": "2.0.0-beta.35",
     "@orpc/server": "2.0.0-beta.35",
     "@oxlint/plugins": "1.82.0",
-    "@tanstack/query-persist-client-core": "5.102.8",
-    "@tanstack/query-sync-storage-persister": "5.102.8",
-    "@tanstack/react-query": "5.102.8",
-    "@tanstack/react-query-persist-client": "5.102.8",
-    "@types/bun": "1.4.1",
     "@types/node": "22.10.5",
-    "@types/react": "19.2.18",
     "bun-types": "1.4.1",
-    "idb-keyval": "6.3.0",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
     "typescript": "7.0.2",
@@ -639,21 +569,15 @@
 
     "@menuza/api-tenant": ["@menuza/api-tenant@workspace:packages/api-tenant"],
 
-    "@menuza/auth-core": ["@menuza/auth-core@workspace:packages/auth-core"],
-
     "@menuza/commerce": ["@menuza/commerce@workspace:apps/commerce"],
 
     "@menuza/db": ["@menuza/db@workspace:packages/db"],
-
-    "@menuza/offline": ["@menuza/offline@workspace:packages/offline"],
 
     "@menuza/orpc-server": ["@menuza/orpc-server@workspace:apps/orpc-server"],
 
     "@menuza/shared": ["@menuza/shared@workspace:packages/shared"],
 
     "@menuza/tenant": ["@menuza/tenant@workspace:apps/tenant"],
-
-    "@menuza/tenant-context": ["@menuza/tenant-context@workspace:packages/tenant-context"],
 
     "@menuza/web": ["@menuza/web@workspace:apps/web"],
 

@@ -30,8 +30,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog`, `table`, `sidebar`, `badge`, `tabs`, `breadcrumb`, `dropdown-menu`, `checkbox`, `avatar`, `select`, `combobox`, `collapsible` (plus transitive `sheet`, `separator`, `skeleton`, `tooltip`, `textarea`, `input-group`, `use-mobile`) in `src/components/ui/`.
 - Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
 - PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest at `/public/manifest.webmanifest`.
-  - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `@menuza/offline` and `invalidateQueries()` on conflict.
-- TanStack Query shell: `QueryProvider` in root layout wraps `PersistQueryClientProvider` with the IndexedDB persister from `@menuza/offline`. No queries yet.
+  - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.
+- TanStack Query shell: `QueryProvider` in root layout wraps `PersistQueryClientProvider` with the IndexedDB persister from `src/offline`. No queries yet.
 - Browser clients hit same-origin `/commerce/...` and `/tenant/...` (rewritten to loopback APIs by `next.config.ts`).
 - Build artifact: `output: "standalone"` emits `.next/standalone/apps/web/server.js`; runs on Bun in `Containerfile`; images build via `bun run scripts/docker-build.ts web`.
 - Server clients use `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` and a per-request client. No shared cookies/tenant context across requests.

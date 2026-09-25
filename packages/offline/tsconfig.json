@@ -1,8 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["node", "bun-types"],
-    "lib": ["dom", "dom.iterable", "ESNext", "webworker"]
-  },
-  "include": ["src/**/*", "tests/**/*"]
-}

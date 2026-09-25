@@ -1,6 +1,5 @@
 /**
- * Tenant context shapes. Carried in `context.tenantId` after the
- * `@menuza/tenant-context` middleware runs.
+ * Tenant context shapes. Carried in `context.tenantId` after tenant middleware runs.
  *
  * `TenantContext` is the narrowed form (string) used by procedures that
  * require a tenant. `OptionalTenantContext` is the wide form (string | undefined)

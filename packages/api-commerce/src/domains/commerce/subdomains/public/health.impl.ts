@@ -3,7 +3,7 @@
  */
 import { implement } from "@orpc/server";
 import { commerceContractObject } from "@menuza/shared/commerce";
-import { tenantMiddleware } from "@menuza/tenant-context";
+import { tenantMiddleware } from "@menuza/orpc-server/tenant";
 
 const os = implement(commerceContractObject);
 

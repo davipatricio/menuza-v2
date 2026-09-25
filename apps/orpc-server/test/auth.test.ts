@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { call, ORPCError, os } from "@orpc/server";
 import { db, unscoped, type Db } from "@menuza/db";
-import { tenantMiddleware } from "@menuza/tenant-context";
+import { tenantMiddleware } from "../src/tenant/index.ts";
 import {
   authMiddleware,
   clearMembershipCache,
@@ -22,8 +22,11 @@ import {
   serializeSessionCookie,
   TENANT_COOKIE_NAME,
   verifyPassword,
-} from "../src/index.ts";
-import { DEFAULT_IDLE_TTL_SECONDS, LAST_USED_REFRESH_INTERVAL_SECONDS } from "../src/session.ts";
+} from "../src/auth/index.ts";
+import {
+  DEFAULT_IDLE_TTL_SECONDS,
+  LAST_USED_REFRESH_INTERVAL_SECONDS,
+} from "../src/auth/session.ts";
 import {
   can,
   isMemberKind,
@@ -31,7 +34,7 @@ import {
   MEMBER_KINDS,
   TENANT_CAPABILITIES,
   TENANT_ROLES,
-} from "../src/types.ts";
+} from "../src/auth/types.ts";
 
 function reqHeaders(headers: Record<string, string> = {}): Headers {
   return new Headers(headers);
@@ -83,7 +86,7 @@ function createSessionDb(rows: FakeSessionRow[]) {
   return { db: fake as unknown as Db, sessions, updates };
 }
 
-describe("@menuza/auth-core — Unit (infrastructure-free)", () => {
+describe("@menuza/orpc-server/auth — Unit (infrastructure-free)", () => {
   describe("Password hashing (Argon2id)", () => {
     test("hash and verify roundtrip succeeds", async () => {
       const hash = await hashPassword("my-super-password");
@@ -315,7 +318,7 @@ describe("@menuza/auth-core — Unit (infrastructure-free)", () => {
 });
 
 describe.skipIf(!process.env.TEST_INTEGRATION)(
-  "@menuza/auth-core — Integration (DB-backed)",
+  "@menuza/orpc-server/auth — Integration (DB-backed)",
   () => {
     const memberId = randomUUID();
     const tenant1Id = randomUUID();
