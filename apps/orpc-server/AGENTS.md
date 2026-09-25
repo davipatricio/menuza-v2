@@ -29,7 +29,10 @@
   dedicated prefixes: `/rpc` (RPC) and `/openapi` (RESTful), both mounted by
   `apps/commerce` and `apps/tenant`. They share `buildRequestFetch`, so the request-id
   echo, OTel span, structured logs, and 4xx/5xx Sentry split are identical; the OpenAPI
-  handler is additive and the RPC prefix/response shape are untouched.
+  handler is additive and the RPC prefix/response shape are untouched. Both handlers
+  register `RequestHeadersHandlerPlugin` (exposes `context.reqHeaders`) and
+  `ResponseHeadersHandlerPlugin` (exposes `context.resHeaders`; `session.login` and
+  `session.logout` set/clear the `menuza_tenant_sid` cookie through it).
 - `./openapi/document.ts` builds the OpenAPI 3.2 documents from the `@menuza/shared`
   **contracts** (not the implemented routers), so this build-time module imports no
   `@menuza/db` and reads no env. The routers carry the same route metadata because

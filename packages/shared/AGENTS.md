@@ -4,10 +4,17 @@
 - Two explicit entrypoints: `@menuza/shared/commerce` and `@menuza/shared/tenant`.
 - Contracts are defined first; implementations consume them. Changes go contract → server, never the reverse.
 - All inputs/outputs validated with Valibot (Standard Schema).
-- Tenant management contract exposes the health probe and the push routes
-  (`/push/public-key`, `/push/preferences`, `/push/subscriptions`). No anonymous
+- Tenant management contract exposes the health probe, the push routes
+  (`/push/public-key`, `/push/preferences`, `/push/subscriptions`), and the staff
+  session + panel routes (`/session/*`, `/panel/stores/{storeSlug}`). No anonymous
   management operations: everything beyond the public probe and the VAPID public key
   requires a tenant + member session.
+- The dashboard (staff) surface is `session.login` / `session.logout` /
+  `session.current` plus `panel.getStore`. The dashboard never sends a tenant header:
+  `panel.getStore` resolves `storeSlug -> tenant` server-side, verifies the caller's
+  membership and returns the store + role, so a non-member gets `NOT_FOUND` without
+  leaking existence (MEN-225). `session.login` opens a `menuza_tenant_sid` session and
+  `session.logout` revokes it and clears the cookie.
 - The tenant contract's `internal.resolveHost` procedure is service-to-service only:
   it backs the web proxy's storefront host → tenant lookup and is gated by the
   `INTERNAL_API_SECRET` shared token (`@menuza/orpc-server/internal`), never a browser
@@ -25,6 +32,8 @@ on one source of truth; it is metadata only, never a shape change to the
 - Push: `GET /push/public-key`; `GET`/`PUT /push/preferences`;
   `POST`/`DELETE /push/subscriptions` (subscriptions are a collection, and the
   push endpoint URL travels in the body, never as a path segment).
+- Session: `POST /session/login`, `POST /session/logout`, `GET /session/current`.
+  Panel: `GET /panel/stores/{storeSlug}` (the store slug is a path segment).
 - `path` is absolute under each service's OpenAPI prefix (`/openapi`), so it does
   not depend on the router key structure; `operationId` is explicit for stable
   generated documents.

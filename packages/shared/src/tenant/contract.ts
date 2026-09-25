@@ -14,6 +14,7 @@ import { openapi } from "@orpc/openapi";
 import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
 import { pushContractObject } from "../push/contracts.ts";
+import { panelContractObject, sessionContractObject } from "../panel/contracts.ts";
 
 export const healthInput = v.strictObject({});
 
@@ -68,6 +69,8 @@ export const internalContractObject = {
 export const tenantContractObject = {
   health,
   push: pushContractObject,
+  session: sessionContractObject,
+  panel: panelContractObject,
   internal: internalContractObject,
 };
 

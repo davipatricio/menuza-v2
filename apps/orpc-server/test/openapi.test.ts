@@ -41,6 +41,14 @@ const TENANT_ROUTES = [
     method: "get",
     path: "/internal/resolve-host",
   },
+  { procedure: tenantContractObject.session.login, method: "post", path: "/session/login" },
+  { procedure: tenantContractObject.session.logout, method: "post", path: "/session/logout" },
+  { procedure: tenantContractObject.session.current, method: "get", path: "/session/current" },
+  {
+    procedure: tenantContractObject.panel.getStore,
+    method: "get",
+    path: "/panel/stores/{storeSlug}",
+  },
 ] as const;
 
 type OpenApiDocument = Awaited<ReturnType<typeof buildTenantOpenApiDocument>>;

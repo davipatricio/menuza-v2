@@ -17,6 +17,7 @@ import {
   PrototypePollutionProtectionHandlerPlugin,
   RequestHeadersHandlerPlugin,
   RequestLimitHandlerPlugin,
+  ResponseHeadersHandlerPlugin,
   TimeoutHandlerPlugin,
 } from "@orpc/server/plugins";
 import { SpanKind, context, trace, type Tracer } from "@opentelemetry/api";
@@ -100,6 +101,9 @@ function handlerPlugins() {
     // middleware reads `x-menuza-tenant-id` from it. Without this plugin the
     // header is invisible and `require: "tenant"` always fails.
     new RequestHeadersHandlerPlugin(),
+    // ResponseHeadersHandlerPlugin exposes `context.resHeaders`; the session
+    // procedures set/clear the `menuza_tenant_sid` cookie through it.
+    new ResponseHeadersHandlerPlugin(),
     new RequestLimitHandlerPlugin({ maxBodySize: 1024 * 1024 }),
     new TimeoutHandlerPlugin({ timeout: 30_000 }),
     new PrototypePollutionProtectionHandlerPlugin(),
