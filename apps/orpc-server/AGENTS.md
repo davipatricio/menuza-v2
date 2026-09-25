@@ -7,8 +7,12 @@
   and shared API middlewares under subpaths:
   - `@menuza/orpc-server/tenant`: `tenantMiddleware`, wraps execution in `@menuza/db/scope`.
   - `@menuza/orpc-server/auth`: sessions, argon2id password hashing, cookies, and `authMiddleware`.
-  The root export stays side-effect-free (no DB connection on import); only subpaths `./auth`
-  and `./tenant` access database helpers.
+  - `@menuza/orpc-server/internal`: `internalTokenMiddleware`, the shared-token
+    (`INTERNAL_API_SECRET`) gate for service-to-service procedures such as the
+    tenant API's storefront host resolution. Reads env at call time, never at
+    import time; fails closed when the secret is unset.
+    The root export stays side-effect-free (no DB connection on import); only subpaths `./auth`
+    and `./tenant` access database helpers.
 - Router implementations live in the library packages (`packages/api-commerce`,
   `packages/api-tenant`) under `src/domains/<domain>/subdomains/<subdomain>/contracts/`
   (Valibot + oRPC contract) and `<subdomain>/<name>.impl.ts` (procedure implementation).

@@ -16,8 +16,11 @@
  * host is denied. Unknown-host and cross-mode responses are 404, there is no
  * 403. See ADR-0005 and its 2026-09-22 amendment.
  *
- * Tenant resolution: a storefront host is looked up in the `Domain` table to
- * obtain its `tenantId`; the result is injected as the server-only
+ * Tenant resolution: a storefront host is resolved through the tenant API's
+ * internal `resolveHost` procedure (`Domain` lives there, and `apps/web` never
+ * reads the database directly). The call is server-side, targets
+ * `TENANT_INTERNAL_URL`, and authenticates with the shared
+ * `INTERNAL_API_SECRET` token; the result is injected as the server-only
  * `x-menuza-tenant-id` header on the request forwarded to the internal APIs.
  * A storefront host with no `Domain` row is unknown and returns 404. The
  * main domain never resolves a tenant (dashboard tenant resolution by
@@ -30,7 +33,12 @@
  * cannot spoof the host.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { db, unscoped } from "@menuza/db";
+import { createORPCClient } from "@orpc/client";
+import { RPCLink } from "@orpc/client/fetch";
+import type { RouterContractClient } from "@orpc/contract";
+import { tenantContractObject } from "@menuza/shared/tenant";
+
+type TenantClient = RouterContractClient<typeof tenantContractObject>;
 
 type Mode = "main" | "storefront";
 
@@ -84,16 +92,24 @@ export function invalidateTenantCache(host?: string): void {
   else tenantCache.clear();
 }
 
+/** Fresh, per-request client bound to the tenant API's internal surface. */
+function newTenantClient(origin: string): TenantClient {
+  const link = new RPCLink({
+    origin,
+    url: "/rpc",
+    headers: { "x-menuza-internal-token": process.env.INTERNAL_API_SECRET ?? "" },
+  });
+
+  return createORPCClient<TenantClient>(link);
+}
+
 async function resolveTenantId(host: string): Promise<string | null> {
   const cached = tenantCache.get(host);
 
   if (cached !== undefined) return cached;
 
-  const domain = await unscoped(() =>
-    db.orm.public.Domain.where({ host }).select("tenantId").first(),
-  );
-
-  const tenantId = domain?.tenantId ?? null;
+  const origin = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002";
+  const { tenantId } = await newTenantClient(origin).internal.resolveHost({ host });
 
   tenantCache.set(host, tenantId);
 

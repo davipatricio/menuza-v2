@@ -4,9 +4,11 @@
 - Layout: `src/domains/<domain>/subdomains/<subdomain>/<name>.impl.ts` plus
   `src/domains/<domain>/router.ts`. Domain routers aggregate subdomain implementations.
 - `dev`/`start` delegate to `@menuza/tenant` (which owns the Bun.serve process).
-- Deny-by-default: only the health probe is exposed in this phase.
+- Deny-by-default: the health probe, the push routes, and the internal
+  `internal.resolveHost` procedure are exposed; everything else is absent, and
+  `resolveHost` requires the shared internal token.
 - Server-only: do NOT import from `apps/web` or any client code.
-- Middlewares: import `tenantMiddleware` and `authMiddleware` from `@menuza/orpc-server/tenant` and `@menuza/orpc-server/auth`. Do NOT create dedicated packages for middleware or auth. Contracts come from `@menuza/shared/tenant`.
+- Middlewares: import `tenantMiddleware` and `authMiddleware` from `@menuza/orpc-server/tenant` and `@menuza/orpc-server/auth`, and `internalTokenMiddleware` from `@menuza/orpc-server/internal`. Do NOT create dedicated packages for middleware or auth. Contracts come from `@menuza/shared/tenant`.
 
 ## Subdomain convention
 

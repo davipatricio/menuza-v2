@@ -20,8 +20,8 @@
 - Tenant-scoped queries MUST include an explicit `where` on `tenantId`. The runtime
   `tenantIsolationMiddleware()` is fail-closed: querying or mutating a tenant-scoped
   model without `tenantId` (or with a cross-tenant ID under an active tenant scope)
-  throws `TenantIsolationError`. Intentionally global lookups (e.g. proxy host resolution)
-  must use `unscoped()`.
+  throws `TenantIsolationError`. Intentionally global lookups (e.g. storefront host
+  resolution in the tenant API) must use `unscoped()`.
 - AsyncLocalStorage tenant scoping (`withTenant`, `unscoped`, `getActiveTenantId`,
   `isUnscoped`) is owned here and exported from `@menuza/db/scope` (and re-exported on `@menuza/db`).
   Worker and server APIs import it directly. Do NOT create separate packages for tenant scoping.

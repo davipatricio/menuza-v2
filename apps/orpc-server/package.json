@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./fetch": "./src/fetch.ts",
     "./tenant": "./src/tenant/index.ts",
-    "./auth": "./src/auth/index.ts"
+    "./auth": "./src/auth/index.ts",
+    "./internal": "./src/internal/index.ts"
   },
   "scripts": {
     "fmt": "oxfmt . \"!openapi/**\"",

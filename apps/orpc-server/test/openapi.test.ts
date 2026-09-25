@@ -36,6 +36,11 @@ const TENANT_ROUTES = [
     method: "put",
     path: "/push/preferences",
   },
+  {
+    procedure: tenantContractObject.internal.resolveHost,
+    method: "get",
+    path: "/internal/resolve-host",
+  },
 ] as const;
 
 type OpenApiDocument = Awaited<ReturnType<typeof buildTenantOpenApiDocument>>;

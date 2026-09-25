@@ -21,9 +21,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
     amendment). Unknown paths still return 404.
   - `storefront` → buyer-facing store on a tenant host
     (`/store`, `/menu`, `/cart`, `/checkout`)
-    The proxy resolves `host → tenantId` from the `Domain` table for storefront
-    hosts only and injects `x-menuza-tenant-id`; a storefront host with no `Domain`
-    row returns 404. The main domain never resolves a tenant. The
+    The proxy resolves `host → tenantId` through the tenant API's internal
+    `resolveHost` procedure (never the `Domain` table directly) for storefront
+    hosts only and injects `x-menuza-tenant-id`; a storefront host with no
+    `Domain` row returns 404. The main domain never resolves a tenant. The
     `/store/[storeSlug]` path alias on the main domain lands in MEN-225.
     See ADR-0005.
 - Document language: `pt-BR`. User-facing content stays in Portuguese.
@@ -35,7 +36,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Browser clients hit same-origin `/commerce/...` and `/tenant/...` (rewritten to loopback APIs by `next.config.ts`).
 - Build artifact: `output: "standalone"` emits `.next/standalone/apps/web/server.js`; runs on Bun in `Containerfile`; images build via `bun run scripts/docker-build.ts web`.
 - Server clients use `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` and a per-request client. No shared cookies/tenant context across requests.
-- NEVER import `@menuza/db`, Prisma, or `@menuza/orpc-server` from client or shared code. (`src/proxy.ts` is the one server-only exception: it reads `Domain` for tenant resolution.)
+- NEVER import `@menuza/db`, Prisma, or `@menuza/orpc-server` from client or shared code.
+- `apps/web` never reads the database directly and does not depend on `@menuza/db`. Every data operation goes through the internal API servers (`@menuza/commerce` or `@menuza/tenant`) using user session tokens or the shared `INTERNAL_API_SECRET` internal-communication token (sent as `x-menuza-internal-token`). The target origin is `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` (localhost or an external URL); never bypass the APIs with direct DB calls.
+- Tenant host resolution is `tenant.internal.resolveHost` called server-side from `src/proxy.ts` with the shared internal token; the proxy no longer touches `Domain` itself.
 - No secrets in `NEXT_PUBLIC_*` variables.
 - Sentry: `instrumentation-client.ts` (browser), `instrumentation.ts` + `sentry.server.config.ts`/`sentry.edge.config.ts` (server/edge), `global-error.tsx` (root boundary). `next.config.ts` is wrapped by `withSentryConfig`; source map upload and release creation run only when `SENTRY_AUTH_TOKEN` is set. Browser DSN is `NEXT_PUBLIC_SENTRY_DSN` (public by design). Tracing samples 10% by default (`*_TRACES_SAMPLE_RATE=0.1`); set `0` to rely on OpenTelemetry tracing only. LGPD scrubbing is shared via `@menuza/shared/sentry-privacy`. The Sentry tunnel route is intentionally off: `src/proxy.ts` does not exempt `/monitoring`.
 

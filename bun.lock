@@ -77,7 +77,6 @@
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "1.8.0",
-        "@menuza/db": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@orpc/client": "2.0.0-beta.35",
         "@orpc/contract": "catalog:",

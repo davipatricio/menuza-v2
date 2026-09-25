@@ -12,7 +12,7 @@
   router implementations live in `@menuza/api-commerce` and `@menuza/api-tenant`
   (layout documented in those workspaces' AGENTS.md).
 - Shared contracts in `@menuza/shared` (`/commerce`, `/tenant` entrypoints).
-- Shared server and auth/tenant procedure plumbing in `@menuza/orpc-server` (`/fetch`, `/tenant`, `/auth`).
+- Shared server and auth/tenant procedure plumbing in `@menuza/orpc-server` (`/fetch`, `/tenant`, `/auth`, `/internal`).
 - Browser-side offline support directly in `apps/web/src/offline` (IndexedDB persister, mutation queue, Background Sync drain).
 - Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based, owns async tenant scoping).
 - One BullMQ worker process (`apps/worker`).

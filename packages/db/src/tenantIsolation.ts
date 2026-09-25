@@ -7,7 +7,8 @@
  *  - Prohibits mutating `tenantId` during updates (no cross-tenant reassignment).
  *  - If executed inside an active tenant scope (e.g. from tenantMiddleware or withTenant),
  *    the `tenantId` MUST match the active tenant scope (rejecting cross-tenant queries).
- *  - Global queries (e.g. proxy domain-by-host lookup) must be explicitly marked via `unscoped()`.
+ *  - Global queries (e.g. storefront host → tenant lookup in the tenant API)
+ *    must be explicitly marked via `unscoped()`.
  */
 import { getActiveTenantId, isUnscoped } from "./scope/scope.ts";
 import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
@@ -144,7 +145,7 @@ export function tenantIsolationMiddleware(): SqlMiddleware {
       return;
     }
 
-    // Explicit unscoped escape hatch (e.g. host domain resolution in proxy.ts)
+    // Explicit unscoped escape hatch (e.g. host domain resolution in the tenant API)
     if (isUnscoped()) {
       return;
     }

@@ -15,7 +15,12 @@ export type RedactedHeaderMap = { [name: string]: string };
 export type LogValue = string | number | boolean | null | undefined | RedactedHeaderMap;
 
 /** Known header names for redaction checks. */
-const SENSITIVE_HEADERS = ["authorization", "cookie", "set-cookie"] as const;
+const SENSITIVE_HEADERS = [
+  "authorization",
+  "cookie",
+  "set-cookie",
+  "x-menuza-internal-token",
+] as const;
 
 type SensitiveHeader = (typeof SENSITIVE_HEADERS)[number];
 
@@ -41,8 +46,8 @@ function buildRedactedHeaders(headers: HeaderMap): RedactedHeaders {
 
   for (const [k, v] of Object.entries(headers)) {
     // SAFETY: the membership check runs against the closed
-    // `SENSITIVE_HEADERS` tuple. Only the three known sensitive header names
-    // are ever redacted; all other names pass through as-is.
+    // `SENSITIVE_HEADERS` tuple. Only the known sensitive header names are
+    // ever redacted; all other names pass through as-is.
     const sensitive = SENSITIVE_HEADER_SET.has(k.toLowerCase() as SensitiveHeader);
 
     out[k] = sensitive ? "<redacted>" : (v ?? "");

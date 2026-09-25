@@ -8,6 +8,10 @@
   (`/push/public-key`, `/push/preferences`, `/push/subscriptions`). No anonymous
   management operations: everything beyond the public probe and the VAPID public key
   requires a tenant + member session.
+- The tenant contract's `internal.resolveHost` procedure is service-to-service only:
+  it backs the web proxy's storefront host → tenant lookup and is gated by the
+  `INTERNAL_API_SECRET` shared token (`@menuza/orpc-server/internal`), never a browser
+  session or a public caller.
 
 ## OpenAPI routes
 
