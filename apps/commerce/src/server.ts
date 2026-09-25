@@ -3,6 +3,7 @@
  * Imports the router from `@menuza/api-commerce` and owns the process lifecycle.
  */
 import {
+  buildOpenApiFetch,
   buildRpcFetch,
   initOtel,
   initSentry,
@@ -25,6 +26,9 @@ const hostname = process.env.HOST ?? "127.0.0.1";
 
 const rpcFetch = buildRpcFetch(commerceDomainRouter, { service: "commerce" });
 
+// Same router, RESTful protocol, dedicated prefix. See apps/orpc-server/AGENTS.md.
+const openApiFetch = buildOpenApiFetch(commerceDomainRouter, { service: "commerce" });
+
 const server = Bun.serve({
   port,
   hostname,
@@ -43,6 +47,8 @@ const server = Bun.serve({
         return new Response("unready", { status: 503 });
       }
     }
+
+    if (url.pathname.startsWith("/openapi")) return openApiFetch(req, "/openapi");
 
     return rpcFetch(req, "/rpc");
   },

@@ -20,3 +20,15 @@ Three orthogonal concerns locked in one place because they share the same lifecy
 - **Per-tenant sessions** (one session per member per tenant): rejected because the card model is multi-store from day one; forcing re-login per store breaks the dashboard flow.
 - **Cookies carrying membership list**: rejected because revoking one store mid-session would require either session rotation or stale-list toleration — both worse than a DB lookup.
 - **Schema-per-tenant Postgres isolation**: rejected by ADR-0001; preserved here by reference.
+
+## Amendment — 2026-09-22
+
+Session tokens are now hashed at rest: the persisted row key is `SHA-256(token)` and the
+cookie carries the raw token, so a database dump yields no usable session. The cookie
+`Secure` flag is now conditional but secure by default, with an explicit `secure: false`
+opt-out for local HTTP; a caller clearing the cookie must pass the same `secure` value it
+used to set it. `isSameOriginRequest(options)` was added as the pure Origin/Referer check
+for state-changing auth requests, failing closed. Session rows written before this change
+hold raw ids and are therefore unusable — lookups hash the presented token first, so those
+rows simply miss and the change fails closed. The decision text above is preserved as
+originally recorded.

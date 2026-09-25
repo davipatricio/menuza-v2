@@ -29,7 +29,8 @@
   `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
 - Tailwind 4.3.3 + `@tailwindcss/postcss` 4.3.3.
 - shadcn (Base UI variant on `@base-ui/react` 1.8.0; components in `apps/web/src/components/ui/`).
-- oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`). v2 wire
+- oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`,
+  `@orpc/openapi`). v2 wire
   format is incompatible with v1 — server and client deploy together.
 - Prisma CLI `8.0.0-rc.14`, `@prisma/orm-postgres` `8.0.0-rc.10` (RC pin; bump CLI and
   ORM package together — wire/marker formats are versioned together).

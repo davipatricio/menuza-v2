@@ -1,20 +1,20 @@
 /**
  * Main-domain + storefront routing.
  *
- * The app serves three surfaces by path on the main domain (marketing,
- * dashboard, storefront alias) while tenant hosts serve the storefront only:
- *   - "main"         — marketing (/, /about, /pricing, /contact), dashboard
- *                      (/dashboard), and the storefront path alias
- *                      (/store, /menu, /cart, /checkout)
+ * The app serves marketing and the dashboard on the main domain, while tenant
+ * hosts serve the storefront only:
+ *   - "main"         — marketing (/, /about, /pricing, /contact) and dashboard
+ *                      (/dashboard)
  *   - "storefront"   — buyer-facing store on a tenant host
  *                      (/store, /menu, /cart, /checkout)
  *
  * Infrastructure paths (/serwist/*, /manifest.webmanifest, /favicon.ico,
  * /_next/static, /_next/image) are always permitted regardless of mode.
- * Any host that is not a known storefront host is treated as the main
- * domain (fail-open): unknown-host and cross-mode responses are 404, there
- * is no 403. See ADR-0005 for the model and MEN-225 for the phishing
- * follow-up this implies.
+ * Hosts are resolved by an explicit allowlist (fail-closed): a `storefront`
+ * entry in `WEB_HOST_MAP` is the storefront, `WEB_MAIN_DOMAIN` is the main
+ * domain, and the development hosts are main outside production. Every other
+ * host is denied. Unknown-host and cross-mode responses are 404, there is no
+ * 403. See ADR-0005 and its 2026-09-22 amendment.
  *
  * Tenant resolution: a storefront host is looked up in the `Domain` table to
  * obtain its `tenantId`; the result is injected as the server-only
@@ -34,12 +34,9 @@ import { db, unscoped } from "@menuza/db";
 
 type Mode = "main" | "storefront";
 
-// Hosts that serve the storefront. Any other host — including hosts absent
-// from the map — is treated as the main domain (fail-open; see ADR-0005).
-// `WEB_HOST_MAP` keeps its `host=mode` CSV shape; only `storefront` entries
-// take effect. `WEB_MAIN_DOMAIN` and `WEB_STORE_DOMAIN_SUFFIX` name the main
-// domain and the store subdomain pattern; they are documented now and
-// consumed by the MEN-225 cutover.
+// Hosts that serve the storefront. `WEB_HOST_MAP` keeps its `host=mode` CSV
+// shape; only `storefront` entries take effect. Any other host is denied
+// unless it is the main domain (see ADR-0005 and its 2026-09-22 amendment).
 const STOREFRONT_HOSTS = new Set(
   (process.env.WEB_HOST_MAP ?? "")
     .split(",")
@@ -51,6 +48,15 @@ const STOREFRONT_HOSTS = new Set(
       return host && mode === "storefront" ? [host] : [];
     }),
 );
+
+// The single host that serves the main domain. An absent (or empty)
+// `WEB_MAIN_DOMAIN` leaves no production host as main, so only the
+// development hosts below can reach it.
+const MAIN_HOST = (process.env.WEB_MAIN_DOMAIN ?? "").trim().toLowerCase();
+
+// Local development hosts. Excluded from production so a laptop's `localhost`
+// never serves the main domain on a real deployment.
+const DEV_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const TRUSTED_PROXY_HOPS = Math.max(0, Number(process.env.TRUSTED_PROXY_HOPS ?? 0));
 
@@ -112,6 +118,32 @@ function isAllowed(mode: Mode, pathname: string): boolean {
   return list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+// Deny by default: `null` means the host is not allowlisted, so the caller
+// returns 404 rather than falling back to the main domain.
+function resolveMode(host: string): Mode | null {
+  if (STOREFRONT_HOSTS.has(host)) return "storefront";
+
+  if (MAIN_HOST && host === MAIN_HOST) return "main";
+
+  // Development hosts stay main only outside production.
+  if (process.env.NODE_ENV !== "production" && DEV_HOSTS.has(host)) return "main";
+
+  return null;
+}
+
+// A Host header carries an optional port, but a bracketed IPv6 literal contains
+// colons of its own, so cutting at the first colon would truncate `[::1]:3000`
+// to `[` and silently miss the development allowlist entry.
+function stripPort(value: string): string {
+  const bracketed = /^\[([^\]]+)\]/.exec(value);
+
+  if (bracketed) return `[${bracketed[1]!}]`;
+
+  const colon = value.indexOf(":");
+
+  return colon === -1 ? value : value.slice(0, colon);
+}
+
 function resolveHost(req: NextRequest): string {
   // Trust forwarded-host only when both:
   //   1. The remote address matches a trusted proxy IP.
@@ -124,11 +156,11 @@ function resolveHost(req: NextRequest): string {
     if (remote && TRUSTED_PROXY_IPS.includes(remote) && hops <= TRUSTED_PROXY_HOPS) {
       const fwd = req.headers.get("x-forwarded-host");
 
-      if (fwd) return fwd.split(",")[0]!.trim().toLowerCase().split(":")[0]!;
+      if (fwd) return stripPort(fwd.split(",")[0]!.trim().toLowerCase());
     }
   }
 
-  return (req.headers.get("host") ?? "").toLowerCase().split(":")[0]!;
+  return stripPort((req.headers.get("host") ?? "").toLowerCase());
 }
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {
@@ -137,7 +169,12 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   if (isAlwaysAllowed(pathname)) return NextResponse.next();
 
   const host = resolveHost(req);
-  const mode: Mode = STOREFRONT_HOSTS.has(host) ? "storefront" : "main";
+  const mode = resolveMode(host);
+
+  // Deny hosts that are not allowlisted before any surface is served.
+  if (!mode) {
+    return new NextResponse("Host desconhecido.", { status: 404 });
+  }
 
   if (!isAllowed(mode, pathname)) {
     return new NextResponse("Não encontrado.", { status: 404 });

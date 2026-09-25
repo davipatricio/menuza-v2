@@ -1,6 +1,6 @@
 export { log, newRequestId, redactHeaders } from "./logging.ts";
 
-export { buildRpcFetch } from "./fetch.ts";
+export { buildRpcFetch, buildOpenApiFetch } from "./fetch.ts";
 
 export { initSentry, getTracer, Sentry } from "./observability.ts";
 

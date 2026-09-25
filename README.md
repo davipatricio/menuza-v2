@@ -33,7 +33,7 @@ bun run dev
 
 ## Local hosts
 
-The web app resolves storefront hosts via `apps/web/src/proxy.ts` using the `WEB_HOST_MAP` env var (only `storefront` entries take effect; any other host is the main domain).
+The web app resolves storefront hosts via `apps/web/src/proxy.ts` using the `WEB_HOST_MAP` env var (only `storefront` entries take effect; any other host is denied with 404 unless it is `WEB_MAIN_DOMAIN` or a development host outside production).
 On Windows, add these entries to `C:\Windows\System32\drivers\etc\hosts` (run as Administrator):
 
 ```

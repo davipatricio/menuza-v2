@@ -16,6 +16,9 @@ const PREFIXES = {
 
 type Mode = keyof typeof PREFIXES;
 
+// Mirrors `DEV_HOSTS` in `proxy.ts`: main only outside production.
+const DEV_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
 function isAlwaysAllowed(pathname: string): boolean {
   if (ALWAYS_ALLOW.includes(pathname)) return true;
 
@@ -33,26 +36,57 @@ function isAllowed(mode: Mode, pathname: string): boolean {
   return list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-function resolveMode(host: string, storefrontHosts: Set<string>): Mode {
-  return storefrontHosts.has(host) ? "storefront" : "main";
+function resolveMode(
+  host: string,
+  storefrontHosts: Set<string>,
+  mainDomain: string,
+  isProduction: boolean,
+): Mode | null {
+  if (storefrontHosts.has(host)) return "storefront";
+
+  if (mainDomain && host === mainDomain) return "main";
+
+  if (!isProduction && DEV_HOSTS.has(host)) return "main";
+
+  return null;
+}
+
+// Mirrors `stripPort` in `proxy.ts`: drop a trailing `:port`, except keeping a
+// bracketed IPv6 literal intact (its own colons would otherwise truncate it).
+function stripPort(value: string): string {
+  const bracketed = /^\[([^\]]+)\]/.exec(value);
+
+  if (bracketed) return `[${bracketed[1]!}]`;
+
+  const colon = value.indexOf(":");
+
+  return colon === -1 ? value : value.slice(0, colon);
 }
 
 function resolveHost(
   forwardedHost: string | null,
   host: string | null,
   trustedIps: string[],
+  trustedHops: number,
   forwardedFor: string | null,
-  hops: number,
 ): string {
-  if (trustedIps.length > 0 && hops > 0 && forwardedFor) {
-    const remote = forwardedFor.split(",")[0]?.trim();
+  // Mirrors `resolveHost` in `proxy.ts`, including its gate: forwarded-host is
+  // honoured only when both a hop limit and an IP allowlist are configured, the
+  // remote address is trusted, and the forwarding chain is short enough. The
+  // hop count is derived from the chain, as the source does — passing it in
+  // would let the test assert a state the real parser cannot produce.
+  if (trustedHops > 0 && trustedIps.length > 0) {
+    const remote = forwardedFor?.split(",")[0]?.trim();
+    const hops = forwardedFor ? Math.max(0, forwardedFor.split(",").length - 1) : 0;
 
-    if (remote && trustedIps.includes(remote) && hops <= 2) {
-      if (forwardedHost) return forwardedHost.split(",")[0]!.trim().toLowerCase().split(":")[0]!;
+    if (remote && trustedIps.includes(remote) && hops <= trustedHops) {
+      const fwd = forwardedHost?.split(",")[0]?.trim().toLowerCase();
+
+      if (fwd) return stripPort(fwd);
     }
   }
 
-  return (host ?? "").toLowerCase().split(":")[0]!;
+  return stripPort((host ?? "").toLowerCase());
 }
 
 describe("proxy logic", () => {
@@ -90,27 +124,72 @@ describe("proxy logic", () => {
     expect(isAllowed("storefront", "/about")).toBe(false);
   });
 
-  test("unknown hosts resolve to main (fail-open)", () => {
+  test("storefront host resolves to storefront", () => {
     const storefrontHosts = new Set(["store.localhost"]);
 
-    expect(resolveMode("store.localhost", storefrontHosts)).toBe("storefront");
-    expect(resolveMode("menuza.localhost", storefrontHosts)).toBe("main");
-    expect(resolveMode("anything-else.example.com", storefrontHosts)).toBe("main");
+    expect(resolveMode("store.localhost", storefrontHosts, "menuza.localhost", false)).toBe(
+      "storefront",
+    );
+  });
+
+  test("WEB_MAIN_DOMAIN resolves to main", () => {
+    expect(resolveMode("menuza.localhost", new Set(), "menuza.localhost", false)).toBe("main");
+  });
+
+  test("dev hosts resolve to main outside production", () => {
+    expect(resolveMode("localhost", new Set(), "menuza.localhost", false)).toBe("main");
+    expect(resolveMode("127.0.0.1", new Set(), "menuza.localhost", false)).toBe("main");
+    expect(resolveMode("[::1]", new Set(), "menuza.localhost", false)).toBe("main");
+  });
+
+  test("dev hosts are denied in production", () => {
+    expect(resolveMode("localhost", new Set(), "menuza.localhost", true)).toBeNull();
+    expect(resolveMode("127.0.0.1", new Set(), "menuza.localhost", true)).toBeNull();
+  });
+
+  test("unset WEB_MAIN_DOMAIN denies a non-dev host", () => {
+    expect(resolveMode("menuza.localhost", new Set(), "", true)).toBeNull();
+  });
+
+  test("unknown hosts resolve to null (deny by default)", () => {
+    const storefrontHosts = new Set(["store.localhost"]);
+
+    expect(
+      resolveMode("anything-else.example.com", storefrontHosts, "menuza.localhost", false),
+    ).toBeNull();
   });
 
   test("trusted forwarding requires TRUSTED_PROXY_HOP_IPS", () => {
     const spoofed = "evil.example.com";
     const actual = "127.0.0.1";
     // Without trusted IPs, forwarded-host is ignored.
-    const result = resolveHost(spoofed, actual, [], "1.2.3.4", 1);
+    const result = resolveHost(spoofed, actual, [], 1, "1.2.3.4");
     expect(result).toBe("127.0.0.1");
     // With trusted IPs and matching remote, forwarded-host wins.
-    const result2 = resolveHost(spoofed, actual, ["1.2.3.4"], "1.2.3.4", 1);
+    const result2 = resolveHost(spoofed, actual, ["1.2.3.4"], 1, "1.2.3.4");
     expect(result2).toBe("evil.example.com");
   });
 
   test("forwarded host from a non-trusted IP is ignored", () => {
-    const result = resolveHost("evil.example.com", "127.0.0.1", ["10.0.0.1"], "1.2.3.4", 1);
+    const result = resolveHost("evil.example.com", "127.0.0.1", ["10.0.0.1"], 1, "1.2.3.4");
     expect(result).toBe("127.0.0.1");
+  });
+
+  test("forwarded host honours the trusted hop limit", () => {
+    // A single-entry chain is zero hops; this one carries one proxy hop.
+    const chain = "1.2.3.4, 10.0.0.1";
+
+    expect(resolveHost("evil.example.com", "127.0.0.1", ["1.2.3.4"], 1, chain)).toBe(
+      "evil.example.com",
+    );
+    expect(resolveHost("evil.example.com", "127.0.0.1", ["1.2.3.4"], 0, chain)).toBe("127.0.0.1");
+  });
+
+  test("a port is stripped without truncating a bracketed IPv6 host", () => {
+    expect(resolveHost(null, "127.0.0.1:3000", [], 0, null)).toBe("127.0.0.1");
+    expect(resolveHost(null, "menuza.localhost:3000", [], 0, null)).toBe("menuza.localhost");
+    expect(resolveHost(null, "[::1]:3000", [], 0, null)).toBe("[::1]");
+    // The normalized value must hit the development allowlist in dev.
+    expect(resolveMode("[::1]", new Set(), "menuza.localhost", false)).toBe("main");
   });
 });

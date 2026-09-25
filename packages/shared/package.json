@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@orpc/contract": "catalog:",
+    "@orpc/openapi": "catalog:",
     "valibot": "catalog:"
   },
   "devDependencies": {

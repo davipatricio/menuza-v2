@@ -33,11 +33,14 @@ model Domain {
 model Member {
   id                String             @id(map: "Member_pkey")
   email             String
-  passwordHash      String
+  name              String?
+  kind              String             @default("human")
+  passwordHash      String?
   createdAt         Timestamp(3)       @default(now())
   updatedAt         Timestamp(3)
   sessions          Session[]
   memberships       TenantMembership[]
+  identities        MemberIdentity[]
   pushSubscriptions PushSubscription[]
   pushPreferences   PushPreference[]
 
@@ -46,14 +49,29 @@ model Member {
   @@map("Member")
 }
 
+model MemberIdentity {
+  id                String        @id(map: "MemberIdentity_pkey")
+  memberId          String
+  provider          String
+  providerAccountId String
+  createdAt         Timestamp(3) @default(now())
+  member            Member       @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "MemberIdentity_memberId_fkey")
+
+  @@index([provider, providerAccountId], map: "MemberIdentity_provider_providerAccountId_key", unique: true)
+  @@index([memberId], map: "MemberIdentity_memberId_idx")
+
+  @@map("MemberIdentity")
+}
+
 model Session {
-  id        String        @id(map: "Session_pkey")
-  memberId  String
-  namespace String
-  expiresAt Timestamp(3)
-  revokedAt Timestamp(3)?
-  createdAt Timestamp(3)  @default(now())
-  member    Member        @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Session_memberId_fkey")
+  id         String        @id(map: "Session_pkey")
+  memberId   String
+  namespace  String
+  expiresAt  Timestamp(3)
+  revokedAt  Timestamp(3)?
+  createdAt  Timestamp(3)  @default(now())
+  lastUsedAt Timestamp(3)  @default(now())
+  member     Member        @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Session_memberId_fkey")
 
   @@index([memberId], map: "Session_memberId_idx")
   @@index([expiresAt], map: "Session_expiresAt_idx")

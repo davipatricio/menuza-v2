@@ -5,6 +5,7 @@
  * anonymous management API.
  */
 import { oc } from "@orpc/contract";
+import { openapi } from "@orpc/openapi";
 import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
 import { pushContractObject } from "../push/contracts.ts";
@@ -21,7 +22,18 @@ export const tenantContract = oc.errors({
   ...sharedErrorCodes,
 });
 
-export const health = tenantContract.input(healthInput).output(healthOutput);
+export const health = tenantContract
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/health",
+      operationId: "getTenantHealth",
+      summary: "Sonda de saúde do serviço de gestão (tenant).",
+      tags: ["health"],
+    }),
+  )
+  .input(healthInput)
+  .output(healthOutput);
 
 export const tenantContractObject = {
   health,

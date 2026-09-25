@@ -14,6 +14,11 @@ export async function hashPassword(password: string): Promise<string> {
   });
 }
 
-export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+export async function verifyPassword(password: string, hash: string | null): Promise<boolean> {
+  // A member without a password hash (bot account, or a Google-only account)
+  // has no password to verify; fail closed instead of letting the hasher throw
+  // on null or, worse, treating a missing hash as a match.
+  if (hash === null) return false;
+
   return Bun.password.verify(password, hash);
 }

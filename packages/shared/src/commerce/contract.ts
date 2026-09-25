@@ -3,6 +3,7 @@
  * NO server-only imports, NO database access, NO env reads.
  */
 import { oc } from "@orpc/contract";
+import { openapi } from "@orpc/openapi";
 import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
 
@@ -22,7 +23,18 @@ export const commerceContract = oc.errors({
   },
 });
 
-export const health = commerceContract.input(healthInput).output(healthOutput);
+export const health = commerceContract
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/health",
+      operationId: "getCommerceHealth",
+      summary: "Sonda de saúde do serviço de comércio.",
+      tags: ["health"],
+    }),
+  )
+  .input(healthInput)
+  .output(healthOutput);
 
 // Object consumed by `createORPCClient<typeof contract>`.
 export const commerceContractObject = {

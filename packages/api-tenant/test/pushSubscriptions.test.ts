@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
 import { call, ORPCError } from "@orpc/server";
 import { db } from "@menuza/db";
-import { TENANT_COOKIE_NAME } from "@menuza/auth-core";
+import { TENANT_COOKIE_NAME, hashSessionToken } from "@menuza/auth-core";
 import { pushSubdomainRouter } from "../src/domains/tenant/subdomains/push/router.ts";
 
 function reqHeaders(headers: Record<string, string> = {}): Headers {
@@ -34,12 +34,15 @@ describe("Push Subscriptions and Preferences API", () => {
     process.env.VAPID_PUBLIC_KEY = "test-vapid-public-key";
 
     sessionStore = new Map();
-    sessionStore.set(sessionId, {
-      id: sessionId,
+    const digest = hashSessionToken(sessionId);
+    // Sessions are keyed by the digest of the token the client holds, mirroring
+    // the real table: the raw token only ever lives in the cookie.
+    sessionStore.set(digest, {
       memberId,
       namespace: "tenant",
       expiresAt: Temporal.Now.zonedDateTimeISO("UTC").add({ hours: 1 }).toPlainDateTime(),
       revokedAt: null,
+      lastUsedAt: Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime(),
     });
 
     membershipStore = new Map();

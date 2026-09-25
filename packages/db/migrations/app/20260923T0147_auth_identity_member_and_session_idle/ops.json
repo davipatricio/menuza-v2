@@ -1,0 +1,330 @@
+[
+  {
+    "id": "table.MemberIdentity",
+    "label": "Create table \"MemberIdentity\"",
+    "summary": "Creates table \"MemberIdentity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "MemberIdentity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"MemberIdentity\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberIdentity\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"MemberIdentity\"",
+        "sql": "CREATE TABLE \"public\".\"MemberIdentity\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"provider\" text NOT NULL,\n  \"providerAccountId\" text NOT NULL,\n  CONSTRAINT \"MemberIdentity_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"MemberIdentity\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberIdentity\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Member.kind",
+    "label": "Add column \"kind\" to \"Member\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "kind",
+        "table": "Member"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"kind\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "kind"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"kind\"",
+        "sql": "ALTER TABLE \"public\".\"Member\" ADD COLUMN \"kind\" text DEFAULT 'human' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"kind\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "kind"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Member.name",
+    "label": "Add column \"name\" to \"Member\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "name",
+        "table": "Member"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"name\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "name"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"name\"",
+        "sql": "ALTER TABLE \"public\".\"Member\" ADD COLUMN \"name\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"name\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "name"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Session.lastUsedAt",
+    "label": "Add column \"lastUsedAt\" to \"Session\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "lastUsedAt",
+        "table": "Session"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"lastUsedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Session",
+          "lastUsedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"lastUsedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Session\" ADD COLUMN \"lastUsedAt\" timestamp(3) DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"lastUsedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Session",
+          "lastUsedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.Member.passwordHash",
+    "label": "Drop NOT NULL on \"Member\".\"passwordHash\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "passwordHash",
+        "table": "Member"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"passwordHash\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "passwordHash"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"passwordHash\"",
+        "sql": "ALTER TABLE \"public\".\"Member\" ALTER COLUMN \"passwordHash\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"passwordHash\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "passwordHash",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.MemberIdentity.MemberIdentity_memberId_idx",
+    "label": "Create index \"MemberIdentity_memberId_idx\" on \"MemberIdentity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "MemberIdentity_memberId_idx",
+        "table": "MemberIdentity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"MemberIdentity_memberId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberIdentity_memberId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"MemberIdentity_memberId_idx\"",
+        "sql": "CREATE INDEX \"MemberIdentity_memberId_idx\" ON \"public\".\"MemberIdentity\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"MemberIdentity_memberId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberIdentity_memberId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.MemberIdentity.MemberIdentity_provider_providerAccountId_key",
+    "label": "Create index \"MemberIdentity_provider_providerAccountId_key\" on \"MemberIdentity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "MemberIdentity_provider_providerAccountId_key",
+        "table": "MemberIdentity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"MemberIdentity_provider_providerAccountId_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberIdentity_provider_providerAccountId_key\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"MemberIdentity_provider_providerAccountId_key\"",
+        "sql": "CREATE UNIQUE INDEX \"MemberIdentity_provider_providerAccountId_key\" ON \"public\".\"MemberIdentity\" (\"provider\", \"providerAccountId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"MemberIdentity_provider_providerAccountId_key\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberIdentity_provider_providerAccountId_key\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.MemberIdentity.MemberIdentity_memberId_fkey",
+    "label": "Add foreign key \"MemberIdentity_memberId_fkey\" on \"MemberIdentity\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "MemberIdentity_memberId_fkey",
+        "table": "MemberIdentity"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"MemberIdentity_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "MemberIdentity_memberId_fkey",
+          "public",
+          "\"public\".\"MemberIdentity\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"MemberIdentity_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"MemberIdentity\"\nADD CONSTRAINT \"MemberIdentity_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"Member\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"MemberIdentity_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "MemberIdentity_memberId_fkey",
+          "public",
+          "\"public\".\"MemberIdentity\""
+        ]
+      }
+    ]
+  }
+]

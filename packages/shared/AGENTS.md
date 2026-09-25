@@ -4,7 +4,31 @@
 - Two explicit entrypoints: `@menuza/shared/commerce` and `@menuza/shared/tenant`.
 - Contracts are defined first; implementations consume them. Changes go contract → server, never the reverse.
 - All inputs/outputs validated with Valibot (Standard Schema).
-- Tenant management contract exposes only the health probe in this phase. No anonymous management operations.
+- Tenant management contract exposes the health probe and the push routes
+  (`/push/public-key`, `/push/preferences`, `/push/subscriptions`). No anonymous
+  management operations: everything beyond the public probe and the VAPID public key
+  requires a tenant + member session.
+
+## OpenAPI routes
+
+Every leaf procedure declares its REST route with `.meta(openapi({ method, path,
+operationId, summary, tags }))` from `@orpc/openapi`. The metadata lives on the
+contract so the implemented router (`implement()`) and the OpenAPI generator agree
+on one source of truth; it is metadata only, never a shape change to the
+`.input`/`.output` chains. Conventions:
+
+- Health probes: `GET /health`.
+- Push: `GET /push/public-key`; `GET`/`PUT /push/preferences`;
+  `POST`/`DELETE /push/subscriptions` (subscriptions are a collection, and the
+  push endpoint URL travels in the body, never as a path segment).
+- `path` is absolute under each service's OpenAPI prefix (`/openapi`), so it does
+  not depend on the router key structure; `operationId` is explicit for stable
+  generated documents.
+
+oRPC has no query/mutation decorator: the distinction is semantic. A **mutation**
+is a procedure with side effects and a `.input` (the `POST`/`PUT`/`DELETE`
+procedures above); everything else is a **query** (the `GET` procedures). The
+declared method is what MEN-221's TanStack Query integration will consume.
 
 ## Subpath: @menuza/shared/errors
 

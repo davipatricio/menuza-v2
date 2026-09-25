@@ -95,6 +95,103 @@ for (const { host, mode } of hosts.values()) {
   console.log(`[db:seed] ${host} → tenant "${slug}" (${mode}) created`);
 }
 
+// --- Demo identity + tenancy (MEN-225) ---------------------------------------
+//
+// The dashboard renders a hardcoded "Marina Lopes" user and two mocked stores
+// (mawifoods / nova-loja). This block sources that identity and tenancy from the
+// database while WEB_HOST_MAP stays the authority for host → tenant resolution
+// and ownership above (never reassigning a host that already belongs to another
+// tenant). The demo stores are ensured independently by slug upsert so the
+// dashboard picker works even when the map does not mention them; if a
+// map-derived tenant already uses the slug, the upsert reuses it.
+//
+// Fixture only: these rows exist for local development. Never run this seed
+// against a production database.
+//
+// Out of scope here: orders, customers, coupons, audit logs, products and
+// categories have no models in contract.prisma, so they cannot be seeded.
+
+const DEMO_EMAIL = "marina@menuza.local";
+
+// LOCAL FIXTURE ONLY — demo credential, must never reach production.
+const DEMO_PASSWORD = "menuza-demo";
+
+const now = () => Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
+
+// Real demo identity backing the dashboard's MOCK_CURRENT_USER. Upserted by
+// email so re-runs do not duplicate. Hashing mirrors @menuza/auth-core
+// (argon2id, 64 MiB, t=3) without importing it; hash only when creating.
+const memberBefore = await db.orm.public.Member.where({ email: DEMO_EMAIL }).first();
+
+const demoMember = await db.orm.public.Member.upsert({
+  update: {},
+  create: {
+    id: randomUUID(),
+    email: DEMO_EMAIL,
+    name: "Marina Lopes",
+    kind: "human",
+    passwordHash: memberBefore
+      ? null
+      : await Bun.password.hash(DEMO_PASSWORD, {
+          algorithm: "argon2id",
+          memoryCost: 65536,
+          timeCost: 3,
+        }),
+    updatedAt: now(),
+  },
+  conflictOn: { email: DEMO_EMAIL },
+});
+
+console.log(
+  `[db:seed] demo member "${demoMember.name ?? DEMO_EMAIL}" <${demoMember.email}> (${memberBefore ? "kept" : "created"})`,
+);
+
+const demoStores = [
+  { slug: "mawifoods", displayName: "Mawifoods", role: "owner" },
+  { slug: "nova-loja", displayName: "Nova Loja", role: "admin" },
+] as const;
+
+for (const store of demoStores) {
+  const tenantBefore = await db.orm.public.Tenant.where({ slug: store.slug }).first();
+
+  const tenant = await db.orm.public.Tenant.upsert({
+    update: {},
+    create: {
+      id: randomUUID(),
+      slug: store.slug,
+      displayName: store.displayName,
+      updatedAt: now(),
+    },
+    conflictOn: { slug: store.slug },
+  });
+
+  console.log(`[db:seed] demo store "${tenant.slug}" (${tenantBefore ? "kept" : "created"})`);
+
+  // role is the canonical lowercase-ASCII closed set (owner|admin|staff). The
+  // dashboard's "Proprietária"/"Administrador" strings are display labels only
+  // and must never be written to the role column.
+  const membershipBefore = await db.orm.public.TenantMembership.where({
+    memberId: demoMember.id,
+    tenantId: tenant.id,
+  }).first();
+
+  if (membershipBefore) {
+    console.log(
+      `[db:seed] membership ${DEMO_EMAIL} → ${store.slug} (${membershipBefore.role}, kept)`,
+    );
+    continue;
+  }
+
+  await db.orm.public.TenantMembership.create({
+    id: randomUUID(),
+    memberId: demoMember.id,
+    tenantId: tenant.id,
+    role: store.role,
+  });
+
+  console.log(`[db:seed] membership ${DEMO_EMAIL} → ${store.slug} (${store.role}, created)`);
+}
+
 console.log(`[db:seed] done: ${created} created, ${reused} reused, ${conflicts} conflicts`);
 
 await db.close();

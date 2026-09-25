@@ -1,9 +1,10 @@
 /**
  * Tenant management API process. Bun.serve on loopback.
  * Imports the router from `@menuza/api-tenant` and owns the process lifecycle.
- * Deny-by-default: only the health endpoint is exposed in this phase.
+ * Deny-by-default: only the health probe and the push routes are exposed; see AGENTS.md.
  */
 import {
+  buildOpenApiFetch,
   buildRpcFetch,
   initOtel,
   initSentry,
@@ -26,6 +27,9 @@ const hostname = process.env.HOST ?? "127.0.0.1";
 
 const rpcFetch = buildRpcFetch(tenantDomainRouter, { service: "tenant" });
 
+// Same router, RESTful protocol, dedicated prefix. See apps/orpc-server/AGENTS.md.
+const openApiFetch = buildOpenApiFetch(tenantDomainRouter, { service: "tenant" });
+
 const server = Bun.serve({
   port,
   hostname,
@@ -43,6 +47,8 @@ const server = Bun.serve({
         return new Response("unready", { status: 503 });
       }
     }
+
+    if (url.pathname.startsWith("/openapi")) return openApiFetch(req, "/openapi");
 
     return rpcFetch(req, "/rpc");
   },

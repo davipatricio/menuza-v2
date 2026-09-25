@@ -15,8 +15,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Build type checking is enabled (`typescript.ignoreBuildErrors: false`).
 - Host-aware routing in `src/proxy.ts`. Two modes:
   - `main` → marketing (pages at `/`, `/about`, `/pricing`, `/contact`) and dashboard
-    (`/dashboard/[storeSlug]`). Unknown hosts are treated as the main domain
-    (fail-open); unknown paths return 404.
+    (`/dashboard/[storeSlug]`). `WEB_MAIN_DOMAIN` is authoritative: it is the only
+    main-domain host, plus `localhost`/`127.0.0.1`/`[::1]` outside production. Any other
+    host is denied with 404 (fail-closed, reversed in MEN-225; see ADR-0005's
+    amendment). Unknown paths still return 404.
   - `storefront` → buyer-facing store on a tenant host
     (`/store`, `/menu`, `/cart`, `/checkout`)
     The proxy resolves `host → tenantId` from the `Domain` table for storefront

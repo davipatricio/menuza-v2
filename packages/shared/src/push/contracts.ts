@@ -1,4 +1,5 @@
 import { oc } from "@orpc/contract";
+import { openapi } from "@orpc/openapi";
 import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
 import { PUSH_EVENTS, type PushJobPayload } from "./types.ts";
@@ -77,19 +78,66 @@ export const pushContract = oc.errors({
   ...sharedErrorCodes,
 });
 
-export const getPublicKey = pushContract.output(GetPublicKeyOutputSchema);
+export const getPublicKey = pushContract
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/push/public-key",
+      operationId: "getPushPublicKey",
+      summary: "Chave pública VAPID usada para assinar inscrições de push.",
+      tags: ["push"],
+    }),
+  )
+  .output(GetPublicKeyOutputSchema);
 
 export const subscribe = pushContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/push/subscriptions",
+      operationId: "subscribePush",
+      summary: "Registra ou atualiza a inscrição de push do dispositivo.",
+      tags: ["push"],
+    }),
+  )
   .input(PushSubscriptionInputSchema)
   .output(PushSubscriptionOutputSchema);
 
 export const unsubscribe = pushContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/push/subscriptions",
+      operationId: "unsubscribePush",
+      summary: "Remove a inscrição de push do dispositivo.",
+      tags: ["push"],
+    }),
+  )
   .input(PushUnsubscribeInputSchema)
   .output(PushSuccessOutputSchema);
 
-export const getPreferences = pushContract.output(GetPreferencesOutputSchema);
+export const getPreferences = pushContract
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/push/preferences",
+      operationId: "getPushPreferences",
+      summary: "Lista os eventos de notificação habilitados para o membro.",
+      tags: ["push"],
+    }),
+  )
+  .output(GetPreferencesOutputSchema);
 
 export const updatePreferences = pushContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/push/preferences",
+      operationId: "updatePushPreferences",
+      summary: "Substitui os eventos de notificação habilitados para o membro.",
+      tags: ["push"],
+    }),
+  )
   .input(PushPreferencesInputSchema)
   .output(GetPreferencesOutputSchema);
 

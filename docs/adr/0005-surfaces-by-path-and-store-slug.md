@@ -102,3 +102,17 @@ change expected to require it.
   URLs redirect away from it.
 - **Per-store sessions for the buyer**: rejected by ADR-0004; the model is
   multi-store from day one.
+
+## Amendment — 2026-09-22
+
+`proxy.ts` shipped fail-open: any host absent from `WEB_HOST_MAP` served the
+main domain, so an arbitrary hostname could show the marketing site and, with
+real login, the dashboard. That is reversed. Host resolution is now an explicit
+allowlist — `WEB_MAIN_DOMAIN` is authoritative for the main domain, a
+`storefront` entry in `WEB_HOST_MAP` is the storefront, and every other host is
+denied with 404. Development hosts (`localhost`, `127.0.0.1`, `[::1]`) are the
+only exception, and only outside production. Host admission is exactly
+`WEB_HOST_MAP` + `WEB_MAIN_DOMAIN` + those development hosts: admitting a host
+because it owns a `Domain` row, or because it matches a store subdomain, is not
+implemented and remains MEN-225. This restores the fail-closed property the
+Decision above describes.
