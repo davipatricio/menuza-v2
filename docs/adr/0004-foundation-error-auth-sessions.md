@@ -44,3 +44,32 @@ Consolidated library packages:
 - `@menuza/offline` was eliminated: browser-only offline mutation queue and IndexedDB persister
   moved directly into `apps/web/src/offline`.
 All semantics, isolation rules, and security boundaries remain identical.
+
+## Amendment — 2026-09-25 (tenant host resolution moves behind the tenant API)
+
+`apps/web` no longer reads the database: it has no `@menuza/db` dependency, and
+`proxy.ts` does not query `Domain`. The paragraph above (proxy resolves
+`host → tenantId` in Postgres) is preserved as originally recorded; the current
+decision is:
+
+- A storefront host is resolved by calling the tenant API's internal
+  `tenant.internal.resolveHost` procedure over `TENANT_INTERNAL_URL`. The
+  `Domain` lookup lives in `packages/api-tenant` and is explicitly `unscoped()`
+  (it runs before a tenant is known — that is what it resolves).
+- The call is service-to-service, not a browser session: it presents a single
+  shared token in `x-menuza-internal-token`, compared in constant time against
+  `INTERNAL_API_SECRET` by `internalTokenMiddleware`
+  (`@menuza/orpc-server/internal`). The gate fails closed when the secret is
+  unset, and the header is redacted in request logs.
+- The result is still injected as the server-only `x-menuza-tenant-id` header on
+  the request forwarded to the internal APIs, so `tenantMiddleware` and every
+  downstream consumer are unchanged.
+- Generalizing the rule: `apps/web` reaches data only through the commerce or
+  tenant API servers, using a user session or the shared internal token. Direct
+  database access from the web app requires an explicit architecture decision.
+- The internal procedure is published in the tenant OpenAPI document
+  (contract-first convention) but is unreachable without the token, so a browser
+  hitting it through the `/tenant/*` rewrite fails closed with `UNAUTHORIZED`.
+- Opening the tenant API to service-to-service callers adds a shared secret to
+  the deployment's environment; rotating it requires restarting the web and
+  tenant processes together.
