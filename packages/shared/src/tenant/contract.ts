@@ -15,6 +15,7 @@ import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
 import { pushContractObject } from "../push/contracts.ts";
 import {
+  accountContractObject,
   panelContractObject,
   profileContractObject,
   sessionContractObject,
@@ -74,6 +75,7 @@ export const tenantContractObject = {
   health,
   push: pushContractObject,
   session: sessionContractObject,
+  account: accountContractObject,
   panel: panelContractObject,
   profile: profileContractObject,
   internal: internalContractObject,

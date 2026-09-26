@@ -8,6 +8,7 @@ import { listProductsImpl } from "./listProducts.impl.ts";
 import { listCategoriesImpl } from "./listCategories.impl.ts";
 import { listCouponsImpl } from "./listCoupons.impl.ts";
 import { listAuditLogsImpl } from "./listAuditLogs.impl.ts";
+import { listTeamMembersImpl } from "./listTeamMembers.impl.ts";
 
 export const panelSubdomainRouter = {
   getStore: getStoreImpl,
@@ -20,6 +21,7 @@ export const panelSubdomainRouter = {
   listCategories: listCategoriesImpl,
   listCoupons: listCouponsImpl,
   listAuditLogs: listAuditLogsImpl,
+  listTeamMembers: listTeamMembersImpl,
 };
 
 export type PanelSubdomainRouter = typeof panelSubdomainRouter;

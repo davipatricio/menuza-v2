@@ -9,8 +9,12 @@
  * contract, whose membership guard is covered in `packages/api-tenant/test`.
  */
 import { describe, expect, test } from "bun:test";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_VARIANTS } from "../src/lib/panel-labels.ts";
-import { formatBrl, initials } from "../src/lib/format.ts";
+import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_VARIANTS,
+  MEMBER_KIND_LABELS,
+} from "../src/lib/panel-labels.ts";
+import { formatBrl, formatDateTime, initials } from "../src/lib/format.ts";
 import { OrderStatusSchema } from "@menuza/shared/tenant";
 
 const DASHBOARD_LEAVES = [
@@ -25,6 +29,7 @@ const DASHBOARD_LEAVES = [
   "/settings/payments",
   "/settings/notifications",
   "/settings/team",
+  "/settings/account",
 ] as const;
 
 const ALL_STATUSES = [
@@ -85,6 +90,31 @@ describe("dashboard route tree", () => {
     expect(paths).toContain("/dashboard/mawifoods");
     expect(paths).toContain("/dashboard/mawifoods/orders");
     expect(paths).toContain("/dashboard/mawifoods/settings/team");
+    expect(paths).toContain("/dashboard/mawifoods/settings/account");
     expect(paths).toHaveLength(DASHBOARD_LEAVES.length);
+  });
+});
+
+describe("member kind labels", () => {
+  test("both contract kinds have a pt-BR label", () => {
+    // The team table shows `Member.kind`; a missing label would render `undefined`
+    // in a cell, which is why this is pinned rather than assumed.
+    for (const kind of ["human", "bot"] as const) {
+      expect(MEMBER_KIND_LABELS[kind]).toBeTruthy();
+    }
+
+    expect(Object.keys(MEMBER_KIND_LABELS).sort()).toEqual(["bot", "human"]);
+  });
+});
+
+describe("session list", () => {
+  test("formatDateTime renders a pt-BR date and time from the contract's ISO string", () => {
+    // The contract sends ISO-8601 with a `Z`; a formatter that dropped the
+    // offset would render the wrong local time or an Invalid Date.
+    const rendered = formatDateTime("2026-09-26T13:06:48Z");
+
+    expect(rendered).not.toContain("Invalid");
+    expect(rendered).toContain("2026");
+    expect(rendered).toContain("26");
   });
 });

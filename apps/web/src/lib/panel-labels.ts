@@ -8,6 +8,7 @@
 import type {
   CouponStatus,
   DiscountType,
+  MemberKind,
   OrderStatus,
   StockMode,
   TenantRole,
@@ -63,6 +64,16 @@ export const ROLE_LABELS: Record<TenantRole, string> = {
   owner: "Proprietário",
   admin: "Administrador",
   staff: "Atendimento",
+};
+
+/**
+ * `Member.kind` distingue conta humana de conta de serviço (MEN-228). A conta de
+ * serviço ainda não existe de fato, mas o rótulo entra agora para que a coluna
+ * da equipe não precise de tratamento especial quando ela aparecer.
+ */
+export const MEMBER_KIND_LABELS: Record<MemberKind, string> = {
+  human: "Pessoa",
+  bot: "Conta de serviço",
 };
 
 export const STOCK_MODE_LABELS: Record<StockMode, string> = {

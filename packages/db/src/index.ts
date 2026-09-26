@@ -14,4 +14,9 @@ export { withTenant, unscoped, getActiveTenantId, isUnscoped } from "./scope/sco
 
 export type { TenantContext, OptionalTenantContext } from "./scope/types.ts";
 
+// ORM predicate combinators. Re-exported so consumers compose `where` callbacks
+// without taking a direct dependency on the Prisma package: `@menuza/db` owns
+// that version pin, and the combinators only exist alongside a contract.
+export { and, or, not } from "@prisma/orm-postgres/orm-client";
+
 export type { Contract, Models } from "../prisma/generated/client/contract.ts";

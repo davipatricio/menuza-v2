@@ -325,6 +325,71 @@ export const RegisterInputSchema = v.strictObject({
 
 export const RegisterOutputSchema = LoginOutputSchema;
 
+// --- Account: password and sessions (MEN-225) ---------------------------------
+//
+// Member-level, not store-level: a management account outlives any single
+// store, so these take no `storeSlug` and the dashboard serves them at
+// `/dashboard/settings/account`. Only the `tenant` namespace appears here — the
+// commerce session is buyer-facing and belongs to the addresses ticket.
+
+/**
+ * Reusing a password is the one thing a password-change form can check without
+ * the database, and it is where most "changed it to the same thing" bugs live.
+ */
+export const ChangePasswordInputSchema = v.strictObject({
+  currentPassword: v.pipe(v.string(), v.nonEmpty(), v.maxLength(200)),
+  newPassword: RegisterPasswordSchema,
+});
+
+export const ChangePasswordOutputSchema = v.object({
+  /** False when the same password was submitted; nothing is revoked. */
+  changed: v.boolean(),
+});
+
+/**
+ * One live session. `current` marks the caller's own row — the client hides its
+ * "revoke" button rather than offering a self-revoke that just logs you out.
+ * The row `id` is the SHA-256 digest, never the bearer token, so it is safe to
+ * display and to send back for revocation.
+ */
+export const ActiveSessionSchema = v.object({
+  id: v.string(),
+  current: v.boolean(),
+  createdAt: v.pipe(v.string(), v.isoTimestamp()),
+  lastUsedAt: v.pipe(v.string(), v.isoTimestamp()),
+  expiresAt: v.pipe(v.string(), v.isoTimestamp()),
+});
+
+export const ActiveSessionsOutputSchema = v.object({
+  sessions: v.array(ActiveSessionSchema),
+});
+
+export const RevokeSessionInputSchema = v.strictObject({
+  /** The session row's digest, as listed by `session.listSessions`. */
+  sessionId: v.pipe(v.string(), v.regex(/^[0-9a-f]{64}$/, "Identificador de sessão inválido.")),
+});
+
+export const RevokeSessionOutputSchema = v.object({
+  revoked: v.number(),
+});
+
+/** An opaque, already-hashed session digest. Never a bearer token. */
+export const SessionDigestSchema = v.pipe(v.string(), v.regex(/^[0-9a-f]{64}$/));
+
+/** A team member of the store, with the role the capability map reads. */
+export const TeamMemberSchema = v.object({
+  memberId: v.string(),
+  name: v.nullable(v.string()),
+  email: v.pipe(v.string(), v.email()),
+  kind: MemberKindSchema,
+  role: TenantRoleSchema,
+  joinedAt: v.pipe(v.string(), v.isoTimestamp()),
+});
+
+export const TeamMembersOutputSchema = v.object({
+  members: v.array(TeamMemberSchema),
+});
+
 export const StoreDisplayNameSchema = v.pipe(
   v.string(),
   v.trim(),
@@ -423,6 +488,68 @@ export const createStore = sessionContract
  * `NOT_FOUND` without learning whether the store exists (ADR-0005).
  */
 const panelRead = oc.errors({ ...sharedErrorCodes });
+
+/**
+ * The account surface is member-level: no `storeSlug`, because a management
+ * account spans stores. It is separate from the session router because it has
+ * no `storeSlug` in its input and must never grow one.
+ */
+export const accountContract = oc.errors({ ...sharedErrorCodes });
+
+export const listSessions = accountContract
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/account/sessions",
+      operationId: "listAccountSessions",
+      summary: "Lista as sessões ativas da conta, da mais recente para a mais antiga.",
+      tags: ["account"],
+    }),
+  )
+  .output(ActiveSessionsOutputSchema);
+
+export const changePassword = accountContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/account/password",
+      operationId: "changeAccountPassword",
+      summary: "Troca a senha da conta e revoga as demais sessões.",
+      tags: ["account"],
+    }),
+  )
+  .input(ChangePasswordInputSchema)
+  .output(ChangePasswordOutputSchema);
+
+export const revokeSession = accountContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/account/sessions/{sessionId}",
+      operationId: "revokeAccountSession",
+      summary: "Revoga uma sessão da conta pelo identificador.",
+      tags: ["account"],
+    }),
+  )
+  .input(RevokeSessionInputSchema)
+  .output(RevokeSessionOutputSchema);
+
+/**
+ * Revoking every session but the caller's is the response to a suspected
+ * compromise, so it is a single call rather than a loop the client has to
+ * assemble (and could interrupt halfway).
+ */
+export const revokeOtherSessions = accountContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/account/sessions/revoke-others",
+      operationId: "revokeOtherAccountSessions",
+      summary: "Revoga todas as sessões da conta exceto a atual.",
+      tags: ["account"],
+    }),
+  )
+  .output(RevokeSessionOutputSchema);
 
 export const listOrders = panelRead
   .meta(
@@ -528,6 +655,23 @@ export const listAuditLogs = panelRead
   .input(PanelStoreInputSchema)
   .output(PanelAuditLogsOutputSchema);
 
+/**
+ * Read-only (MEN-225): the store's team, read from the seed. Inviting a member
+ * needs email delivery, which is its own ticket.
+ */
+export const listTeamMembers = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/team",
+      operationId: "listPanelTeamMembers",
+      summary: "Lista os membros da equipe da loja com seus papéis.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(TeamMembersOutputSchema);
+
 export const profileContract = oc.errors({
   ...sharedErrorCodes,
 });
@@ -552,6 +696,13 @@ export const sessionContractObject = {
   register,
 };
 
+export const accountContractObject = {
+  listSessions,
+  changePassword,
+  revokeSession,
+  revokeOtherSessions,
+};
+
 export const panelContractObject = {
   getStore,
   createStore,
@@ -563,6 +714,7 @@ export const panelContractObject = {
   listCategories,
   listCoupons,
   listAuditLogs,
+  listTeamMembers,
 };
 
 export const profileContractObject = {
@@ -592,6 +744,11 @@ export type PanelCoupon = v.InferOutput<typeof PanelCouponSchema>;
 
 export type PanelAuditLog = v.InferOutput<typeof PanelAuditLogSchema>;
 
+/** Account rows, derived from the contract outputs the settings page renders. */
+export type ActiveSession = v.InferOutput<typeof ActiveSessionSchema>;
+
+export type TeamMember = v.InferOutput<typeof TeamMemberSchema>;
+
 /** Enum unions, mirroring the contract's lowercase ASCII stored values. */
 export type OrderStatus = v.InferOutput<typeof OrderStatusSchema>;
 
@@ -603,7 +760,11 @@ export type CouponStatus = v.InferOutput<typeof CouponStatusSchema>;
 
 export type TenantRole = v.InferOutput<typeof TenantRoleSchema>;
 
+export type MemberKind = v.InferOutput<typeof MemberKindSchema>;
+
 export type SessionRouterContract = typeof sessionContractObject;
+
+export type AccountRouterContract = typeof accountContractObject;
 
 export type PanelRouterContract = typeof panelContractObject;
 

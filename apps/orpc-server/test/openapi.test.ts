@@ -46,6 +46,26 @@ const TENANT_ROUTES = [
   { procedure: tenantContractObject.session.current, method: "get", path: "/session/current" },
   { procedure: tenantContractObject.session.register, method: "post", path: "/session/register" },
   {
+    procedure: tenantContractObject.account.listSessions,
+    method: "get",
+    path: "/account/sessions",
+  },
+  {
+    procedure: tenantContractObject.account.changePassword,
+    method: "put",
+    path: "/account/password",
+  },
+  {
+    procedure: tenantContractObject.account.revokeSession,
+    method: "delete",
+    path: "/account/sessions/{sessionId}",
+  },
+  {
+    procedure: tenantContractObject.account.revokeOtherSessions,
+    method: "post",
+    path: "/account/sessions/revoke-others",
+  },
+  {
     procedure: tenantContractObject.panel.getStore,
     method: "get",
     path: "/panel/stores/{storeSlug}",
@@ -90,6 +110,11 @@ const TENANT_ROUTES = [
     procedure: tenantContractObject.panel.listAuditLogs,
     method: "get",
     path: "/panel/stores/{storeSlug}/audit-logs",
+  },
+  {
+    procedure: tenantContractObject.panel.listTeamMembers,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/team",
   },
   {
     procedure: tenantContractObject.profile.saveOnboarding,

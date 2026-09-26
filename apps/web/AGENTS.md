@@ -42,6 +42,20 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   unknown slug and a non-member are both 404 and a freshly created store opens
   empty rather than 404ing. `src/lib/panel-labels.ts` is the only place the
   contract's ASCII enums become pt-BR, and `formatBrl` takes cents (ADR-0006).
+- `settings/account` (password change + active sessions with revocation) and
+  `settings/team` (read-only member/role list) are live, both added by MEN-225.
+  The `account.*` procedures are **member-level** — they take no `storeSlug` —
+  yet the page lives under the store shell's settings, because the sidebar is
+  store-scoped. The shell is the navigation, not the authorization.
+  - The session list shows row **digests**, never bearer tokens; the current row
+    is flagged so the UI hides its own revoke button (a crafted request may still
+    self-revoke, which is just logout).
+  - `changePassword` revokes every _other_ session, so the page says so up front —
+    a member whose other devices sign out should read it as intended, not a bug.
+  - `settings/team` renders `FORBIDDEN` as the read-only notice, because
+    `listTeamMembers` is gated on `team:read` and a `staff` role is refused.
+  - `formatDateTime` (in `src/lib/format.ts`) is the one ISO→pt-BR date
+    conversion, same edge-conversion role as `formatBrl`.
 - Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
 - PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest at `/public/manifest.webmanifest`.
   - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.

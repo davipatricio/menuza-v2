@@ -9,7 +9,10 @@
  * A non-member and an unknown slug both yield NOT_FOUND, so the endpoint never
  * reveals whether a store exists.
  */
+import { ORPCError } from "@orpc/server";
+import { sharedErrorCodes } from "@menuza/shared/errors";
 import { db, unscoped, withTenant } from "@menuza/db";
+import { can, type TenantCapability } from "@menuza/orpc-server/auth";
 import {
   canonicalRole,
   notFound,
@@ -66,4 +69,21 @@ export async function resolveStore(
  */
 export function inTenantScope<T>(tenantId: string, fn: () => T | Promise<T>): Promise<T> {
   return withTenant(tenantId, fn);
+}
+
+/**
+ * Asserts the caller's role grants a capability from the code-level map.
+ *
+ * `resolveStore` already turned "is a member" into a role; this is the second,
+ * narrower question ("may this role read the team"). A stored role outside the
+ * closed set was canonicalized to `staff` by `resolveStore`, so it lands here
+ * as the least-privileged role rather than being waved through.
+ */
+export function requireCapability(role: TenantRole, capability: TenantCapability): void {
+  if (can(role, capability)) return;
+
+  throw new ORPCError("FORBIDDEN", {
+    message: sharedErrorCodes.FORBIDDEN.message,
+    data: { code: "FORBIDDEN" },
+  });
 }

@@ -61,6 +61,7 @@ const SETTINGS_CHILDREN: Array<{ href: string; label: string }> = [
   { href: "payments", label: "Pagamentos" },
   { href: "notifications", label: "Notificações" },
   { href: "team", label: "Equipe" },
+  { href: "account", label: "Conta" },
 ];
 
 function isActivePath(pathname: string, href: string, exact?: boolean): boolean {

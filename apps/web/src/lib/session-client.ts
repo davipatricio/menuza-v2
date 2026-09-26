@@ -26,6 +26,9 @@ type CreateStoreResult = Awaited<ReturnType<TenantClient["panel"]["createStore"]
 /** Onboarding answers, derived from the `profile.saveOnboarding` contract input. */
 type SaveOnboardingInput = Parameters<TenantClient["profile"]["saveOnboarding"]>[0];
 
+/** Password-change payload, derived from `account.changePassword`'s input. */
+type ChangePasswordInput = Parameters<TenantClient["account"]["changePassword"]>[0];
+
 function client(): TenantClient {
   return createORPCClient<TenantClient>(new RPCLink({ url: "/tenant/rpc" }));
 }
@@ -56,4 +59,16 @@ export async function saveOnboarding(input: SaveOnboardingInput): Promise<Onboar
 
 export async function logoutSession(): Promise<void> {
   await client().session.logout();
+}
+
+export async function changePassword(input: ChangePasswordInput): Promise<{ changed: boolean }> {
+  return await client().account.changePassword(input);
+}
+
+export async function revokeSession(sessionId: string): Promise<number> {
+  return (await client().account.revokeSession({ sessionId })).revoked;
+}
+
+export async function revokeOtherSessions(): Promise<number> {
+  return (await client().account.revokeOtherSessions()).revoked;
 }

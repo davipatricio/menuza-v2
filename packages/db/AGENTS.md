@@ -25,6 +25,18 @@
 - AsyncLocalStorage tenant scoping (`withTenant`, `unscoped`, `getActiveTenantId`,
   `isUnscoped`) is owned here and exported from `@menuza/db/scope` (and re-exported on `@menuza/db`).
   Worker and server APIs import it directly. Do NOT create separate packages for tenant scoping.
+- The ORM predicate combinators `and` / `or` / `not` are re-exported from
+  `@prisma/db` (`@prisma/orm-postgres/orm-client`) so consumers can compose a
+  `where` callback without depending on the Prisma package directly — this
+  package owns that version pin.
+- `where` has two call shapes and they are **not** composable: `where({ id })`
+  takes a filter object, `where((field) => and(...))` takes a predicate. Passing
+  both is a type error. Set operators (`in`, `notIn`) and null checks
+  (`revokedAt.eq(null)`) only exist on the predicate form, so a query that needs
+  them must move its other conditions into the callback too.
+- Terminals: `updateAll` returns the updated **rows**; `updateAndCount` returns
+  the **number** of affected rows. Use `updateAndCount` when the caller reports a
+  count — `updateAll` would make you fetch every row just to measure it.
 - `DATABASE_URL` comes from the repo-root `.env` in both places that need it:
   `prisma.config.ts` self-loads it via `process.loadEnvFile`, and runtime callers
   must export it before importing the client (`bun --env-file-if-exists=...` wrappers).
@@ -52,7 +64,11 @@
   uses a `stableId(scope, key)` SHA-256-derived UUID for the models whose only
   unique is `id`. A second run is a no-op. It seeds commerce fixtures for
   `mawifoods` only; `nova-loja` stays empty so the panel's empty states are
-  reachable, and a store created through signup is empty too.
+  reachable, and a store created through signup is empty too. It also seeds a
+  three-person team for `mawifoods` (owner/admin/staff) so `settings/team` has
+  more than one row; the extra members carry a password hash because
+  `verifyPassword` fails closed on null and a team row that cannot log in is a
+  fake colleague.
 
 ## Distribution
 

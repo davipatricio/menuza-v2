@@ -6,22 +6,30 @@
 - All inputs/outputs validated with Valibot (Standard Schema).
 - Tenant management contract exposes the health probe, the push routes
   (`/push/public-key`, `/push/preferences`, `/push/subscriptions`), and the staff
-  session, panel and profile routes (`/session/*`, `/panel/*`, `/profile/*`). No
-  anonymous management operations: everything beyond the public probe and the VAPID
-  public key requires a tenant + member session.
+  session, account, panel and profile routes (`/session/*`, `/account/*`,
+  `/panel/*`, `/profile/*`). No anonymous management operations: everything beyond
+  the public probe and the VAPID public key requires a tenant + member session.
 - The dashboard (staff) surface is `session.login` / `session.logout` /
-  `session.current` / `session.register`, the `panel` reads and writes, and
-  `profile.saveOnboarding`. The dashboard never sends a tenant header: every
-  `panel.*` procedure takes `storeSlug` in its input, and the server resolves
-  slug → tenant, verifies the caller's membership and returns `NOT_FOUND` to a
-  non-member without leaking existence (MEN-225). The reads are
+  `session.current` / `session.register`, the `account` procedures, the `panel`
+  reads and writes, and `profile.saveOnboarding`. The dashboard never sends a
+  tenant header: every `panel.*` procedure takes `storeSlug` in its input, and the
+  server resolves slug → tenant, verifies the caller's membership and returns
+  `NOT_FOUND` to a non-member without leaking existence (MEN-225). The
+  `account.*` procedures are the exception and are **member-level**: no
+  `storeSlug`, because a management account spans stores. The reads are
   `panel.listOrders` / `panel.getOrder`, `panel.listCustomers` /
   `panel.getCustomer`, `panel.listProducts`, `panel.listCategories`,
-  `panel.listCoupons` and `panel.listAuditLogs`; the writes are
-  `panel.getStore` and `panel.createStore`. `session.login` opens a
+  `panel.listCoupons`, `panel.listAuditLogs` and `panel.listTeamMembers`; the
+  writes are `panel.getStore` and `panel.createStore`. `session.login` opens a
   `menuza_tenant_sid` session, `session.register` creates the `Member` and
   opens the same session, and `session.logout` revokes it and clears the
   cookie.
+- `account.*` (MEN-225) is the account page's whole backend:
+  `account.listSessions`, `account.changePassword`, `account.revokeSession` and
+  `account.revokeOtherSessions`. The session rows are keyed by the SHA-256
+  **digest** of the bearer token, so a `sessionId` on the wire is safe to display
+  and to send back — it is never a usable credential. `changePassword` revokes
+  every session but the caller's.
 - The tenant contract's `internal.resolveHost` procedure is service-to-service only:
   it backs the web proxy's storefront host → tenant lookup and is gated by the
   `INTERNAL_API_SECRET` shared token (`@menuza/orpc-server/internal`), never a browser
@@ -40,12 +48,16 @@ on one source of truth; it is metadata only, never a shape change to the
   `POST`/`DELETE /push/subscriptions` (subscriptions are a collection, and the
   push endpoint URL travels in the body, never as a path segment).
 - Session: `POST /session/login`, `POST /session/logout`, `GET /session/current`,
-  `POST /session/register`. Panel: `GET /panel/stores/{storeSlug}` (the store slug is
+  `POST /session/register`. Account: `GET /account/sessions`, `PUT
+/account/password`, `DELETE /account/sessions/{sessionId}` and `POST
+/account/sessions/revoke-others` (the digest, not a token, is the path
+  segment). Panel: `GET /panel/stores/{storeSlug}` (the store slug is
   a path segment), `POST /panel/stores`, plus the store-scoped reads under the store
   slug: `GET /panel/stores/{storeSlug}/orders` and
   `GET /panel/stores/{storeSlug}/orders/{orderCode}` (the order is addressed by its
   human code, not its id), `/customers` and `/customers/{customerId}`, `/products`,
-  `/categories`, `/coupons` and `/audit-logs`. Profile: `POST /profile/onboarding`.
+  `/categories`, `/coupons`, `/audit-logs` and `/team`. Profile: `POST
+/profile/onboarding`.
 - `path` is absolute under each service's OpenAPI prefix (`/openapi`), so it does
   not depend on the router key structure; `operationId` is explicit for stable
   generated documents.

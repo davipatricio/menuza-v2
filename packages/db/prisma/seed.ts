@@ -591,6 +591,73 @@ if (mawifoodsId) {
 
 console.log(`[db:seed] nova-loja: empty on purpose (panel empty states)`);
 
+// --- Team fixtures (MEN-225) -------------------------------------------------
+//
+// `settings/team` reads memberships, so the panel needs more than one row to be
+// worth looking at: these give mawifoods a realistic three-person team with two
+// distinct roles, and leave nova-loja with its single admin so the empty-ish
+// state is still reachable.
+//
+// The extra members carry a password hash so they can actually log in during
+// local development; without one, `verifyPassword` fails closed and the account
+// would be unusable. The credential is the same local-only fixture as Marina's.
+//
+// ponytail: these are demo identities for the local dashboard. They carry no
+// production meaning and the emails use the reserved .local TLD.
+
+const TEAM_FIXTURES = [
+  { email: "rafael@menuza.local", name: "Rafael Nunes", role: "admin" as const },
+  { email: "bianca@menuza.local", name: "Bianca Alves", role: "staff" as const },
+] as const;
+
+const mawifoodsTenantId = demoTenantIds.get("mawifoods");
+
+if (mawifoodsTenantId) {
+  for (const fixture of TEAM_FIXTURES) {
+    const existing = await db.orm.public.Member.where({ email: fixture.email }).first();
+
+    const member = await db.orm.public.Member.upsert({
+      update: {},
+      create: {
+        id: randomUUID(),
+        email: fixture.email,
+        name: fixture.name,
+        kind: "human",
+        passwordHash: existing
+          ? null
+          : await Bun.password.hash(DEMO_PASSWORD, {
+              algorithm: "argon2id",
+              memoryCost: 65536,
+              timeCost: 3,
+            }),
+        updatedAt: now(),
+      },
+      conflictOn: { email: fixture.email },
+    });
+
+    const membershipBefore = await db.orm.public.TenantMembership.where({
+      memberId: member.id,
+      tenantId: mawifoodsTenantId,
+    }).first();
+
+    if (membershipBefore) {
+      console.log(`[db:seed] team ${fixture.email} → mawifoods (${membershipBefore.role}, kept)`);
+      continue;
+    }
+
+    await db.orm.public.TenantMembership.create({
+      id: randomUUID(),
+      memberId: member.id,
+      tenantId: mawifoodsTenantId,
+      role: fixture.role,
+    });
+
+    console.log(`[db:seed] team ${fixture.email} → mawifoods (${fixture.role}, created)`);
+  }
+
+  console.log(`[db:seed] mawifoods team: ${TEAM_FIXTURES.length} extra members`);
+}
+
 console.log(`[db:seed] done: ${created} created, ${reused} reused, ${conflicts} conflicts`);
 
 await db.close();

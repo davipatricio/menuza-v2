@@ -140,6 +140,44 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Commerce seed fixtures", () => {
     }
   });
 
+  test("mawifoods has the three-person team settings/team renders", async () => {
+    // SAFETY: mawifoods exists per the first test.
+    const memberships = await unscoped(() =>
+      db.orm.public.TenantMembership.where({ tenantId: mawifoods! }).all(),
+    );
+
+    const roles = memberships.map((row) => row.role).sort();
+
+    // owner (Marina) + admin (Rafael) + staff (Bianca). Two distinct roles
+    // beyond owner is what makes the read-only team page worth looking at and
+    // what gives the `team:read` gate something to refuse.
+    expect(roles).toEqual(["admin", "owner", "staff"]);
+
+    const memberIds = new Set(memberships.map((row) => row.memberId));
+
+    expect(memberIds.size).toBe(memberships.length);
+  });
+
+  test("the seeded team members can actually verify a password", async () => {
+    // A team row whose member has no password hash is a member who can never
+    // log in, which the team page would happily display as a real colleague.
+    // SAFETY: mawifoods exists per the first test.
+    const memberships = await unscoped(() =>
+      db.orm.public.TenantMembership.where({ tenantId: mawifoods! }).all(),
+    );
+
+    const members = await unscoped(() =>
+      Promise.all(
+        memberships.map((row) => db.orm.public.Member.where({ id: row.memberId }).first()),
+      ),
+    );
+
+    for (const member of members) {
+      expect(member).not.toBeNull();
+      expect(member?.passwordHash, `${member?.email} should be able to log in`).not.toBeNull();
+    }
+  });
+
   test("re-running the seed would not duplicate rows", async () => {
     // The seed upserts on every declared unique, so a second run is a no-op.
     // Assert the shape that makes that true rather than re-running it here:
