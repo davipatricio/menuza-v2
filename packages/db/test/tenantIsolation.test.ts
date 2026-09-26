@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { randomUUID } from "node:crypto";
-import { db, TenantIsolationError, unscoped, withTenant } from "../src/index.ts";
+import {
+  db,
+  TENANT_SCOPED_MODELS,
+  TenantIsolationError,
+  unscoped,
+  withTenant,
+} from "../src/index.ts";
 
 describe.skipIf(!process.env.TEST_INTEGRATION)("Tenant Isolation (fail-closed)", () => {
   const tenant1Id = randomUUID();
@@ -166,5 +172,44 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Tenant Isolation (fail-closed)",
 
     expect(tenant).not.toBeNull();
     expect(tenant?.id).toBe(tenant1Id);
+  });
+
+  // MEN-225: the commerce base models are tenant-scoped purely by having a
+  // `tenantId` field, which `TENANT_SCOPED_MODELS` derives from the contract.
+  // A new model that forgets it would be silently global, so the derivation
+  // itself is pinned here.
+  test("every commerce base model is derived as tenant-scoped", () => {
+    for (const model of [
+      "Category",
+      "Product",
+      "Variation",
+      "Kit",
+      "KitItem",
+      "Customer",
+      "Order",
+      "Coupon",
+      "AuditLog",
+      "MealSubscription",
+    ]) {
+      expect(TENANT_SCOPED_MODELS.has(model)).toBe(true);
+    }
+  });
+
+  test("querying a commerce model without where.tenantId throws", async () => {
+    try {
+      await db.orm.public.Product.where({ name: "qualquer" }).first();
+      expect.unreachable("expected TenantIsolationError");
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(TenantIsolationError);
+      expect(err.message).toContain("without where.tenantId equality filter");
+    }
+  });
+
+  test("querying a commerce model with where.tenantId succeeds", async () => {
+    const products = await withTenant(tenant1Id, () =>
+      db.orm.public.Product.where({ tenantId: tenant1Id }).all(),
+    );
+
+    expect(products).toEqual([]);
   });
 });

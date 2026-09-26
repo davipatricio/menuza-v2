@@ -38,8 +38,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
 import { initials } from "@/lib/format.ts";
-import { MOCK_CURRENT_USER } from "@/lib/mock-dashboard-data.ts";
-import { StoreSwitcher } from "./store-switcher.tsx";
+import { StoreSwitcher, type SwitcherStore } from "./store-switcher.tsx";
 import { UserMenu } from "./user-menu.tsx";
 
 type NavIcon = typeof LayoutDashboard;
@@ -182,11 +181,17 @@ export function AppSidebar({
   basePath,
   storeName,
   currentSlug,
+  stores,
+  currentRole,
+  userName,
   role,
 }: {
   basePath: string;
   storeName: string;
   currentSlug: string;
+  stores: SwitcherStore[];
+  currentRole: string;
+  userName: string;
   role: string;
 }) {
   const { setOpen } = useSidebar();
@@ -214,7 +219,12 @@ export function AppSidebar({
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="group-data-[collapsible=icon]:hidden">
-          <StoreSwitcher currentSlug={currentSlug} />
+          <StoreSwitcher
+            stores={stores}
+            currentSlug={currentSlug}
+            currentName={storeName}
+            currentRole={currentRole}
+          />
         </div>
         <Button
           variant="ghost"
@@ -257,7 +267,7 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
-        <UserMenu userName={MOCK_CURRENT_USER.name} role={role} />
+        <UserMenu userName={userName} role={role} />
         <div className="group-data-[collapsible=icon]:hidden">
           <ThemeToggle />
         </div>

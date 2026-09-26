@@ -35,6 +35,24 @@
   Node <26.8 would need `temporal-polyfill`.
 - No `@default(cuid())` or `@updatedAt` in v8 contracts: seed/scripts set `id`
   (randomUUID) and `updatedAt` explicitly.
+- Commerce base models (MEN-225): `Category`, `Product`, `Variation`, `Kit`,
+  `KitItem`, `Customer`, `Order`, `Coupon`, `AuditLog` and `MealSubscription`.
+  All carry a `tenantId` and a `@@index([tenantId])`, so `TENANT_SCOPED_MODELS`
+  — derived from the contract, not hand-listed — picks them up automatically.
+  Composed uniques carry `tenantId` too. Money is `Int` cents (ADR-0006);
+  `Coupon.value` is cents for a fixed discount and a whole percent for a
+  percentage one, disambiguated by `discountType`. Enum-ish columns are
+  `@@type("pg/text@1")` with generated CHECKs over stable lowercase ASCII
+  slugs; the pt-BR labels live only in the UI. `@@check` expressions must
+  quote camelCase identifiers (`"priceCents" >= 0`) — Postgres folds unquoted
+  identifiers to lowercase and the migration fails. `AuditLog.action` is free
+  text until MEN-74 closes the event catalog. `MealSubscription` is a
+  structural stub: cadence and status only, no charging (MEN-150).
+- `prisma/seed.ts` is idempotent: it upserts on each model's declared unique, or
+  uses a `stableId(scope, key)` SHA-256-derived UUID for the models whose only
+  unique is `id`. A second run is a no-op. It seeds commerce fixtures for
+  `mawifoods` only; `nova-loja` stays empty so the panel's empty states are
+  reachable, and a store created through signup is empty too.
 
 ## Distribution
 

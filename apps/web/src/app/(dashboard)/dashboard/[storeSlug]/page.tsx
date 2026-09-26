@@ -1,8 +1,6 @@
-"use client";
-
-import { useMemo, ViewTransition } from "react";
+import { ViewTransition } from "react";
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   ArrowUpRight,
   Banknote,
@@ -14,10 +12,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { DataTable } from "@/components/ui/data-table.tsx";
-import { getStore, getStoreOrders } from "@/lib/mock-dashboard-data.ts";
+import { panelClient } from "@/lib/server-tenant.ts";
 import { EmptyState } from "./_components/empty-state.tsx";
-import { orderColumns } from "./orders/columns.tsx";
+import { OverviewTable } from "./_components/overview-table.tsx";
+import { OverviewNav } from "./_components/overview-nav.tsx";
+
+// The overview reads the store's orders on every request, like the shell.
+export const instant = false;
 
 const KPI_CARDS = [
   { title: "Vendas hoje", hint: "Coleta de vendas ainda não definida.", icon: Banknote },
@@ -32,16 +33,18 @@ const QUICK_ACTIONS = [
   { href: "settings/store", label: "Configurações da loja", icon: Settings },
 ];
 
-export default function StoreOverviewPage() {
-  const params = useParams<{ storeSlug: string }>();
-  const storeSlug = params.storeSlug ?? "";
-  const store = getStore(storeSlug);
+export default async function StoreOverviewPage({
+  params,
+}: {
+  params: Promise<{ storeSlug: string }>;
+}) {
+  const { storeSlug } = await params;
+  const client = await panelClient();
+
+  if (!client) notFound();
+
+  const { orders } = await client.panel.listOrders({ storeSlug });
   const basePath = `/dashboard/${storeSlug}`;
-  const columns = useMemo(() => orderColumns(basePath), [basePath]);
-
-  if (!store) notFound();
-
-  const orders = getStoreOrders(store.slug);
   const recentOrders = orders.slice(0, 5);
 
   return (
@@ -51,9 +54,7 @@ export default function StoreOverviewPage() {
           <h2 id="overview-heading" className="text-xl font-semibold tracking-tight">
             Visão geral
           </h2>
-          <p className="text-sm text-pretty text-muted-foreground">
-            Movimento de {store.displayName}. Dados demonstrativos.
-          </p>
+          <p className="text-sm text-pretty text-muted-foreground">Movimento da loja.</p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -95,34 +96,13 @@ export default function StoreOverviewPage() {
               ) : null}
             </div>
             {recentOrders.length ? (
-              <DataTable
-                columns={columns}
-                data={recentOrders}
-                tableLabel="Pedidos recentes"
-                rowHref={(order) => `${basePath}/orders/${order.code}`}
-                hideToolbar
-              />
+              <OverviewTable orders={recentOrders} basePath={basePath} storeSlug={storeSlug} />
             ) : (
               <EmptyState>Nenhum pedido ainda. Os pedidos da loja aparecem aqui.</EmptyState>
             )}
           </div>
 
-          <nav aria-label="Ações rápidas" className="flex flex-col gap-3">
-            <p className="text-sm font-medium">Ações rápidas</p>
-            <ul className="flex flex-col gap-2">
-              {QUICK_ACTIONS.map((action) => (
-                <li key={action.href}>
-                  <Link
-                    href={`${basePath}/${action.href}`}
-                    className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <action.icon aria-hidden="true" className="size-4 shrink-0" />
-                    {action.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <OverviewNav basePath={basePath} actions={QUICK_ACTIONS} />
         </div>
       </section>
     </ViewTransition>

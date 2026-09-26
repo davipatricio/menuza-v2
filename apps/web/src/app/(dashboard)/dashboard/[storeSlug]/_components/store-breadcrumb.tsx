@@ -11,7 +11,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb.tsx";
-import { MOCK_STORES, getStoreCustomerById } from "@/lib/mock-dashboard-data.ts";
+import { useCrumbLabels } from "./crumb-labels.tsx";
 
 const SEGMENT_LABELS = {
   orders: "Pedidos",
@@ -42,13 +42,12 @@ interface Crumb {
  */
 export function StoreBreadcrumb({ basePath }: { basePath: string }) {
   const pathname = usePathname();
+  const entityLabels = useCrumbLabels();
   const relative = pathname.startsWith(basePath) ? pathname.slice(basePath.length) : "";
   const segments = relative.split("/").filter(Boolean);
-  const store = MOCK_STORES.find((entry) => basePath.endsWith(`/${entry.slug}`));
 
   const crumbs: Crumb[] = [];
   let href = basePath;
-  let parent = "";
 
   for (const segment of segments) {
     href += `/${segment}`;
@@ -58,16 +57,12 @@ export function StoreBreadcrumb({ basePath }: { basePath: string }) {
       ? SEGMENT_LABELS[segment as keyof typeof SEGMENT_LABELS]
       : undefined;
 
-    // Detail segments (`customers/3`, `orders/ORD-101`) read as the entity,
-    // not as a bare id, so the trail stays usable.
-    const label =
-      known ??
-      (parent === "customers" && store
-        ? (getStoreCustomerById(store.slug, segment)?.name ?? segment)
-        : segment);
+    // Detail segments (`customers/<id>`, `orders/ORD-101`) read as the entity,
+    // not as a bare id, so the trail stays usable. The detail page publishes
+    // the name it already loaded; anything unknown falls back to the segment.
+    const label = known ?? entityLabels[segment] ?? segment;
 
     crumbs.push({ label, href });
-    parent = segment;
   }
 
   const current = crumbs.at(-1)?.label ?? "Dashboard";

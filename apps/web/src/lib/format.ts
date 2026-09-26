@@ -1,8 +1,11 @@
 /**
  * Formatação de exibição do painel. Única fonte para valores mostrados ao usuário.
+ *
+ * Valores monetários chegam como Int em centavos (ADR-0006) e são convertidos
+ * aqui, na borda — o contrato e o banco nunca carregam float.
  */
-export function formatBrl(value: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+export function formatBrl(cents: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
 
 /** Primeiras letras de cada palavra, no máximo duas, em maiúsculas. */

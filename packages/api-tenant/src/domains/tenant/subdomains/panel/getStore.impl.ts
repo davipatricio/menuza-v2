@@ -2,7 +2,8 @@ import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { db, unscoped } from "@menuza/db";
-import { canonicalRole, notFound, requireSession, toSessionMember } from "../session/support.ts";
+import { notFound, toSessionMember } from "../session/support.ts";
+import { resolveStore } from "./support.ts";
 
 const os = implement(
   tenantContractObject.panel.getStore,
@@ -14,32 +15,19 @@ const os = implement(
  * so the endpoint never reveals whether a store exists.
  */
 export const getStoreImpl = os.handler(async ({ input, context }) => {
-  const session = await requireSession(context.reqHeaders);
+  const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
-  const tenant = await unscoped(() =>
-    db.orm.public.Tenant.where({ slug: input.storeSlug }).first(),
+  const member = await unscoped(() =>
+    db.orm.public.Member.where({ id: store.session.memberId }).first(),
   );
-
-  if (!tenant) throw notFound();
-
-  const membership = await unscoped(() =>
-    db.orm.public.TenantMembership.where({
-      memberId: session.memberId,
-      tenantId: tenant.id,
-    }).first(),
-  );
-
-  if (!membership) throw notFound();
-
-  const member = await unscoped(() => db.orm.public.Member.where({ id: session.memberId }).first());
 
   if (!member) throw notFound();
 
   return {
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    tenantName: tenant.displayName,
-    role: canonicalRole(membership.role),
+    tenantId: store.tenantId,
+    tenantSlug: store.tenantSlug,
+    tenantName: store.tenantName,
+    role: store.role,
     member: toSessionMember(member),
   };
 });

@@ -1,7 +1,6 @@
-import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { getStore } from "@/lib/mock-dashboard-data.ts";
+﻿import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { SettingsSection } from "../_components/settings-section.tsx";
+import { requireStore } from "../_components/require-store.ts";
 
 export default async function TeamSettingsPage({
   params,
@@ -9,9 +8,7 @@ export default async function TeamSettingsPage({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const store = getStore(storeSlug);
-
-  if (!store) notFound();
+  const store = await requireStore(storeSlug);
 
   return (
     <SettingsSection

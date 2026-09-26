@@ -1,8 +1,7 @@
-import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge.tsx";
+﻿import { Badge } from "@/components/ui/badge.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import { getStore } from "@/lib/mock-dashboard-data.ts";
 import { SettingsSection } from "../_components/settings-section.tsx";
+import { requireStore } from "../_components/require-store.ts";
 
 const METHODS = [
   { title: "Pix", hint: "Conta e chave ainda não configuradas." },
@@ -16,15 +15,13 @@ export default async function PaymentsSettingsPage({
   params: Promise<{ storeSlug: string }>;
 }) {
   const { storeSlug } = await params;
-  const store = getStore(storeSlug);
-
-  if (!store) notFound();
+  const store = await requireStore(storeSlug);
 
   return (
     <SettingsSection
       headingId="settings-payments-heading"
       title="Pagamentos"
-      description={`Formas de pagamento de ${store.displayName} (dados demonstrativos).`}
+      description={`Formas de pagamento de ${store.displayName}.`}
     >
       {METHODS.map((method) => (
         <Card key={method.title}>

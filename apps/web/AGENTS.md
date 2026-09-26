@@ -33,6 +33,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
   `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot
   schemas; the birthdate field is a Base UI `popover` + `calendar` (`react-day-picker`).
+- Dashboard data: every page under `/dashboard/[storeSlug]` is a Server Component
+  that reads through `panelClient()` in `src/lib/server-tenant.ts`, which forwards
+  the request's `menuza_tenant_sid` cookie to the tenant API. Tables and tab
+  switches are client islands (`*-table.tsx` / `*-tabs.tsx`) that receive rows as
+  props — no data fetch in the browser. The shell resolves `panel.getStore` on
+  every request (`export const instant = false`, no `generateStaticParams`), so an
+  unknown slug and a non-member are both 404 and a freshly created store opens
+  empty rather than 404ing. `src/lib/panel-labels.ts` is the only place the
+  contract's ASCII enums become pt-BR, and `formatBrl` takes cents (ADR-0006).
 - Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
 - PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest at `/public/manifest.webmanifest`.
   - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.

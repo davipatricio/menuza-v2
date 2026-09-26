@@ -32,6 +32,11 @@ _Avoid_: Vitrine, Loja virtual
 
 ### Catalog
 
+**Category**:
+A store-defined group the catalog is browsed by, such as "Marmitas" or
+"Bebidas". A product may sit in at most one category.
+_Avoid_: Seção, Aba, Grupo
+
 **Product**:
 An item a store sells, with name, description, photo, and price.
 _Avoid_: Item, Prato, Marmita (as generic term)

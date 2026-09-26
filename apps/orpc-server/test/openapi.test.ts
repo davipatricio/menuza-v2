@@ -52,6 +52,46 @@ const TENANT_ROUTES = [
   },
   { procedure: tenantContractObject.panel.createStore, method: "post", path: "/panel/stores" },
   {
+    procedure: tenantContractObject.panel.listOrders,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/orders",
+  },
+  {
+    procedure: tenantContractObject.panel.getOrder,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/orders/{orderCode}",
+  },
+  {
+    procedure: tenantContractObject.panel.listCustomers,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/customers",
+  },
+  {
+    procedure: tenantContractObject.panel.getCustomer,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/customers/{customerId}",
+  },
+  {
+    procedure: tenantContractObject.panel.listProducts,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/products",
+  },
+  {
+    procedure: tenantContractObject.panel.listCategories,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/categories",
+  },
+  {
+    procedure: tenantContractObject.panel.listCoupons,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/coupons",
+  },
+  {
+    procedure: tenantContractObject.panel.listAuditLogs,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/audit-logs",
+  },
+  {
     procedure: tenantContractObject.profile.saveOnboarding,
     method: "post",
     path: "/profile/onboarding",

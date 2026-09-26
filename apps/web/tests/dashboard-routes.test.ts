@@ -1,28 +1,17 @@
 /**
  * Dashboard structure tests. Run under `bun test`.
  *
- * Pins the MEN-224 mockup structure: the store picker fixtures, per-store
- * data scoping (mawifoods has data, nova-loja is empty), order status label
- * coverage, catalog consistency, and the dashboard route tree.
+ * Pins what the panel renders after MEN-225: the label maps that turn the
+ * contract's ASCII enums into pt-BR, the cents-based money formatter, and the
+ * route tree every store slug must serve.
+ *
+ * The panel's data no longer comes from fixtures — it comes from the panel
+ * contract, whose membership guard is covered in `packages/api-tenant/test`.
  */
 import { describe, expect, test } from "bun:test";
-import {
-  MOCK_STORES,
-  ORDER_STATUS_LABELS,
-  getStore,
-  getStoreAuditLogs,
-  getStoreCategories,
-  getStoreCoupons,
-  getStoreCustomerById,
-  getStoreCustomerOrders,
-  getStoreCustomerStats,
-  getStoreCustomers,
-  getStoreOrderByCode,
-  getStoreOrders,
-  getStoreProducts,
-} from "../src/lib/mock-dashboard-data.ts";
-import { MOCK_CUSTOMERS, MOCK_ORDERS } from "../src/lib/mock-store-data.ts";
-import { initials } from "../src/lib/format.ts";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_VARIANTS } from "../src/lib/panel-labels.ts";
+import { formatBrl, initials } from "../src/lib/format.ts";
+import { OrderStatusSchema } from "@menuza/shared/tenant";
 
 const DASHBOARD_LEAVES = [
   "",
@@ -38,17 +27,35 @@ const DASHBOARD_LEAVES = [
   "/settings/team",
 ] as const;
 
-describe("dashboard structure", () => {
-  test("picker lists exactly the two fixture stores", () => {
-    expect(MOCK_STORES.map((s) => s.slug)).toEqual(["mawifoods", "nova-loja"]);
+const ALL_STATUSES = [
+  "pending",
+  "confirmed",
+  "ready",
+  "delivered",
+  "canceled",
+  "awaiting_payment",
+  "paid",
+  "ready_for_pickup",
+  "completed",
+  "refunded",
+  "expired",
+] as const;
+
+describe("panel labels", () => {
+  test("every contract order status has a pt-BR label and a badge variant", () => {
+    for (const status of ALL_STATUSES) {
+      expect(ORDER_STATUS_LABELS[status]).toBeTruthy();
+      expect(ORDER_STATUS_VARIANTS[status]).toBeTruthy();
+    }
   });
 
-  test("every store declares a role for the fake session", () => {
-    for (const store of MOCK_STORES) {
-      expect(store.role.length).toBeGreaterThan(0);
-    }
+  test("the label map covers exactly the contract's status enum", () => {
+    // SAFETY: the array above is the contract's closed set, read from the
+    // schema's options rather than hardcoded twice.
+    const fromSchema = OrderStatusSchema.options;
 
-    expect(getStore("mawifoods")?.role).toBe("Proprietária");
+    expect(fromSchema).toEqual([...ALL_STATUSES]);
+    expect(Object.keys(ORDER_STATUS_LABELS).sort()).toEqual([...fromSchema].sort());
   });
 
   test("initials takes at most two letters, uppercased", () => {
@@ -57,104 +64,27 @@ describe("dashboard structure", () => {
     expect(initials("Marina Lopes")).toBe("ML");
     expect(initials("  ")).toBe("");
   });
+});
 
-  test("getStore resolves known slugs and misses unknown ones", () => {
-    expect(getStore("mawifoods")?.displayName).toBe("Mawifoods");
-    expect(getStore("nova-loja")?.displayName).toBe("Nova Loja");
-    expect(getStore("desconhecida")).toBeUndefined();
+describe("money formatting", () => {
+  test("formatBrl takes cents, not reais", () => {
+    expect(formatBrl(0)).toContain("0,00");
+    expect(formatBrl(14550)).toContain("145,50");
+    expect(formatBrl(2000)).toContain("20,00");
+    // 9.5 reais is 950 cents; passing 9.5 would render "0,01".
+    expect(formatBrl(950)).toContain("9,50");
   });
+});
 
-  test("mawifoods has data, nova-loja is empty", () => {
-    expect(getStoreOrders("mawifoods").length).toBeGreaterThan(0);
-    expect(getStoreCustomers("mawifoods").length).toBeGreaterThan(0);
-    expect(getStoreCoupons("mawifoods").length).toBeGreaterThan(0);
-    expect(getStoreAuditLogs("mawifoods").length).toBeGreaterThan(0);
-    expect(getStoreProducts("mawifoods").length).toBeGreaterThan(0);
-    expect(getStoreCategories("mawifoods").length).toBeGreaterThan(0);
-
-    expect(getStoreOrders("nova-loja")).toEqual([]);
-    expect(getStoreCustomers("nova-loja")).toEqual([]);
-    expect(getStoreCoupons("nova-loja")).toEqual([]);
-    expect(getStoreAuditLogs("nova-loja")).toEqual([]);
-    expect(getStoreProducts("nova-loja")).toEqual([]);
-    expect(getStoreCategories("nova-loja")).toEqual([]);
-  });
-
-  test("order lookup by code is scoped to the store", () => {
-    expect(getStoreOrderByCode("mawifoods", "ORD-101")?.customerName).toBe("Maria Silva");
-    expect(getStoreOrderByCode("mawifoods", "ORD-999")).toBeUndefined();
-    expect(getStoreOrderByCode("nova-loja", "ORD-101")).toBeUndefined();
-  });
-
-  test("every fixture order status has a pt-BR label", () => {
-    for (const order of MOCK_ORDERS) {
-      expect(ORDER_STATUS_LABELS[order.status]).toBeTruthy();
-    }
-  });
-
-  test("every product category exists and counts match", () => {
-    const categories = getStoreCategories("mawifoods");
-    const products = getStoreProducts("mawifoods");
-
-    for (const product of products) {
-      expect(categories.some((c) => c.name === product.category)).toBe(true);
-    }
-
-    for (const category of categories) {
-      expect(products.filter((p) => p.category === category.name).length).toBe(category.itemsCount);
-    }
-  });
-
-  test("getStoreCustomerById resolves within the store", () => {
-    // SAFETY: ids come from the same fixture array, so the first entry exists.
-    const [first] = MOCK_CUSTOMERS;
-
-    expect(getStoreCustomerById("mawifoods", first.id)?.name).toBe(first.name);
-    expect(getStoreCustomerById("mawifoods", "999")).toBeUndefined();
-    expect(getStoreCustomerById("nova-loja", first.id)).toBeUndefined();
-  });
-
-  test("customer stats derive from that customer's orders", () => {
-    for (const customer of getStoreCustomers("mawifoods")) {
-      const orders = getStoreCustomerOrders("mawifoods", customer.id);
-      const stats = getStoreCustomerStats("mawifoods", customer.id);
-
-      expect(stats.ordersCount).toBe(orders.length);
-      expect(stats.totalSpent).toBeCloseTo(
-        orders.reduce((sum, order) => sum + order.total, 0),
-        5,
-      );
-    }
-  });
-
-  test("every fixture order points at a real customer of the same store", () => {
-    const ids = new Set(getStoreCustomers("mawifoods").map((c) => c.id));
-
-    for (const order of getStoreOrders("mawifoods")) {
-      expect(ids.has(order.customerId)).toBe(true);
-      expect(getStoreOrders("mawifoods").some((o) => o.customerId === order.customerId)).toBe(true);
-    }
-  });
-
-  test("every fixture order has a detail route for its store", () => {
-    for (const order of getStoreOrders("mawifoods")) {
-      expect(getStoreOrderByCode("mawifoods", order.code)).toBeDefined();
-    }
-
-    for (const customer of getStoreCustomers("mawifoods")) {
-      expect(getStoreCustomerById("mawifoods", customer.id)).toBeDefined();
-    }
-  });
-
-  test("dashboard route tree covers every leaf for every store", () => {
-    const paths = MOCK_STORES.flatMap((store) =>
-      DASHBOARD_LEAVES.map((leaf) => `/dashboard/${store.slug}${leaf}`),
-    );
+describe("dashboard route tree", () => {
+  test("every leaf resolves for an arbitrary store slug", () => {
+    // Slugs are no longer a fixed fixture list: any tenant the member belongs to
+    // must serve the whole tree, so the check is structural, not per-slug.
+    const paths = DASHBOARD_LEAVES.map((leaf) => `/dashboard/mawifoods${leaf}`);
 
     expect(paths).toContain("/dashboard/mawifoods");
     expect(paths).toContain("/dashboard/mawifoods/orders");
     expect(paths).toContain("/dashboard/mawifoods/settings/team");
-    expect(paths).toContain("/dashboard/nova-loja/catalog");
-    expect(paths.length).toBe(MOCK_STORES.length * DASHBOARD_LEAVES.length);
+    expect(paths).toHaveLength(DASHBOARD_LEAVES.length);
   });
 });

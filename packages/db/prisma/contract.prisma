@@ -11,6 +11,15 @@ model Tenant {
   memberships       TenantMembership[]
   pushSubscriptions PushSubscription[]
   pushPreferences   PushPreference[]
+  categories        Category[]
+  products          Product[]
+  variations        Variation[]
+  kits              Kit[]
+  customers         Customer[]
+  orders            Order[]
+  coupons           Coupon[]
+  auditLogs         AuditLog[]
+  mealSubscriptions MealSubscription[]
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -148,4 +157,274 @@ model MemberOnboarding {
   @@unique([memberId], map: "MemberOnboarding_memberId_key")
 
   @@map("MemberOnboarding")
+}
+
+// --- Commerce base models (MEN-225) -----------------------------------------
+//
+// The floor the panel pages stand on: catalog, customers, orders, coupons and
+// the audit trail. Every model here is tenant-scoped, so `TENANT_SCOPED_MODELS`
+// (derived from this contract) picks each one up automatically and every query
+// must carry an explicit `where.tenantId`.
+//
+// Money is `Int` cents (ADR-0006): BRL has no sub-cent unit, so a Decimal column
+// would buy nothing and would drag Decimal/Temporal into every read. Enums are
+// stored as `pg/text@1` with a planner-generated CHECK; the values are stable
+// lowercase ASCII and the pt-BR labels live only in the UI.
+
+enum stock_mode {
+  @@type("pg/text@1")
+
+  controlled
+  unlimited
+}
+
+enum kit_mode {
+  @@type("pg/text@1")
+
+  preselected
+  build_your_own
+}
+
+enum order_status {
+  @@type("pg/text@1")
+
+  pending
+  confirmed
+  ready
+  delivered
+  canceled
+  awaiting_payment
+  paid
+  ready_for_pickup
+  completed
+  refunded
+  expired
+}
+
+enum discount_type {
+  @@type("pg/text@1")
+
+  percentage
+  fixed
+}
+
+enum coupon_status {
+  @@type("pg/text@1")
+
+  active
+  expired
+  disabled
+}
+
+enum meal_cadence {
+  @@type("pg/text@1")
+
+  weekly
+  monthly
+}
+
+enum meal_subscription_status {
+  @@type("pg/text@1")
+
+  active
+  paused
+  canceled
+}
+
+// Named group of a tenant's catalog. `sortOrder` drives the panel's listing.
+model Category {
+  id        String   @id(map: "Category_pkey")
+  tenantId  String
+  name      String
+  sortOrder Int      @default(0)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Category_tenantId_fkey")
+  products  Product[]
+
+  @@unique([tenantId, name], map: "Category_tenantId_name_key")
+  @@index([tenantId], map: "Category_tenantId_idx")
+
+  @@map("Category")
+}
+
+// A sellable item. It carries no price: the money lives on the Variation, so a
+// product with a single default variation and a product with a real variant
+// matrix share one table.
+model Product {
+  id          String      @id(map: "Product_pkey")
+  tenantId    String
+  name        String
+  description String?
+  categoryId  String?
+  available   Boolean     @default(true)
+  sortOrder   Int         @default(0)
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Product_tenantId_fkey")
+  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_categoryId_fkey")
+  variations  Variation[]
+
+  @@index([tenantId], map: "Product_tenantId_idx")
+  @@index([categoryId], map: "Product_categoryId_idx")
+
+  @@map("Product")
+}
+
+// A selectable variant with its own price and stock. Products without a real
+// variant matrix still get one row, named "default" (MEN-80/81).
+model Variation {
+  id         String   @id(map: "Variation_pkey")
+  tenantId   String
+  productId  String
+  name       String
+  priceCents Int
+  stockMode  stock_mode
+  // Null exactly when `stockMode` is `unlimited`; the check below says so.
+  stockQty   Int?
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Variation_tenantId_fkey")
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Variation_productId_fkey")
+  kitItems   KitItem[]
+
+  @@unique([productId, name], map: "Variation_productId_name_key")
+  @@index([tenantId], map: "Variation_tenantId_idx")
+
+  @@check(expression: "\"priceCents\" >= 0", name: "variation_price_non_negative")
+  @@check(
+    expression: "\"stockQty\" IS NULL OR \"stockQty\" >= 0",
+    name: "variation_stock_non_negative"
+  )
+
+  @@map("Variation")
+}
+
+// A sellable bundle of variations (MEN-82). The pricing formula is still open
+// (PRODUCT.md §7), so a kit has no price column of its own here.
+model Kit {
+  id        String   @id(map: "Kit_pkey")
+  tenantId  String
+  name      String
+  mode      kit_mode
+  available Boolean  @default(true)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Kit_tenantId_fkey")
+  items     KitItem[]
+
+  @@index([tenantId], map: "Kit_tenantId_idx")
+
+  @@map("Kit")
+}
+
+// Kit -> Variation, never to a Product: a kit debits the variation it names
+// (MEN-83), and the variation is where stock lives.
+model KitItem {
+  id          String    @id(map: "KitItem_pkey")
+  tenantId    String
+  kitId       String
+  variationId String
+  quantity    Int
+  kit         Kit       @relation(fields: [kitId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "KitItem_kitId_fkey")
+  variation   Variation @relation(fields: [variationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "KitItem_variationId_fkey")
+
+  @@unique([kitId, variationId], map: "KitItem_kitId_variationId_key")
+  @@index([tenantId], map: "KitItem_tenantId_idx")
+  @@index([variationId], map: "KitItem_variationId_idx")
+
+  @@check(expression: "\"quantity\" > 0", name: "kit_item_quantity_positive")
+
+  @@map("KitItem")
+}
+
+// A person buying from a store. Deliberately NOT a Member: buyers have no
+// panel access and their own auth arrives with MEN-76/MEN-214.
+model Customer {
+  id       String   @id(map: "Customer_pkey")
+  tenantId String
+  name     String
+  email    String
+  phone    String
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Customer_tenantId_fkey")
+  orders             Order[]
+  mealSubscriptions MealSubscription[]
+
+  @@unique([tenantId, email], map: "Customer_tenantId_email_key")
+  @@index([tenantId], map: "Customer_tenantId_idx")
+
+  @@map("Customer")
+}
+
+// A purchase belonging to a single tenant, never split across deliveries. The
+// single `status` mirrors the mockup's one-axis list; PRODUCT.md §15 calls for
+// three axes (financial / service / delivery) and MEN-93 splits this field.
+model Order {
+  id          String       @id(map: "Order_pkey")
+  tenantId    String
+  code        String
+  customerId  String
+  totalCents  Int
+  status      order_status
+  createdAt   Timestamp(3) @default(now())
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Order_tenantId_fkey")
+  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "Order_customerId_fkey")
+
+  @@unique([tenantId, code], map: "Order_tenantId_code_key")
+  @@index([tenantId], map: "Order_tenantId_idx")
+  @@index([customerId], map: "Order_customerId_idx")
+
+  @@check(expression: "\"totalCents\" >= 0", name: "order_total_non_negative")
+
+  @@map("Order")
+}
+
+// A store-configured discount. `value` is cents when `discountType` is `fixed`
+// and a whole percent when it is `percentage`; eligibility and stacking rules
+// are MEN-97, so there are none here.
+model Coupon {
+  id           String        @id(map: "Coupon_pkey")
+  tenantId     String
+  code         String
+  discountType discount_type
+  value        Int
+  usageCount   Int           @default(0)
+  status       coupon_status
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Coupon_tenantId_fkey")
+
+  @@unique([tenantId, code], map: "Coupon_tenantId_code_key")
+  @@index([tenantId], map: "Coupon_tenantId_idx")
+
+  @@map("Coupon")
+}
+
+// Append-only trail: who (actor) did what (action) to what (target), from
+// where (ip), when (createdAt). `action` is free text on purpose — MEN-74 owns
+// the closed event catalog.
+model AuditLog {
+  id        String     @id(map: "AuditLog_pkey")
+  tenantId  String
+  action    String
+  actor     String
+  target    String
+  ip        String
+  createdAt Timestamp(3) @default(now())
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "AuditLog_tenantId_fkey")
+
+  @@index([tenantId], map: "AuditLog_tenantId_idx")
+
+  @@map("AuditLog")
+}
+
+// Meal subscription (CONTEXT.md: recurring purchase of meals by a customer, not
+// the SaaS contract). A structural stub only: PRODUCT.md §19/§22 put recurring
+// meals after the MVP and MEN-150 still owns cadence charging, pausing, failure
+// handling and stock reservation. No items and no `nextChargeAt` here, so the
+// column set is a dead end until that ticket lands — it exists so the FK from a
+// customer to a recurring plan is not invented later.
+model MealSubscription {
+  id         String                   @id(map: "MealSubscription_pkey")
+  tenantId   String
+  customerId String
+  cadence    meal_cadence
+  status     meal_subscription_status
+  tenant     Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "MealSubscription_tenantId_fkey")
+  customer   Customer                 @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "MealSubscription_customerId_fkey")
+
+  @@index([tenantId], map: "MealSubscription_tenantId_idx")
+  @@index([customerId], map: "MealSubscription_customerId_idx")
+
+  @@map("MealSubscription")
 }
