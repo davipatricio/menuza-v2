@@ -180,6 +180,18 @@
       "rules": {
         "@typescript-eslint/no-explicit-any": "off"
       }
+    },
+    {
+      // Size and complexity budgets do not apply to tests. A long describe() is a
+      // sequential scenario; splitting it scatters one narrative across files.
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+      "rules": {
+        "sonarjs/max-lines-per-function": "off",
+        "sonarjs/cognitive-complexity": "off",
+        "sonarjs/cyclomatic-complexity": "off",
+        "sonarjs/nested-control-flow": "off",
+        "sonarjs/expression-complexity": "off"
+      }
     }
   ]
 }

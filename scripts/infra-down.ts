@@ -11,6 +11,7 @@ if (process.platform === "win32") {
   if ((pathProc.exitCode ?? 1) !== 0) throw new Error("wslpath failed");
 
   const wslRoot = pathProc.stdout.toString().trim();
+
   const stop = Bun.spawnSync([
     "wsl",
     "-e",

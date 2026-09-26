@@ -85,6 +85,50 @@ export interface DataTableProps<TData extends object> {
   rowHref?: (row: TData) => string;
 }
 
+/** Interactivity that owns its own navigation; a row click must not steal it. */
+const INTERACTIVE_TARGET = "a, button, input, select, textarea";
+
+/** Modified clicks belong to the browser (new tab, new window) or to the link in the primary cell. */
+function isModifiedClick(event: React.MouseEvent): boolean {
+  return (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  );
+}
+
+/**
+ * Decides whether a click on a row should navigate. A drag-select ends with a
+ * click on the common ancestor, so navigating would destroy the selection the
+ * user just made.
+ */
+function shouldNavigateFromRowClick(event: React.MouseEvent, href: string): boolean {
+  if (!href) return false;
+
+  if (!window.getSelection()?.isCollapsed) return false;
+
+  if (isModifiedClick(event)) return false;
+
+  return !(event.target instanceof Element && event.target.closest(INTERACTIVE_TARGET));
+}
+
+function ariaSortFor(state: false | "asc" | "desc"): "ascending" | "descending" | "none" {
+  if (state === "asc") return "ascending";
+  if (state === "desc") return "descending";
+
+  return "none";
+}
+
+function SortIndicator({ state }: { state: false | "asc" | "desc" }) {
+  if (state === "asc") return <ArrowUp className="size-3.5" aria-hidden="true" />;
+  if (state === "desc") return <ArrowDown className="size-3.5" aria-hidden="true" />;
+
+  return <ArrowUpDown className="size-3.5 opacity-50" aria-hidden="true" />;
+}
+
 export function DataTable<TData extends object>({
   columns,
   data,
@@ -211,11 +255,11 @@ export function DataTable<TData extends object>({
                   const definition = header.column.columnDef.header;
                   const sortLabel = typeof definition === "string" ? definition : header.column.id;
 
-                  const ariaSortValue =
-                    isSorted === "asc" ? "ascending" : isSorted === "desc" ? "descending" : "none";
-
                   return (
-                    <TableHead key={header.id} aria-sort={canSort ? ariaSortValue : undefined}>
+                    <TableHead
+                      key={header.id}
+                      aria-sort={canSort ? ariaSortFor(isSorted) : undefined}
+                    >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
                           type="button"
@@ -224,13 +268,7 @@ export function DataTable<TData extends object>({
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
-                          {isSorted === "asc" ? (
-                            <ArrowUp className="size-3.5" aria-hidden="true" />
-                          ) : isSorted === "desc" ? (
-                            <ArrowDown className="size-3.5" aria-hidden="true" />
-                          ) : (
-                            <ArrowUpDown className="size-3.5 opacity-50" aria-hidden="true" />
-                          )}
+                          <SortIndicator state={isSorted} />
                         </button>
                       ) : (
                         flexRender(header.column.columnDef.header, header.getContext())
@@ -253,32 +291,9 @@ export function DataTable<TData extends object>({
                     onClick={
                       href
                         ? (event) => {
-                            // A drag-select inside the row ends with a click on
-                            // the common ancestor; navigating would destroy the
-                            // selection the user just made.
-                            if (!window.getSelection()?.isCollapsed) return;
-
-                            // Modified clicks belong to the real link in the
-                            // primary cell; they are left alone here.
-                            if (
-                              event.defaultPrevented ||
-                              event.button !== 0 ||
-                              event.metaKey ||
-                              event.ctrlKey ||
-                              event.shiftKey ||
-                              event.altKey
-                            ) {
-                              return;
+                            if (shouldNavigateFromRowClick(event, href)) {
+                              router.push(href);
                             }
-
-                            if (
-                              event.target instanceof Element &&
-                              event.target.closest("a, button, input, select, textarea")
-                            ) {
-                              return;
-                            }
-
-                            router.push(href);
                           }
                         : undefined
                     }

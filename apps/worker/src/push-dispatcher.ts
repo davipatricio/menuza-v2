@@ -86,6 +86,50 @@ export function createPushEventPayload(
   };
 }
 
+/** An endpoint that reports 404/410 (or an explicit expiry) is dead; drop the row. */
+function isDeadEndpoint(res: { statusCode?: number; isExpired?: boolean }): boolean {
+  return Boolean(res.isExpired) || res.statusCode === 404 || res.statusCode === 410;
+}
+
+const NO_RECIPIENTS: PushDispatchResult = { sentCount: 0, expiredCount: 0, failedCount: 0 };
+
+/**
+ * Resolves who should actually receive this event: opted-in members, narrowed to
+ * an explicit target list when one is given, then filtered to current members so
+ * somebody removed from the tenant stops receiving pushes.
+ */
+async function resolveRecipients(
+  client: any,
+  options: DispatchPushEventOptions,
+): Promise<string[]> {
+  const targets = options.targetMemberIds?.length ? options.targetMemberIds : null;
+
+  if (options.targetMemberIds !== undefined && !targets) return [];
+
+  let prefQuery = client.orm.public.PushPreference.where({
+    tenantId: options.tenantId,
+    event: options.event,
+  });
+
+  if (targets) {
+    // SAFETY: Prisma 8 field proxy supports in operator on memberId
+    prefQuery = prefQuery.where((p: any) => p.memberId.in(targets));
+  }
+
+  // SAFETY: the query builders are untyped proxies; both rows carry memberId.
+  const preferences = (await prefQuery.all()) as { memberId: string }[];
+  const optedIn = new Set<string>(preferences.map((p) => p.memberId));
+
+  // SAFETY: as above, TenantMembership rows are only read for memberId.
+  const memberships = (await client.orm.public.TenantMembership.where({
+    tenantId: options.tenantId,
+  }).all()) as { memberId: string }[];
+
+  const enrolled = new Set<string>(memberships.map((m) => m.memberId));
+
+  return [...optedIn].filter((id) => enrolled.has(id) && (!targets || targets.includes(id)));
+}
+
 export async function dispatchPushEvent(
   options: DispatchPushEventOptions,
 ): Promise<PushDispatchResult> {
@@ -95,45 +139,9 @@ export async function dispatchPushEvent(
     const payload = options.payload ?? createPushEventPayload(options.event);
     const config = options.config ?? loadVapidFromEnv() ?? undefined;
 
-    if (options.targetMemberIds !== undefined && options.targetMemberIds.length === 0) {
-      return { sentCount: 0, expiredCount: 0, failedCount: 0 };
-    }
+    const memberIds = await resolveRecipients(client, options);
 
-    let prefQuery = client.orm.public.PushPreference.where({
-      tenantId: options.tenantId,
-      event: options.event,
-    });
-
-    if (options.targetMemberIds && options.targetMemberIds.length > 0) {
-      // SAFETY: Prisma 8 field proxy supports in operator on memberId
-      prefQuery = prefQuery.where((p: any) => p.memberId.in(options.targetMemberIds!));
-    }
-
-    const preferences = await prefQuery.all();
-    let memberIds = [...new Set(preferences.map((p) => p.memberId))];
-
-    if (options.targetMemberIds && options.targetMemberIds.length > 0) {
-      const targetSet = new Set(options.targetMemberIds);
-
-      memberIds = memberIds.filter((id) => targetSet.has(id));
-    }
-
-    if (memberIds.length === 0) {
-      return { sentCount: 0, expiredCount: 0, failedCount: 0 };
-    }
-
-    // Eligibility: a member removed from the tenant must stop receiving pushes.
-    const memberships = await client.orm.public.TenantMembership.where({
-      tenantId: options.tenantId,
-    }).all();
-
-    const enrolled = new Set(memberships.map((m) => m.memberId));
-
-    memberIds = memberIds.filter((id) => enrolled.has(id));
-
-    if (memberIds.length === 0) {
-      return { sentCount: 0, expiredCount: 0, failedCount: 0 };
-    }
+    if (memberIds.length === 0) return NO_RECIPIENTS;
 
     let subQuery = client.orm.public.PushSubscription.where({
       tenantId: options.tenantId,
@@ -172,7 +180,7 @@ export async function dispatchPushEvent(
 
       const res = await send(subData, payload, config);
 
-      if (res.isExpired || res.statusCode === 404 || res.statusCode === 410) {
+      if (isDeadEndpoint(res)) {
         await client.orm.public.PushSubscription.where({
           tenantId: options.tenantId,
           id: sub.id,

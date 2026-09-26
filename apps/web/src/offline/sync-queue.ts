@@ -147,6 +147,124 @@ export async function drainQueue(opts: DrainOptions = {}): Promise<DrainResult> 
   }
 }
 
+/** What the drain should do with an item once its response is known. */
+type ReplayAction = "keep" | "drop" | "backoff" | "stop";
+
+interface ReplayOutcome {
+  action: ReplayAction;
+  /** Client-facing event to broadcast, if any. */
+  notifyType?: string;
+  /** Which DrainResult counter this response increments. */
+  counted: "ok" | "conflicts" | "sessionExpired" | "errors";
+  /** Why the drain halted, for retryable upstream failures. */
+  stopReason?: string;
+}
+
+/**
+ * Classifies a replay response. 412 is a lost race and 401/403 an expired
+ * session: both are terminal, so the entry is dropped. 429 and 5xx are
+ * retryable, so the drain stops and the entry stays queued.
+ */
+function classifyReplayResponse(res: Response): ReplayOutcome {
+  const { status } = res;
+
+  if (status === 412) {
+    return { action: "drop", counted: "conflicts", notifyType: "menuza:conflict" };
+  }
+
+  if (status === 401 || status === 403) {
+    return { action: "drop", counted: "sessionExpired", notifyType: "menuza:session-expired" };
+  }
+
+  if (status === 429 || status >= 500) {
+    return { action: "stop", counted: "errors", stopReason: `upstream ${status}` };
+  }
+
+  if (!res.ok) return { action: "drop", counted: "errors" };
+
+  return { action: "drop", counted: "ok" };
+}
+
+interface SettledItem {
+  state: QueuedMutation[];
+  /** The backoff ladder is exhausted; the entry was dropped and counts as an error. */
+  gaveUp: boolean;
+  /** A transport failure wants the drain to halt after persisting. */
+  shouldStop: boolean;
+}
+
+/** Folds one item's outcome back into the queue state. */
+function applyAction(
+  state: QueuedMutation[],
+  item: QueuedMutation,
+  action: ReplayAction,
+): SettledItem {
+  if (action === "drop") {
+    return { state: state.filter((q) => q.id !== item.id), gaveUp: false, shouldStop: false };
+  }
+
+  if (action !== "backoff") {
+    return { state, gaveUp: false, shouldStop: action === "stop" };
+  }
+
+  const next: QueuedMutation = { ...item, attempts: item.attempts + 1 };
+
+  // Give up after exhausting the backoff ladder so we don't leak entries forever.
+  if (next.attempts >= BACKOFF_MS.length) {
+    return { state: state.filter((q) => q.id !== item.id), gaveUp: true, shouldStop: false };
+  }
+
+  next.nextAttemptAt = Date.now() + (BACKOFF_MS[next.attempts] ?? 512_000);
+
+  return {
+    state: state.map((q) => (q.id === item.id ? next : q)),
+    gaveUp: false,
+    shouldStop: true,
+  };
+}
+
+interface ItemOutcome {
+  action: ReplayAction;
+  stopReason: string | null;
+  counted: "ok" | "conflicts" | "sessionExpired" | "errors" | null;
+}
+
+/** Replays one queued mutation and reports how the drain should treat it. */
+async function attemptItem(
+  item: QueuedMutation,
+  fetcher: QueueFetcher,
+  notify: (type: string, detail: NotificationDetail) => void,
+): Promise<ItemOutcome> {
+  const headers: ReplayHeaders = { "content-type": "application/json" };
+
+  if (item.ifMatch) {
+    headers["if-match"] = item.ifMatch;
+  }
+
+  try {
+    const res = await fetcher(item.url, {
+      method: item.method,
+      headers,
+      body: JSON.stringify(item.body),
+    });
+
+    const outcome = classifyReplayResponse(res);
+
+    if (outcome.notifyType) {
+      notify(outcome.notifyType, { id: item.id, url: item.url, status: res.status });
+    }
+
+    return {
+      action: outcome.action,
+      stopReason: outcome.stopReason ?? null,
+      counted: outcome.counted,
+    };
+  } catch {
+    // Transport failure. Keep with backoff.
+    return { action: "backoff", stopReason: null, counted: null };
+  }
+}
+
 async function runDrain(opts: DrainOptions): Promise<DrainResult> {
   if (typeof fetch === "undefined") {
     return { ok: 0, conflicts: 0, sessionExpired: 0, errors: 0, remaining: 0 };
@@ -163,73 +281,32 @@ async function runDrain(opts: DrainOptions): Promise<DrainResult> {
   for (const item of state) {
     if (item.nextAttemptAt > now) continue;
 
-    let action: "keep" | "drop" | "backoff" | "stop" = "keep";
-    let stopReason: string | null = null;
+    const outcome = await attemptItem(item, fetcher, notify);
+    let action: ReplayAction = outcome.action;
+    let stopReason: string | null = outcome.stopReason;
 
-    try {
-      const headers: ReplayHeaders = { "content-type": "application/json" };
+    if (outcome.counted) result[outcome.counted]++;
 
-      if (item.ifMatch) {
-        headers["if-match"] = item.ifMatch;
-      }
+    const settled = applyAction(state, item, action);
 
-      const res = await fetcher(item.url, {
-        method: item.method,
-        headers,
-        body: JSON.stringify(item.body),
-      });
+    state = settled.state;
 
-      if (res.status === 412) {
-        action = "drop";
-        notify("menuza:conflict", { id: item.id, url: item.url });
-        result.conflicts++;
-      } else if (res.status === 401 || res.status === 403) {
-        action = "drop";
-        notify("menuza:session-expired", { id: item.id, url: item.url, status: res.status });
-        result.sessionExpired++;
-      } else if (res.status === 429 || res.status >= 500) {
-        action = "stop";
-        stopReason = `upstream ${res.status}`;
-        result.errors++;
-      } else if (!res.ok) {
-        action = "drop";
-        result.errors++;
-      } else {
-        action = "drop";
-        result.ok++;
-      }
-    } catch {
-      // Transport failure. Keep with backoff.
-      action = "backoff";
-    }
+    if (settled.gaveUp) result.errors++;
 
-    if (action === "drop") {
-      state = state.filter((q) => q.id !== item.id);
-    } else if (action === "backoff") {
-      const next: QueuedMutation = { ...item };
-      next.attempts = item.attempts + 1;
+    if (!settled.shouldStop) continue;
 
-      if (next.attempts >= BACKOFF_MS.length) {
-        // Give up after exhausting the backoff ladder so we don't leak entries forever.
-        state = state.filter((q) => q.id !== item.id);
-        result.errors++;
-      } else {
-        next.nextAttemptAt = Date.now() + (BACKOFF_MS[next.attempts] ?? 512_000);
-        state = state.map((q) => (q.id === item.id ? next : q));
-        // After a transport failure, stop draining for now; the next `online` event
-        // or Background Sync tick will retry. Avoid hammering a flaky network.
-        action = "stop";
-        stopReason = "transport error";
-      }
-    } else if (action === "stop") {
-      // Persist whatever updates we already applied, then exit.
-      await persistState(state);
-      result.remaining = state.length;
-      // eslint-disable-next-line no-console
-      console.warn(`[menuza] drain stopped: ${stopReason}; remaining=${state.length}`);
+    // After a transport failure, stop draining for now; the next `online` event
+    // or Background Sync tick will retry. Avoid hammering a flaky network.
+    action = "stop";
+    stopReason = "transport error";
 
-      return result;
-    }
+    // Persist whatever updates we already applied, then exit.
+    await persistState(state);
+    result.remaining = state.length;
+    // eslint-disable-next-line no-console
+    console.warn(`[menuza] drain stopped: ${stopReason}; remaining=${state.length}`);
+
+    return result;
   }
 
   await persistState(state);

@@ -78,6 +78,7 @@ const ALLOWED_WORKSPACES = new Set([
 
 for (const ws of workspaces) {
   const normalizedWs = ws.replace(/\\/g, "/");
+
   if (!ALLOWED_WORKSPACES.has(normalizedWs)) {
     problems.push(`unrecognized workspace "${ws}". Do not create micro-packages without explicit approval`);
   }

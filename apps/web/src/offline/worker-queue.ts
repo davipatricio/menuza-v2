@@ -37,6 +37,134 @@ async function notifyClients(type: string, detail: NotificationDetail): Promise<
   }
 }
 
+/** What the drain loop should do with an item once its response is known. */
+type ReplayAction = "drop" | "backoff" | "stop";
+
+interface ReplayOutcome {
+  action: ReplayAction;
+  /** Client-facing event to broadcast, if any. */
+  notify?: { type: string; detail: { id: string; url: string; status?: number } };
+  /** Which DrainResult counter this response increments. */
+  counted: "ok" | "conflicts" | "sessionExpired" | "errors";
+  /** Why the drain halted, for retryable upstream failures. */
+  stopReason?: string;
+}
+
+/**
+ * Classifies a replay response. 412 is a lost race, 401/403 an expired session:
+ * both are terminal. 429 and 5xx are retryable, so the drain stops and leaves
+ * the item queued. Any other non-ok status is definitive and is dropped.
+ */
+function classifyResponse(res: Response): ReplayOutcome {
+  const { status } = res;
+
+  if (status === 412) {
+    return {
+      action: "drop",
+      counted: "conflicts",
+      notify: { type: "menuza:conflict", detail: { id: "", url: "" } },
+    };
+  }
+
+  if (status === 401 || status === 403) {
+    return {
+      action: "drop",
+      counted: "sessionExpired",
+      notify: { type: "menuza:session-expired", detail: { id: "", url: "" } },
+    };
+  }
+
+  if (status === 429 || status >= 500) {
+    return { action: "stop", counted: "errors", stopReason: `upstream ${status}` };
+  }
+
+  if (!res.ok) return { action: "drop", counted: "errors" };
+
+  return { action: "drop", counted: "ok" };
+}
+
+interface SettledItem {
+  state: QueuedMutation[];
+  action: ReplayAction;
+  stopReason?: string;
+  /** The backoff ladder is exhausted; the entry was dropped and counts as an error. */
+  gaveUp: boolean;
+}
+
+/** Folds one item's outcome back into the queue state. */
+function applyAction(
+  state: QueuedMutation[],
+  item: QueuedMutation,
+  action: ReplayAction,
+): SettledItem {
+  if (action === "drop") {
+    return { state: state.filter((q) => q.id !== item.id), action, gaveUp: false };
+  }
+
+  if (action !== "backoff") {
+    return { state, action, gaveUp: false };
+  }
+
+  const attempts = item.attempts + 1;
+
+  // Give up after exhausting the backoff ladder so we don't leak entries forever.
+  if (attempts >= BACKOFF_MS.length) {
+    return { state: state.filter((q) => q.id !== item.id), action, gaveUp: true };
+  }
+
+  const backoff = BACKOFF_MS[attempts] ?? 512_000;
+  const next: QueuedMutation = { ...item, attempts, nextAttemptAt: Date.now() + backoff };
+
+  return {
+    state: state.map((q) => (q.id === item.id ? next : q)),
+    action: "stop",
+    stopReason: "transport error",
+    gaveUp: false,
+  };
+}
+
+interface ItemOutcome {
+  action: ReplayAction;
+  stopReason: string | null;
+  counted: "ok" | "conflicts" | "sessionExpired" | "errors" | null;
+}
+
+/** Replays one queued mutation and reports how the drain should treat it. */
+async function attemptItem(item: QueuedMutation): Promise<ItemOutcome> {
+  const headers: ReplayHeaders = { "content-type": "application/json" };
+
+  if (item.ifMatch) {
+    headers["if-match"] = item.ifMatch;
+  }
+
+  try {
+    const res = await fetch(item.url, {
+      method: item.method,
+      headers,
+      body: JSON.stringify(item.body),
+    });
+
+    const outcome = classifyResponse(res);
+
+    if (outcome.notify) {
+      await notifyClients(outcome.notify.type, {
+        ...outcome.notify.detail,
+        id: item.id,
+        url: item.url,
+        status: res.status,
+      });
+    }
+
+    return {
+      action: outcome.action,
+      stopReason: outcome.stopReason ?? null,
+      counted: outcome.counted,
+    };
+  } catch {
+    return { action: "backoff", stopReason: null, counted: null };
+  }
+}
+
 export async function workerDrainQueue(): Promise<DrainResult> {
   const result: DrainResult = { ok: 0, conflicts: 0, sessionExpired: 0, errors: 0, remaining: 0 };
   let state = await load();
@@ -45,65 +173,19 @@ export async function workerDrainQueue(): Promise<DrainResult> {
   for (const item of state) {
     if (item.nextAttemptAt > now) continue;
 
-    let action: "drop" | "backoff" | "stop" = "drop";
-    let backoff: number | null = null;
-    let stopReason: string | null = null;
+    const outcome = await attemptItem(item);
+    let action: ReplayAction = outcome.action;
+    let stopReason: string | null = outcome.stopReason;
 
-    try {
-      const headers: ReplayHeaders = { "content-type": "application/json" };
+    if (outcome.counted) result[outcome.counted]++;
 
-      if (item.ifMatch) {
-        headers["if-match"] = item.ifMatch;
-      }
+    const settled = applyAction(state, item, action);
 
-      const res = await fetch(item.url, {
-        method: item.method,
-        headers,
-        body: JSON.stringify(item.body),
-      });
+    state = settled.state;
+    action = settled.action;
+    stopReason = settled.stopReason ?? stopReason;
 
-      if (res.status === 412) {
-        action = "drop";
-        await notifyClients("menuza:conflict", { id: item.id, url: item.url });
-        result.conflicts++;
-      } else if (res.status === 401 || res.status === 403) {
-        action = "drop";
-        await notifyClients("menuza:session-expired", {
-          id: item.id,
-          url: item.url,
-          status: res.status,
-        });
-        result.sessionExpired++;
-      } else if (res.status === 429 || res.status >= 500) {
-        action = "stop";
-        stopReason = `upstream ${res.status}`;
-        result.errors++;
-      } else if (!res.ok) {
-        // Definitive non-412, non-401/403, non-5xx error. Drop.
-        result.errors++;
-      } else {
-        result.ok++;
-      }
-    } catch {
-      action = "backoff";
-    }
-
-    if (action === "drop") {
-      state = state.filter((q) => q.id !== item.id);
-    } else if (action === "backoff") {
-      const attempts = item.attempts + 1;
-
-      if (attempts >= BACKOFF_MS.length) {
-        state = state.filter((q) => q.id !== item.id);
-        result.errors++;
-      } else {
-        backoff = BACKOFF_MS[attempts] ?? 512_000;
-        const next: QueuedMutation = { ...item, attempts, nextAttemptAt: Date.now() + backoff };
-        state = state.map((q) => (q.id === item.id ? next : q));
-        action = "stop";
-        stopReason = "transport error";
-      }
-    }
+    if (settled.gaveUp) result.errors++;
 
     if (action === "stop") {
       await persistState(state);

@@ -52,6 +52,16 @@ export const TENANT_SCOPED_MODELS = new Set<string>(
     .map(([name]) => name),
 );
 
+/** Matches `tenantId = <param>` in either operand order. */
+function isTenantEquality(node: any): boolean {
+  const leftIsTenant = node.left?.kind === "column-ref" && node.left.column === "tenantId";
+  const rightIsTenant = node.right?.kind === "column-ref" && node.right.column === "tenantId";
+
+  if (leftIsTenant && node.right?.kind === "param-ref") return true;
+
+  return rightIsTenant && node.left?.kind === "param-ref";
+}
+
 /**
  * Finds a top-level conjunctive equality constraint on `tenantId` in the WHERE clause.
  * Returns the equality target value if present, or `null` if absent or not strictly conjunctive.
@@ -61,23 +71,11 @@ function findConjunctiveTenantEquality(where: any): string | null {
 
   // Single binary eq: tenantId = '...'
   if (where.kind === "binary" && where.op === "eq") {
-    if (
-      where.left?.kind === "column-ref" &&
-      where.left.column === "tenantId" &&
-      where.right?.kind === "param-ref"
-    ) {
-      return String(where.right.value);
-    }
+    if (!isTenantEquality(where)) return null;
 
-    if (
-      where.right?.kind === "column-ref" &&
-      where.right.column === "tenantId" &&
-      where.left?.kind === "param-ref"
-    ) {
-      return String(where.left.value);
-    }
+    const value = where.left?.kind === "param-ref" ? where.left.value : where.right?.value;
 
-    return null;
+    return String(value);
   }
 
   // Conjunctive 'and' expressions: at least one branch must enforce tenant equality
@@ -94,44 +92,117 @@ function findConjunctiveTenantEquality(where: any): string | null {
   return null;
 }
 
+/** Resolves the value a binary node compares `tenantId` against, if either side is a bound param. */
+function readTenantParamValue(expr: any): string | undefined {
+  if (expr.left?.kind === "param-ref") return String(expr.left.value);
+
+  if (expr.right?.kind === "param-ref") return String(expr.right.value);
+
+  return undefined;
+}
+
+/** True when either side of a binary node references the `tenantId` column. */
+function touchesTenantColumn(expr: any): boolean {
+  return (
+    (expr.left?.kind === "column-ref" && expr.left.column === "tenantId") ||
+    (expr.right?.kind === "column-ref" && expr.right.column === "tenantId")
+  );
+}
+
+function assertTenantBinaryRef(expr: any, activeTenant: string): void {
+  if (!touchesTenantColumn(expr)) return;
+
+  if (expr.op !== "eq") {
+    throw new TenantIsolationError(
+      `Disallowed operator "${expr.op}" on tenantId in tenant-scoped model`,
+    );
+  }
+
+  const val = readTenantParamValue(expr);
+
+  if (val !== undefined && val !== activeTenant) {
+    throw new TenantIsolationError(
+      `Cross-tenant access violation: query contains tenantId "${val}" which does not match active tenant "${activeTenant}"`,
+    );
+  }
+}
+
 /**
  * Validates that no sub-expression within `where` references another tenant or uses non-equality operators on tenantId.
  */
 function validateNoCrossTenantRefs(expr: any, activeTenant: string): void {
   if (!expr) return;
 
-  if (expr.kind === "binary") {
-    const isTenantCol =
-      (expr.left?.kind === "column-ref" && expr.left.column === "tenantId") ||
-      (expr.right?.kind === "column-ref" && expr.right.column === "tenantId");
-
-    if (isTenantCol) {
-      if (expr.op !== "eq") {
-        throw new TenantIsolationError(
-          `Disallowed operator "${expr.op}" on tenantId in tenant-scoped model`,
-        );
-      }
-
-      const val =
-        expr.left?.kind === "param-ref"
-          ? String(expr.left.value)
-          : expr.right?.kind === "param-ref"
-            ? String(expr.right.value)
-            : undefined;
-
-      if (val !== undefined && val !== activeTenant) {
-        throw new TenantIsolationError(
-          `Cross-tenant access violation: query contains tenantId "${val}" which does not match active tenant "${activeTenant}"`,
-        );
-      }
-    }
-  }
+  if (expr.kind === "binary") assertTenantBinaryRef(expr, activeTenant);
 
   if (Array.isArray(expr.exprs)) {
     for (const child of expr.exprs) {
       validateNoCrossTenantRefs(child, activeTenant);
     }
   }
+}
+
+/** Every inserted row must carry the active tenantId. */
+function assertInsertRows(ast: any, tableName: string, activeTenantId: string | undefined): void {
+  for (const row of ast.rows || []) {
+    const rowTenantId = row.tenantId?.value;
+
+    if (!rowTenantId) {
+      throw new TenantIsolationError(
+        `Tenant-scoped model "${tableName}" inserted without tenantId`,
+      );
+    }
+
+    if (activeTenantId && rowTenantId !== activeTenantId) {
+      throw new TenantIsolationError(
+        `Cross-tenant access violation: inserted tenantId "${rowTenantId}" does not match active tenantId "${activeTenantId}"`,
+      );
+    }
+  }
+}
+
+/** Reassigning `tenantId` on a tenant-scoped model is a cross-tenant row transfer; never allowed. */
+function assertNoTenantReassignment(
+  ast: any,
+  tableName: string,
+  activeTenantId: string | undefined,
+): void {
+  if (ast.kind !== "update" || !ast.set || !("tenantId" in ast.set)) return;
+
+  const newTenantId = ast.set.tenantId?.value;
+
+  if (activeTenantId && newTenantId !== activeTenantId) {
+    throw new TenantIsolationError(
+      `Cross-tenant access violation: cannot reassign tenantId in model "${tableName}" to "${newTenantId}"`,
+    );
+  }
+
+  if (!activeTenantId) {
+    throw new TenantIsolationError(
+      `Cannot reassign tenantId on tenant-scoped model "${tableName}" outside unscoped()`,
+    );
+  }
+}
+
+/** Select, update and delete must filter on the active tenant, with no stray reference. */
+function assertWhereClause(ast: any, tableName: string, activeTenantId: string | undefined): void {
+  const conjunctiveTenantId = findConjunctiveTenantEquality(ast.where);
+
+  if (!conjunctiveTenantId) {
+    throw new TenantIsolationError(
+      `Tenant-scoped model "${tableName}" queried without where.tenantId equality filter`,
+    );
+  }
+
+  if (!activeTenantId) return;
+
+  if (conjunctiveTenantId !== activeTenantId) {
+    throw new TenantIsolationError(
+      `Cross-tenant access violation: query tenantId "${conjunctiveTenantId}" does not match active tenantId "${activeTenantId}"`,
+    );
+  }
+
+  validateNoCrossTenantRefs(ast.where, activeTenantId);
 }
 
 export function tenantIsolationMiddleware(): SqlMiddleware {
@@ -152,65 +223,14 @@ export function tenantIsolationMiddleware(): SqlMiddleware {
 
     const activeTenantId = getActiveTenantId();
 
-    // Check insert statements
     if (plan.ast.kind === "insert") {
-      const rows = plan.ast.rows || [];
-
-      for (const row of rows) {
-        const rowTenantId = row.tenantId?.value;
-
-        if (!rowTenantId) {
-          throw new TenantIsolationError(
-            `Tenant-scoped model "${tableName}" inserted without tenantId`,
-          );
-        }
-
-        if (activeTenantId && rowTenantId !== activeTenantId) {
-          throw new TenantIsolationError(
-            `Cross-tenant access violation: inserted tenantId "${rowTenantId}" does not match active tenantId "${activeTenantId}"`,
-          );
-        }
-      }
+      assertInsertRows(plan.ast, tableName, activeTenantId);
 
       return;
     }
 
-    // Check update assignments (prevent cross-tenant row transfers)
-    if (plan.ast.kind === "update" && plan.ast.set && "tenantId" in plan.ast.set) {
-      const newTenantId = plan.ast.set.tenantId?.value;
-
-      if (activeTenantId && newTenantId !== activeTenantId) {
-        throw new TenantIsolationError(
-          `Cross-tenant access violation: cannot reassign tenantId in model "${tableName}" to "${newTenantId}"`,
-        );
-      }
-
-      if (!activeTenantId) {
-        throw new TenantIsolationError(
-          `Cannot reassign tenantId on tenant-scoped model "${tableName}" outside unscoped()`,
-        );
-      }
-    }
-
-    // Check where clause for queries (select, update, delete)
-    const conjunctiveTenantId = findConjunctiveTenantEquality(plan.ast.where);
-
-    if (!conjunctiveTenantId) {
-      throw new TenantIsolationError(
-        `Tenant-scoped model "${tableName}" queried without where.tenantId equality filter`,
-      );
-    }
-
-    // Check for cross-tenant mismatch if there's an active tenant context
-    if (activeTenantId) {
-      if (conjunctiveTenantId !== activeTenantId) {
-        throw new TenantIsolationError(
-          `Cross-tenant access violation: query tenantId "${conjunctiveTenantId}" does not match active tenantId "${activeTenantId}"`,
-        );
-      }
-
-      validateNoCrossTenantRefs(plan.ast.where, activeTenantId);
-    }
+    assertNoTenantReassignment(plan.ast, tableName, activeTenantId);
+    assertWhereClause(plan.ast, tableName, activeTenantId);
   };
 
   return {

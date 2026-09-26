@@ -11,6 +11,7 @@ if (!app || !/^[a-z-]+$/.test(app)) {
 }
 
 const winRoot = process.cwd();
+
 const pruneDir = `.turbo/prune/${app}`;
 
 // ponytail: wslPath duplicated from infra-up/infra-down; extract to scripts/lib when a third consumer appears.
@@ -36,6 +37,7 @@ if (await baseConfig.exists()) {
 }
 
 const root = wslPath(winRoot);
+
 const build = Bun.spawnSync(
   [
     "wsl",
