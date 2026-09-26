@@ -13,12 +13,17 @@ export default function DashboardUnauthorized() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <p className="text-sm text-pretty text-muted-foreground">
-            O painel da loja exige uma sessão ativa. O acesso ainda não está disponível neste
-            mockup.
+            O painel da loja exige uma sessão ativa. Entre com a sua conta ou crie uma nova.
           </p>
-          <div>
-            <Button render={<Link href="/" aria-label="Voltar para o início" />}>
-              Voltar para o início
+          <div className="flex flex-wrap gap-2">
+            <Button render={<Link href="/dashboard/login" aria-label="Entrar no painel" />}>
+              Entrar
+            </Button>
+            <Button
+              variant="outline"
+              render={<Link href="/dashboard/signup" aria-label="Criar uma conta" />}
+            >
+              Criar conta
             </Button>
           </div>
         </CardContent>

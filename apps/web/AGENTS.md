@@ -28,7 +28,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
     `/store/[storeSlug]` path alias on the main domain lands in MEN-225.
     See ADR-0005.
 - Document language: `pt-BR`. User-facing content stays in Portuguese.
-- UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog`, `table`, `sidebar`, `badge`, `tabs`, `breadcrumb`, `dropdown-menu`, `checkbox`, `avatar`, `select`, `combobox`, `collapsible` (plus transitive `sheet`, `separator`, `skeleton`, `tooltip`, `textarea`, `input-group`, `use-mobile`) in `src/components/ui/`.
+- UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog`, `table`, `sidebar`, `badge`, `tabs`, `breadcrumb`, `dropdown-menu`, `checkbox`, `avatar`, `select`, `combobox`, `collapsible`, `popover`, `calendar`, `field` (plus transitive `sheet`, `separator`, `skeleton`, `tooltip`, `textarea`, `input-group`, `use-mobile`) in `src/components/ui/`.
+- Dashboard auth: `/dashboard/login` and the `/dashboard/signup/*` wizard (conta →
+  perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
+  `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot
+  schemas; the birthdate field is a Base UI `popover` + `calendar` (`react-day-picker`).
 - Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
 - PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest at `/public/manifest.webmanifest`.
   - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.

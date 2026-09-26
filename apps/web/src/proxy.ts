@@ -80,6 +80,12 @@ const PREFIXES = {
   storefront: ["/store", "/menu", "/cart", "/checkout"],
 } as const;
 
+// Same-origin API mounts, rewritten to the loopback services by `next.config.ts`.
+// Browser code calls these directly (`/tenant` for the dashboard, `/commerce`
+// for the buyer flow), so they must pass for every *resolved* host — the host
+// allowlist has already rejected unknown hosts before `isAllowed` runs.
+const API_PREFIXES = ["/commerce", "/tenant"] as const;
+
 /**
  * Host -> tenantId lookup cache. The set of hosts is small and changes rarely,
  * so entries never expire. Callers that add/change a `Domain` row must call
@@ -129,7 +135,7 @@ function isAlwaysAllowed(pathname: string): boolean {
 function isAllowed(mode: Mode, pathname: string): boolean {
   // The root is allowed for every mode.
   if (pathname === "/") return true;
-  const list = PREFIXES[mode];
+  const list = [...PREFIXES[mode], ...API_PREFIXES];
 
   return list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }

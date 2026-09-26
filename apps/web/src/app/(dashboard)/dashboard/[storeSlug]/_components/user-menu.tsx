@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronsUpDown, LogOut, Repeat } from "lucide-react";
+import { ChevronsUpDown, Repeat } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar.tsx";
 import {
   DropdownMenu,
@@ -49,11 +49,6 @@ export function UserMenu({ userName, role }: { userName: string; role: string })
           >
             <Repeat aria-hidden="true" />
             Trocar de loja
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled>
-            <LogOut aria-hidden="true" />
-            Sair
-            <span className="ml-auto text-xs text-muted-foreground">Em breve</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

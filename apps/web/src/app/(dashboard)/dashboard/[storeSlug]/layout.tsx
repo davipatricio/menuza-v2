@@ -5,6 +5,7 @@ import { ShieldCheck } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar.tsx";
 import { MOCK_CURRENT_USER, MOCK_STORES, getStore } from "@/lib/mock-dashboard-data.ts";
 import { AppSidebar } from "./_components/app-sidebar.tsx";
+import { HeaderActions } from "../_components/header-actions.tsx";
 import { StoreBreadcrumb } from "./_components/store-breadcrumb.tsx";
 
 export function generateStaticParams() {
@@ -44,14 +45,17 @@ export default async function StoreLayout({
           >
             <StoreBreadcrumb basePath={basePath} />
           </Suspense>
-          <span className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-2.5 pl-2 text-xs font-medium text-muted-foreground sm:flex">
-            <ShieldCheck aria-hidden="true" className="size-3.5" />
-            <span>{MOCK_CURRENT_USER.name}</span>
-            <span aria-hidden="true" className="text-border">
-              |
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-2.5 pl-2 text-xs font-medium text-muted-foreground sm:flex">
+              <ShieldCheck aria-hidden="true" className="size-3.5" />
+              <span>{MOCK_CURRENT_USER.name}</span>
+              <span aria-hidden="true" className="text-border">
+                |
+              </span>
+              <span className="text-foreground">{store.role}</span>
             </span>
-            <span className="text-foreground">{store.role}</span>
-          </span>
+            <HeaderActions />
+          </div>
         </header>
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
       </SidebarInset>

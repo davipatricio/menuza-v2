@@ -14,6 +14,10 @@ const PREFIXES = {
   storefront: ["/store", "/menu", "/cart", "/checkout"],
 } as const;
 
+// Mirrors `API_PREFIXES` in `proxy.ts`: same-origin API mounts rewritten to the
+// loopback services by next.config.ts, reachable in every mode.
+const API_PREFIXES = ["/commerce", "/tenant"] as const;
+
 type Mode = keyof typeof PREFIXES;
 
 // Mirrors `DEV_HOSTS` in `proxy.ts`: main only outside production.
@@ -31,7 +35,7 @@ function isAlwaysAllowed(pathname: string): boolean {
 
 function isAllowed(mode: Mode, pathname: string): boolean {
   if (pathname === "/") return true;
-  const list = PREFIXES[mode];
+  const list = [...PREFIXES[mode], ...API_PREFIXES];
 
   return list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -122,6 +126,17 @@ describe("proxy logic", () => {
     expect(isAllowed("storefront", "/dashboard")).toBe(false);
     expect(isAllowed("storefront", "/dashboard/mawifoods")).toBe(false);
     expect(isAllowed("storefront", "/about")).toBe(false);
+  });
+
+  test("same-origin API mounts are reachable in every mode", () => {
+    // SAFETY: the array literal is a closed set of the two known `Mode`
+    // values, so the assertion covers exactly the union members.
+    for (const m of ["main", "storefront"] as Mode[]) {
+      expect(isAllowed(m, "/tenant/rpc/session/login")).toBe(true);
+      expect(isAllowed(m, "/tenant/openapi/session/current")).toBe(true);
+      expect(isAllowed(m, "/commerce/rpc")).toBe(true);
+      expect(isAllowed(m, "/commerce/openapi/health")).toBe(true);
+    }
   });
 
   test("storefront host resolves to storefront", () => {

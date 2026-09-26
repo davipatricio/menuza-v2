@@ -1,28 +1,39 @@
 import { ViewTransition } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowUpRight, Store } from "lucide-react";
+import type { SessionMembership } from "@menuza/shared/tenant";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
 import { initials } from "@/lib/format.ts";
-import {
-  MOCK_CURRENT_USER,
-  MOCK_STORES,
-  getStoreCustomers,
-  getStoreOrders,
-} from "@/lib/mock-dashboard-data.ts";
+import { getPanelSession } from "@/lib/server-tenant.ts";
+import { HeaderActions } from "./_components/header-actions.tsx";
 import { NewStoreCard } from "./_components/new-store-card.tsx";
 
-function storeSummary(slug: string): string {
-  const orders = getStoreOrders(slug).length;
-  const customers = getStoreCustomers(slug).length;
+// The picker reads the session (a request-time read), so it blocks on the
+// server instead of prerendering an empty static shell.
+export const instant = false;
 
-  if (orders === 0 && customers === 0) return "Nenhum dado ainda";
+const ROLE_LABELS: Record<SessionMembership["role"], string> = {
+  owner: "Proprietário",
+  admin: "Administrador",
+  staff: "Atendimento",
+};
 
-  return `${orders} ${orders === 1 ? "pedido" : "pedidos"} · ${customers} ${
-    customers === 1 ? "cliente" : "clientes"
-  }`;
+function roleLabel(role: SessionMembership["role"]): string {
+  return ROLE_LABELS[role];
 }
 
-export default function DashboardPickerPage() {
+/**
+ * Store picker. Reads the real `menuza_tenant_sid` session and lists the
+ * member's memberships; unauthenticated visitors go to the login screen.
+ */
+export default async function DashboardPickerPage() {
+  const session = await getPanelSession();
+
+  if (!session) redirect("/dashboard/login");
+
+  const memberName = session.member.name ?? session.member.email;
+
   return (
     <div className="min-h-svh bg-background">
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur md:px-6">
@@ -41,11 +52,12 @@ export default function DashboardPickerPage() {
               aria-hidden="true"
               className="flex size-6 items-center justify-center rounded-full bg-muted text-[0.65rem] font-semibold text-muted-foreground"
             >
-              {initials(MOCK_CURRENT_USER.name)}
+              {initials(memberName)}
             </span>
-            <span className="text-sm font-medium">{MOCK_CURRENT_USER.name}</span>
+            <span className="text-sm font-medium">{memberName}</span>
           </span>
           <ThemeToggle />
+          <HeaderActions showSwitcher={false} />
         </div>
       </header>
 
@@ -58,56 +70,57 @@ export default function DashboardPickerPage() {
             </p>
           </div>
 
-          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
-            {MOCK_STORES.map((store) => (
-              <li key={store.slug}>
-                <Link
-                  href={`/dashboard/${store.slug}`}
-                  aria-label={`Abrir painel de ${store.displayName}`}
-                  transitionTypes={["store-enter"]}
-                  className="group/store block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                >
-                  <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card text-sm text-card-foreground shadow-surface transition-[transform,box-shadow] duration-200 ease-out group-hover/store:-translate-y-0.5 group-hover/store:shadow-surface-hover group-focus-visible/store:shadow-surface-hover motion-reduce:transition-none motion-reduce:group-hover/store:translate-y-0">
-                    <div
-                      aria-hidden="true"
-                      className="flex h-20 items-center justify-center border-b border-border bg-muted/40 transition-colors duration-200 group-hover/store:bg-muted/70 motion-reduce:transition-none"
-                    >
-                      <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-transform duration-200 ease-out group-hover/store:scale-105 motion-reduce:transition-none motion-reduce:group-hover/store:scale-100">
-                        {initials(store.displayName)}
-                      </span>
-                    </div>
-                    <div className="flex flex-1 flex-col gap-1 p-4">
-                      <h2 className="text-base leading-snug font-medium">{store.displayName}</h2>
-                      <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium">
-                          {store.role}
-                        </span>
-                        <span className="tabular-nums">{storeSummary(store.slug)}</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between px-4 pb-4">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Abrir painel
-                      </span>
-                      <ArrowUpRight
+          {session.memberships.length === 0 ? (
+            <p className="mt-10 rounded-xl border border-dashed border-border bg-card/40 p-6 text-sm text-muted-foreground">
+              Você ainda não está em nenhuma loja. Crie a sua para começar.
+            </p>
+          ) : (
+            <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+              {session.memberships.map((store) => (
+                <li key={store.tenantId}>
+                  <Link
+                    href={`/dashboard/${store.tenantSlug}`}
+                    aria-label={`Abrir painel de ${store.tenantName}`}
+                    transitionTypes={["store-enter"]}
+                    className="group/store block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
+                    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card text-sm text-card-foreground shadow-surface transition-[transform,box-shadow] duration-200 ease-out group-hover/store:-translate-y-0.5 group-hover/store:shadow-surface-hover group-focus-visible/store:shadow-surface-hover motion-reduce:transition-none motion-reduce:group-hover/store:translate-y-0">
+                      <div
                         aria-hidden="true"
-                        className="size-4 text-muted-foreground transition-transform duration-200 ease-out group-hover/store:translate-x-0.5 group-hover/store:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover/store:translate-0"
-                      />
+                        className="flex h-20 items-center justify-center border-b border-border bg-muted/40 transition-colors duration-200 group-hover/store:bg-muted/70 motion-reduce:transition-none"
+                      >
+                        <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-transform duration-200 ease-out group-hover/store:scale-105 motion-reduce:transition-none motion-reduce:group-hover/store:scale-100">
+                          {initials(store.tenantName)}
+                        </span>
+                      </div>
+                      <div className="flex flex-1 flex-col gap-1 p-4">
+                        <h2 className="text-base leading-snug font-medium">{store.tenantName}</h2>
+                        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                          <span className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium">
+                            {roleLabel(store.role)}
+                          </span>
+                          <span className="font-mono text-xs">{store.tenantSlug}</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between px-4 pb-4">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Abrir painel
+                        </span>
+                        <ArrowUpRight
+                          aria-hidden="true"
+                          className="size-4 text-muted-foreground transition-transform duration-200 ease-out group-hover/store:translate-x-0.5 group-hover/store:-translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover/store:translate-0"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
 
           <div className="mt-4">
             <NewStoreCard />
           </div>
-
-          <p className="mt-8 text-sm text-muted-foreground">
-            Estas são as lojas vinculadas a {MOCK_CURRENT_USER.name}. O papel exibido é
-            demonstrativo.
-          </p>
         </ViewTransition>
       </main>
     </div>
