@@ -7,16 +7,25 @@
  * `unscoped()` calls with an explicit `tenantId` where one is known.
  */
 import { ORPCError } from "@orpc/server";
+import * as v from "valibot";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import {
   getCookieName,
   getSession,
   isMemberKind,
+  isSameOriginRequest,
   isTenantRole,
   parseCookies,
 } from "@menuza/orpc-server/auth";
 import { db, unscoped } from "@menuza/db";
-import type { SessionMember, SessionMembership } from "@menuza/shared/tenant";
+import {
+  OnboardingPersonaSchema,
+  OnboardingReferralSchema,
+  OnboardingSegmentSchema,
+  type Onboarding,
+  type SessionMember,
+  type SessionMembership,
+} from "@menuza/shared/tenant";
 
 /** A stored session as the management procedures need it. */
 export interface TenantSessionRow {
@@ -36,6 +45,35 @@ export function notFound() {
     message: sharedErrorCodes.NOT_FOUND.message,
     data: { code: "NOT_FOUND" },
   });
+}
+
+export function conflict() {
+  return new ORPCError("CONFLICT", {
+    message: sharedErrorCodes.CONFLICT.message,
+    data: { code: "CONFLICT" },
+  });
+}
+
+/**
+ * Rejects a state-changing request whose `Origin`/`Referer` does not match the
+ * host the browser actually used. The Next rewrite proxies with
+ * `changeOrigin: true`, so the original host arrives as `x-forwarded-host` and
+ * the API's own `host` is the loopback target; compare against the former.
+ * A non-browser caller that sends neither header is allowed through.
+ */
+export function assertSameOrigin(reqHeaders?: Headers): void {
+  const sameOrigin = isSameOriginRequest({
+    origin: reqHeaders?.get("origin"),
+    referer: reqHeaders?.get("referer"),
+    host: reqHeaders?.get("x-forwarded-host") ?? reqHeaders?.get("host"),
+  });
+
+  if (!sameOrigin) {
+    throw new ORPCError("FORBIDDEN", {
+      message: sharedErrorCodes.FORBIDDEN.message,
+      data: { code: "FORBIDDEN" },
+    });
+  }
 }
 
 /**
@@ -99,4 +137,28 @@ export async function loadMemberships(memberId: string): Promise<SessionMembersh
       },
     ];
   });
+}
+
+/**
+ * The member's onboarding answers, or `null` when unanswered. Stored slugs are
+ * validated against the contract picklists so a hand-edited row cannot leak an
+ * out-of-contract value into the session payload.
+ */
+export async function loadOnboarding(memberId: string): Promise<Onboarding | null> {
+  const row = await unscoped(() => db.orm.public.MemberOnboarding.where({ memberId }).first());
+
+  if (!row) return null;
+
+  const persona = v.safeParse(OnboardingPersonaSchema, row.persona);
+
+  if (!persona.success) return null;
+
+  const segment = v.safeParse(OnboardingSegmentSchema, row.segment);
+  const referral = v.safeParse(OnboardingReferralSchema, row.referral);
+
+  return {
+    persona: persona.output,
+    segment: segment.success ? segment.output : null,
+    referral: referral.success ? referral.output : null,
+  };
 }

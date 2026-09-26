@@ -7,7 +7,10 @@ import { hashPassword } from "@menuza/orpc-server/auth";
 import { loginImpl } from "../src/domains/tenant/subdomains/session/login.impl.ts";
 import { logoutImpl } from "../src/domains/tenant/subdomains/session/logout.impl.ts";
 import { currentImpl } from "../src/domains/tenant/subdomains/session/current.impl.ts";
+import { registerImpl } from "../src/domains/tenant/subdomains/session/register.impl.ts";
 import { getStoreImpl } from "../src/domains/tenant/subdomains/panel/getStore.impl.ts";
+import { createStoreImpl } from "../src/domains/tenant/subdomains/panel/createStore.impl.ts";
+import { saveOnboardingImpl } from "../src/domains/tenant/subdomains/profile/saveOnboarding.impl.ts";
 
 interface MemberRow {
   id: string;
@@ -15,6 +18,7 @@ interface MemberRow {
   name: string | null;
   kind: string;
   passwordHash: string | null;
+  birthdate?: Temporal.PlainDateTime | null;
   createdAt: Temporal.PlainDateTime;
   updatedAt: Temporal.PlainDateTime;
 }
@@ -45,6 +49,17 @@ interface SessionRow {
   lastUsedAt: Temporal.PlainDateTime;
 }
 
+interface OnboardingRow {
+  id: string;
+  memberId: string;
+  persona: string;
+  segment: string | null;
+  referral: string | null;
+  completedAt: Temporal.PlainDateTime;
+  createdAt?: Temporal.PlainDateTime;
+  updatedAt: Temporal.PlainDateTime;
+}
+
 const members: MemberRow[] = [];
 
 const tenants: TenantRow[] = [];
@@ -53,12 +68,19 @@ const memberships: MembershipRow[] = [];
 
 const sessions: SessionRow[] = [];
 
+const onboardingRows: OnboardingRow[] = [];
+
 const originals = {
   memberWhere: db.orm.public.Member.where,
+  memberCreate: db.orm.public.Member.create,
   tenantWhere: db.orm.public.Tenant.where,
+  tenantCreate: db.orm.public.Tenant.create,
   membershipWhere: db.orm.public.TenantMembership.where,
+  membershipCreate: db.orm.public.TenantMembership.create,
   sessionWhere: db.orm.public.Session.where,
   sessionCreate: db.orm.public.Session.create,
+  onboardingWhere: db.orm.public.MemberOnboarding.where,
+  onboardingCreate: db.orm.public.MemberOnboarding.create,
 };
 
 const MEMBER_ID = randomUUID();
@@ -129,14 +151,59 @@ function installFakes() {
 
     return data;
   }) as any;
+
+  // SAFETY: Mocking Member.create; appends the row register writes.
+  db.orm.public.Member.create = (async (data: MemberRow) => {
+    members.push(data);
+
+    return data;
+  }) as any;
+
+  // SAFETY: Mocking Tenant.create; appends the row createStore writes.
+  db.orm.public.Tenant.create = (async (data: TenantRow) => {
+    tenants.push(data);
+
+    return data;
+  }) as any;
+
+  // SAFETY: Mocking TenantMembership.create; appends the row createStore writes.
+  db.orm.public.TenantMembership.create = (async (data: MembershipRow) => {
+    memberships.push(data);
+
+    return data;
+  }) as any;
+
+  // SAFETY: Mocking MemberOnboarding.where; `.first()` and `.updateAll()` by memberId.
+  db.orm.public.MemberOnboarding.where = ((filter: { memberId: string }) => ({
+    first: async () => onboardingRows.find((row) => row.memberId === filter.memberId) ?? null,
+    updateAll: async (data: Partial<OnboardingRow>) => {
+      for (const row of onboardingRows) {
+        if (row.memberId !== filter.memberId) continue;
+
+        Object.assign(row, data);
+      }
+    },
+  })) as any;
+
+  // SAFETY: Mocking MemberOnboarding.create; appends the row saveOnboarding writes.
+  db.orm.public.MemberOnboarding.create = (async (data: OnboardingRow) => {
+    onboardingRows.push(data);
+
+    return data;
+  }) as any;
 }
 
 function restoreFakes() {
   db.orm.public.Member.where = originals.memberWhere;
+  db.orm.public.Member.create = originals.memberCreate;
   db.orm.public.Tenant.where = originals.tenantWhere;
+  db.orm.public.Tenant.create = originals.tenantCreate;
   db.orm.public.TenantMembership.where = originals.membershipWhere;
+  db.orm.public.TenantMembership.create = originals.membershipCreate;
   db.orm.public.Session.where = originals.sessionWhere;
   db.orm.public.Session.create = originals.sessionCreate;
+  db.orm.public.MemberOnboarding.where = originals.onboardingWhere;
+  db.orm.public.MemberOnboarding.create = originals.onboardingCreate;
 }
 
 function cookieHeader(token: string): Headers {
@@ -311,6 +378,51 @@ describe("tenant session + panel procedures — Unit (infrastructure-free)", () 
     });
   });
 
+  describe("profile.saveOnboarding", () => {
+    test("creates the onboarding row for the authenticated member", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        saveOnboardingImpl,
+        { persona: "owner", segment: "restaurant", referral: "instagram" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result).toEqual({ persona: "owner", segment: "restaurant", referral: "instagram" });
+      expect(onboardingRows).toHaveLength(1);
+      expect(onboardingRows[0]?.memberId).toBe(MEMBER_ID);
+    });
+
+    test("reopening updates the row instead of duplicating it", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        saveOnboardingImpl,
+        { persona: "exploring" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result).toEqual({ persona: "exploring", segment: null, referral: null });
+      expect(onboardingRows).toHaveLength(1);
+      expect(onboardingRows[0]?.persona).toBe("exploring");
+      expect(onboardingRows[0]?.segment).toBeNull();
+    });
+
+    test("requires a session", async () => {
+      try {
+        await call(
+          saveOnboardingImpl,
+          { persona: "owner" },
+          { context: { reqHeaders: new Headers() } },
+        );
+        throw new Error("expected saveOnboarding to fail");
+      } catch (error) {
+        // SAFETY: saveOnboarding only throws the shared UNAUTHORIZED code.
+        expect((error as { code: string }).code).toBe("UNAUTHORIZED");
+      }
+    });
+  });
+
   describe("session.logout", () => {
     test("revokes the session and clears the cookie", async () => {
       const { resHeaders: loginHeaders } = await login("marina@menuza.local", "senha-correta");
@@ -397,6 +509,139 @@ describe("tenant session + panel procedures — Unit (infrastructure-free)", () 
       } catch (error) {
         // SAFETY: getStore only throws the shared UNAUTHORIZED code.
         expect((error as { code: string }).code).toBe("UNAUTHORIZED");
+      }
+    });
+  });
+
+  describe("session.register", () => {
+    test("creates the account, opens a session and returns no memberships", async () => {
+      const resHeaders = new Headers();
+
+      const result = await call(
+        registerImpl,
+        {
+          name: "Novo Dono",
+          email: "novo@menuza.local",
+          birthdate: "1990-05-10",
+          password: "senha-forte",
+        },
+        { context: { resHeaders, reqHeaders: new Headers() } },
+      );
+
+      // SAFETY: the register contract returns the member plus an empty list.
+      const output = result as { member: { email: string; name: string }; memberships: unknown[] };
+
+      expect(output.member.email).toBe("novo@menuza.local");
+      expect(output.member.name).toBe("Novo Dono");
+      expect(output.memberships).toEqual([]);
+      expect(resHeaders.get("set-cookie")).toContain(`${COOKIE_NAME}=`);
+      expect(cookieToken(resHeaders)).not.toBe("");
+    });
+
+    test("rejects a duplicate e-mail with CONFLICT", async () => {
+      try {
+        await call(
+          registerImpl,
+          {
+            name: "Outra Pessoa",
+            email: "marina@menuza.local",
+            birthdate: "1990-05-10",
+            password: "senha-forte",
+          },
+          { context: { resHeaders: new Headers(), reqHeaders: new Headers() } },
+        );
+        throw new Error("expected register to fail");
+      } catch (error) {
+        // SAFETY: register maps a duplicate e-mail to the shared CONFLICT code.
+        expect((error as { code: string }).code).toBe("CONFLICT");
+      }
+    });
+
+    test("rejects a cross-origin request", async () => {
+      const reqHeaders = new Headers({
+        origin: "https://evil.example",
+        "x-forwarded-host": "app.menuza.local",
+      });
+
+      try {
+        await call(
+          registerImpl,
+          {
+            name: "Novo Dono",
+            email: "outro@menuza.local",
+            birthdate: "1990-05-10",
+            password: "senha-forte",
+          },
+          { context: { resHeaders: new Headers(), reqHeaders } },
+        );
+        throw new Error("expected register to fail");
+      } catch (error) {
+        // SAFETY: the origin guard throws the shared FORBIDDEN code.
+        expect((error as { code: string }).code).toBe("FORBIDDEN");
+      }
+    });
+  });
+
+  describe("panel.createStore", () => {
+    async function freshSession(email: string): Promise<Headers> {
+      const resHeaders = new Headers();
+
+      await call(
+        registerImpl,
+        { name: "Dono da Loja", email, birthdate: "1985-01-02", password: "senha-forte" },
+        { context: { resHeaders, reqHeaders: new Headers() } },
+      );
+
+      return cookieHeader(cookieToken(resHeaders));
+    }
+
+    test("creates a store and links the caller as owner", async () => {
+      const reqHeaders = await freshSession("dona@menuza.local");
+
+      const result = await call(
+        createStoreImpl,
+        { displayName: "Padaria Nova", slug: "padaria-nova" },
+        { context: { reqHeaders } },
+      );
+
+      // SAFETY: createStore returns the same shape as getStore.
+      const output = result as { tenantId: string; tenantSlug: string; role: string };
+
+      expect(output.tenantSlug).toBe("padaria-nova");
+      expect(output.role).toBe("owner");
+      expect(tenants.some((row) => row.slug === "padaria-nova")).toBe(true);
+      expect(
+        memberships.some((row) => row.tenantId === output.tenantId && row.role === "owner"),
+      ).toBe(true);
+    });
+
+    test("requires a session", async () => {
+      try {
+        await call(
+          createStoreImpl,
+          { displayName: "Sem Sessão", slug: "sem-sessao" },
+          { context: { reqHeaders: new Headers() } },
+        );
+        throw new Error("expected createStore to fail");
+      } catch (error) {
+        // SAFETY: createStore only throws the shared UNAUTHORIZED code.
+        expect((error as { code: string }).code).toBe("UNAUTHORIZED");
+      }
+    });
+
+    test("rejects a taken slug with CONFLICT", async () => {
+      const reqHeaders = await freshSession("dono-2@menuza.local");
+
+      try {
+        await call(
+          createStoreImpl,
+          { displayName: "Outra Mawifoods", slug: "mawifoods" },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected createStore to fail");
+      } catch (error) {
+        // SAFETY: createStore maps a taken slug to the shared CONFLICT code.
+        expect((error as { code: string }).code).toBe("CONFLICT");
       }
     });
   });

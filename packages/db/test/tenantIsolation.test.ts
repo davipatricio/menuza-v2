@@ -141,6 +141,26 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Tenant Isolation (fail-closed)",
     expect(domain?.tenantId).toBe(tenant2Id);
   });
 
+  test("unscoped() awaits a sync callback's query inside the scope", async () => {
+    // Regression: a sync callback returns Prisma's thenable. The scope must still
+    // be active when the query is consumed, or the isolation middleware sees no
+    // `unscoped()` and rejects the missing tenantId filter.
+    const domains = await unscoped(() =>
+      db.orm.public.Domain.where({ host: `t2-${tenant2Id.slice(0, 8)}.local` }).all(),
+    );
+
+    expect(domains).toHaveLength(1);
+    expect(domains[0]?.tenantId).toBe(tenant2Id);
+  });
+
+  test("withTenant() enforces the scope for a sync callback's query", async () => {
+    // Regression: same ALS consumption point as above; without the fix the
+    // mismatched tenantId would not be caught.
+    await expect(
+      withTenant(tenant1Id, () => db.orm.public.Domain.where({ tenantId: tenant2Id }).all()),
+    ).rejects.toThrow(TenantIsolationError);
+  });
+
   test("global non-tenant-scoped models are not blocked", async () => {
     const tenant = await db.orm.public.Tenant.where({ id: tenant1Id }).first();
 

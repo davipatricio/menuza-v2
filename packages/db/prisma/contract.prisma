@@ -36,6 +36,7 @@ model Member {
   name              String?
   kind              String             @default("human")
   passwordHash      String?
+  birthdate         Timestamp(3)?
   createdAt         Timestamp(3)       @default(now())
   updatedAt         Timestamp(3)
   sessions          Session[]
@@ -43,6 +44,7 @@ model Member {
   identities        MemberIdentity[]
   pushSubscriptions PushSubscription[]
   pushPreferences   PushPreference[]
+  onboarding        MemberOnboarding?
 
   @@index([email], map: "Member_email_key", unique: true)
 
@@ -129,4 +131,21 @@ model PushPreference {
   @@map("PushPreference")
 }
 
+// Signup onboarding survey (MEN-225). Member-level, not tenant-scoped: the
+// answers describe the person, not a store. `persona` required, the rest are
+// filled only when the member chose to answer them.
+model MemberOnboarding {
+  id          String       @id(map: "MemberOnboarding_pkey")
+  memberId    String
+  persona     String
+  segment     String?
+  referral    String?
+  completedAt Timestamp(3)
+  createdAt   Timestamp(3) @default(now())
+  updatedAt   Timestamp(3)
+  member      Member       @relation(fields: [memberId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "MemberOnboarding_memberId_fkey")
 
+  @@unique([memberId], map: "MemberOnboarding_memberId_key")
+
+  @@map("MemberOnboarding")
+}

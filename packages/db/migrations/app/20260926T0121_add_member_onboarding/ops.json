@@ -1,0 +1,125 @@
+[
+  {
+    "id": "table.MemberOnboarding",
+    "label": "Create table \"MemberOnboarding\"",
+    "summary": "Creates table \"MemberOnboarding\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "MemberOnboarding"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"MemberOnboarding\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberOnboarding\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"MemberOnboarding\"",
+        "sql": "CREATE TABLE \"public\".\"MemberOnboarding\" (\n  \"completedAt\" timestamp(3) NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"persona\" text NOT NULL,\n  \"referral\" text,\n  \"segment\" text,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  CONSTRAINT \"MemberOnboarding_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"MemberOnboarding\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"MemberOnboarding\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.MemberOnboarding.MemberOnboarding_memberId_key",
+    "label": "Add unique constraint on \"MemberOnboarding\" (memberId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "MemberOnboarding_memberId_key",
+        "table": "MemberOnboarding"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"MemberOnboarding_memberId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "MemberOnboarding_memberId_key",
+          "public",
+          "\"public\".\"MemberOnboarding\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"MemberOnboarding_memberId_key\"",
+        "sql": "ALTER TABLE \"public\".\"MemberOnboarding\" ADD CONSTRAINT \"MemberOnboarding_memberId_key\" UNIQUE (\"memberId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"MemberOnboarding_memberId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "MemberOnboarding_memberId_key",
+          "public",
+          "\"public\".\"MemberOnboarding\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.MemberOnboarding.MemberOnboarding_memberId_fkey",
+    "label": "Add foreign key \"MemberOnboarding_memberId_fkey\" on \"MemberOnboarding\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "MemberOnboarding_memberId_fkey",
+        "table": "MemberOnboarding"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"MemberOnboarding_memberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "MemberOnboarding_memberId_fkey",
+          "public",
+          "\"public\".\"MemberOnboarding\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"MemberOnboarding_memberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"MemberOnboarding\"\nADD CONSTRAINT \"MemberOnboarding_memberId_fkey\"\nFOREIGN KEY (\"memberId\")\nREFERENCES \"public\".\"Member\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"MemberOnboarding_memberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "MemberOnboarding_memberId_fkey",
+          "public",
+          "\"public\".\"MemberOnboarding\""
+        ]
+      }
+    ]
+  }
+]

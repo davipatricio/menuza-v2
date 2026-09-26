@@ -6,15 +6,17 @@
 - All inputs/outputs validated with Valibot (Standard Schema).
 - Tenant management contract exposes the health probe, the push routes
   (`/push/public-key`, `/push/preferences`, `/push/subscriptions`), and the staff
-  session + panel routes (`/session/*`, `/panel/stores/{storeSlug}`). No anonymous
-  management operations: everything beyond the public probe and the VAPID public key
-  requires a tenant + member session.
+  session, panel and profile routes (`/session/*`, `/panel/*`, `/profile/*`). No
+  anonymous management operations: everything beyond the public probe and the VAPID
+  public key requires a tenant + member session.
 - The dashboard (staff) surface is `session.login` / `session.logout` /
-  `session.current` plus `panel.getStore`. The dashboard never sends a tenant header:
-  `panel.getStore` resolves `storeSlug -> tenant` server-side, verifies the caller's
-  membership and returns the store + role, so a non-member gets `NOT_FOUND` without
-  leaking existence (MEN-225). `session.login` opens a `menuza_tenant_sid` session and
-  `session.logout` revokes it and clears the cookie.
+  `session.current` / `session.register`, `panel.getStore` / `panel.createStore`, and
+  `profile.saveOnboarding`. The dashboard never sends a tenant header: `panel.getStore`
+  resolves `storeSlug -> tenant` server-side, verifies the caller's membership and
+  returns the store + role, so a non-member gets `NOT_FOUND` without leaking existence
+  (MEN-225). `session.login` opens a `menuza_tenant_sid` session, `session.register`
+  creates the `Member` and opens the same session, and `session.logout` revokes it and
+  clears the cookie.
 - The tenant contract's `internal.resolveHost` procedure is service-to-service only:
   it backs the web proxy's storefront host → tenant lookup and is gated by the
   `INTERNAL_API_SECRET` shared token (`@menuza/orpc-server/internal`), never a browser
@@ -32,8 +34,9 @@ on one source of truth; it is metadata only, never a shape change to the
 - Push: `GET /push/public-key`; `GET`/`PUT /push/preferences`;
   `POST`/`DELETE /push/subscriptions` (subscriptions are a collection, and the
   push endpoint URL travels in the body, never as a path segment).
-- Session: `POST /session/login`, `POST /session/logout`, `GET /session/current`.
-  Panel: `GET /panel/stores/{storeSlug}` (the store slug is a path segment).
+- Session: `POST /session/login`, `POST /session/logout`, `GET /session/current`,
+  `POST /session/register`. Panel: `GET /panel/stores/{storeSlug}` (the store slug is
+  a path segment), `POST /panel/stores`. Profile: `POST /profile/onboarding`.
 - `path` is absolute under each service's OpenAPI prefix (`/openapi`), so it does
   not depend on the router key structure; `operationId` is explicit for stable
   generated documents.

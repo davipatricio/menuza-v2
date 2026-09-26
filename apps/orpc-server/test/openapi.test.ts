@@ -44,10 +44,17 @@ const TENANT_ROUTES = [
   { procedure: tenantContractObject.session.login, method: "post", path: "/session/login" },
   { procedure: tenantContractObject.session.logout, method: "post", path: "/session/logout" },
   { procedure: tenantContractObject.session.current, method: "get", path: "/session/current" },
+  { procedure: tenantContractObject.session.register, method: "post", path: "/session/register" },
   {
     procedure: tenantContractObject.panel.getStore,
     method: "get",
     path: "/panel/stores/{storeSlug}",
+  },
+  { procedure: tenantContractObject.panel.createStore, method: "post", path: "/panel/stores" },
+  {
+    procedure: tenantContractObject.profile.saveOnboarding,
+    method: "post",
+    path: "/profile/onboarding",
   },
 ] as const;
 

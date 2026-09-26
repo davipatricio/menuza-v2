@@ -3,7 +3,7 @@ import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import { db, unscoped } from "@menuza/db";
-import { loadMemberships, requireSession, toSessionMember } from "./support.ts";
+import { loadMemberships, loadOnboarding, requireSession, toSessionMember } from "./support.ts";
 
 const os = implement(
   tenantContractObject.session.current,
@@ -24,6 +24,7 @@ export const currentImpl = os.handler(async ({ context }) => {
   return {
     member: toSessionMember(member),
     memberships: await loadMemberships(member.id),
+    onboarding: await loadOnboarding(member.id),
   };
 });
 

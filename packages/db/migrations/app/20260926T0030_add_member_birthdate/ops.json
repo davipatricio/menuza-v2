@@ -1,0 +1,44 @@
+[
+  {
+    "id": "column.public.Member.birthdate",
+    "label": "Add column \"birthdate\" to \"Member\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "birthdate",
+        "table": "Member"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"birthdate\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "birthdate"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"birthdate\"",
+        "sql": "ALTER TABLE \"public\".\"Member\" ADD COLUMN \"birthdate\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"birthdate\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Member",
+          "birthdate"
+        ]
+      }
+    ]
+  }
+]
