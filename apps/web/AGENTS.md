@@ -88,6 +88,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Not adopted: `reactCompiler` + `turbopackRustReactCompiler` (experimental; rewrites
   memoization across the client tree) and `turbopackAdditionalRoots` (for symlinked deps
   outside the project root / a global virtual store — this repo uses Bun workspaces).
+- Per-route stage decisions and audits: use the `menuza-route-stages` skill.
 
 ## Compatibility flags
 

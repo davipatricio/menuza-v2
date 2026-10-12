@@ -1,0 +1,5 @@
+interface:
+  display_name: "Menuza Route Stages"
+  short_description: "Pick and guard the Next.js rendering stage for apps/web routes"
+policy:
+  allow_implicit_invocation: true
