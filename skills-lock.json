@@ -5,61 +5,61 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-accessibility/SKILL.md",
-      "computedHash": "6b7ce68b54e8899f2678d47b0cc772c4aeb9ce178a2eec93c945948c1b044f19"
+      "computedHash": "d3eedb76ab320be6d59e08b947221c9679d5452b4e4d8f46cb8bc67f05b9a755"
     },
     "better-colors": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-colors/SKILL.md",
-      "computedHash": "47c25cca097d0993190ca12b416ec0be08429d8086d99adcac4621aa0e1f110f"
+      "computedHash": "e41961374a11013de326bd30b685022a1dd1f74cadf042c8ce25804dfd81d552"
     },
     "better-interface": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-interface/SKILL.md",
-      "computedHash": "c7a2c30c0b13709b2fa7e4210eef55907d8887017c15ea43478752db4f935fbf"
+      "computedHash": "bc2252e67c8529c26f881ec2b0adfd6459ee18707efc0766ca4741cf8ce81961"
     },
     "better-layout": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-layout/SKILL.md",
-      "computedHash": "c8d251ca0542cd92996b70d86d573e3972ba99fd23f5161d0b3ddf642516802e"
+      "computedHash": "0d5a26a2dc118d673307a2a7b043f3b8e117a21281b0a4380ed006692d2af57d"
     },
     "better-typography": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-typography/SKILL.md",
-      "computedHash": "3fb90fed3aeb57a6a545be4e4f285f0d1babdaff9644ec3526857437481747a1"
+      "computedHash": "bb55fb859120baa1e0266794a7414650741418846faef4bfcf2e32c3b289b0c9"
     },
     "better-ui": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-ui/SKILL.md",
-      "computedHash": "907e6137d2019fe2b7de2357246ad8041d1b8318ba5c085cd0cb560ebb97025a"
+      "computedHash": "74573763ba1906eb6cd2b35dc3747cb2a2afc940b398203672195f0509ce9bde"
     },
     "better-writing": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/better-writing/SKILL.md",
-      "computedHash": "a66da2a345b8e0c220841665c261cc9776c293fdb5d22f5165a98d0e7c790841"
+      "computedHash": "c5f46c317ead56dd17a38279962ecb78ab4acb6b10edb2a5a7c13352729609a0"
     },
     "break": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/break/SKILL.md",
-      "computedHash": "908cb0db20a827e5e4862e700a8cb000d0979c8938b224f5f5e699b096d3e094"
+      "computedHash": "040107b945a340783f37aae0c5380071621c60074f6616b695de5ff3838fdcef"
     },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
-      "computedHash": "899b84384f74f540ea5284d9b2e9234e050998b42eacc805410b518d4226c0b3"
+      "computedHash": "52fa30810ae93ef288f8926e27624561ebd2e5b70d35682f4de70cb7131c92d1"
     },
     "explain-interface": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/explain-interface/SKILL.md",
-      "computedHash": "e30c30938fce98dcf8156c083f89b8015e3042f460bb9228dedeac8e4a8df557"
+      "computedHash": "a8915ded0557d1c7d78d8371724d0ac83a67e9ae48246499143eb5b69dc71491"
     },
     "frontend-design": {
       "source": "anthropics/skills",
@@ -77,37 +77,31 @@
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/interface-review/SKILL.md",
-      "computedHash": "e8575144eb155448757a82a3b89825c87045a85ca2ed3bd9131c53fc9682c8a5"
-    },
-    "next-best-practices": {
-      "source": "vercel-labs/openreview",
-      "sourceType": "github",
-      "skillPath": ".agents/skills/next-best-practices/SKILL.md",
-      "computedHash": "db85045827ebeb83ac8dbc992b69188755eeb74dcf01cbf5e694d58aa494a106"
+      "computedHash": "b8cf8830ae8b04fc0dcdfc85eb159dc6e3f3384f5b397a5cf8af644c38601bc1"
     },
     "next-cache-components-adoption": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-adoption/SKILL.md",
-      "computedHash": "e8048c51a37d8973349477c9bb0a32d9f5f796a70ebaa10c89b59ac8015b9c55"
+      "computedHash": "825774334f00624aac9836ec4f29b8d62f1a6d5e31f81133bde0b4db17a3fa67"
     },
     "next-cache-components-optimizer": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-cache-components-optimizer/SKILL.md",
-      "computedHash": "c62f6c13119c4e9027268edaa07291c33d74a676e1bd93583349c07efd990f6b"
+      "computedHash": "7c1e21574ff39a11fc3874e4df2ab8a355154cc7b6bf4897ad570a2dd9e5a5f2"
     },
     "next-partial-prefetching-adoption": {
       "source": "vercel/next.js",
       "sourceType": "github",
       "skillPath": "skills/next-partial-prefetching-adoption/SKILL.md",
-      "computedHash": "1ca75b686e91327da75bc3c286ba037a1f7e6a8d613ce77682c634520e019791"
+      "computedHash": "6aa8c96d816dcbf061be6dcf58b7f49686c74be09be436ed4b06251bd74fabf3"
     },
     "orpc": {
       "source": "middleapi/orpc",
       "sourceType": "github",
       "skillPath": "skills/orpc/SKILL.md",
-      "computedHash": "82253828dee4c938df9a0987a459aec6400625d2d18e80761fff0aa3ddcd1d6b"
+      "computedHash": "29fd47bb6311610089ffb7864f0e6e0dfe0b11482d9317d8783eb8886698c5d2"
     },
     "orpc-contract": {
       "source": "middleapi/orpc",
@@ -119,7 +113,7 @@
       "source": "middleapi/orpc",
       "sourceType": "github",
       "skillPath": "skills/orpc-migrate/SKILL.md",
-      "computedHash": "c3cc12ef438ba77c72fdf76bcb990ab78f6409883e0c2b8be1b8a85d3703c83a"
+      "computedHash": "facee4ab508c1e47b10585f5968f4a1e7dc1018e1f9889aed84f16eb12521f70"
     },
     "orpc-openapi": {
       "source": "middleapi/orpc",
@@ -131,19 +125,19 @@
       "source": "prisma/orm",
       "sourceType": "github",
       "skillPath": "skills/prisma-8/SKILL.md",
-      "computedHash": "3b96e6b7742eabbda6d4e4f2c54b2c930066907806a5ea5cf038a618ee74a856"
+      "computedHash": "935ce5f91fa9a7766eb40b044f4e8e35578a710f09cecdaf94f41dc77ed5c4fa"
     },
     "shadcn": {
       "source": "shadcn-ui/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "d04e43ec01e921558b93bb8046c14a42a22556689a2827243df900825a4e1604"
+      "computedHash": "2d7bf36e581289fdcc3ffc592c1ec1d7457572baa72ba0d440229ef34bd7f6dd"
     },
     "variant": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
       "skillPath": "skills/variant/SKILL.md",
-      "computedHash": "9d6d18d4305ff7f46e2120c05596986800780fee069ac978c94d60b587cb80cc"
+      "computedHash": "78fa44fc468973cc7d87a0d698f9def80d4b7253c6a7738b010ad392c8d5df70"
     },
     "vercel-composition-patterns": {
       "source": "vercel-labs/agent-skills",

@@ -6,6 +6,10 @@ Ship one test per navigation type you are guarding: under `instant()`, assert th
 destination's static shell appears. `instant()` gates dynamic data, so a correctly instant route
 commits its shell under the lock and a blocking route does not. `instant()` is a ruler, not a
 stopwatch: do not add custom timeouts or timing races (see `reference/red-test-robustness.md`).
+Keep each route and navigation type in its own focused test. Do not loop over several routes or
+aggregate their readiness results in one test; focused tests can still run serially in one browser
+worker.
+
 Whether the marker is the right one (rendering for the test user, not flag-gated, not redirected
 away, not guessed) is established at authoring time with the unlocked baseline scaffold below
 (phase B, the C-gate), not by additional assertions in the shipped test.
@@ -21,35 +25,35 @@ needed; if the shell is intermittently absent, treat it as a real blocker or mar
 never as a warming race. Do not add waits or hovers.
 
 ```ts
-import { test, expect } from "@playwright/test";
-import { instant } from "@next/playwright";
+import { test, expect } from '@playwright/test'
+import { instant } from '@next/playwright'
 // Use the auth/setup helpers your e2e suite already has. Run as the test user
 // (defined in SKILL.md phase B).
-import { logIntoTestAccount, testUrl } from "../helpers";
+import { logIntoTestAccount, testUrl } from '../helpers'
 
 // A SYNC element of the destination's static shell (header, action button,
 // column header), not data that streams in, and one that renders for the
 // test user (not gated by a flag, plan, role, or empty state). Prefer a
 // data-testid on a known static node over a guessed role/name.
-const SHELL_MARKER = '[data-testid="<b>-shell-marker"]';
+const SHELL_MARKER = '[data-testid="<b>-shell-marker"]'
 
-test.describe("instant nav: A -> B", () => {
+test.describe('instant nav: A -> B', () => {
   test.beforeEach(async ({ page, browser }) => {
-    await logIntoTestAccount(page, browser);
-  });
+    await logIntoTestAccount(page, browser)
+  })
 
-  test("B shell commits under instant()", async ({ page }) => {
-    await page.goto(testUrl("/"));
-    const trigger = page.getByRole("link", { name: "<Trigger>", exact: true });
-    await expect(trigger).toBeVisible({ timeout: 20000 });
+  test('B shell commits under instant()', async ({ page }) => {
+    await page.goto(testUrl('/'))
+    const trigger = page.getByRole('link', { name: '<Trigger>', exact: true })
+    await expect(trigger).toBeVisible({ timeout: 20000 })
 
     await instant(page, async () => {
-      await trigger.click();
+      await trigger.click()
       // static shell asserted under the lock; no timeout
-      await expect(page.locator(SHELL_MARKER)).toBeVisible();
-    });
-  });
-});
+      await expect(page.locator(SHELL_MARKER)).toBeVisible()
+    })
+  })
+})
 ```
 
 The trigger selector follows the same rule as `SHELL_MARKER`: prefer a `data-testid` on the real
@@ -58,9 +62,13 @@ is shown only for brevity; like the marker, the trigger must reliably resolve fo
 
 ## Initial load (hard navigation)
 
-Drive `page.goto()` inside `instant()` with the `baseURL` option. The served document is the
-route's prerendered static shell. `baseURL` is required because `page` is still `about:blank` when
-`instant()` runs (`resolveURL` falls back to `page.url()` only when no `baseURL` is passed).
+Drive `page.goto()` inside `instant()` with the `baseURL` option. The document response contains
+the route's prerendered static shell, but Playwright assertions run after hydration. A Client
+Component that can resolve without request-time server content may already be visible. Choose a
+shell marker that remains valid after hydration instead of a prerender fallback that hydration
+replaces immediately. `baseURL` is required because `page` is still `about:blank` when `instant()`
+runs (`resolveURL` falls back to `page.url()` only when no `baseURL` is passed).
+
 Establish the session WITHOUT navigating `page` (inject `storageState`, or log in on a separate
 context/page). A login helper that navigates `page` itself defeats the measurement for a different
 reason: that navigation completes before `instant()` acquires the lock, so it runs unmeasured. The
@@ -72,23 +80,23 @@ storageState/separate-context path here instead, a session-injection call that
 does NOT call `page.goto`:
 
 ```ts
-test.describe("instant initial load: B", () => {
+test.describe('instant initial load: B', () => {
   test.beforeEach(async ({ page }) => {
-    await injectTestUserSession(page); // storageState only; must NOT call page.goto
-  });
+    await injectTestUserSession(page) // storageState only; must NOT call page.goto
+  })
 
-  test("B shell is served", async ({ page }) => {
-    const url = testUrl("/<b>");
+  test('B shell is served', async ({ page }) => {
+    const url = testUrl('/<b>')
     await instant(
       page,
       async () => {
-        await page.goto(url);
-        await expect(page.locator(SHELL_MARKER)).toBeVisible();
+        await page.goto(url)
+        await expect(page.locator(SHELL_MARKER)).toBeVisible()
       },
-      { baseURL: new URL(url).origin },
-    );
-  });
-});
+      { baseURL: new URL(url).origin }
+    )
+  })
+})
 ```
 
 ## Self-validating variant (recommended for routes with deferred content)
@@ -102,11 +110,11 @@ the content is already present and `toHaveCount(0)` fails (see `reference/red-te
 ```ts
 // soft navigation
 await instant(page, async () => {
-  await trigger.click();
-  await expect(page.locator(SHELL_MARKER)).toBeVisible(); // shell present
-  await expect(page.getByTestId("<b>-content")).toHaveCount(0); // deferred data gated
-});
-await expect(page.getByTestId("<b>-content")).toBeVisible(); // streams after release
+  await trigger.click()
+  await expect(page.locator(SHELL_MARKER)).toBeVisible() // shell present
+  await expect(page.getByTestId('<b>-content')).toHaveCount(0) // deferred data gated
+})
+await expect(page.getByTestId('<b>-content')).toBeVisible() // streams after release
 ```
 
 The two **gated-half** assertions (shell visible, deferred content `toHaveCount(0)`) apply to the
@@ -118,9 +126,9 @@ cached. So the initial-load `toHaveCount(0)` gated half is as valid as the soft-
 no fresh browser context and no cache-busting query param.
 
 The **post-release** assertion (`getByTestId('<b>-content').toBeVisible()` after the `instant()`
-block) is soft-nav only. On an initial load the document was already emitted under the lock, so
-nothing streams in after release; drop that assertion from the initial-load test, or
-`page.reload()` first to fetch an unlocked document. The mechanism is in
+block) applies to both forms. When the lock is released, Next.js refreshes the route so deferred
+content can render. For an initial load, this is a soft refresh after hydration, with a hard reload
+fallback if the router is not ready yet. The mechanism is in
 `reference/red-test-robustness.md`.
 
 ## Baseline scaffold: do not ship
@@ -133,28 +141,31 @@ scaffold before the PR.
 
 **The baseline must mirror the navigation type of the test you are shipping.** Drive a `<Link>`
 click when guarding the soft-nav shell; drive `page.goto()` when guarding the initial-load shell.
-The two shells can differ (`reference/real-app-patterns.md`): a click-driven baseline run against a
-shipped `goto` test would confirm a marker that the `goto` path never shows, which produces exactly
-the false RED the C-gate exists to prevent.
+The two shells can differ, as described in the
+[initial-load and client-navigation section](https://nextjs.org/docs/app/guides/instant-navigation#prevent-regressions-with-e2e-tests). A click-driven
+baseline run against a shipped `goto` test would confirm a marker that the `goto` path never shows,
+which produces exactly the false RED the C-gate exists to prevent.
 
 ```ts
 // soft-nav baseline: mirror the soft-nav instant() test
-test("dev-only: navigating to <b> renders its shell (no lock)", async ({ page }) => {
-  await page.goto(testUrl("/"));
-  const trigger = page.getByRole("link", { name: "<Trigger>", exact: true });
-  await expect(trigger).toBeVisible({ timeout: 20000 });
-  await trigger.click();
-  await expect(page).toHaveURL(/\/<b>(\?|$)/); // confirm the real destination (no redirect away)
-  await expect(page.locator(SHELL_MARKER)).toBeVisible({ timeout: 15000 });
-});
+test('dev-only: navigating to <b> renders its shell (no lock)', async ({
+  page,
+}) => {
+  await page.goto(testUrl('/'))
+  const trigger = page.getByRole('link', { name: '<Trigger>', exact: true })
+  await expect(trigger).toBeVisible({ timeout: 20000 })
+  await trigger.click()
+  await expect(page).toHaveURL(/\/<b>(\?|$)/) // confirm the real destination (no redirect away)
+  await expect(page.locator(SHELL_MARKER)).toBeVisible({ timeout: 15000 })
+})
 ```
 
 ```ts
 // initial-load baseline: mirror the initial-load instant() test (session pre-established)
-test("dev-only: <b> shell is served (no lock)", async ({ page }) => {
-  await page.goto(testUrl("/<b>"));
-  await expect(page.locator(SHELL_MARKER)).toBeVisible({ timeout: 15000 });
-});
+test('dev-only: <b> shell is served (no lock)', async ({ page }) => {
+  await page.goto(testUrl('/<b>'))
+  await expect(page.locator(SHELL_MARKER)).toBeVisible({ timeout: 15000 })
+})
 ```
 
 Notes:
