@@ -174,6 +174,28 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 
 Issues live in Linear (workspace Menuza, team Menuza) via Linear MCP tools. See `docs/agents/issue-tracker.md`.
 
+#### Querying Linear correctly
+
+Team selector is `team: "Menuza"` (key `MEN`); issue ids are `MEN-###` strings passed as `id`.
+
+- `list_issues` `fields` is a closed whitelist. Valid, and the ones worth asking for: `id`, `title`,
+  `status`, `statusType`, `priority`, `estimate`, `labels`, `assignee`, `project`, `parentId`,
+  `createdAt`, `updatedAt`, `completedAt`, `canceledAt`, `url`. `identifier`, `state` and `relations`
+  are **not** fields — the `id` already is `MEN-###`, and state is `status` (display name) plus
+  `statusType` (`backlog | unstarted | started | completed | canceled | duplicate`).
+- `list_issues` **never returns relations**. Read blockers with one `get_issue({ id, includeRelations: true })`
+  per issue; the relations come back under `relations.blockedBy` / `relations.blocks` / `relations.relatedTo`.
+- Status names are custom (`Backlog`, `Todo`, `In Progress`, `In Review`, `Done`, `Canceled`,
+  `Duplicate`, `Anotações`). Filter on `statusType`, not the name — "Done" is `completed`, not `Completed`.
+- `limit` caps at 250 and pages via `hasNextPage` + `cursor`. One 250-item fetch of the whole team is
+  the cheap path: fetch once, filter in code, rather than paging per status or per parent.
+- Roadmap maps are parent issues — `MEN-63` (MVP), `MEN-64` (post-MVP immediate), `MEN-65` (future) —
+  and their tickets come back via `parentId`.
+- **Blocker and ordering live in ticket prose, not in relations** — the relations graph is barely used
+  here, so an empty `blockedBy` does not mean a ticket is ready. Read its description and
+  `list_comments` before judging what is next; "X must land before Y" is written in the body.
+- When writing Markdown to `save_comment` / `save_issue`, send real newlines; never escape sequences.
+
 When reporting on issues to the user, never cite an identifier alone (`MEN-179`): always pair it with the issue title
 (or a short summary of it), e.g. `MEN-179 — Next.js 16.4 canary + RSC + Cache Components`. Applies to lists, tables and
 prose. The identifier goes first so it stays copy-pasteable; the title makes it readable without opening Linear.
