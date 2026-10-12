@@ -14,12 +14,21 @@ const config: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   experimental: {
-    // Per PLAN §4: verified against next@16.4.0-canary.19 + typescript@7.0.2.
+    // Per PLAN §4: verified against next@16.4.0 + typescript@7.0.2.
     useTypeScriptCli: true,
     // Native forbidden()/unauthorized() pages for the dashboard (MEN-224).
     // Experimental upstream and not recommended for production; the real
     // 403 check belongs in proxy.ts (MEN-225).
     authInterrupts: true,
+    // Next 16.4 agent tooling: nudge on a newer minor/major and let agents
+    // prepare anonymized Next.js issue reports during `next dev` (no-op in CI).
+    agentUpgrade: "latest",
+    agentFeedback: true,
+    // Next 16.4 Turbopack: reclaim unused compile work, compile client dynamic
+    // imports on demand, and run plugin tools in-process instead of over sockets.
+    turbopackGc: true,
+    turbopackLazyDynamicImports: true,
+    turbopackPluginRuntimeStrategy: "workerThreads",
   },
   typescript: {
     // Per PLAN §4: do not disable type checking. Leave undefined (= enabled).

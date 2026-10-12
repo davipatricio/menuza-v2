@@ -10,8 +10,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-- Next.js 16.x (canary), App Router, Server Components by default.
-- TypeScript v7 only — `experimental.useTypeScriptCli: true` is set in `next.config.ts` and verified against `next@16.4.0-canary.19`.
+- Next.js 16.4 (stable), App Router, Server Components by default.
+- TypeScript v7 only — `experimental.useTypeScriptCli: true` is set in `next.config.ts` and verified against `next@16.4.0`.
 - Build type checking is enabled (`typescript.ignoreBuildErrors: false`).
 - Host-aware routing in `src/proxy.ts`. Two modes:
   - `main` → marketing (pages at `/`, `/about`, `/pricing`, `/contact`) and dashboard
@@ -69,6 +69,26 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - No secrets in `NEXT_PUBLIC_*` variables.
 - Sentry: `instrumentation-client.ts` (browser), `instrumentation.ts` + `sentry.server.config.ts`/`sentry.edge.config.ts` (server/edge), `global-error.tsx` (root boundary). `next.config.ts` is wrapped by `withSentryConfig`; source map upload and release creation run only when `SENTRY_AUTH_TOKEN` is set. Browser DSN is `NEXT_PUBLIC_SENTRY_DSN` (public by design). Tracing samples 10% by default (`*_TRACES_SAMPLE_RATE=0.1`); set `0` to rely on OpenTelemetry tracing only. LGPD scrubbing is shared via `@menuza/shared/sentry-privacy`. The Sentry tunnel route is intentionally off: `src/proxy.ts` does not exempt `/monitoring`.
 
+## Next.js 16.4 adoption
+
+- Versions: `next@16.4.0` (stable, dropped the canary pin) and `react`/`react-dom`
+  `19.3.0` (View Transitions, Fragment Refs, `browser()`). `cacheComponents` and
+  `partialPrefetching` were already enabled; 16.4 keeps them as the recommended model.
+- `ensureStatic` guards the routes that must stay static:
+  - `src/app/(marketing)/layout.tsx` → `ensureStatic = "navigation"`: the marketing
+    pages (`/`, `/about`, `/pricing`, `/contact`) are fully static, so a later dynamic
+    addition fails the build instead of silently becoming request-time.
+  - `src/app/(storefront)/store/layout.tsx` → `ensureStatic = "shell"`: the storefront
+    nav and Suspense fallbacks stay static while `CommerceStatusCard` streams per request.
+  - The dashboard shell intentionally stays dynamic (`instant = false`, session read per
+    request), so it sets no `ensureStatic`.
+- `navigation()` / `prefetch()` (`next/cache`) are available but unused: the only
+  request-time content (`CommerceStatusCard`) is an uncached fetch already deferred by its
+  `<Suspense>` boundary, so no extra stage boundary is needed.
+- Not adopted: `reactCompiler` + `turbopackRustReactCompiler` (experimental; rewrites
+  memoization across the client tree) and `turbopackAdditionalRoots` (for symlinked deps
+  outside the project root / a global virtual store — this repo uses Bun workspaces).
+
 ## Compatibility flags
 
 - `experimental.useTypeScriptCli: true` — required because TS 7 does not expose the legacy compiler API. Documented by Next (https://github.com/vercel/next.js/blob/canary/packages/next/src/lib/typescript/runTypeScriptCli.ts). Removal condition: when Next ships a non-CLI type-check path that supports TS 7 without this flag.
@@ -76,4 +96,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   (it says `false`).
 - `cacheComponents: true` — required for the app's static shells and Partial Prefetching.
 - `partialPrefetching: true` — required; prefetches static route parts by default.
+- `experimental.agentUpgrade: "latest"` — upgrade reminders on `next dev`/`next build`.
+- `experimental.agentFeedback: true` — `next dev` maintains a managed feedback block in
+  this file; requires telemetry and is a no-op in CI.
+- `experimental.turbopackGc: true` — reclaims unused compile work in long dev sessions.
+- `experimental.turbopackLazyDynamicImports: true` — compiles client dynamic imports on demand.
+- `experimental.turbopackPluginRuntimeStrategy: "workerThreads"` — runs plugin tools
+  in-process; Next falls back to `childProcesses` on Node.js affected by nodejs/node#65100.
 - No `ignoreBuildErrors: true`. Type errors must be fixed, not suppressed.

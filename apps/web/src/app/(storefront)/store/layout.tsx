@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
 
+// The storefront shell (nav + Suspense fallbacks) is static while the commerce
+// status card renders at request time, so require only the App Shell to stay
+// static. Request-time rendering stays out of default <Link> prefetches.
+export const ensureStatic = "shell";
+
 export default function StorefrontLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">

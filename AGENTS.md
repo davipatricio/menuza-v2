@@ -22,8 +22,8 @@
 
 - Bun 1.4.3 (workspaces, package manager, runner, test runner).
 - TypeScript 7.0.2 only. No TS 5/6 fallback.
-- Next `16.4.0-canary.19` with `experimental.useTypeScriptCli: true`.
-- React 19.2.8, React DOM 19.2.8.
+- Next `16.4.0` (stable) with `experimental.useTypeScriptCli: true`.
+- React 19.3.0, React DOM 19.3.0.
 - Valibot 1.5.0 (catalog; Standard Schema for all oRPC `.input`/`.output`/error
   `data` schemas). No Zod in first-party code — transitive Zod remains via
   `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
