@@ -9,16 +9,16 @@
     ],
     "catalog": {
       "typescript": "7.0.2",
-      "@types/node": "26.6.5",
-      "bun-types": "1.4.3",
+      "@types/node": "22.10.5",
+      "bun-types": "1.4.1",
       "valibot": "1.5.0",
       "@orpc/server": "2.0.0-beta.35",
       "@orpc/contract": "2.0.0-beta.35",
       "@orpc/openapi": "2.0.0-beta.35",
       "@opentelemetry/api": "1.9.1",
-      "oxlint": "1.88.0",
-      "oxfmt": "0.73.0",
-      "@oxlint/plugins": "1.88.0"
+      "oxlint": "1.82.0",
+      "oxfmt": "0.67.0",
+      "@oxlint/plugins": "1.82.0"
     }
   },
   "type": "module",
@@ -47,8 +47,8 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
-    "eslint-plugin-sonarjs": "4.2.2",
-    "turbo": "2.11.8"
+    "eslint-plugin-sonarjs": "4.2.1",
+    "turbo": "2.11.0"
   },
-  "packageManager": "bun@1.4.4-canary.1"
+  "packageManager": "bun@1.4.3"
 }
