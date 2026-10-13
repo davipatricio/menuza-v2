@@ -117,6 +117,15 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 - Simpler approach exists? Say so. Push back when warranted.
 - Something unclear? Stop. Name what's confusing. Ask.
 
+### Flag better options
+
+- Assume the user can be wrong. When a request has a materially better, cheaper, faster, or more
+  accessible alternative — model, provider, service, free tier, algorithm, UI, accessibility — name
+  it with the tradeoff and recommend it. A line or two, not a lecture.
+- Don't silently substitute or block the user: surface the alternative, ask whether to continue as
+  asked, then do what the user decides.
+- In full-autonomous mode, skip the round-trip and take the better option, stating the choice made.
+
 ### Surgical changes
 
 - Touch only what the request requires. Don't "improve" adjacent code, comments, or formatting.
@@ -130,6 +139,13 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 - Turn tasks into verifiable goals ("fix bug" → "write failing repro, then make it pass").
 - Multi-step tasks: brief plan with a verify check per step.
 - Loop until verified against the criteria.
+
+### Version control
+
+- Don't `git commit` or `git push` unless the user explicitly asks for it. Completing a task is not
+  permission to commit.
+- Don't stage, amend, or otherwise "tidy up" the working tree either; leave it as the user left it.
+- Only force-push, rebase, `reset --hard`, or delete branches when the user asks.
 
 ## Anti-patterns
 
