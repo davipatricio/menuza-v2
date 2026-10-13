@@ -1,0 +1,5 @@
+interface:
+  display_name: "Menuza"
+  short_description: "Product, features, decisions and checks for the Menuza codebase"
+policy:
+  allow_implicit_invocation: true

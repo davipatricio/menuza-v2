@@ -170,6 +170,24 @@ Bias toward caution over speed. For trivial tasks, use judgment.
 
 ## Agent skills
 
+### Menuza product skill
+
+Product meaning, features, technical decisions and the checks every change must pass live in the
+`menuza` skill (`.agents/skills/menuza/`). Load it when a task touches a Menuza feature or a
+`MEN-` ticket.
+
+- Entry point: `.agents/skills/menuza/SKILL.md` — the router (always-true invariants + topic table).
+- Only know a word, not a topic? `.agents/skills/menuza/INDEX.md` is the flat keyword → file map.
+- Every folder and subfolder has its own `INDEX.md` with a keyword table:
+  - `product/` — vision, tenancy, MVP scope, open decisions, glossary.
+  - `features/` — `stores-and-teams/`, `storefronts/`, `catalog/`, `payments/`, `delivery/`,
+    `orders/`, `customers/`, `notifications/`, `admin/`, `integrations/`.
+  - `engineering/` — stack and ADRs, the monorepo map, the backend request path, route
+    rendering stages, checks, follow-ups.
+  - `tickets/` — every `MEN-###` with status, plus a ticket → module map.
+- `PRODUCT.md` (root, numbered sections) and Linear stay authoritative; the skill distils and maps
+  them onto the code. Before calling a feature done, run `engineering/checks.md`.
+
 ### Issue tracker
 
 Issues live in Linear (workspace Menuza, team Menuza) via Linear MCP tools. See `docs/agents/issue-tracker.md`.

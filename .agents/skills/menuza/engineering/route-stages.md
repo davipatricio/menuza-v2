@@ -1,16 +1,6 @@
----
-name: menuza-route-stages
-description: >
-  Audit and set the rendering stage of every route in apps/web. Use when adding
-  or changing a page, layout, or route handler under apps/web/src/app, deciding
-  whether a route should be static, cached, or request-time, choosing between
-  ensureStatic, instant, 'use cache'/cacheLife, navigation(), and prefetch(), or
-  when a route — or a prefetch into it — renders at request time unexpectedly.
----
+# Route rendering stages (apps/web)
 
-# menuza-route-stages
-
-Give each `apps/web` route the cheapest stage that still renders the right UI, then leave a guard so a later edit cannot quietly make it more expensive. Concept reference is offline at `node_modules/next/dist/docs/01-app/02-guides/keeping-pages-static.md` and `.../optimizing-prefetching.md`. Read `apps/web/AGENTS.md` first: it holds the group rules this skill applies.
+Give each `apps/web` route the cheapest stage that still renders the right UI, then leave a guard so a later edit cannot quietly make it more expensive. Concept reference is offline at `node_modules/next/dist/docs/01-app/02-guides/keeping-pages-static.md` and `.../optimizing-prefetching.md`. Read `apps/web/AGENTS.md` first.
 
 ## Stages
 
@@ -69,4 +59,3 @@ Done when every segment is labeled with a stage, its guard matches the label, an
 - `'navigation'` on a dynamic route needs `generateStaticParams()` returning at least one complete parameter set, or the build fails.
 - `navigation()` / `prefetch()` need a `<Suspense>` boundary to be useful; a call outside one surfaces a development Instant Insight.
 - In a file whose route segment config sets `prefetch`, alias the function: `import { prefetch as prefetchStage } from 'next/cache'`.
-- Keep user-facing copy in `pt-BR`, and never read the database from `apps/web` — data comes through the internal APIs.
