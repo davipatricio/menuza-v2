@@ -1,0 +1,21 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // Project agents live in .opencode/agents/. Orchestrator is the entry point.
+  "default_agent": "orchestrator",
+  // Orchestrator -> architect/implementer -> scout/researcher/critic is depth 2.
+  "experimental": {
+    "subagent_depth": 2
+  },
+  // Generated dirs and caches must not trigger filesystem updates.
+  "watcher": {
+    "ignore": ["**/.next/**", "**/.turbo/**", "**/node_modules/**", "**/dist/**"]
+  },
+  // Agents must not commit or push unless asked — that is enforced by the root
+  // AGENTS.md, not here, so full git automation stays possible.
+  // Destructive history/working-tree operations are hard-denied.
+  "permissions": [
+    { "action": "shell", "resource": "git reset --hard*", "effect": "deny" },
+    { "action": "shell", "resource": "git clean -*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch -D*", "effect": "deny" }
+  ]
+}
