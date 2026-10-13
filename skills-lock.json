@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "ai-slop-cleaner": {
+      "source": "yeachan-heo/oh-my-codex",
+      "sourceType": "github",
+      "skillPath": "skills/ai-slop-cleaner/SKILL.md",
+      "computedHash": "3417762ffcb12c273097bbb3c18224f3774f700b4c1138b920af8fc552be5e0d"
+    },
     "better-accessibility": {
       "source": "jakubkrehel/skills",
       "sourceType": "github",
@@ -48,6 +54,12 @@
       "sourceType": "github",
       "skillPath": "skills/break/SKILL.md",
       "computedHash": "040107b945a340783f37aae0c5380071621c60074f6616b695de5ff3838fdcef"
+    },
+    "dead-code-auditor": {
+      "source": "synapsync/skills-registry",
+      "sourceType": "github",
+      "skillPath": "cognitives/skills/analytics/dead-code-auditor/SKILL.md",
+      "computedHash": "7336fd11345cdc733e7f5c192e6b28b2a144163041393e94ebbc7174d24b6f4d"
     },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",

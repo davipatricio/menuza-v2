@@ -29,6 +29,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
     See ADR-0005.
 - Document language: `pt-BR`. User-facing content stays in Portuguese.
 - UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog`, `table`, `sidebar`, `badge`, `tabs`, `breadcrumb`, `dropdown-menu`, `checkbox`, `avatar`, `select`, `combobox`, `collapsible`, `popover`, `calendar`, `field` (plus transitive `sheet`, `separator`, `skeleton`, `tooltip`, `textarea`, `input-group`, `use-mobile`) in `src/components/ui/`.
+- Dashboard visual system: `DESIGN.md` (tokens, recipes, motion, responsive, wording, slop bans) is authoritative for `/dashboard`. New pages follow its Iteration Guide, then run `bun run design:check` from the repo root before `typecheck`/`lint`.
 - Dashboard auth: `/dashboard/login` and the `/dashboard/signup/*` wizard (conta →
   perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
   `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot

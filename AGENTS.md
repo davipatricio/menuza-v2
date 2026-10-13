@@ -20,7 +20,7 @@
 
 ## Versions (locked)
 
-- Bun 1.4.3 (workspaces, package manager, runner, test runner).
+- Bun 1.4.4-canary.1 (workspaces, package manager, runner, test runner; `bun check` for type checking).
 - TypeScript 7.0.2 only. No TS 5/6 fallback.
 - Next `16.4.0` (stable) with `experimental.useTypeScriptCli: true`.
 - React 19.3.0, React DOM 19.3.0.
@@ -28,22 +28,22 @@
   `data` schemas). No Zod in first-party code — transitive Zod remains via
   `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
 - Tailwind 4.3.3 + `@tailwindcss/postcss` 4.3.3.
-- shadcn (Base UI variant on `@base-ui/react` 1.8.0; components in `apps/web/src/components/ui/`).
+- shadcn (Base UI variant on `@base-ui/react` 1.9.0; components in `apps/web/src/components/ui/`).
 - oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`,
   `@orpc/openapi`). v2 wire
   format is incompatible with v1 — server and client deploy together.
-- Prisma CLI `8.0.0-rc.14`, `@prisma/orm-postgres` `8.0.0-rc.10` (RC pin; bump CLI and
+- Prisma CLI `8.0.0-rc.22`, `@prisma/orm-postgres` `8.0.0-rc.17` (RC pin; bump CLI and
   ORM package together — wire/marker formats are versioned together).
-- BullMQ 6.3.4 over Bun's built-in `RedisClient` (adapter; ioredis removed).
-- Turborepo 2.11.0 (task DAG + local cache; no remote cache).
-- OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.11.0 / 0.222.0) and
+- BullMQ 6.3.14 over Bun's built-in `RedisClient` (adapter; ioredis removed).
+- Turborepo 2.11.8 (task DAG + local cache; no remote cache).
+- OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.12.0 / 0.223.0) and
   `bullmq-otel` 2.0.1.
-- Sentry Bun 10.73.0 (APIs) + Sentry Next.js 10.73.0 (web); init is a no-op
+- Sentry Bun 11.7.0 (APIs) + Sentry Next.js 11.7.0 (web); init is a no-op
   without the DSN. LGPD PII scrubbing lives in `@menuza/shared/sentry-privacy`.
-- TanStack Query 5.102.8 (provider shell only; no queries yet).
-- Serwist 9.5.12 (`@serwist/next`, `@serwist/turbopack`; SW compiled by esbuild and served at `/serwist/sw.js`).
+- TanStack Query 5.104.2 (provider shell only; no queries yet).
+- Serwist 9.5.13 (`@serwist/next`, `@serwist/turbopack`; SW compiled by esbuild and served at `/serwist/sw.js`).
 - esbuild 0.28.2 (Serwist SW bundler).
-- `@tanstack/query-persist-client-core` 5.102.8, `@tanstack/react-query-persist-client` 5.102.8, `idb-keyval` 6.3.0 (offline persister).
+- `@tanstack/query-persist-client-core` 5.104.2, `@tanstack/react-query-persist-client` 5.104.2, `idb-keyval` 6.3.0 (offline persister).
 - GitHub Actions (replaces GitLab CI per user direction).
 
 ## Bun/catalog rules
@@ -64,7 +64,7 @@
 
 - One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Builds go through `bun run scripts/docker-build.ts <app>`; the context is the pruned monorepo, not the repo root.
 - Bun services (commerce, tenant, worker) ship as `bun build --compile` binaries — no tsdown, no node_modules in the runtime layer (`debian:bookworm-slim` + binary + ca-certificates).
-- Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:1.4.2-slim`; 1.4.3 is a canary pin with no Docker tag).
+- Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:1.4.2-slim`; the pinned Bun 1.4.4-canary.1 has no Docker tag).
 - Images are hermetic from env: scripts use `--env-file-if-exists`, so builds work without `.env`; runtime config is env-only. Never bake `.env`.
 - API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
 - CI compiles the binaries in the `build` job. No image pipeline, no deploy.
@@ -77,7 +77,7 @@
 ## Commands
 
 - `bun run dev` — concurrent runnable app processes.
-- `bun run typecheck` — TS 7 across workspaces (after `db:generate` and `typegen`).
+- `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `db:generate` and `typegen`).
 - `bun test` — workspace-policy + unit tests (no infra).
 - `bun run test:integration` — infra-backed checks.
 - `bun run build` — Prisma generate, Next typegen, Next build with type checking.
@@ -200,13 +200,39 @@ Product meaning, features, technical decisions and the checks every change must 
     `orders/`, `customers/`, `notifications/`, `admin/`, `integrations/`.
   - `engineering/` — stack and ADRs, the monorepo map, the backend request path, route
     rendering stages, checks, follow-ups.
-  - `tickets/` — every `MEN-###` with status, plus a ticket → module map.
+  - `tickets/` — how to query Linear, the roadmap epics, the ticket → module map.
 - `PRODUCT.md` (root, numbered sections) and Linear stay authoritative; the skill distils and maps
   them onto the code. Before calling a feature done, run `engineering/checks.md`.
+
+### Skill tiers
+
+Skills overlap, so load by tier — never all at once.
+
+- **Tier 0 — always on for UI work:** `shadcn` (existing components first, semantic
+  tokens, `FieldGroup`+`Field`, `gap-*` not `space-*`, overlays with `Title`,
+  `Avatar` with `Fallback`) and `menuza` (invariants + checks). Dashboard work
+  additionally follows `apps/web/DESIGN.md`; verify with `bun run design:check`.
+- **Tier 1 — checkers, on demand:** `better-accessibility` (focus, ARIA, contrast),
+  `better-layout` (responsive, no page-level horizontal overflow). Housekeeping:
+  `dead-code-auditor` (reports only — six categories, evidence-backed, never
+  deletes; ends by offering a `/plan`) and `ai-slop-cleaner` (bounded to the
+  calling task's changed files; behavior lock + fallback classification first,
+  passes 1–4, never masks architectural blockers). Both respect Surgical changes:
+  unrelated dead code is mentioned, not deleted.
+- **Tier 2 — one generator at a time:** `frontend-design` for product UI xor
+  `design-taste-frontend` for marketing hero work. Never both on the same task.
+- **Tier 3 — do not auto-load:** `better-colors`, `better-typography`, `better-ui`,
+  `better-writing`, `better-interface`, `web-design-guidelines`,
+  `vercel-composition-patterns`, `vercel-react-best-practices`, `interface-review`,
+  `explain-interface`, `variant`. Invoke by name only when the task is exactly that slice.
+- Backend/tooling skills (`orpc*`, `prisma-8`, `next-*`, `install-anti-slop`, `break`)
+  are outside this tiering; load them by task as before.
 
 ### Issue tracker
 
 Issues live in Linear (workspace Menuza, team Menuza) via Linear MCP tools. See `docs/agents/issue-tracker.md`.
+
+**Linear is the only ticket store.** No ticket list, status, priority or inventory is mirrored into this repo — not in docs, not in the skill, not in code comments. Cite a `MEN-###` to point at the tracker; never record its state locally.
 
 #### Querying Linear correctly
 
