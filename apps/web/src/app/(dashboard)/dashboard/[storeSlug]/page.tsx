@@ -29,7 +29,7 @@ const KPI_CARDS = [
 
 const QUICK_ACTIONS = [
   { href: "orders", label: "Ver pedidos", icon: ShoppingCart },
-  { href: "catalog", label: "Ver catálogo", icon: BookOpen },
+  { href: "catalog/products", label: "Ver catálogo", icon: BookOpen },
   { href: "settings/store", label: "Configurações da loja", icon: Settings },
 ];
 

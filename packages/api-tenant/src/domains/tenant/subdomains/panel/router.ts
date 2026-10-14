@@ -6,6 +6,9 @@ import { listCustomersImpl } from "./listCustomers.impl.ts";
 import { getCustomerImpl } from "./getCustomer.impl.ts";
 import { listProductsImpl } from "./listProducts.impl.ts";
 import { listCategoriesImpl } from "./listCategories.impl.ts";
+import { listDepartmentsImpl } from "./listDepartments.impl.ts";
+import { listKitsImpl } from "./listKits.impl.ts";
+import { listTagsImpl } from "./listTags.impl.ts";
 import { listCouponsImpl } from "./listCoupons.impl.ts";
 import { listAuditLogsImpl } from "./listAuditLogs.impl.ts";
 import { listTeamMembersImpl } from "./listTeamMembers.impl.ts";
@@ -19,6 +22,9 @@ export const panelSubdomainRouter = {
   getCustomer: getCustomerImpl,
   listProducts: listProductsImpl,
   listCategories: listCategoriesImpl,
+  listDepartments: listDepartmentsImpl,
+  listKits: listKitsImpl,
+  listTags: listTagsImpl,
   listCoupons: listCouponsImpl,
   listAuditLogs: listAuditLogsImpl,
   listTeamMembers: listTeamMembersImpl,

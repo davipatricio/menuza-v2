@@ -203,7 +203,16 @@ export function AppSidebar({
       items: [
         { href: basePath, label: "Dashboard", icon: LayoutDashboard, exact: true },
         { href: `${basePath}/orders`, label: "Pedidos", icon: ShoppingCart },
-        { href: `${basePath}/catalog`, label: "Catálogo", icon: BookOpen },
+      ],
+    },
+    {
+      label: "Catálogo",
+      items: [
+        { href: `${basePath}/catalog/products`, label: "Produtos", icon: BookOpen },
+        { href: `${basePath}/catalog/kits`, label: "Kits", icon: BookOpen },
+        { href: `${basePath}/catalog/departments`, label: "Departamentos", icon: BookOpen },
+        { href: `${basePath}/catalog/categories`, label: "Categorias", icon: BookOpen },
+        { href: `${basePath}/catalog/tags`, label: "Tags", icon: BookOpen },
       ],
     },
     {

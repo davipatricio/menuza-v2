@@ -12,7 +12,9 @@ model Tenant {
   pushSubscriptions PushSubscription[]
   pushPreferences   PushPreference[]
   categories        Category[]
+  departments       Department[]
   products          Product[]
+  tags              Tag[]
   variations        Variation[]
   kits              Kit[]
   customers         Customer[]
@@ -249,17 +251,48 @@ model Category {
 // A sellable item. It carries no price: the money lives on the Variation, so a
 // product with a single default variation and a product with a real variant
 // matrix share one table.
+model Department {
+  id        String     @id(map: "Department_pkey")
+  tenantId  String
+  name      String
+  sortOrder Int        @default(0)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Department_tenantId_fkey")
+  products  Product[]
+
+  @@unique([tenantId, name], map: "Department_tenantId_name_key")
+  @@index([tenantId], map: "Department_tenantId_idx")
+
+  @@map("Department")
+}
+
+model Tag {
+  id        String       @id(map: "Tag_pkey")
+  tenantId  String
+  name      String
+  sortOrder Int          @default(0)
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Tag_tenantId_fkey")
+  products  ProductTag[]
+
+  @@unique([tenantId, name], map: "Tag_tenantId_name_key")
+  @@index([tenantId], map: "Tag_tenantId_idx")
+
+  @@map("Tag")
+}
+
 model Product {
-  id          String      @id(map: "Product_pkey")
-  tenantId    String
-  name        String
-  description String?
-  categoryId  String?
-  available   Boolean     @default(true)
-  sortOrder   Int         @default(0)
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Product_tenantId_fkey")
-  category    Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_categoryId_fkey")
-  variations  Variation[]
+  id           String        @id(map: "Product_pkey")
+  tenantId     String
+  name         String
+  description  String?
+  categoryId   String?
+  departmentId String?
+  available    Boolean       @default(true)
+  sortOrder    Int           @default(0)
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Product_tenantId_fkey")
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_categoryId_fkey")
+  department   Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_departmentId_fkey")
+  variations   Variation[]
+  tags         ProductTag[]
 
   @@index([tenantId], map: "Product_tenantId_idx")
   @@index([categoryId], map: "Product_categoryId_idx")
@@ -292,6 +325,18 @@ model Variation {
   )
 
   @@map("Variation")
+}
+
+model ProductTag {
+  productId String
+  tagId     String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductTag_productId_fkey")
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductTag_tagId_fkey")
+
+  @@id([productId, tagId], map: "ProductTag_pkey")
+  @@index([tagId], map: "ProductTag_tagId_idx")
+
+  @@map("ProductTag")
 }
 
 // A sellable bundle of variations (MEN-82). The pricing formula is still open

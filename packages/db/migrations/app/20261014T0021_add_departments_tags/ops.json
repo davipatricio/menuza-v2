@@ -1,0 +1,650 @@
+[
+  {
+    "id": "table.Department",
+    "label": "Create table \"Department\"",
+    "summary": "Creates table \"Department\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Department\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Department\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Department\"",
+        "sql": "CREATE TABLE \"public\".\"Department\" (\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"sortOrder\" int4 DEFAULT 0 NOT NULL,\n  \"tenantId\" text NOT NULL,\n  CONSTRAINT \"Department_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Department\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Department\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.ProductTag",
+    "label": "Create table \"ProductTag\"",
+    "summary": "Creates table \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"ProductTag\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"ProductTag\"",
+        "sql": "CREATE TABLE \"public\".\"ProductTag\" (\n  \"productId\" text NOT NULL,\n  \"tagId\" text NOT NULL,\n  CONSTRAINT \"ProductTag_pkey\" PRIMARY KEY (\"productId\", \"tagId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"ProductTag\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.Tag",
+    "label": "Create table \"Tag\"",
+    "summary": "Creates table \"Tag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Tag\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tag\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Tag\"",
+        "sql": "CREATE TABLE \"public\".\"Tag\" (\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"sortOrder\" int4 DEFAULT 0 NOT NULL,\n  \"tenantId\" text NOT NULL,\n  CONSTRAINT \"Tag_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Tag\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tag\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Product.departmentId",
+    "label": "Add column \"departmentId\" to \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "departmentId",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"departmentId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Product",
+          "departmentId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"departmentId\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" ADD COLUMN \"departmentId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"departmentId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Product",
+          "departmentId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.Department.Department_tenantId_name_key",
+    "label": "Add unique constraint on \"Department\" (tenantId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "Department_tenantId_name_key",
+        "table": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Department_tenantId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Department_tenantId_name_key",
+          "public",
+          "\"public\".\"Department\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"Department_tenantId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"Department\" ADD CONSTRAINT \"Department_tenantId_name_key\" UNIQUE (\"tenantId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Department_tenantId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Department_tenantId_name_key",
+          "public",
+          "\"public\".\"Department\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.Tag.Tag_tenantId_name_key",
+    "label": "Add unique constraint on \"Tag\" (tenantId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "Tag_tenantId_name_key",
+        "table": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Tag_tenantId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tag_tenantId_name_key",
+          "public",
+          "\"public\".\"Tag\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"Tag_tenantId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"Tag\" ADD CONSTRAINT \"Tag_tenantId_name_key\" UNIQUE (\"tenantId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Tag_tenantId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tag_tenantId_name_key",
+          "public",
+          "\"public\".\"Tag\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Department.Department_tenantId_idx",
+    "label": "Create index \"Department_tenantId_idx\" on \"Department\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Department_tenantId_idx",
+        "table": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Department_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Department_tenantId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Department_tenantId_idx\"",
+        "sql": "CREATE INDEX \"Department_tenantId_idx\" ON \"public\".\"Department\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Department_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Department_tenantId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Product.Product_departmentId_idx_8e261ed8",
+    "label": "Create index \"Product_departmentId_idx_8e261ed8\" on \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Product_departmentId_idx_8e261ed8",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Product_departmentId_idx_8e261ed8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Product_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Product_departmentId_idx_8e261ed8\"",
+        "sql": "CREATE INDEX \"Product_departmentId_idx_8e261ed8\" ON \"public\".\"Product\" (\"departmentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Product_departmentId_idx_8e261ed8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Product_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductTag.ProductTag_productId_idx_5858600a",
+    "label": "Create index \"ProductTag_productId_idx_5858600a\" on \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductTag_productId_idx_5858600a",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductTag_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag_productId_idx_5858600a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductTag_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"ProductTag_productId_idx_5858600a\" ON \"public\".\"ProductTag\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductTag_productId_idx_5858600a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag_productId_idx_5858600a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductTag.ProductTag_tagId_idx",
+    "label": "Create index \"ProductTag_tagId_idx\" on \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductTag_tagId_idx",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductTag_tagId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag_tagId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductTag_tagId_idx\"",
+        "sql": "CREATE INDEX \"ProductTag_tagId_idx\" ON \"public\".\"ProductTag\" (\"tagId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductTag_tagId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag_tagId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Tag.Tag_tenantId_idx",
+    "label": "Create index \"Tag_tenantId_idx\" on \"Tag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Tag_tenantId_idx",
+        "table": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Tag_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tag_tenantId_idx\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Tag_tenantId_idx\"",
+        "sql": "CREATE INDEX \"Tag_tenantId_idx\" ON \"public\".\"Tag\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Tag_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Tag_tenantId_idx\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Department.Department_tenantId_fkey",
+    "label": "Add foreign key \"Department_tenantId_fkey\" on \"Department\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Department_tenantId_fkey",
+        "table": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Department_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Department_tenantId_fkey",
+          "public",
+          "\"public\".\"Department\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Department_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Department\"\nADD CONSTRAINT \"Department_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Department_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Department_tenantId_fkey",
+          "public",
+          "\"public\".\"Department\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Product.Product_departmentId_fkey",
+    "label": "Add foreign key \"Product_departmentId_fkey\" on \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Product_departmentId_fkey",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Product_departmentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Product_departmentId_fkey",
+          "public",
+          "\"public\".\"Product\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Product_departmentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Product\"\nADD CONSTRAINT \"Product_departmentId_fkey\"\nFOREIGN KEY (\"departmentId\")\nREFERENCES \"public\".\"Department\" (\"id\")\nON DELETE SET NULL\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Product_departmentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Product_departmentId_fkey",
+          "public",
+          "\"public\".\"Product\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductTag.ProductTag_productId_fkey",
+    "label": "Add foreign key \"ProductTag_productId_fkey\" on \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductTag_productId_fkey",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductTag_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ProductTag_productId_fkey",
+          "public",
+          "\"public\".\"ProductTag\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductTag_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductTag\"\nADD CONSTRAINT \"ProductTag_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"Product\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductTag_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ProductTag_productId_fkey",
+          "public",
+          "\"public\".\"ProductTag\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductTag.ProductTag_tagId_fkey",
+    "label": "Add foreign key \"ProductTag_tagId_fkey\" on \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductTag_tagId_fkey",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductTag_tagId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ProductTag_tagId_fkey",
+          "public",
+          "\"public\".\"ProductTag\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductTag_tagId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductTag\"\nADD CONSTRAINT \"ProductTag_tagId_fkey\"\nFOREIGN KEY (\"tagId\")\nREFERENCES \"public\".\"Tag\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductTag_tagId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ProductTag_tagId_fkey",
+          "public",
+          "\"public\".\"ProductTag\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Tag.Tag_tenantId_fkey",
+    "label": "Add foreign key \"Tag_tenantId_fkey\" on \"Tag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Tag_tenantId_fkey",
+        "table": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Tag_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tag_tenantId_fkey",
+          "public",
+          "\"public\".\"Tag\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Tag_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Tag\"\nADD CONSTRAINT \"Tag_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Tag_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Tag_tenantId_fkey",
+          "public",
+          "\"public\".\"Tag\""
+        ]
+      }
+    ]
+  }
+]

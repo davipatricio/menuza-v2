@@ -31,6 +31,7 @@ export function HeaderActions({ showSwitcher = true }: { showSwitcher?: boolean 
     <div className="flex shrink-0 items-center gap-1">
       {showSwitcher ? (
         <Button
+          nativeButton={false}
           variant="outline"
           size="sm"
           render={<Link href="/dashboard" aria-label="Trocar de loja" />}

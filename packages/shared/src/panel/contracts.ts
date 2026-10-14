@@ -256,8 +256,40 @@ export const PanelCategorySchema = v.object({
   itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
 });
 
+export const PanelKitSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  mode: v.string(),
+  available: v.boolean(),
+  itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const PanelKitsOutputSchema = v.object({
+  kits: v.array(PanelKitSchema),
+});
+
 export const PanelCategoriesOutputSchema = v.object({
   categories: v.array(PanelCategorySchema),
+});
+
+export const PanelDepartmentSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const PanelDepartmentsOutputSchema = v.object({
+  departments: v.array(PanelDepartmentSchema),
+});
+
+export const PanelTagSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const PanelTagsOutputSchema = v.object({
+  tags: v.array(PanelTagSchema),
 });
 
 /** `valueCents` is set only for a fixed discount; percentages carry `valuePercent`. */
@@ -629,6 +661,42 @@ export const listCategories = panelRead
   .input(PanelStoreInputSchema)
   .output(PanelCategoriesOutputSchema);
 
+export const listDepartments = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/departments",
+      operationId: "listPanelDepartments",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelDepartmentsOutputSchema);
+
+export const listTags = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/tags",
+      operationId: "listPanelTags",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelTagsOutputSchema);
+
+export const listKits = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/kits",
+      operationId: "listPanelKits",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelKitsOutputSchema);
+
 export const listCoupons = panelRead
   .meta(
     openapi({
@@ -712,6 +780,9 @@ export const panelContractObject = {
   getCustomer,
   listProducts,
   listCategories,
+  listDepartments,
+  listTags,
+  listKits,
   listCoupons,
   listAuditLogs,
   listTeamMembers,
