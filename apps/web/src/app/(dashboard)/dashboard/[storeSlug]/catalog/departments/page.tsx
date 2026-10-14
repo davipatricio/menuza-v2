@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { DepartmentsTable } from "./departments-table";
 
 export default async function CatalogDepartmentsPage({ params }: { params: Promise<{ storeSlug: string }> }) {
   const { storeSlug } = await params;
@@ -14,24 +15,7 @@ export default async function CatalogDepartmentsPage({ params }: { params: Promi
         <h2 id="departments-heading" className="text-xl font-semibold tracking-tight">Departamentos</h2>
         <p className="text-sm text-muted-foreground">Departamentos do catálogo.</p>
       </div>
-      <div className="overflow-hidden rounded-xl border border-border shadow-surface">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left font-medium">Nome</th>
-              <th className="px-4 py-3 text-right font-medium">Itens</th>
-            </tr>
-          </thead>
-          <tbody>
-            {departments.map((entry) => (
-              <tr key={entry.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 font-medium">{entry.name}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{entry.itemsCount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DepartmentsTable departments={departments} />
     </section>
   );
 }
