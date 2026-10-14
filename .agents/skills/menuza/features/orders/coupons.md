@@ -18,10 +18,20 @@ Fixed or percentage discount; free shipping; first purchase; minimum value; elig
 - Use limits must survive **concurrent** purchases (a per-customer coupon used twice at once must be refused at least once).
 - A coupon belongs to one tenant and never affects another's order.
 
+## Management surface (implemented)
+
+- Schema (`packages/db`): `Coupon` has `description`, `usageLimit`, `perCustomerLimit`, `minimumOrderCents`, `maximumDiscountCents`, optional `startsAt`/`endsAt`, `stackable` and `firstPurchaseOnly`.
+- Panel contracts (`packages/shared`): `panel.listCoupons`, `panel.createCoupon`, `panel.updateCoupon`, `panel.deleteCoupon`.
+- API impls: `packages/api-tenant/.../panel/listCoupons.impl.ts`, `createCoupon.impl.ts`, `updateCoupon.impl.ts`, `deleteCoupon.impl.ts`.
+- Dashboard: `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/coupons/` with DataTable, create/edit dialog and destructive delete.
+- Limits are stored opt-in; null means unlimited.
+- Statuses are `active`, `expired`, `disabled`. `value` remains one Int column and is split into `valueCents`/`valuePercent` at the read boundary.
+- Codes are normalized to uppercase, unique per tenant.
+
 ## Code entry points
 
-- `Coupon` model (`packages/db`, tenant-scoped, `Int` cents); panel reads `panel.listCoupons`; buyer application in the commerce checkout.
-- Application order is a single, tested function — not scattered subtraction — so the open precedence has one place to change.
+- `Coupon` model (`packages/db`, tenant-scoped, `Int` cents); panel reads/writes `panel.*Coupon`; buyer application in the commerce checkout.
+- Application order is a single, tested function - not scattered subtraction - so the open precedence has one place to change.
 
 ## Checks
 

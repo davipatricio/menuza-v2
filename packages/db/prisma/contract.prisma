@@ -425,8 +425,17 @@ model Coupon {
   code         String
   discountType discount_type
   value        Int
+  description  String?
   usageCount   Int           @default(0)
-  status       coupon_status
+  status       coupon_status @default(active)
+  usageLimit   Int?
+  perCustomerLimit Int?
+  minimumOrderCents Int?
+  maximumDiscountCents Int?
+  startsAt     Timestamp(3)?
+  endsAt       Timestamp(3)?
+  stackable    Boolean       @default(false)
+  firstPurchaseOnly Boolean  @default(false)
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Coupon_tenantId_fkey")
 
   @@unique([tenantId, code], map: "Coupon_tenantId_code_key")

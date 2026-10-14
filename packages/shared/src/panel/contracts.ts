@@ -304,10 +304,19 @@ export const PanelTagsOutputSchema = v.object({
 export const PanelCouponSchema = v.object({
   id: v.string(),
   code: v.string(),
+  description: v.nullable(v.string()),
   discountType: DiscountTypeSchema,
   valueCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
   valuePercent: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100))),
   usageCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  usageLimit: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  perCustomerLimit: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  minimumOrderCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  maximumDiscountCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  startsAt: v.nullable(v.string()),
+  endsAt: v.nullable(v.string()),
+  stackable: v.boolean(),
+  firstPurchaseOnly: v.boolean(),
   status: CouponStatusSchema,
 });
 
@@ -718,6 +727,64 @@ export const listCoupons = panelRead
   .input(PanelStoreInputSchema)
   .output(PanelCouponsOutputSchema);
 
+export const CreateCouponInputSchema = v.strictObject({
+  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
+  code: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  description: v.optional(v.pipe(v.string(), v.maxLength(280))),
+  discountType: DiscountTypeSchema,
+  discountValue: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  usageLimit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  perCustomerLimit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  minimumOrderCents: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  maximumDiscountCents: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  startsAt: v.optional(v.nullable(v.string())),
+  endsAt: v.optional(v.nullable(v.string())),
+  stackable: v.boolean(),
+  firstPurchaseOnly: v.boolean(),
+  status: CouponStatusSchema,
+});
+
+export const UpdateCouponInputSchema = v.strictObject({
+  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
+  couponId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  code: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  description: v.optional(v.nullable(v.string())),
+  discountType: DiscountTypeSchema,
+  discountValue: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  usageLimit: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+  perCustomerLimit: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
+  minimumOrderCents: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
+  maximumDiscountCents: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
+  startsAt: v.optional(v.nullable(v.string())),
+  endsAt: v.optional(v.nullable(v.string())),
+  stackable: v.boolean(),
+  firstPurchaseOnly: v.boolean(),
+  status: CouponStatusSchema,
+});
+
+export const DeleteCouponInputSchema = v.strictObject({
+  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
+  couponId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+});
+
+const couponCreatedOutput = v.object({ coupon: PanelCouponSchema });
+const couponDeletedOutput = v.object({ success: v.boolean() });
+
+export const createCoupon = sessionContract
+  .meta(openapi({ method: "POST", path: "/panel/stores/{storeSlug}/coupons", operationId: "createPanelCoupon", summary: "Cria um cupom promocional.", tags: ["panel"] }))
+  .input(CreateCouponInputSchema)
+  .output(couponCreatedOutput);
+
+export const updateCoupon = sessionContract
+  .meta(openapi({ method: "PUT", path: "/panel/stores/{storeSlug}/coupons/{couponId}", operationId: "updatePanelCoupon", summary: "Atualiza um cupom promocional.", tags: ["panel"] }))
+  .input(UpdateCouponInputSchema)
+  .output(couponCreatedOutput);
+
+export const deleteCoupon = sessionContract
+  .meta(openapi({ method: "DELETE", path: "/panel/stores/{storeSlug}/coupons/{couponId}", operationId: "deletePanelCoupon", summary: "Exclui um cupom.", tags: ["panel"] }))
+  .input(DeleteCouponInputSchema)
+  .output(couponDeletedOutput);
+
 export const listAuditLogs = panelRead
   .meta(
     openapi({
@@ -792,6 +859,9 @@ export const panelContractObject = {
   listTags,
   listKits,
   listCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
   listAuditLogs,
   listTeamMembers,
 };

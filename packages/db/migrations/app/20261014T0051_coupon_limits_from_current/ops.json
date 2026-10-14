@@ -1,0 +1,422 @@
+[
+  {
+    "id": "column.public.Coupon.description",
+    "label": "Add column \"description\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "description",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"description\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "description"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"description\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"description\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"description\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "description"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.endsAt",
+    "label": "Add column \"endsAt\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "endsAt",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"endsAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "endsAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"endsAt\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"endsAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"endsAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "endsAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.firstPurchaseOnly",
+    "label": "Add column \"firstPurchaseOnly\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "firstPurchaseOnly",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"firstPurchaseOnly\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "firstPurchaseOnly"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"firstPurchaseOnly\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"firstPurchaseOnly\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"firstPurchaseOnly\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "firstPurchaseOnly"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.maximumDiscountCents",
+    "label": "Add column \"maximumDiscountCents\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "maximumDiscountCents",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"maximumDiscountCents\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "maximumDiscountCents"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"maximumDiscountCents\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"maximumDiscountCents\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"maximumDiscountCents\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "maximumDiscountCents"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.minimumOrderCents",
+    "label": "Add column \"minimumOrderCents\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "minimumOrderCents",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"minimumOrderCents\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "minimumOrderCents"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"minimumOrderCents\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"minimumOrderCents\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"minimumOrderCents\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "minimumOrderCents"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.perCustomerLimit",
+    "label": "Add column \"perCustomerLimit\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "perCustomerLimit",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"perCustomerLimit\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "perCustomerLimit"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"perCustomerLimit\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"perCustomerLimit\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"perCustomerLimit\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "perCustomerLimit"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.stackable",
+    "label": "Add column \"stackable\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "stackable",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"stackable\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "stackable"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"stackable\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"stackable\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"stackable\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "stackable"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.startsAt",
+    "label": "Add column \"startsAt\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "startsAt",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"startsAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "startsAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"startsAt\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"startsAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"startsAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "startsAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Coupon.usageLimit",
+    "label": "Add column \"usageLimit\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "usageLimit",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"usageLimit\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "usageLimit"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"usageLimit\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"usageLimit\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"usageLimit\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "usageLimit"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "setDefault.Coupon.status",
+    "label": "Set default on \"Coupon\".\"status\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "status",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"status\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "status"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "set default on \"status\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ALTER COLUMN \"status\" SET DEFAULT 'active'"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"status\" has a default",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"column_default\" IS NOT NULL)) AS \"result\"",
+        "params": [
+          "public",
+          "Coupon",
+          "status"
+        ]
+      }
+    ]
+  }
+]
