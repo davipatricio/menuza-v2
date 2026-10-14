@@ -237,11 +237,19 @@ export const PanelCustomersOutputSchema = v.object({
 export const PanelCustomerOutputSchema = PanelCustomerDetailSchema;
 
 /** A catalog product with the price of its default variation (MEN-80). */
+export const PanelProductTagSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+});
+
 export const PanelProductSchema = v.object({
   id: v.string(),
   name: v.string(),
   categoryId: v.nullable(v.string()),
   categoryName: v.nullable(v.string()),
+  departmentId: v.nullable(v.string()),
+  departmentName: v.nullable(v.string()),
+  tags: v.array(PanelProductTagSchema),
   priceCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
   available: v.boolean(),
 });

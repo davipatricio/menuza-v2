@@ -19,7 +19,11 @@ export default async function CatalogProductsPage({ params }: { params: Promise<
         products={products.map((product) => ({
           id: product.id,
           name: product.name,
+          categoryId: product.categoryId,
           categoryName: product.categoryName,
+          departmentId: product.departmentId,
+          departmentName: product.departmentName,
+          tags: product.tags,
           priceCents: product.priceCents,
           available: product.available,
         }))}
