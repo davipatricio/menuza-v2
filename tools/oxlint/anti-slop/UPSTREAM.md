@@ -10,7 +10,7 @@ Installed plugin paths:
 - `tools/oxlint/anti-slop/effect/` — optional Effect plugin (5 rules, not registered)
 - `tools/oxlint/anti-slop/vendor/eslint-stylistic/` — vendored `padding-line-between-statements` rule with LICENSE and UPSTREAM.md
 
-Installed dependency: `@oxlint/plugins@1.82.0` (exact pin, matches `oxlint@1.82.0`).
+Installed dependency: `@oxlint/plugins@1.88.0` (exact pin, matches `oxlint@1.88.0`).
 
 Intentional deviations:
 

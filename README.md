@@ -4,7 +4,7 @@ Local development foundation for the Menuza product. Not the commerce product.
 
 ## Prerequisites
 
-- **Bun 1.4.3** (package manager, runtime, test runner, workspace orchestrator).
+- **Bun 1.4.4-canary.1** (package manager, runtime, test runner, workspace orchestrator).
 - **Podman** on a Debian/Ubuntu host OR **Podman inside WSL2** on Windows.
   - Windows host with WSL2: `podman-compose` 1.3.0+ must be available inside the WSL distribution.
   - Linux host: install `podman` and `podman-compose` natively.
@@ -46,7 +46,7 @@ Then visit `http://menuza.localhost:3000` (marketing), `http://menuza.localhost:
 ## Scripts
 
 - `bun run dev` — concurrent runnable apps (web, commerce, tenant, worker).
-- `bun run typecheck` — TS 7 across all workspaces.
+- `bun run typecheck` — `bun check` across all workspaces.
 - `bun test` — workspace-policy + unit tests (no infra).
 - `bun run test:integration` — infra-backed checks.
 - `bun run build` — Prisma generate, Next typegen, Next build.

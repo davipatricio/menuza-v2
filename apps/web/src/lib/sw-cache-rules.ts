@@ -58,25 +58,48 @@ export function isPublicImageRequest({ url, request }: RouteMatchContext): boole
   return /\.(?:png|jpg|jpeg|svg|webp|avif|gif|ico)$/i.test(p);
 }
 
+const PRIVATE_PATHS = ["/dashboard", "/cart", "/checkout"];
+
+const BACKEND_API_PREFIXES = ["/commerce", "/tenant", "/api"];
+
+const STOREFRONT_DOCUMENT_DIRECTORIES = ["/store", "/menu"];
+
+/** Matches a path that is exactly `prefix` or sits below it (`/prefix/...`). */
+function matchesAnyPrefix(pathname: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+/** Matches a path that sits strictly below `prefix` (`/prefix/...`). */
+function matchesAnyDirectoryPrefix(pathname: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((prefix) => pathname.startsWith(`${prefix}/`));
+}
+
+/** Next.js RSC Flight data and Server Action requests. */
+function isRscRequest(request: Request): boolean {
+  const accept = request.headers.get("accept") ?? "";
+
+  return (
+    accept.includes("text/x-component") ||
+    request.headers.has("next-action") ||
+    request.headers.has("rsc")
+  );
+}
+
+function isStorefrontDocumentPath(pathname: string): boolean {
+  if (pathname === "/" || pathname === "/menu" || pathname === "/store") return true;
+
+  return matchesAnyDirectoryPrefix(pathname, STOREFRONT_DOCUMENT_DIRECTORIES);
+}
+
 export function isStorefrontDocumentRequest({ url, request }: RouteMatchContext): boolean {
   if (request.method !== "GET") return false;
 
   if (request.mode !== "navigate" && request.destination !== "document") return false;
 
   // Exclude RSC / Server Action / data fetches that request documents or headers
-  const accept = request.headers.get("accept") ?? "";
+  if ((request.headers.get("accept") ?? "").includes("text/x-component")) return false;
 
-  if (accept.includes("text/x-component")) return false;
-
-  const p = url.pathname;
-
-  return (
-    p === "/" ||
-    p === "/store" ||
-    p.startsWith("/store/") ||
-    p === "/menu" ||
-    p.startsWith("/menu/")
-  );
+  return isStorefrontDocumentPath(url.pathname);
 }
 
 export function isNetworkOnlyRequest({ url, request }: RouteMatchContext): boolean {
@@ -84,33 +107,13 @@ export function isNetworkOnlyRequest({ url, request }: RouteMatchContext): boole
 
   const p = url.pathname;
 
-  // Private dashboard routes
-  if (p === "/dashboard" || p.startsWith("/dashboard/")) {
-    return true;
-  }
-
-  // Cart and checkout should always be fresh
-  if (p === "/cart" || p.startsWith("/cart/") || p === "/checkout" || p.startsWith("/checkout/")) {
-    return true;
-  }
-
-  // Backend API calls (loopback / tenant / commerce rewrites)
-  if (p.startsWith("/commerce/") || p.startsWith("/tenant/") || p.startsWith("/api/")) {
+  // Private dashboard routes, cart, checkout, and backend API calls
+  if (matchesAnyPrefix(p, PRIVATE_PATHS) || matchesAnyDirectoryPrefix(p, BACKEND_API_PREFIXES)) {
     return true;
   }
 
   // Next.js RSC Flight data and Action requests
-  const accept = request.headers.get("accept") ?? "";
-
-  if (
-    accept.includes("text/x-component") ||
-    request.headers.has("next-action") ||
-    request.headers.has("rsc")
-  ) {
-    return true;
-  }
-
-  return false;
+  return isRscRequest(request);
 }
 
 export function createMenuzaRuntimeCaching(): RuntimeCaching[] {

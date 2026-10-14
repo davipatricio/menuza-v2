@@ -7,7 +7,7 @@
 - `product/` — vision, tenancy, scope, open decisions, glossary.
 - `features/` — one folder per product area, each with its own `INDEX.md`.
 - `engineering/` — stack, route rendering stages, checks, follow-ups.
-- `tickets/` — Linear roadmap and the searchable `MEN-###` index.
+- `tickets/` — how to query Linear, the roadmap epics, the ticket → module map.
 
 ## Keyword map
 
@@ -43,4 +43,4 @@
 | route, ensureStatic, static, prefetch, dashboard, cache | `engineering/route-stages.md` |
 | checks, acceptance, scenarios, done, verify | `engineering/checks.md` |
 | follow-up, pending tech, backlog | `engineering/followups.md` |
-| ticket, MEN-, status, roadmap, epic, module map | `tickets/INDEX.md` |
+| ticket, MEN-, Linear, epic, module map | `tickets/README.md` |

@@ -24,6 +24,89 @@ const EVENT_LABELS: Record<PushEvent, string> = {
   ORDER_CANCELLED: "Cancelamento",
 };
 
+function enableFailureMessage(reason: string): string {
+  return reason === "denied"
+    ? "Permissão negada. Habilite as notificações nas configurações do navegador."
+    : "Não foi possível ativar as notificações neste navegador.";
+}
+
+function PushStatusMessages({
+  state,
+  unsupported,
+}: {
+  state: PushState | null;
+  unsupported: boolean;
+}) {
+  if (unsupported) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Este navegador não oferece suporte a notificações push. Use um navegador atualizado em uma
+        conexão segura (HTTPS).
+      </p>
+    );
+  }
+
+  if (state === "denied") {
+    return (
+      <p className="text-sm text-muted-foreground">
+        As notificações estão bloqueadas. Habilite-as nas configurações de notificações do navegador
+        para este site.
+      </p>
+    );
+  }
+
+  return null;
+}
+
+function PushToggleButton({
+  subscribed,
+  unsupported,
+  busy,
+  onToggle,
+}: {
+  subscribed: boolean;
+  unsupported: boolean;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  if (unsupported) return null;
+
+  return (
+    <Button onClick={onToggle} disabled={busy} variant={subscribed ? "outline" : "default"}>
+      {subscribed ? "Desativar notificações" : "Ativar notificações"}
+    </Button>
+  );
+}
+
+function PushEventFieldset({
+  events,
+  busy,
+  onToggle,
+}: {
+  events: PushEvent[];
+  busy: boolean;
+  onToggle: (event: PushEvent, checked: boolean) => void;
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">Avisar sobre</legend>
+      {PUSH_EVENTS.map((event) => (
+        <div key={event} className="flex items-center gap-2">
+          <Checkbox
+            id={`push-event-${event}`}
+            checked={events.includes(event)}
+            onCheckedChange={(checked) => onToggle(event, checked === true)}
+            disabled={busy}
+          />
+          <Label htmlFor={`push-event-${event}`} className="font-normal">
+            {EVENT_LABELS[event]}
+          </Label>
+        </div>
+      ))}
+    </fieldset>
+  );
+}
+
 export function PushNotificationsCard() {
   const [state, setState] = useState<PushState | null>(null);
   const [events, setEvents] = useState<PushEvent[]>([]);
@@ -60,16 +143,11 @@ export function PushNotificationsCard() {
       } else {
         const result = await enablePush();
 
-        if (!result.ok) {
-          const copy =
-            result.reason === "denied"
-              ? "Permissão negada. Habilite as notificações nas configurações do navegador."
-              : "Não foi possível ativar as notificações neste navegador.";
-
-          setMessage(copy);
-        } else {
-          setMessage("Notificações ativadas neste navegador.");
-        }
+        setMessage(
+          result.ok
+            ? "Notificações ativadas neste navegador."
+            : enableFailureMessage(result.reason),
+        );
       }
 
       await refresh();
@@ -110,47 +188,17 @@ export function PushNotificationsCard() {
           Receba avisos dos pedidos em tempo real neste navegador.
         </p>
 
-        {unsupported ? (
-          <p className="text-sm text-muted-foreground">
-            Este navegador não oferece suporte a notificações push. Use um navegador atualizado em
-            uma conexão segura (HTTPS).
-          </p>
-        ) : null}
+        <PushStatusMessages state={state} unsupported={unsupported} />
 
-        {state === "denied" ? (
-          <p className="text-sm text-muted-foreground">
-            As notificações estão bloqueadas. Habilite-as nas configurações de notificações do
-            navegador para este site.
-          </p>
-        ) : null}
-
-        {!unsupported ? (
-          <Button
-            onClick={handleToggle}
-            disabled={busy}
-            variant={subscribed ? "outline" : "default"}
-          >
-            {subscribed ? "Desativar notificações" : "Ativar notificações"}
-          </Button>
-        ) : null}
+        <PushToggleButton
+          subscribed={subscribed}
+          unsupported={unsupported}
+          busy={busy}
+          onToggle={handleToggle}
+        />
 
         {subscribed ? (
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-medium">Avisar sobre</legend>
-            {PUSH_EVENTS.map((event) => (
-              <div key={event} className="flex items-center gap-2">
-                <Checkbox
-                  id={`push-event-${event}`}
-                  checked={events.includes(event)}
-                  onCheckedChange={(checked) => handleEventToggle(event, checked === true)}
-                  disabled={busy}
-                />
-                <Label htmlFor={`push-event-${event}`} className="font-normal">
-                  {EVENT_LABELS[event]}
-                </Label>
-              </div>
-            ))}
-          </fieldset>
+          <PushEventFieldset events={events} busy={busy} onToggle={handleEventToggle} />
         ) : null}
 
         <output className="block text-sm" aria-live="polite">

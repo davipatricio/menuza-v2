@@ -21,20 +21,20 @@
     "fmt:check": "oxfmt --check . \"!migrations/**\"",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun check"
   },
   "dependencies": {
     "@opentelemetry/api": "catalog:",
-    "@prisma/orm-postgres": "8.0.0-rc.10",
-    "pg": "8.13.1"
+    "@prisma/orm-postgres": "8.0.0-rc.17",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
-    "@types/pg": "8.11.10",
+    "@types/pg": "8.23.1",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "prisma": "8.0.0-rc.14",
+    "prisma": "8.0.0-rc.22",
     "typescript": "catalog:"
   }
 }

@@ -6,7 +6,7 @@
 
 | Layer | Choice |
 | --- | --- |
-| Runtime | Bun. TypeScript 7 only. |
+| Runtime | Bun (`bun check` for TS 7 type checking). TypeScript 7 only. |
 | Contracts | oRPC (typed contracts, exportable OpenAPI, streaming, compression) |
 | ORM | Prisma 8 + Prisma Migrate; `@prisma/orm-postgres` (ships its own `pg` binding) |
 | Web | Next 16 in `apps/web` — Server Components, RSC, Cache Components, partial prefetching, App Shell |
@@ -37,4 +37,4 @@ Workspace map, dependency direction and where a change belongs: `monorepo.md`. I
 
 Prisma on the Bun runtime in production; Postgres adapter and connection impact; oRPC contract format (procedures vs streamable) and route versioning; `Mailer` interface with SMTP driver + SES stub; migration lock in production; log/trace/audit retention for LGPD; DR for a single VPS (snapshots, tested restore); VPS monitoring (CPU/RAM/disk/BullMQ) with basic alerts.
 
-Foundation tickets (standalone): MEN-160 VPS, MEN-161 Caddy, MEN-162 Postgres + replica, MEN-163 Compose, MEN-164 Redis, MEN-166 Prisma, MEN-167 auth, MEN-168 idempotent webhooks, MEN-169 Pino, MEN-170 OTel, MEN-171 Sentry, MEN-172 BullMQ, MEN-173 storage, MEN-174 Mailer, MEN-175 feature flags, MEN-180 isolation, MEN-181 Asaas SaaS, MEN-182 CEP/geocode, MEN-183 Spoke.
+Foundation and platform work is tracked in Linear (team `Menuza`) — query it for what is open; no ticket list is kept here. The stack table above is what is locked. Querying rules: `../tickets/README.md`.

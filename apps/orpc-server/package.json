@@ -18,28 +18,28 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "openapi:generate": "bun run src/openapi/generate.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun check"
   },
   "dependencies": {
     "@menuza/db": "workspace:*",
     "@menuza/shared": "workspace:*",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/context-async-hooks": "2.11.0",
-    "@opentelemetry/core": "2.11.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.222.0",
-    "@opentelemetry/resources": "2.11.0",
-    "@opentelemetry/sdk-trace": "2.11.0",
+    "@opentelemetry/context-async-hooks": "2.12.0",
+    "@opentelemetry/core": "2.12.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.223.0",
+    "@opentelemetry/resources": "2.12.0",
+    "@opentelemetry/sdk-trace": "2.12.0",
     "@orpc/contract": "catalog:",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/valibot": "2.0.0-beta.35",
-    "@sentry/bun": "10.73.0",
+    "@sentry/bun": "11.7.0",
     "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
-    "bun-types": "1.4.1",
+    "bun-types": "1.4.3",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

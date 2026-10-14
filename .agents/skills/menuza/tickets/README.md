@@ -2,6 +2,8 @@
 
 Linear is the work source of truth. Team **Menuza** (key `MEN`); issue ids are `MEN-###` strings passed as `id`.
 
+**No ticket list, status or inventory lives in this repo.** Query Linear every time. A `MEN-###` in these docs is a citation pointing at the tracker, never a record of it.
+
 ## Querying
 
 - `list_issues({ team: "Menuza", limit: 250 })` is the cheap path: fetch the whole team once and filter in code, rather than paging per status or per parent.
@@ -13,9 +15,9 @@ Linear is the work source of truth. Team **Menuza** (key `MEN`); issue ids are `
 
 ## Roadmap epics
 
-- **MEN-63 — Roadmap Menuza — MVP**: 47 tickets, `MEN-69`..`MEN-115`. The scope in `../product/scope.md`.
-- **MEN-64 — Roadmap Menuza — Backlog (pós-MVP imediato)**: 32 tickets, `MEN-116`..`MEN-147`.
-- **MEN-65 — Roadmap Menuza — Pós-MVP (fases futuras)**: 12 tickets, `MEN-148`..`MEN-159`.
+- **MEN-63 — Roadmap Menuza — MVP**: `MEN-69`..`MEN-115`. The scope in `../product/scope.md`.
+- **MEN-64 — Roadmap Menuza — Backlog (pós-MVP imediato)**: `MEN-116`..`MEN-147`.
+- **MEN-65 — Roadmap Menuza — Pós-MVP (fases futuras)**: `MEN-148`..`MEN-159`.
 - `MEN-160`..`MEN-229` are standalone platform/engineering tickets, not children of an epic.
 
 The MVP is done when the 12 acceptance scenarios pass, not when the cards are Done (`../engineering/checks.md`).
@@ -40,4 +42,4 @@ The MVP is done when the 12 acceptance scenarios pass, not when the cards are Do
 | Admin/SaaS billing | `@menuza/api-tenant` admin | MEN-106/107, MEN-110..112 |
 | Infra/platform | `apps/*`, `packages/*` | MEN-160..229 |
 
-See `INDEX.md` for every ticket id, title and status.
+The map above cites ids only, to point at the code home. Status, priority, ordering and what is next come from Linear.

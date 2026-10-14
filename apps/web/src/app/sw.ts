@@ -59,6 +59,20 @@ function sanitizeNotificationDestination(urlCandidate: string | undefined): stri
   }
 }
 
+/** Narrows an untrusted payload value to a non-empty string, else `fallback`. */
+function requiredString(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.trim()) return value;
+
+  return fallback;
+}
+
+/** Narrows an untrusted payload value to a string, else `fallback` (or `undefined`). */
+function optionalString(value: unknown, fallback?: string): string | undefined {
+  if (typeof value === "string") return value;
+
+  return fallback;
+}
+
 // Push notification receiver
 self.addEventListener("push", (event: PushEvent) => {
   if (!event.data) return;
@@ -66,15 +80,13 @@ self.addEventListener("push", (event: PushEvent) => {
   try {
     // SAFETY: parsing push JSON payload into bounded notification record
     const raw = event.data.json() as NotificationPayloadRecord;
-    const title = typeof raw.title === "string" && raw.title.trim() ? raw.title : "Menuza";
-    const body = typeof raw.body === "string" ? raw.body : undefined;
-    const icon = typeof raw.icon === "string" ? raw.icon : "/favicon.ico";
-    const badge = typeof raw.badge === "string" ? raw.badge : undefined;
-    const tag = typeof raw.tag === "string" ? raw.tag : undefined;
+    const title = requiredString(raw.title, "Menuza");
+    const body = optionalString(raw.body);
+    const icon = optionalString(raw.icon, "/favicon.ico");
+    const badge = optionalString(raw.badge);
+    const tag = optionalString(raw.tag);
 
-    const targetUrl = sanitizeNotificationDestination(
-      typeof raw.url === "string" ? raw.url : undefined,
-    );
+    const targetUrl = sanitizeNotificationDestination(optionalString(raw.url));
 
     const options: NotificationOptions = {
       body,

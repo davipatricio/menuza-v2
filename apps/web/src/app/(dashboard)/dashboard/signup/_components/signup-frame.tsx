@@ -21,6 +21,34 @@ export interface SignupFrameProps {
  * as the login page plus an animated progress rail. Each step animates in, so
  * moving between `/dashboard/signup/*` routes reads as a micro-transition.
  */
+
+function markerClass(done: boolean, current: boolean): string {
+  return cn(
+    "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
+    done && "border-primary bg-primary text-primary-foreground",
+    current && "border-ring bg-background text-foreground",
+    !done && !current && "border-border bg-muted/40 text-muted-foreground",
+  );
+}
+
+function markerScale(current: boolean, reduceMotion: boolean | null) {
+  return reduceMotion ? undefined : { scale: current ? 1.08 : 1 };
+}
+
+function labelClass(current: boolean): string {
+  return cn(
+    "hidden truncate text-xs font-medium sm:inline",
+    current ? "text-foreground" : "text-muted-foreground",
+  );
+}
+
+function connectorClass(done: boolean): string {
+  return cn(
+    "h-px flex-1 transition-colors duration-300 motion-reduce:transition-none",
+    done ? "bg-primary/60" : "bg-border",
+  );
+}
+
 export function SignupFrame({
   currentStep,
   steps,
@@ -63,33 +91,15 @@ export function SignupFrame({
                 >
                   <motion.span
                     aria-hidden="true"
-                    animate={reduceMotion ? undefined : { scale: current ? 1.08 : 1 }}
+                    animate={markerScale(current, reduceMotion)}
                     transition={{ type: "spring", stiffness: 420, damping: 26 }}
-                    className={cn(
-                      "flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-medium",
-                      done && "border-primary bg-primary text-primary-foreground",
-                      current && "border-ring bg-background text-foreground",
-                      !done && !current && "border-border bg-muted/40 text-muted-foreground",
-                    )}
+                    className={markerClass(done, current)}
                   >
                     {done ? <Check className="size-3.5" /> : index + 1}
                   </motion.span>
-                  <span
-                    className={cn(
-                      "hidden truncate text-xs font-medium sm:inline",
-                      current ? "text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    {label}
-                  </span>
+                  <span className={labelClass(current)}>{label}</span>
                   {index < steps.length - 1 ? (
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "h-px flex-1 transition-colors duration-300 motion-reduce:transition-none",
-                        done ? "bg-primary/60" : "bg-border",
-                      )}
-                    />
+                    <span aria-hidden="true" className={connectorClass(done)} />
                   ) : null}
                 </li>
               );

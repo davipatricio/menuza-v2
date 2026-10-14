@@ -17,7 +17,7 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "start": "bun --env-file-if-exists=../../.env src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun check"
   },
   "dependencies": {
     "@menuza/api-tenant": "workspace:*",
@@ -27,7 +27,7 @@
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
-    "bun-types": "1.4.1",
+    "bun-types": "1.4.3",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

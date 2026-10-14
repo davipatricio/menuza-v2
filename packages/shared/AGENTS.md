@@ -49,15 +49,15 @@ on one source of truth; it is metadata only, never a shape change to the
   push endpoint URL travels in the body, never as a path segment).
 - Session: `POST /session/login`, `POST /session/logout`, `GET /session/current`,
   `POST /session/register`. Account: `GET /account/sessions`, `PUT
-/account/password`, `DELETE /account/sessions/{sessionId}` and `POST
-/account/sessions/revoke-others` (the digest, not a token, is the path
+  /account/password`, `DELETE /account/sessions/{sessionId}` and `POST
+  /account/sessions/revoke-others` (the digest, not a token, is the path
   segment). Panel: `GET /panel/stores/{storeSlug}` (the store slug is
   a path segment), `POST /panel/stores`, plus the store-scoped reads under the store
   slug: `GET /panel/stores/{storeSlug}/orders` and
   `GET /panel/stores/{storeSlug}/orders/{orderCode}` (the order is addressed by its
   human code, not its id), `/customers` and `/customers/{customerId}`, `/products`,
   `/categories`, `/coupons`, `/audit-logs` and `/team`. Profile: `POST
-/profile/onboarding`.
+  /profile/onboarding`.
 - `path` is absolute under each service's OpenAPI prefix (`/openapi`), so it does
   not depend on the router key structure; `operationId` is explicit for stable
   generated documents.

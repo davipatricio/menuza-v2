@@ -62,6 +62,26 @@ function isTenantEquality(node: any): boolean {
   return rightIsTenant && node.left?.kind === "param-ref";
 }
 
+/** Reads the equality target of a binary `tenantId = <param>` node. */
+function readConjunctiveEquality(where: any): string | null {
+  if (!isTenantEquality(where)) return null;
+
+  const value = where.left?.kind === "param-ref" ? where.left.value : where.right?.value;
+
+  return String(value);
+}
+
+/** Returns the first conjunctive branch that constrains `tenantId`, if any. */
+function findInConjunction(exprs: any[]): string | null {
+  for (const expr of exprs) {
+    const found = findConjunctiveTenantEquality(expr);
+
+    if (found !== null) return found;
+  }
+
+  return null;
+}
+
 /**
  * Finds a top-level conjunctive equality constraint on `tenantId` in the WHERE clause.
  * Returns the equality target value if present, or `null` if absent or not strictly conjunctive.
@@ -71,22 +91,12 @@ function findConjunctiveTenantEquality(where: any): string | null {
 
   // Single binary eq: tenantId = '...'
   if (where.kind === "binary" && where.op === "eq") {
-    if (!isTenantEquality(where)) return null;
-
-    const value = where.left?.kind === "param-ref" ? where.left.value : where.right?.value;
-
-    return String(value);
+    return readConjunctiveEquality(where);
   }
 
   // Conjunctive 'and' expressions: at least one branch must enforce tenant equality
   if (where.kind === "and" && Array.isArray(where.exprs)) {
-    for (const expr of where.exprs) {
-      const found = findConjunctiveTenantEquality(expr);
-
-      if (found !== null) {
-        return found;
-      }
-    }
+    return findInConjunction(where.exprs);
   }
 
   return null;

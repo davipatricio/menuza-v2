@@ -265,6 +265,25 @@ async function attemptItem(
   }
 }
 
+/** Replays one item and folds its outcome into the running queue state. */
+async function drainOne(
+  state: QueuedMutation[],
+  item: QueuedMutation,
+  fetcher: QueueFetcher,
+  notify: (type: string, detail: NotificationDetail) => void,
+  result: DrainResult,
+): Promise<{ state: QueuedMutation[]; shouldStop: boolean }> {
+  const outcome = await attemptItem(item, fetcher, notify);
+
+  if (outcome.counted) result[outcome.counted]++;
+
+  const settled = applyAction(state, item, outcome.action);
+
+  if (settled.gaveUp) result.errors++;
+
+  return { state: settled.state, shouldStop: settled.shouldStop };
+}
+
 async function runDrain(opts: DrainOptions): Promise<DrainResult> {
   if (typeof fetch === "undefined") {
     return { ok: 0, conflicts: 0, sessionExpired: 0, errors: 0, remaining: 0 };
@@ -281,30 +300,18 @@ async function runDrain(opts: DrainOptions): Promise<DrainResult> {
   for (const item of state) {
     if (item.nextAttemptAt > now) continue;
 
-    const outcome = await attemptItem(item, fetcher, notify);
-    let action: ReplayAction = outcome.action;
-    let stopReason: string | null = outcome.stopReason;
+    const step = await drainOne(state, item, fetcher, notify, result);
 
-    if (outcome.counted) result[outcome.counted]++;
+    state = step.state;
 
-    const settled = applyAction(state, item, action);
-
-    state = settled.state;
-
-    if (settled.gaveUp) result.errors++;
-
-    if (!settled.shouldStop) continue;
+    if (!step.shouldStop) continue;
 
     // After a transport failure, stop draining for now; the next `online` event
     // or Background Sync tick will retry. Avoid hammering a flaky network.
-    action = "stop";
-    stopReason = "transport error";
-
-    // Persist whatever updates we already applied, then exit.
     await persistState(state);
     result.remaining = state.length;
     // eslint-disable-next-line no-console
-    console.warn(`[menuza] drain stopped: ${stopReason}; remaining=${state.length}`);
+    console.warn(`[menuza] drain stopped: transport error; remaining=${state.length}`);
 
     return result;
   }

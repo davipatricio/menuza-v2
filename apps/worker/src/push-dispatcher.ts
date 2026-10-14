@@ -130,14 +130,20 @@ async function resolveRecipients(
   return [...optedIn].filter((id) => enrolled.has(id) && (!targets || targets.includes(id)));
 }
 
+function resolveDispatchOptions(options: DispatchPushEventOptions) {
+  return {
+    client: options.dbClient ?? db,
+    send: options.sendFn ?? sendPushNotification,
+    payload: options.payload ?? createPushEventPayload(options.event),
+    config: options.config ?? loadVapidFromEnv() ?? undefined,
+  };
+}
+
 export async function dispatchPushEvent(
   options: DispatchPushEventOptions,
 ): Promise<PushDispatchResult> {
   return await withTenant(options.tenantId, async () => {
-    const client = options.dbClient ?? db;
-    const send = options.sendFn ?? sendPushNotification;
-    const payload = options.payload ?? createPushEventPayload(options.event);
-    const config = options.config ?? loadVapidFromEnv() ?? undefined;
+    const { client, send, payload, config } = resolveDispatchOptions(options);
 
     const memberIds = await resolveRecipients(client, options);
 

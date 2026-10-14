@@ -59,7 +59,7 @@ Business logic used by only one app lives **in that app**, not in a new package.
 - Root scripts (root `package.json`): `dev`, `build`, `typecheck`, `test`, `test:integration`, `lint`, `fmt:check`, `db:generate`/`db:migrate`/`db:deploy`, `infra:up`/`infra:down`, `docker:build`.
 - Turborepo wraps `build`/`typecheck`/`lint`/`fmt` across `@menuza/*` with a local cache (no remote cache).
 - Builds go through `scripts/docker-build.ts <app>`: `turbo prune <app> --docker` into `.turbo/prune/<app>`, then the app's `Containerfile` with that pruned dir as context. Bun services compile to a single binary (`--compile --bytecode --format=esm`); web ships Next `output: "standalone"`.
-- `bun run typecheck` runs after `db:generate` + `typegen`; the build job also compiles the API/worker binaries.
+- `bun run typecheck` runs `bun check` after `db:generate` + `typegen`; the build job also compiles the API/worker binaries.
 
 ## Checks
 

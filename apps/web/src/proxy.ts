@@ -166,23 +166,40 @@ function stripPort(value: string): string {
   return colon === -1 ? value : value.slice(0, colon);
 }
 
+/** True when the request comes from an allowlisted reverse proxy within the hop budget. */
+function isTrustedProxy(req: NextRequest): boolean {
+  if (TRUSTED_PROXY_HOPS <= 0 || TRUSTED_PROXY_IPS.length === 0) return false;
+
+  const forwardedFor = req.headers.get("x-forwarded-for");
+
+  if (!forwardedFor) return false;
+
+  const remote = forwardedFor.split(",")[0]?.trim() ?? "";
+
+  if (!remote) return false;
+
+  if (!TRUSTED_PROXY_IPS.includes(remote)) return false;
+
+  return forwardedFor.split(",").length - 1 <= TRUSTED_PROXY_HOPS;
+}
+
+/** The forwarded host, honored only when the requesting proxy is trusted and set it. */
+function trustedForwardedHost(req: NextRequest): string | null {
+  if (!isTrustedProxy(req)) return null;
+
+  const forwardedHost = req.headers.get("x-forwarded-host");
+
+  if (!forwardedHost) return null;
+
+  return forwardedHost.split(",")[0]?.trim() ?? null;
+}
+
 function resolveHost(req: NextRequest): string {
-  // Trust forwarded-host only when both:
-  //   1. The remote address matches a trusted proxy IP.
-  //   2. The number of forwarding hops doesn't exceed TRUSTED_PROXY_HOPS.
-  if (TRUSTED_PROXY_HOPS > 0 && TRUSTED_PROXY_IPS.length > 0) {
-    const remote = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-    const hopsHeader = req.headers.get("x-forwarded-for");
-    const hops = hopsHeader ? Math.max(0, hopsHeader.split(",").length - 1) : 0;
+  // Trust forwarded-host only when the remote address matches a trusted proxy IP
+  // and the number of forwarding hops doesn't exceed TRUSTED_PROXY_HOPS.
+  const host = trustedForwardedHost(req) ?? req.headers.get("host") ?? "";
 
-    if (remote && TRUSTED_PROXY_IPS.includes(remote) && hops <= TRUSTED_PROXY_HOPS) {
-      const fwd = req.headers.get("x-forwarded-host");
-
-      if (fwd) return stripPort(fwd.split(",")[0]!.trim().toLowerCase());
-    }
-  }
-
-  return stripPort((req.headers.get("host") ?? "").toLowerCase());
+  return stripPort(host.toLowerCase());
 }
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {

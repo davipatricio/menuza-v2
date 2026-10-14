@@ -22,6 +22,14 @@ export interface DatePickerProps {
 
 const DATE_FORMAT = "yyyy-MM-dd";
 
+// `Date` is impure, so the picker's month bounds are computed once at module
+// load instead of on every render (react/purity).
+const TODAY = new Date();
+
+const START_MONTH = new Date(1940, 0, 1);
+
+const DEFAULT_MONTH = new Date(TODAY.getFullYear() - 30, 0, 1);
+
 /**
  * Popover + Calendar date picker that reads and writes the contract's
  * `yyyy-MM-dd` string, so no `Date`/timezone value ever leaves the field.
@@ -38,7 +46,6 @@ export function DatePicker({
   const [open, setOpen] = React.useState(false);
 
   const selected = value ? parseISO(value) : undefined;
-  const today = new Date();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -61,11 +68,11 @@ export function DatePicker({
           mode="single"
           locale={ptBR}
           selected={selected}
-          defaultMonth={selected ?? new Date(today.getFullYear() - 30, 0, 1)}
+          defaultMonth={selected ?? DEFAULT_MONTH}
           captionLayout="dropdown"
-          startMonth={new Date(1940, 0, 1)}
-          endMonth={today}
-          disabled={{ after: today }}
+          startMonth={START_MONTH}
+          endMonth={TODAY}
+          disabled={{ after: TODAY }}
           onSelect={(date) => {
             if (!date) return;
 

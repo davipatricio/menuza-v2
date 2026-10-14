@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Run TypeScript 7 checks across every workspace.
+ * Run `bun check` (Bun's built-in TypeScript 7 checker) across every workspace.
  * Requires `bun run db:generate` and `bun run typegen` to have produced
  * the local types (Prisma client, Next route/env types).
  */

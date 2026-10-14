@@ -4,7 +4,7 @@ Run these before calling a Menuza feature done. The commands and the 12 scenario
 
 ## Every change
 
-- `bun run typecheck` — TS 7 across workspaces (after `db:generate` + `typegen`).
+- `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `db:generate` + `typegen`).
 - `bun test` — workspace-policy + unit tests (no infra).
 - `bun run lint` and `bun run fmt:check` — oxlint + oxfmt via turbo.
 - `bun run build` — Prisma generate, Next typegen, Next build with type checking (never `ignoreBuildErrors`).

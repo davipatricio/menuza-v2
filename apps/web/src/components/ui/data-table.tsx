@@ -18,6 +18,7 @@ import {
   sortFns,
   tableFeatures,
   useTable,
+  type ReactTable,
   type SortingState,
 } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -88,16 +89,13 @@ export interface DataTableProps<TData extends object> {
 /** Interactivity that owns its own navigation; a row click must not steal it. */
 const INTERACTIVE_TARGET = "a, button, input, select, textarea";
 
-/** Modified clicks belong to the browser (new tab, new window) or to the link in the primary cell. */
+/** Modifier keys mean the click belongs to the browser (new tab, new window). */
+const MODIFIER_KEYS = ["metaKey", "ctrlKey", "shiftKey", "altKey"] as const;
+
 function isModifiedClick(event: React.MouseEvent): boolean {
-  return (
-    event.defaultPrevented ||
-    event.button !== 0 ||
-    event.metaKey ||
-    event.ctrlKey ||
-    event.shiftKey ||
-    event.altKey
-  );
+  if (event.defaultPrevented || event.button !== 0) return true;
+
+  return MODIFIER_KEYS.some((key) => event[key]);
 }
 
 /**
@@ -127,6 +125,141 @@ function SortIndicator({ state }: { state: false | "asc" | "desc" }) {
   if (state === "desc") return <ArrowDown className="size-3.5" aria-hidden="true" />;
 
   return <ArrowUpDown className="size-3.5 opacity-50" aria-hidden="true" />;
+}
+
+type DashboardTable<TData extends object> = ReactTable<typeof dashboardTableFeatures, TData>;
+
+function DataTableSearch<TData extends object>({
+  table,
+  searchColumn,
+  globalFilter,
+  onGlobalFilterChange,
+  id,
+  label,
+  placeholder,
+}: {
+  table: DashboardTable<TData>;
+  searchColumn?: string;
+  globalFilter: string;
+  onGlobalFilterChange: (value: string) => void;
+  id: string;
+  label: string;
+  placeholder: string;
+}) {
+  const value = searchColumn
+    ? String(table.getColumn(searchColumn)?.getFilterValue() ?? "")
+    : globalFilter;
+
+  const handleChange = (next: string) => {
+    if (searchColumn) {
+      table.getColumn(searchColumn)?.setFilterValue(next);
+    } else {
+      onGlobalFilterChange(next);
+    }
+  };
+
+  return (
+    <>
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <Input
+        id={id}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        className="max-w-sm"
+      />
+    </>
+  );
+}
+
+function DataTableFilter<TData extends object>({
+  table,
+  filterColumn,
+  filterOptions,
+  placeholder,
+  label,
+}: {
+  table: DashboardTable<TData>;
+  filterColumn?: string;
+  filterOptions?: DataTableFilterOption[];
+  placeholder: string;
+  label: string;
+}) {
+  const api = filterColumn ? table.getColumn(filterColumn) : undefined;
+
+  if (!api || !filterOptions || filterOptions.length === 0) return null;
+
+  const value = String(api.getFilterValue() ?? "");
+  const selected = filterOptions.find((option) => option.value === value) ?? null;
+
+  return (
+    <Combobox
+      items={filterOptions}
+      itemToStringValue={(option) => option.label}
+      value={selected}
+      onValueChange={(option) => api.setFilterValue(option?.value ?? "")}
+    >
+      <ComboboxInput placeholder={placeholder} aria-label={label} showClear />
+      <ComboboxContent>
+        <ComboboxEmpty>Nenhuma opção encontrada.</ComboboxEmpty>
+        <ComboboxList>
+          {(option) => (
+            <ComboboxItem key={option.value} value={option}>
+              {option.label}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+}
+
+function DataTableExportButton({ visible, onExport }: { visible: boolean; onExport: () => void }) {
+  if (!visible) return null;
+
+  return (
+    <Button variant="outline" size="sm" onClick={onExport}>
+      Exportar CSV
+    </Button>
+  );
+}
+
+function DataTablePagination({
+  pageIndex,
+  pageCount,
+  filteredCount,
+  canPrevious,
+  canNext,
+  onPrevious,
+  onNext,
+}: {
+  pageIndex: number;
+  pageCount: number;
+  filteredCount: number;
+  canPrevious: boolean;
+  canNext: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  if (pageCount <= 1) return null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
+      <div>
+        Página {pageIndex + 1} de {pageCount} ({filteredCount} itens)
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onPrevious} disabled={!canPrevious}>
+          Anterior
+        </Button>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={!canNext}>
+          Próxima
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function DataTable<TData extends object>({
@@ -179,68 +312,32 @@ export function DataTable<TData extends object>({
     exportToCsv(exportColumns, sortedAndFilteredRows, exportFilename);
   };
 
-  const currentFilterValue = searchColumn
-    ? String(table.getColumn(searchColumn)?.getFilterValue() ?? "")
-    : globalFilter;
-
   const searchInputId = React.useId();
-
-  const filterColumnApi = filterColumn ? table.getColumn(filterColumn) : undefined;
-  const showFilter = filterColumnApi && filterOptions && filterOptions.length > 0;
-  const filterValue = String(filterColumnApi?.getFilterValue() ?? "");
-
-  const selectedFilterOption =
-    filterOptions?.find((option) => option.value === filterValue) ?? null;
+  const rows = table.getRowModel().rows;
 
   return (
     <div className="flex flex-col gap-4">
       {hideToolbar ? null : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-1 flex-wrap items-center gap-2">
-            <label htmlFor={searchInputId} className="sr-only">
-              {searchLabel}
-            </label>
-            <Input
+            <DataTableSearch
+              table={table}
+              searchColumn={searchColumn}
+              globalFilter={globalFilter}
+              onGlobalFilterChange={setGlobalFilter}
               id={searchInputId}
+              label={searchLabel}
               placeholder={searchPlaceholder}
-              value={currentFilterValue}
-              onChange={(e) => {
-                if (searchColumn) {
-                  table.getColumn(searchColumn)?.setFilterValue(e.target.value);
-                } else {
-                  setGlobalFilter(e.target.value);
-                }
-              }}
-              className="max-w-sm"
             />
-            {showFilter && filterOptions ? (
-              <Combobox
-                items={filterOptions}
-                itemToStringValue={(option) => option.label}
-                value={selectedFilterOption}
-                onValueChange={(selected) => {
-                  filterColumnApi?.setFilterValue(selected?.value ?? "");
-                }}
-              >
-                <ComboboxInput placeholder={filterPlaceholder} aria-label={filterLabel} showClear />
-                <ComboboxContent>
-                  <ComboboxEmpty>Nenhuma opção encontrada.</ComboboxEmpty>
-                  <ComboboxList>
-                    {(option) => (
-                      <ComboboxItem key={option.value} value={option}>
-                        {option.label}
-                      </ComboboxItem>
-                    )}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            ) : null}
+            <DataTableFilter
+              table={table}
+              filterColumn={filterColumn}
+              filterOptions={filterOptions}
+              placeholder={filterPlaceholder}
+              label={filterLabel}
+            />
           </div>
-          {exportColumns && (
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              Exportar CSV
-            </Button>
-          )}
+          <DataTableExportButton visible={Boolean(exportColumns)} onExport={handleExport} />
         </div>
       )}
 
@@ -280,8 +377,8 @@ export function DataTable<TData extends object>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+            {rows.length > 0 ? (
+              rows.map((row) => {
                 const href = rowHref?.(row.original);
 
                 return (
@@ -320,32 +417,15 @@ export function DataTable<TData extends object>({
         </Table>
       </div>
 
-      {table.getPageCount() > 1 ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
-          <div>
-            Página {table.state.pagination.pageIndex + 1} de {table.getPageCount()} (
-            {table.getFilteredRowModel().rows.length} itens)
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Anterior
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Próxima
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      <DataTablePagination
+        pageIndex={table.state.pagination.pageIndex}
+        pageCount={table.getPageCount()}
+        filteredCount={table.getFilteredRowModel().rows.length}
+        canPrevious={table.getCanPreviousPage()}
+        canNext={table.getCanNextPage()}
+        onPrevious={() => table.previousPage()}
+        onNext={() => table.nextPage()}
+      />
     </div>
   );
 }

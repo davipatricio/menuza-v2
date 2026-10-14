@@ -42,7 +42,7 @@ Load only the file the task needs. Every folder has an `INDEX.md` with a keyword
 | Route rendering stages in apps/web | `engineering/route-stages.md` |
 | The checks a change must pass | `engineering/checks.md` |
 | Open technical follow-ups | `engineering/followups.md` |
-| Ticket ids, statuses, module map | `tickets/INDEX.md` |
+| Linear: querying, roadmap epics, module map | `tickets/README.md` |
 
 ## Invariants
 
