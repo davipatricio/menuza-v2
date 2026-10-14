@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { panelClient } from "@/lib/server-tenant.ts";
-import { EmptyState } from "../_components/empty-state.tsx";
 import { CouponsTable } from "./coupons-table.tsx";
 
 export default async function CouponsPage({ params }: { params: Promise<{ storeSlug: string }> }) {
@@ -12,19 +11,12 @@ export default async function CouponsPage({ params }: { params: Promise<{ storeS
   const { coupons } = await client.panel.listCoupons({ storeSlug });
 
   return (
-    <section aria-labelledby="coupons-heading" className="flex flex-col gap-6">
-      <div>
-        <h2 id="coupons-heading" className="text-xl font-semibold tracking-tight">
-          Cupons
-        </h2>
-        <p className="text-sm text-pretty text-muted-foreground">Cupons promocionais da loja.</p>
+    <section aria-labelledby="coupons-heading" className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <h2 id="coupons-heading" className="text-xl font-semibold tracking-tight">Cupons</h2>
+        <p className="text-sm text-muted-foreground">Gerencie cupons promocionais, limites de uso e validade.</p>
       </div>
-
-      {coupons.length ? (
-        <CouponsTable coupons={coupons} storeSlug={storeSlug} />
-      ) : (
-        <EmptyState>Nenhum cupom ainda. Os cupons da loja aparecem aqui.</EmptyState>
-      )}
+      <CouponsTable coupons={coupons} storeSlug={storeSlug} />
     </section>
   );
 }
