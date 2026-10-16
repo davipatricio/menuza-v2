@@ -9,7 +9,7 @@ export default function Loading() {
       </div>
       <Skeleton className="h-10 w-64" />
       <div className="overflow-hidden rounded-xl border border-border shadow-surface">
-        <div className="space-y-3 p-4">
+        <div className="flex flex-col gap-3 p-4">
           {Array.from({ length: 6 }).map((_, index) => (
             <Skeleton key={index} className="h-8 w-full" />
           ))}

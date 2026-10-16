@@ -37,6 +37,8 @@ Load only the file the task needs. Every folder has an `INDEX.md` with a keyword
 | Internal admin, support, SaaS billing | `features/admin/README.md` |
 | Partner integrations | `features/integrations/README.md` |
 | Stack and architecture decisions | `engineering/stack.md` |
+| Schema migrations and contract changes | `engineering/schema-migrations.md` |
+| Dashboard visual system (tokens, recipes, money entry) | `apps/web/DESIGN.md` |
 | Monorepo workspaces, placement | `engineering/monorepo.md` |
 | Backend request path, middleware, worker | `engineering/backend.md` |
 | Route rendering stages in apps/web | `engineering/route-stages.md` |

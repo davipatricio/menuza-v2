@@ -54,7 +54,10 @@ export function InviteForm() {
           Ainda estamos preparando o resgate de convites. Enquanto isso, você pode criar a sua
           própria loja agora.
         </p>
-        <Button render={<Link href="/dashboard/signup/loja" aria-label="Criar uma loja" />}>
+        <Button
+          nativeButton={false}
+          render={<Link href="/dashboard/signup/loja" aria-label="Criar uma loja" />}
+        >
           Criar uma loja
           <ArrowRight data-icon="inline-end" aria-hidden="true" />
         </Button>

@@ -6,7 +6,15 @@ Run these before calling a Menuza feature done. The commands and the 12 scenario
 
 - `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `db:generate` + `typegen`).
 - `bun test` — workspace-policy + unit tests (no infra).
-- `bun run lint` and `bun run fmt:check` — oxlint + oxfmt via turbo.
+- `bun run lint` and `bun run fmt:check` — oxlint + oxfmt via turbo. Both are red on
+  untouched files today (four `packages/api-tenant/.../panel/*.impl.ts` and nine
+  `apps/web/.../catalog/*` files fail formatting), so judge a change by linting its own
+  paths: `bunx oxfmt <paths>` then `bunx oxlint <paths>`.
+  `anti-slop/require-readable-spacing` autofixes (`bunx oxlint --fix <paths>`); re-run the
+  formatter afterwards and confirm a second pass changes nothing. Every `as` needs a
+  `SAFETY:` comment, no `unknown` parameter, no runtime `typeof` narrowing (`anti-slop`).
+- Contract changed? Follow `schema-migrations.md`, then regenerate `typegen` and
+  `apps/orpc-server/openapi/tenant.json`.
 - `bun run build` — Prisma generate, Next typegen, Next build with type checking (never `ignoreBuildErrors`).
 - If the change touched a route in `apps/web`, read the build's route table against `route-stages.md`.
 - No secret in `NEXT_PUBLIC_*`; tenant-scoped queries carry an explicit `where.tenantId`; user-facing copy is `pt-BR`.

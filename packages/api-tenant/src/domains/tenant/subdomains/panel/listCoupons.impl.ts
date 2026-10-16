@@ -35,6 +35,7 @@ export const listCouponsImpl = os.handler(async ({ input, context }) => {
       perCustomerLimit: coupon.perCustomerLimit ?? null,
       minimumOrderCents: coupon.minimumOrderCents ?? null,
       maximumDiscountCents: coupon.maximumDiscountCents ?? null,
+      shippingDiscountPercent: coupon.shippingDiscountPercent ?? null,
       startsAt: coupon.startsAt == null ? null : String(coupon.startsAt),
       endsAt: coupon.endsAt == null ? null : String(coupon.endsAt),
       stackable: Boolean(coupon.stackable),

@@ -16,11 +16,15 @@ export default function DashboardUnauthorized() {
             O painel da loja exige uma sessão ativa. Entre com a sua conta ou crie uma nova.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button render={<Link href="/dashboard/login" aria-label="Entrar no painel" />}>
+            <Button
+              nativeButton={false}
+              render={<Link href="/dashboard/login" aria-label="Entrar no painel" />}
+            >
               Entrar
             </Button>
             <Button
               variant="outline"
+              nativeButton={false}
               render={<Link href="/dashboard/signup" aria-label="Criar uma conta" />}
             >
               Criar conta

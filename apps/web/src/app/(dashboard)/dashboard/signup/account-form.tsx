@@ -19,6 +19,14 @@ import { registerAccount } from "@/lib/session-client.ts";
 import { DatePicker } from "./_components/date-picker.tsx";
 import { fieldErrors } from "./_components/form-errors.ts";
 
+// `Date` is impure, so the birthdate bounds are computed once at module load
+// instead of on every render (react/purity).
+const TODAY = new Date();
+
+const BIRTHDATE_MIN = new Date(1940, 0, 1);
+
+const BIRTHDATE_DEFAULT_MONTH = new Date(TODAY.getFullYear() - 30, 0, 1);
+
 /**
  * Account step. Reuses the server's per-field Valibot schemas (the same rules
  * the API enforces) plus a client-only password confirmation. On success the
@@ -151,6 +159,9 @@ export function AccountForm() {
                   onChange={(value) => field.handleChange(value)}
                   onBlur={field.handleBlur}
                   invalid={isInvalid}
+                  minDate={BIRTHDATE_MIN}
+                  maxDate={TODAY}
+                  defaultMonth={BIRTHDATE_DEFAULT_MONTH}
                 />
                 {isInvalid ? <FieldError errors={fieldErrors(field.state.meta.errors)} /> : null}
               </Field>

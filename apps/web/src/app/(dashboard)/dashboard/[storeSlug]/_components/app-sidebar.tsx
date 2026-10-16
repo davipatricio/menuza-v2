@@ -4,12 +4,16 @@ import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
+  Boxes,
   ChevronRight,
+  FolderTree,
+  Layers,
   LayoutDashboard,
+  Package,
   ScrollText,
   Settings,
   ShoppingCart,
+  Tag,
   Ticket,
   Users,
 } from "lucide-react";
@@ -208,11 +212,11 @@ export function AppSidebar({
     {
       label: "Catálogo",
       items: [
-        { href: `${basePath}/catalog/products`, label: "Produtos", icon: BookOpen },
-        { href: `${basePath}/catalog/kits`, label: "Kits", icon: BookOpen },
-        { href: `${basePath}/catalog/departments`, label: "Departamentos", icon: BookOpen },
-        { href: `${basePath}/catalog/categories`, label: "Categorias", icon: BookOpen },
-        { href: `${basePath}/catalog/tags`, label: "Tags", icon: BookOpen },
+        { href: `${basePath}/catalog/products`, label: "Produtos", icon: Package },
+        { href: `${basePath}/catalog/kits`, label: "Kits", icon: Boxes },
+        { href: `${basePath}/catalog/departments`, label: "Departamentos", icon: Layers },
+        { href: `${basePath}/catalog/categories`, label: "Categorias", icon: FolderTree },
+        { href: `${basePath}/catalog/tags`, label: "Tags", icon: Tag },
       ],
     },
     {

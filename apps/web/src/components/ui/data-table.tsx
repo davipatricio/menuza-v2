@@ -21,7 +21,7 @@ import {
   type ReactTable,
   type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, SearchX } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -40,6 +40,13 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty.tsx";
 import { exportToCsv, type CsvColumn } from "@/lib/csv-export.ts";
 
 export const dashboardTableFeatures = tableFeatures({
@@ -405,11 +412,18 @@ export function DataTable<TData extends object>({
               })
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  Nenhum registro encontrado.
+                <TableCell colSpan={columns.length} className="p-0">
+                  <Empty className="border-0">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <SearchX aria-hidden="true" />
+                      </EmptyMedia>
+                      <EmptyTitle>Nenhum registro encontrado.</EmptyTitle>
+                      <EmptyDescription>
+                        Ajuste a busca ou os filtros para ver outros resultados.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             )}

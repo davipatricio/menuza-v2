@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import * as v from "valibot";
 import {
+  CreateCouponInputSchema,
   CreateStoreInputSchema,
   RegisterInputSchema,
   RESERVED_STORE_SLUGS,
   StoreSlugSchema,
+  UpdateCouponInputSchema,
 } from "../src/panel/contracts.ts";
 
 describe("StoreSlugSchema", () => {
@@ -91,5 +93,110 @@ describe("CreateStoreInputSchema", () => {
     expect(
       v.safeParse(CreateStoreInputSchema, { displayName: "Painel", slug: "dashboard" }).success,
     ).toBe(false);
+  });
+});
+
+describe("coupon discount bounds", () => {
+  const createBase = {
+    storeSlug: "mawifoods",
+    code: "PROMO10",
+    stackable: false,
+    firstPurchaseOnly: false,
+    status: "active" as const,
+  };
+
+  const updateBase = { ...createBase, couponId: "coupon-1" };
+
+  test("accepts fixed cents and percentage up to 100", () => {
+    expect(
+      v.safeParse(CreateCouponInputSchema, {
+        ...createBase,
+        discountType: "fixed",
+        discountValue: 1500,
+      }).success,
+    ).toBe(true);
+    expect(
+      v.safeParse(CreateCouponInputSchema, {
+        ...createBase,
+        discountType: "percentage",
+        discountValue: 100,
+      }).success,
+    ).toBe(true);
+    expect(
+      v.safeParse(UpdateCouponInputSchema, {
+        ...updateBase,
+        discountType: "percentage",
+        discountValue: 100,
+      }).success,
+    ).toBe(true);
+  });
+
+  test("rejects percentage above 100 with a pt-BR message", () => {
+    for (const schema of [CreateCouponInputSchema, UpdateCouponInputSchema]) {
+      const base = schema === CreateCouponInputSchema ? createBase : updateBase;
+
+      const result = v.safeParse(schema, {
+        ...base,
+        discountType: "percentage",
+        discountValue: 101,
+      });
+
+      expect(result.success).toBe(false);
+
+      if (!result.success) {
+        expect(result.issues.some((issue) => issue.message.includes("1 a 100"))).toBe(true);
+      }
+    }
+  });
+
+  test("freight discount is an optional percentage from 0 to 100", () => {
+    for (const schema of [CreateCouponInputSchema, UpdateCouponInputSchema]) {
+      const base = schema === CreateCouponInputSchema ? createBase : updateBase;
+
+      // Order discount and freight discount coexist: one coupon, two percentages.
+      expect(
+        v.safeParse(schema, {
+          ...base,
+          discountType: "fixed",
+          discountValue: 1500,
+          shippingDiscountPercent: 50,
+        }).success,
+      ).toBe(true);
+
+      // Omitted is fine — the freight discount is opt-in.
+      expect(
+        v.safeParse(schema, { ...base, discountType: "fixed", discountValue: 1500 }).success,
+      ).toBe(true);
+
+      const over = v.safeParse(schema, {
+        ...base,
+        discountType: "fixed",
+        discountValue: 1500,
+        shippingDiscountPercent: 101,
+      });
+
+      expect(over.success).toBe(false);
+
+      if (!over.success) {
+        expect(over.issues.some((issue) => issue.message.includes("0 a 100"))).toBe(true);
+      }
+    }
+  });
+
+  test("empty code is rejected with pt-BR copy, not Valibot's English default", () => {
+    const result = v.safeParse(CreateCouponInputSchema, {
+      ...createBase,
+      code: "",
+      discountType: "percentage",
+      discountValue: 10,
+    });
+
+    expect(result.success).toBe(false);
+
+    if (!result.success) {
+      expect(result.issues.every((issue) => issue.message.startsWith("Informe o código"))).toBe(
+        true,
+      );
+    }
   });
 });

@@ -10,7 +10,7 @@
 | Contracts | oRPC (typed contracts, exportable OpenAPI, streaming, compression) |
 | ORM | Prisma 8 + Prisma Migrate; `@prisma/orm-postgres` (ships its own `pg` binding) |
 | Web | Next 16 in `apps/web` — Server Components, RSC, Cache Components, partial prefetching, App Shell |
-| UI | shadcn/ui on Base UI (not Radix); Tailwind 4 |
+| UI | shadcn/ui on Base UI (not Radix); Tailwind 4. Dashboard visual system, tokens and component recipes: `apps/web/DESIGN.md` |
 | Auth | Own: argon2, server-side sessions with revocation, httpOnly + SameSite cookies. 2FA/social out of MVP |
 | Queues/cache | Redis for cache + BullMQ. Scheduled jobs for Pix expiry, retries, async notifications |
 | Storage | S3-compatible (R2/B2) + Cloudflare CDN, signed per-tenant URLs |

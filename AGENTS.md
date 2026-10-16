@@ -86,6 +86,18 @@
 - `bun run infra:up` / `infra:down` — Postgres + Redis + Jaeger.
 - `bunx turbo run <task>` — Turborepo task DAG with local cache (e.g. `turbo run build`, `turbo run typecheck`).
 
+### Lint/format baselines
+
+- Repo-wide `bun run lint` is red from pre-existing findings in untouched files, and
+  `bun run fmt:check` fails on untouched files too (four
+  `packages/api-tenant/.../panel/*.impl.ts`, nine `apps/web/.../catalog/*` route and table
+  files). Check your own paths instead of the repo-wide exit code: `bunx oxfmt <paths>` then
+  `bunx oxlint <paths>`.
+- `anti-slop/require-readable-spacing` is autofixable (`bunx oxlint --fix <paths>`);
+  re-run the formatter and lint afterwards and confirm a second pass changes nothing.
+- Format only the files a change touches — a package-wide `bun run fmt` rewrites
+  unrelated files.
+
 ## Codebase memory
 
 The repo is indexed in codebase-memory-mcp (project `C-Users-davip-Documents-Projetos-menuza`). Prefer graph tools for structural discovery; fall back to grep/glob for string literals, config values, and non-code files. Full workflow: `docs/agents/codebase-memory.md`.

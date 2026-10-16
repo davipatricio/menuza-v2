@@ -7,10 +7,13 @@ import { conflict, notFound, requireSession } from "../session/support.ts";
 import { db } from "@menuza/db";
 import { inTenantScope, resolveStore } from "./support.ts";
 
-const os = implement(tenantContractObject.panel.createCoupon).$context<RequestHeadersHandlerPluginContext>();
+const os = implement(
+  tenantContractObject.panel.createCoupon,
+).$context<RequestHeadersHandlerPluginContext>();
 
 function toPlainDateTime(value: string | null | undefined) {
   if (value == null || value === "") return null;
+
   return Temporal.PlainDateTime.from(value);
 }
 
@@ -27,6 +30,7 @@ function toCoupon(row: any) {
     perCustomerLimit: row.perCustomerLimit ?? null,
     minimumOrderCents: row.minimumOrderCents ?? null,
     maximumDiscountCents: row.maximumDiscountCents ?? null,
+    shippingDiscountPercent: row.shippingDiscountPercent ?? null,
     startsAt: row.startsAt == null ? null : String(row.startsAt),
     endsAt: row.endsAt == null ? null : String(row.endsAt),
     stackable: Boolean(row.stackable),
@@ -40,17 +44,25 @@ export const createCouponImpl = os.handler(async ({ input, context }) => {
 
   let parsedStarts = toPlainDateTime(input.startsAt ?? null);
   let parsedEnds = toPlainDateTime(input.endsAt ?? null);
-  if (parsedStarts != null && parsedEnds != null && Temporal.PlainDateTime.compare(parsedStarts, parsedEnds) > 0) {
+
+  if (
+    parsedStarts != null &&
+    parsedEnds != null &&
+    Temporal.PlainDateTime.compare(parsedStarts, parsedEnds) > 0
+  ) {
     parsedStarts = parsedEnds;
   }
 
   const code = input.code.trim().toUpperCase();
+
   const existing = await inTenantScope(store.tenantId, () =>
     db.orm.public.Coupon.where({ tenantId: store.tenantId, code }).first(),
   );
+
   if (existing) throw conflict();
 
   let row;
+
   try {
     row = await inTenantScope(store.tenantId, () =>
       db.orm.public.Coupon.create({
@@ -67,12 +79,14 @@ export const createCouponImpl = os.handler(async ({ input, context }) => {
         perCustomerLimit: input.perCustomerLimit ?? null,
         minimumOrderCents: input.minimumOrderCents ?? null,
         maximumDiscountCents: input.maximumDiscountCents ?? null,
+        shippingDiscountPercent: input.shippingDiscountPercent ?? null,
         stackable: input.stackable,
         firstPurchaseOnly: input.firstPurchaseOnly,
       }),
     );
   } catch (error) {
-    if (error instanceof Error && /Coupon_tenantId_code_key|duplicate key/i.test(error.message)) throw conflict();
+    if (error instanceof Error && /Coupon_tenantId_code_key|duplicate key/i.test(error.message))
+      throw conflict();
     throw error;
   }
 

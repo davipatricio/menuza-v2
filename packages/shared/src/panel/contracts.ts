@@ -175,10 +175,16 @@ export const OrderStatusSchema = v.picklist([
 export const StockModeSchema = v.picklist(["controlled", "unlimited"]);
 
 /** Mirrors the contract's `discount_type` enum (MEN-97). */
-export const DiscountTypeSchema = v.picklist(["percentage", "fixed"]);
+export const DiscountTypeSchema = v.picklist(
+  ["percentage", "fixed"],
+  "Escolha o tipo de desconto.",
+);
 
 /** Mirrors the contract's `coupon_status` enum. */
-export const CouponStatusSchema = v.picklist(["active", "expired", "disabled"]);
+export const CouponStatusSchema = v.picklist(
+  ["active", "expired", "disabled"],
+  "Escolha um status válido.",
+);
 
 export const PanelStoreInputSchema = v.strictObject({
   storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
@@ -313,6 +319,9 @@ export const PanelCouponSchema = v.object({
   perCustomerLimit: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
   minimumOrderCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
   maximumDiscountCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  shippingDiscountPercent: v.nullable(
+    v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100)),
+  ),
   startsAt: v.nullable(v.string()),
   endsAt: v.nullable(v.string()),
   stackable: v.boolean(),
@@ -727,40 +736,160 @@ export const listCoupons = panelRead
   .input(PanelStoreInputSchema)
   .output(PanelCouponsOutputSchema);
 
-export const CreateCouponInputSchema = v.strictObject({
-  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
-  code: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
-  description: v.optional(v.pipe(v.string(), v.maxLength(280))),
-  discountType: DiscountTypeSchema,
-  discountValue: v.pipe(v.number(), v.integer(), v.minValue(1)),
-  usageLimit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
-  perCustomerLimit: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1))),
-  minimumOrderCents: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
-  maximumDiscountCents: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
-  startsAt: v.optional(v.nullable(v.string())),
-  endsAt: v.optional(v.nullable(v.string())),
-  stackable: v.boolean(),
-  firstPurchaseOnly: v.boolean(),
-  status: CouponStatusSchema,
-});
+export const CreateCouponInputSchema = v.pipe(
+  v.strictObject({
+    storeSlug: v.pipe(
+      v.string("Loja inválida."),
+      v.nonEmpty("Loja inválida."),
+      v.maxLength(120, "Loja inválida."),
+    ),
+    code: v.pipe(
+      v.string("Informe o código do cupom."),
+      v.nonEmpty("Informe o código do cupom."),
+      v.maxLength(64, "Use no máximo 64 caracteres."),
+    ),
+    description: v.optional(
+      v.pipe(v.string("Descrição inválida."), v.maxLength(280, "Use no máximo 280 caracteres.")),
+    ),
+    discountType: DiscountTypeSchema,
+    discountValue: v.pipe(
+      v.number("Informe um número válido."),
+      v.integer("Use um número inteiro."),
+      v.minValue(1, "O valor mínimo é 1."),
+    ),
+    usageLimit: v.optional(
+      v.pipe(
+        v.number("Informe um número válido."),
+        v.integer("Use um número inteiro."),
+        v.minValue(1, "O valor mínimo é 1."),
+      ),
+    ),
+    perCustomerLimit: v.optional(
+      v.pipe(
+        v.number("Informe um número válido."),
+        v.integer("Use um número inteiro."),
+        v.minValue(1, "O valor mínimo é 1."),
+      ),
+    ),
+    minimumOrderCents: v.optional(
+      v.pipe(
+        v.number("Informe um número válido."),
+        v.integer("Use um número inteiro."),
+        v.minValue(0, "O valor mínimo é 0."),
+      ),
+    ),
+    maximumDiscountCents: v.optional(
+      v.pipe(
+        v.number("Informe um número válido."),
+        v.integer("Use um número inteiro."),
+        v.minValue(0, "O valor mínimo é 0."),
+      ),
+    ),
+    shippingDiscountPercent: v.optional(
+      v.pipe(
+        v.number("Informe um número válido."),
+        v.integer("Use um número inteiro."),
+        v.minValue(0, "O valor mínimo é 0."),
+        v.maxValue(100, "Use um valor de 0 a 100."),
+      ),
+    ),
+    startsAt: v.optional(v.string()),
+    endsAt: v.optional(v.string()),
+    stackable: v.boolean(),
+    firstPurchaseOnly: v.boolean(),
+    status: CouponStatusSchema,
+  }),
+  v.check(
+    (input) => input.discountType !== "percentage" || input.discountValue <= 100,
+    "Para desconto percentual, use um valor de 1 a 100.",
+  ),
+);
 
-export const UpdateCouponInputSchema = v.strictObject({
-  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
-  couponId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
-  code: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
-  description: v.optional(v.nullable(v.string())),
-  discountType: DiscountTypeSchema,
-  discountValue: v.pipe(v.number(), v.integer(), v.minValue(1)),
-  usageLimit: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
-  perCustomerLimit: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)))),
-  minimumOrderCents: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
-  maximumDiscountCents: v.optional(v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0)))),
-  startsAt: v.optional(v.nullable(v.string())),
-  endsAt: v.optional(v.nullable(v.string())),
-  stackable: v.boolean(),
-  firstPurchaseOnly: v.boolean(),
-  status: CouponStatusSchema,
-});
+export const UpdateCouponInputSchema = v.pipe(
+  v.strictObject({
+    storeSlug: v.pipe(
+      v.string("Loja inválida."),
+      v.nonEmpty("Loja inválida."),
+      v.maxLength(120, "Loja inválida."),
+    ),
+    couponId: v.pipe(
+      v.string("Cupom inválido."),
+      v.nonEmpty("Cupom inválido."),
+      v.maxLength(64, "Cupom inválido."),
+    ),
+    code: v.pipe(
+      v.string("Informe o código do cupom."),
+      v.nonEmpty("Informe o código do cupom."),
+      v.maxLength(64, "Use no máximo 64 caracteres."),
+    ),
+    description: v.optional(
+      v.nullable(
+        v.pipe(v.string("Descrição inválida."), v.maxLength(280, "Use no máximo 280 caracteres.")),
+      ),
+    ),
+    discountType: DiscountTypeSchema,
+    discountValue: v.pipe(
+      v.number("Informe um número válido."),
+      v.integer("Use um número inteiro."),
+      v.minValue(1, "O valor mínimo é 1."),
+    ),
+    usageLimit: v.optional(
+      v.nullable(
+        v.pipe(
+          v.number("Informe um número válido."),
+          v.integer("Use um número inteiro."),
+          v.minValue(1, "O valor mínimo é 1."),
+        ),
+      ),
+    ),
+    perCustomerLimit: v.optional(
+      v.nullable(
+        v.pipe(
+          v.number("Informe um número válido."),
+          v.integer("Use um número inteiro."),
+          v.minValue(1, "O valor mínimo é 1."),
+        ),
+      ),
+    ),
+    minimumOrderCents: v.optional(
+      v.nullable(
+        v.pipe(
+          v.number("Informe um número válido."),
+          v.integer("Use um número inteiro."),
+          v.minValue(0, "O valor mínimo é 0."),
+        ),
+      ),
+    ),
+    maximumDiscountCents: v.optional(
+      v.nullable(
+        v.pipe(
+          v.number("Informe um número válido."),
+          v.integer("Use um número inteiro."),
+          v.minValue(0, "O valor mínimo é 0."),
+        ),
+      ),
+    ),
+    shippingDiscountPercent: v.optional(
+      v.nullable(
+        v.pipe(
+          v.number("Informe um número válido."),
+          v.integer("Use um número inteiro."),
+          v.minValue(0, "O valor mínimo é 0."),
+          v.maxValue(100, "Use um valor de 0 a 100."),
+        ),
+      ),
+    ),
+    startsAt: v.optional(v.string()),
+    endsAt: v.optional(v.string()),
+    stackable: v.boolean(),
+    firstPurchaseOnly: v.boolean(),
+    status: CouponStatusSchema,
+  }),
+  v.check(
+    (input) => input.discountType !== "percentage" || input.discountValue <= 100,
+    "Para desconto percentual, use um valor de 1 a 100.",
+  ),
+);
 
 export const DeleteCouponInputSchema = v.strictObject({
   storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
@@ -768,20 +897,45 @@ export const DeleteCouponInputSchema = v.strictObject({
 });
 
 const couponCreatedOutput = v.object({ coupon: PanelCouponSchema });
+
 const couponDeletedOutput = v.object({ success: v.boolean() });
 
 export const createCoupon = sessionContract
-  .meta(openapi({ method: "POST", path: "/panel/stores/{storeSlug}/coupons", operationId: "createPanelCoupon", summary: "Cria um cupom promocional.", tags: ["panel"] }))
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/coupons",
+      operationId: "createPanelCoupon",
+      summary: "Cria um cupom promocional.",
+      tags: ["panel"],
+    }),
+  )
   .input(CreateCouponInputSchema)
   .output(couponCreatedOutput);
 
 export const updateCoupon = sessionContract
-  .meta(openapi({ method: "PUT", path: "/panel/stores/{storeSlug}/coupons/{couponId}", operationId: "updatePanelCoupon", summary: "Atualiza um cupom promocional.", tags: ["panel"] }))
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/coupons/{couponId}",
+      operationId: "updatePanelCoupon",
+      summary: "Atualiza um cupom promocional.",
+      tags: ["panel"],
+    }),
+  )
   .input(UpdateCouponInputSchema)
   .output(couponCreatedOutput);
 
 export const deleteCoupon = sessionContract
-  .meta(openapi({ method: "DELETE", path: "/panel/stores/{storeSlug}/coupons/{couponId}", operationId: "deletePanelCoupon", summary: "Exclui um cupom.", tags: ["panel"] }))
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/coupons/{couponId}",
+      operationId: "deletePanelCoupon",
+      summary: "Exclui um cupom.",
+      tags: ["panel"],
+    }),
+  )
   .input(DeleteCouponInputSchema)
   .output(couponDeletedOutput);
 

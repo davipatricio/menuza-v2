@@ -75,35 +75,40 @@ Banned: custom `@keyframes` in TSX, scroll hijacks, parallax, auto-play carousel
 
 Shell (`dashboard/[storeSlug]/layout.tsx`): `SidebarProvider` → `AppSidebar` (`collapsible="icon"`) + `SidebarInset`. Sticky header `h-14 border-b bg-background/80 backdrop-blur`, `SidebarTrigger` + `StoreBreadcrumb` in `Suspense` + member chip (`hidden sm:flex`) + `HeaderActions`. Content: `flex flex-1 flex-col gap-6 p-4 md:p-8`. `h1.sr-only` carries the store name.
 
-Nav groups: **Operação** (Dashboard, Pedidos, Catálogo), **Relacionamento** (Clientes, Cupons, Auditoria), **Configurações** collapsible (Loja, Entrega, Pagamentos, Notificações, Equipe, Conta). Mobile closes on navigation (`MobileSidebarCloser`); collapsed sidebar opens on demand instead of navigating blind.
+Nav groups: **Operação** (Dashboard, Pedidos), **Catálogo** (Produtos, Kits, Departamentos, Categorias, Tags), **Relacionamento** (Clientes, Cupons, Auditoria), **Configurações** collapsible (Loja, Entrega, Pagamentos, Notificações, Equipe, Conta). Mobile closes on navigation (`MobileSidebarCloser`); collapsed sidebar opens on demand instead of navigating blind.
 
-Page pattern: Server Component reads through `panelClient()` and hands rows to a client island (`*-table.tsx` / `*-tabs.tsx`). No data fetch in the browser. Every route ships `loading.tsx` (table skeleton via `table-loading.tsx`, never a blank frame).
+Page pattern: Server Component reads through `panelClient()` and hands rows to a client island (`*-table.tsx` / `*-tabs.tsx`). No data fetch in the browser. Every route ships `loading.tsx` (table skeleton via `table-loading.tsx`, never a blank frame). Every page opens with `h2 text-xl font-semibold tracking-tight` + a `text-sm text-muted-foreground` description inside a `<section aria-labelledby>`, left-aligned with the content column — never a second `h1`, never a centered form under a left-aligned title.
 
-Settings pattern: `SettingsSection` — `h2#headingId` + `text-sm text-muted-foreground` description + children, `gap-6` / `gap-1.5`. The five settings pages must read as one product.
+Section pattern: `SettingsSection` (or the same shape) — `h2#headingId` + `text-sm text-muted-foreground` description + children, `gap-6` / `gap-1.5`. The five settings pages must read as one product.
 
 Tables: `DataTable` + `dashboardTableFeatures` only. Status cells are `Badge` with the variant map from `panel-labels.ts` (e.g. `ORDER_STATUS_VARIANTS`). Search/filter/export copy is pt-BR with ellipsis (`Buscar por cliente ou código…`, `Status…`).
 
 ## Component recipes
 
-| Need                     | Use                                                                                                                     |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Primary save/confirm     | `Button variant="default"`                                                                                              |
-| Secondary                | `Button variant="secondary"` (tint) or `outline` (canvas + border)                                                      |
-| Quiet row action         | `Button variant="ghost"`, icon-only needs `aria-label`                                                                  |
-| Danger                   | `Button variant="destructive"` + confirm step; never danger-colored text alone                                          |
-| Text link in prose/table | `Button variant="link"` or underlined `Link` with `underline-offset-4`                                                  |
-| Status                   | `Badge` with `*_VARIANTS` map; never raw `text-emerald/red/green`                                                       |
-| Callout                  | `Alert` — not installed; `shadcn add alert` when first needed, never a styled div                                       |
-| Empty result             | `Empty` — not installed; `shadcn add empty` when first needed (`EmptyState` grandfathered, see gaps)                    |
-| Loading rows             | `Skeleton` via `table-loading.tsx`, not `animate-pulse` divs                                                            |
-| Divider                  | `Separator`, not `<hr>` or `border-t` divs                                                                              |
-| Form                     | `FieldGroup` + `Field` + `FieldLabel`; validation = `data-invalid` on `Field`, `aria-invalid` on control                |
-| Option set (2–7)         | `ToggleGroup` — not installed; `shadcn add toggle-group` when first needed, not mapped buttons with manual active state |
-| Overlay                  | `Dialog`/`Sheet` always with `Title` (`sr-only` ok); no manual `z-index` (`Drawer` not installed)                       |
-| Avatar                   | always with `AvatarFallback` (`initials()`); icons inside components use `data-icon`, no sizing classes                 |
-| Button pending state     | `Spinner` — not installed; `shadcn add spinner` when first needed, never `isPending`/`isLoading` props                  |
+| Need                     | Use                                                                                                                                                                              |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primary save/confirm     | `Button variant="default"`                                                                                                                                                       |
+| Secondary                | `Button variant="secondary"` (tint) or `outline` (canvas + border)                                                                                                               |
+| Quiet row action         | `Button variant="ghost"`, icon-only needs `aria-label`                                                                                                                           |
+| Danger                   | `Button variant="destructive"` + confirm step; never danger-colored text alone                                                                                                   |
+| Text link in prose/table | `Button variant="link"` or underlined `Link` with `underline-offset-4`                                                                                                           |
+| Status                   | `Badge` with `*_VARIANTS` map; never raw `text-emerald/red/green`                                                                                                                |
+| Callout                  | `Alert` + `AlertTitle`/`AlertDescription`; `variant="destructive"` for failures, never a styled div                                                                              |
+| Empty result             | `Empty` + `EmptyHeader` + `EmptyMedia variant="icon"` + `EmptyTitle` + `EmptyDescription`; `DataTable` already renders it                                                        |
+| Loading rows             | `Skeleton` via `table-loading.tsx`, not `animate-pulse` divs                                                                                                                     |
+| Divider                  | `Separator`, not `<hr>` or `border-t` divs                                                                                                                                       |
+| Form                     | `FieldGroup` + `Field` + `FieldLabel htmlFor={name}` **and** `id={name}` on the control; `data-invalid` on `Field`, `aria-invalid` + `aria-describedby` on the control           |
+| Form error display       | show a field error when the field is touched **or** the form was submitted; on submit focus the first `[aria-invalid="true"]`                                                    |
+| Money entry              | `InputGroup` + `InputGroupAddon R$` + `InputGroupInput`; mask while typing with `maskBrlInput`, show committed digits with `formatBrlInput`, persist cents via `parseBrlToCents` |
+| Percent entry            | `InputGroup` + `%` addon; digits only while typing (`replace(/\D/g, "")`), integer 1–100                                                                                         |
+| Integer entry            | `maskIntegerInput` while typing (groups thousands, strips non-digits); strip the dots before `Number()`                                                                          |
+| Option set (2–7)         | `ToggleGroup` + `ToggleGroupItem`, single-select via `value={[current]}`; label the group with `FieldTitle` + `aria-labelledby`, not a bare `FieldLabel`                         |
+| Overlay                  | `Dialog`/`Sheet` always with `Title` (`sr-only` ok); no manual `z-index` (`Drawer` not installed)                                                                                |
+| Destructive confirm      | `AlertDialog` + `AlertDialogTitle`/`AlertDialogDescription`; confirm is `AlertDialogAction variant="destructive"`                                                                |
+| Avatar                   | always with `AvatarFallback` (`initials()`); icons inside components use `data-icon`, no sizing classes                                                                          |
+| Button pending state     | `Spinner` (with `data-icon="inline-start"`), never `isPending`/`isLoading` props on `Button`                                                                                     |
 
-Control heights move together. In this repo the 32px default lives in `button.tsx` (`h-8`), `input.tsx` (`h-8`), `input-group.tsx` (`h-8`), `select.tsx` (`data-[size=default]:h-8`), `combobox.tsx` (`min-h-8` chips) and `tabs.tsx` (`group-data-horizontal/tabs:h-8`). Re-grep (`\bh-8\b|size-8\b|min-h-8\b` in `src/components/ui/`) before editing; never change one without the rest. `toggle`, `menubar`, `input-otp`, `command` and `native-select` are not installed — `shadcn add` them when first needed instead of hand-rolling.
+Control heights move together. In this repo the 32px default lives in `button.tsx` (`h-8`), `input.tsx` (`h-8`), `input-group.tsx` (`h-8`), `select.tsx` (`data-[size=default]:h-8`), `combobox.tsx` (`min-h-8` chips) and `tabs.tsx` (`group-data-horizontal/tabs:h-8`). Re-grep (`\bh-8\b|size-8\b|min-h-8\b` in `src/components/ui/`) before editing; never change one without the rest. Installed and usable: `alert`, `alert-dialog`, `empty`, `spinner`, `toggle`, `toggle-group`. Still not installed — `shadcn add` them when first needed instead of hand-rolling: `menubar`, `input-otp`, `command`, `native-select`.
 
 ## Responsive
 
@@ -111,7 +116,9 @@ Mobile-first. `p-4` → `md:p-8`. Member chip hides below `sm`. Sidebar collapse
 
 ## Wording (pt-BR, plain)
 
-- Labels live only in `src/lib/panel-labels.ts`. Converters only in `src/lib/format.ts` (`formatBrl` takes cents, `formatDateTime` takes ISO). No other file invents currency/date strings.
+- Labels live only in `src/lib/panel-labels.ts`. Converters only in `src/lib/format.ts` (`formatBrl` takes cents for display, `formatBrlInput` renders committed digits, `maskBrlInput`/`maskIntegerInput` mask as the user types, `parseBrlToCents` parses pt-BR input back to cents, `formatDateTime` takes ISO). Money persists as integer cents (ADR-0006); inputs show an `R$` addon and never the word "centavos". Percent inputs use a `%` addon with integers 1–100. No other file invents currency/date strings.
+- Date fields use the Popover + `Calendar` `DatePicker` (`signup/_components/date-picker.tsx`), never `<input type="date">`. Pass explicit `minDate`/`maxDate` computed once at module load: the calendar's year dropdown lists only the years inside them, and react-day-picker's fallback window is the **last 100 years** — a coupon expiring next year would be unpickable.
+- A field another field owns is shown locked, not hidden: `perCustomerLimit` renders `1` and `disabled` while "Uso único por cliente" is checked, and its description says why. Disabling is not validation — the value is still written on submit.
 - Verb-first actions: "Salvar alterações", "Revogar", "Exportar CSV". Destructive side effects stated up front ("Trocar a senha desconecta os outros dispositivos").
 - States, not adjectives: `FORBIDDEN` renders the read-only notice; current session hides its own revoke button; unknown slug and non-member are both 404 with no distinction.
 - No emoji badges, no "eyebrow + title + description + paragraph" stacks, no growth-marketing verbs ("Desbloqueie", "Turbo", "Super"). One heading, one description, then the work.
@@ -120,22 +127,26 @@ Mobile-first. `p-4` → `md:p-8`. Member chip hides below `sm`. Sidebar collapse
 
 Do: semantic tokens, built-in variants, `flex gap-*`, `size-*`, `truncate`, `cn()`, `Title` on overlays, `Fallback` on avatars, `Badge` for status, `Skeleton` for loading, `Separator` for rules, tabular numbers for money.
 
-Don't: raw Tailwind colors (`bg-blue-500`, `text-red-600`, `text-emerald-600`, `text-neutral-700`); `space-x/y-*`; `w-10 h-10` pairs; `overflow-hidden text-ellipsis whitespace-nowrap` longhand; `dark:` raw overrides; manual `z-50` on overlays; `isPending/isLoading` on `Button` (`Spinner` not installed — add it first); gradients (`bg-gradient-to-*` / `bg-linear-to-*`, `bg-clip-text` sweeps); custom `@keyframes`; `<hr>`; `animate-pulse` placeholders; icon sizing classes inside components; `Field` without `FieldLabel` or validation states.
+Don't: raw Tailwind colors (`bg-blue-500`, `text-red-600`, `text-emerald-600`, `text-neutral-700`); `space-x/y-*`; `w-10 h-10` pairs; `overflow-hidden text-ellipsis whitespace-nowrap` longhand; `dark:` raw overrides; manual `z-50` on overlays; `isPending`/`isLoading` props on `Button` (render `Spinner` instead); `window.confirm`/`window.alert` (use `AlertDialog`); `h1` inside a dashboard page (the shell owns the only `h1`; pages open with `h2 text-xl`); `htmlFor` without a matching `id` on the control; `Select` for a 2–7 option set (use `ToggleGroup`); gradients (`bg-gradient-to-*` / `bg-linear-to-*`, `bg-clip-text` sweeps); custom `@keyframes`; `<hr>`; `animate-pulse` placeholders; icon sizing classes inside components; `Field` without `FieldLabel`/`FieldTitle` or validation states; `centavos` in UI copy; raw centavos integers in inputs; `<input type="date">` in a dashboard form (use the `DatePicker`); a `<label>` wrapped around a `Checkbox` outside `src/components/ui/**` — Base UI renders a `<button>`, which `jsx-a11y/label-has-associated-control` does not count as a control, so use `Field` + `FieldLabel htmlFor={id}` + `<Checkbox id={id} />`; a `Button render={<Link />}` whose label sits on the `Button` instead of the `Link` — `jsx-a11y/control-has-associated-label` reads the `Link` element, so give it its own `aria-label` (the visible text must be contained in it, e.g. `aria-label="Entrar no painel"` for a visible `Entrar`).
 
 ## Responsive / a11y checklist (per page)
 
 1. Keyboard: all actions reachable, `:focus-visible` 2px ring offset 2px intact, no `outline-none` without replacement.
-2. Overlays have `Title`; icon-only buttons have `aria-label`; invalid fields have `data-invalid` + `aria-invalid`.
+2. Overlays have `Title`; icon-only buttons have `aria-label`; every control has an `id` matching its `FieldLabel htmlFor`; invalid fields have `data-invalid` + `aria-invalid` + `aria-describedby`; a `Link` rendered through `Button render=` carries its own `aria-label`; a `Checkbox` outside `src/components/ui/**` is labeled through `FieldLabel htmlFor` + `id`, never a wrapping `<label>`.
 3. Contrast: body ≥ 7:1, secondary ≥ 4.5:1. Flag any pair below, even if a mockup specifies it.
 4. 375px + 1280px: no horizontal overflow, tables scroll in place.
 5. `motion-reduce`: micro transitions off, content fully usable.
 
 ## Known Gaps
 
-- `_components/empty-state.tsx` is a custom dashed-border div, not the shadcn `Empty` primitive. Grandfathered; new empty states use `Empty`, and replacement of this file is an approved follow-up.
+- `_components/empty-state.tsx` is a custom dashed-border div, not the shadcn `Empty` primitive. Grandfathered; `DataTable` now renders `Empty` for zero rows, and replacement of this file is an approved follow-up.
 - No `Chart` usage yet; no toast standard pinned for the panel (`toast` Base UI vs `sonner`). Do not invent one per page — pick once when the first need lands.
 - Dark `.dark` ramp is derived from the neutral brand, not from product mockups. Call it out when touching dark surfaces.
 
 ## Iteration Guide
 
-New dashboard page: Server `page.tsx` (panel read) + `loading.tsx` (table skeleton) + `*-table.tsx` island (columns, `Badge` variants, `formatBrl`, export columns) + labels in `panel-labels.ts` if a new enum appears. Then run `bun run design:check`, `bun run typecheck`, `bun run lint`. No new tokens, no new shadow tiers, no new motion curves without updating this file first.
+New dashboard page: Server `page.tsx` (panel read) + `loading.tsx` (table skeleton) + `*-table.tsx` island (columns, `Badge` variants, `formatBrl`, export columns) + labels in `panel-labels.ts` if a new enum appears.
+
+New form route: Server `page.tsx` (heading + description) + `loading.tsx` + a `*-form.tsx` island (`@tanstack/react-form` + the shared Valibot schema, `FieldGroup`/`Field`, submit-aware field errors, `Alert` for server errors, `Spinner` on the submit button, `ToggleGroup` for small option sets).
+
+Then run `bun run design:check`, `bun run typecheck`, `bun run lint`. No new tokens, no new shadow tiers, no new motion curves without updating this file first.

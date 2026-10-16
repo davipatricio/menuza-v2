@@ -14,7 +14,15 @@ import {
   ORDER_STATUS_VARIANTS,
   MEMBER_KIND_LABELS,
 } from "../src/lib/panel-labels.ts";
-import { formatBrl, formatDateTime, initials } from "../src/lib/format.ts";
+import {
+  formatBrl,
+  formatBrlInput,
+  formatDateTime,
+  initials,
+  maskBrlInput,
+  maskIntegerInput,
+  parseBrlToCents,
+} from "../src/lib/format.ts";
 import { OrderStatusSchema } from "@menuza/shared/tenant";
 
 const DASHBOARD_LEAVES = [
@@ -78,6 +86,44 @@ describe("money formatting", () => {
     expect(formatBrl(2000)).toContain("20,00");
     // 9.5 reais is 950 cents; passing 9.5 would render "0,01".
     expect(formatBrl(950)).toContain("9,50");
+  });
+
+  test("money inputs round-trip between display digits and integer cents", () => {
+    expect(formatBrlInput(1550)).toBe("15,50");
+    expect(formatBrlInput(150000)).toBe("1.500,00");
+    expect(parseBrlToCents("15,50")).toBe(1550);
+    expect(parseBrlToCents("15")).toBe(1500);
+    expect(parseBrlToCents("15,5")).toBe(1550);
+    expect(parseBrlToCents("1.500,00")).toBe(150000);
+    expect(parseBrlToCents("R$ 15,50")).toBe(1550);
+    expect(parseBrlToCents("   ")).toBeUndefined();
+  });
+
+  test("parseBrlToCents rejects text instead of guessing", () => {
+    for (const raw of ["abc", "15,567", "15,,50", "--10", "R$"]) {
+      expect(() => parseBrlToCents(raw)).toThrow();
+    }
+  });
+
+  test("the money typing mask groups thousands and keeps the in-progress comma", () => {
+    expect(maskBrlInput("1500")).toBe("1.500");
+    expect(maskBrlInput("1500,5")).toBe("1.500,5");
+    expect(maskBrlInput("1.500,00")).toBe("1.500,00");
+    expect(maskBrlInput("R$ 15")).toBe("15");
+    expect(maskBrlInput("007")).toBe("7");
+    expect(maskBrlInput("")).toBe("");
+  });
+
+  test("masked money still parses back to the same cents", () => {
+    expect(parseBrlToCents(maskBrlInput("1500"))).toBe(150000);
+    expect(parseBrlToCents(maskBrlInput("15,5"))).toBe(1550);
+    expect(parseBrlToCents(maskBrlInput("1.500,00"))).toBe(150000);
+  });
+
+  test("the integer typing mask drops non-digits and groups thousands", () => {
+    expect(maskIntegerInput("1500")).toBe("1.500");
+    expect(maskIntegerInput("12a34")).toBe("1.234");
+    expect(maskIntegerInput("")).toBe("");
   });
 });
 

@@ -102,9 +102,39 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/categories",
   },
   {
+    procedure: tenantContractObject.panel.listDepartments,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/departments",
+  },
+  {
+    procedure: tenantContractObject.panel.listTags,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/tags",
+  },
+  {
+    procedure: tenantContractObject.panel.listKits,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/kits",
+  },
+  {
     procedure: tenantContractObject.panel.listCoupons,
     method: "get",
     path: "/panel/stores/{storeSlug}/coupons",
+  },
+  {
+    procedure: tenantContractObject.panel.createCoupon,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/coupons",
+  },
+  {
+    procedure: tenantContractObject.panel.updateCoupon,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/coupons/{couponId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteCoupon,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/coupons/{couponId}",
   },
   {
     procedure: tenantContractObject.panel.listAuditLogs,

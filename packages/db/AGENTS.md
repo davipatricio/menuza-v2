@@ -11,6 +11,25 @@
   `prisma migration plan --name foo` → review the planned package → `prisma db migrate --advance-ref db`.
 - The `db` ref anchors `migration plan`'s origin; `db migrate` without
   `--advance-ref` (e.g. CI deploys) must not move it.
+- Migration-graph pitfalls (each cost a debugging round; check them before reading
+  a surprising plan):
+  - A **stale `db` ref** makes a bare `migration plan` fork the graph — it replans
+    every edge the ref does not reach (27 operations for a one-column change) and
+    warns "The default origin ref 'db' points at … which already has a migration
+    leading to … Planning from it forks the migration graph; pass --from to choose
+    the origin explicitly." `migrations/app/refs/db.json` must equal the
+    `currentContract` that `prisma migration status` prints; compare them first.
+  - Pass **`--from <hash>` only**. `--to <hash>` fails with `MIGRATION.REF_NOT_FOUND`
+    when the hash is the freshly emitted contract: a contract becomes a graph node
+    only once a migration carries it.
+  - `prisma db migrate` fails with `MIGRATION.PATH_UNREACHABLE` when no edge joins
+    the database's current state to the target — migrate replays existing edges, it
+    never invents one. That means the plan was made against the wrong origin.
+  - Apply with `prisma db migrate`, then advance the ref (`--advance-ref db`) or the
+    next plan forks again. `prisma migration status` then reads "Up to date" and the
+    new package lists `db` among its refs.
+  - One migration = one real change. `migrations/snapshots/<hash>/` is written with
+    the package and is what the next plan diffs against — commit them together.
 - Singleton client lives in `src/client.ts` (`postgres<Contract>(...)`, lazy
   connection). Importing consumers must call `disconnectDb()` on shutdown.
   Use `pingDb()` for readiness probes.

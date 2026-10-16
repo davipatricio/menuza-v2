@@ -432,6 +432,7 @@ model Coupon {
   perCustomerLimit Int?
   minimumOrderCents Int?
   maximumDiscountCents Int?
+  shippingDiscountPercent Int?
   startsAt     Timestamp(3)?
   endsAt       Timestamp(3)?
   stackable    Boolean       @default(false)

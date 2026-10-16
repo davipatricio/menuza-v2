@@ -5,10 +5,13 @@ import { db } from "@menuza/db";
 import { conflict, notFound } from "../session/support.ts";
 import { inTenantScope, resolveStore } from "./support.ts";
 
-const os = implement(tenantContractObject.panel.updateCoupon).$context<RequestHeadersHandlerPluginContext>();
+const os = implement(
+  tenantContractObject.panel.updateCoupon,
+).$context<RequestHeadersHandlerPluginContext>();
 
 function parseTimestamp(value: string | null | undefined) {
   if (value == null || value === "") return null;
+
   return Temporal.PlainDateTime.from(value);
 }
 
@@ -25,6 +28,7 @@ function toCoupon(row: any) {
     perCustomerLimit: row.perCustomerLimit ?? null,
     minimumOrderCents: row.minimumOrderCents ?? null,
     maximumDiscountCents: row.maximumDiscountCents ?? null,
+    shippingDiscountPercent: row.shippingDiscountPercent ?? null,
     startsAt: row.startsAt == null ? null : String(row.startsAt),
     endsAt: row.endsAt == null ? null : String(row.endsAt),
     stackable: Boolean(row.stackable),
@@ -40,20 +44,25 @@ export const updateCouponImpl = os.handler(async ({ input, context }) => {
   const existing = await inTenantScope(store.tenantId, () =>
     db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).first(),
   );
+
   if (!existing) throw notFound();
 
   if (code !== existing.code) {
     const duplicate = await inTenantScope(store.tenantId, () =>
       db.orm.public.Coupon.where({ tenantId: store.tenantId, code }).first(),
     );
+
     if (duplicate) throw conflict();
   }
 
   let startsAt = parseTimestamp(input.startsAt);
   let endsAt = parseTimestamp(input.endsAt);
-  if (startsAt != null && endsAt != null && Temporal.PlainDateTime.compare(startsAt, endsAt) > 0) startsAt = endsAt;
+
+  if (startsAt != null && endsAt != null && Temporal.PlainDateTime.compare(startsAt, endsAt) > 0)
+    startsAt = endsAt;
 
   let row;
+
   try {
     row = await inTenantScope(store.tenantId, () =>
       db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).update({
@@ -68,16 +77,19 @@ export const updateCouponImpl = os.handler(async ({ input, context }) => {
         perCustomerLimit: input.perCustomerLimit ?? null,
         minimumOrderCents: input.minimumOrderCents ?? null,
         maximumDiscountCents: input.maximumDiscountCents ?? null,
+        shippingDiscountPercent: input.shippingDiscountPercent ?? null,
         stackable: input.stackable,
         firstPurchaseOnly: input.firstPurchaseOnly,
       }),
     );
   } catch (error) {
-    if (error instanceof Error && /Coupon_tenantId_code_key|duplicate key/i.test(error.message)) throw conflict();
+    if (error instanceof Error && /Coupon_tenantId_code_key|duplicate key/i.test(error.message))
+      throw conflict();
     throw error;
   }
 
   if (!row) throw notFound();
+
   return { coupon: toCoupon(row) };
 });
 

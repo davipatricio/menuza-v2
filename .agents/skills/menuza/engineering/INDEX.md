@@ -7,6 +7,7 @@
 | `stack.md` | Locked stack, ADRs, technical pendencies | stack, architecture, ADR, bun, prisma, orpc |
 | `route-stages.md` | apps/web rendering stages, `ensureStatic`, audit | route, ensureStatic, static, prefetch, cache |
 | `checks.md` | Every-change commands and the 12 acceptance scenarios | checks, acceptance, scenarios, done |
+| `schema-migrations.md` | Prisma 8 migration loop, failure modes, data rules | migration, prisma migrate, schema, contract, ref, column, backfill |
 | `followups.md` | Open technical work and the product gates | follow-up, pending, backlog |
 
 Cross-cutting invariants: `../SKILL.md`. Linear querying rules: `../tickets/README.md`.

@@ -30,6 +30,41 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Document language: `pt-BR`. User-facing content stays in Portuguese.
 - UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog`, `table`, `sidebar`, `badge`, `tabs`, `breadcrumb`, `dropdown-menu`, `checkbox`, `avatar`, `select`, `combobox`, `collapsible`, `popover`, `calendar`, `field` (plus transitive `sheet`, `separator`, `skeleton`, `tooltip`, `textarea`, `input-group`, `use-mobile`) in `src/components/ui/`.
 - Dashboard visual system: `DESIGN.md` (tokens, recipes, motion, responsive, wording, slop bans) is authoritative for `/dashboard`. New pages follow its Iteration Guide, then run `bun run design:check` from the repo root before `typecheck`/`lint`.
+
+## Dashboard UI conventions
+
+- Every dashboard date field uses `DatePicker` from
+  `src/app/(dashboard)/dashboard/signup/_components/date-picker.tsx` (Popover +
+  `calendar`). Pass `minDate`/`maxDate` explicitly: `captionLayout="dropdown"` falls
+  back to the last 100 years without them. `<input type="date">` is banned.
+- A `Checkbox` outside `src/components/ui/**` is labeled with
+  `Field orientation="horizontal"` + `Checkbox id={field.name}` +
+  `FieldLabel htmlFor={field.name}`. A wrapping `<label>` trips
+  `jsx-a11y/label-has-associated-control`, because Base UI renders a `<button>` and
+  the rule does not count a button as a labelable control.
+- `Button render={<Link … />}` carries its `aria-label` on the `Link`, not on the
+  `Button`: `jsx-a11y/control-has-associated-label` reads the rendered element, and
+  the visible text must be contained in the label (WCAG 2.5.3).
+- Route skeletons: form/settings routes ship `loading.tsx` with `SimpleLoading`;
+  table routes use `TableLoading`.
+- `useForm` + a contract schema: writing optional fields as bare `undefined` in
+  `defaultValues` narrows the inferred form type to `undefined`, so the schema stops
+  being assignable to `validators`. Widen the schema once into a typed const
+  (`const couponSchema: any = CreateCouponInputSchema;`, reason in the comment) instead
+  of casting each `validators` entry — every `as` needs its own `SAFETY:` comment
+  (`anti-slop/require-safety-comment-for-type-assertion`).
+
+## Lint and format
+
+- Format only what you touched: `bunx oxfmt <paths>`. Never a package-wide
+  `bun run fmt` — it rewrites files outside the change.
+- `anti-slop/require-readable-spacing` is autofixable: `bunx oxlint --fix <paths>`,
+  then re-run the formatter and lint again; formatting must not reintroduce findings.
+- Known-red baseline, not yours: repo-wide `bun run lint` fails on pre-existing
+  findings in untouched files, and `bun run fmt:check` fails on four untouched
+  `packages/api-tenant/.../panel/*.impl.ts` plus nine untouched `catalog/*` route and
+  table files under this app. Judge a change by linting its paths, not by the
+  repo-wide exit code.
 - Dashboard auth: `/dashboard/login` and the `/dashboard/signup/*` wizard (conta →
   perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
   `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot
