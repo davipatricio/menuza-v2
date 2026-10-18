@@ -20,9 +20,7 @@ export const listProductsImpl = os.handler(async ({ input, context }) => {
     db.orm.public.Product.where({ tenantId: store.tenantId })
       .include("category", (category) => category.select("id", "name"))
       .include("department", (department) => department.select("id", "name"))
-      .include("tags", (productTag) =>
-        productTag.include("tag", (tag) => tag.select("id", "name")),
-      )
+      .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("id", "name")))
       .include("variations", (variation) =>
         variation.select("name", "priceCents").orderBy((v) => v.name.asc()),
       )
@@ -38,11 +36,15 @@ export const listProductsImpl = os.handler(async ({ input, context }) => {
       categoryName: product.category?.name ?? null,
       departmentId: product.department?.id ?? null,
       departmentName: product.department?.name ?? null,
-      tags: (product.tags ?? []).map((entry: { tag: { id: string; name: string } | null; tagId: string }) => {
-        const tag = entry.tag;
-        if (!tag) return null;
-        return { id: tag.id, name: tag.name };
-      }).filter((entry): entry is { id: string; name: string } => entry !== null),
+      tags: (product.tags ?? [])
+        .map((entry: { tag: { id: string; name: string } | null; tagId: string }) => {
+          const tag = entry.tag;
+
+          if (!tag) return null;
+
+          return { id: tag.id, name: tag.name };
+        })
+        .filter((entry): entry is { id: string; name: string } => entry !== null),
       priceCents:
         product.variations.find((variation) => variation.name === "default")?.priceCents ??
         product.variations[0]?.priceCents ??

@@ -23,8 +23,8 @@ permissions:
 
 Find what the brief asks for, in the repository only.
 
-- Prefer the codebase-memory graph tools (search_graph, get_code_snippet, check_index_coverage) over text search.
-- For literal text or config values, use the ripgrep MCP tools (search, advanced-search, count-matches, list-files) before the built-in grep, glob, and read.
+- Prefer the `codebase-memory` graph tools (`search_graph`, `trace_path`, `get_code_snippet`, `check_index_coverage`) for structural questions.
+- For string literals, config values, and non-code files, use the built-in `grep`/`glob`/`read`.
 - Return exact paths and symbol names plus a five-line summary.
 - Never paste large file bodies. Mark anything uncertain as uncertain.
 

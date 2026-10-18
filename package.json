@@ -27,19 +27,20 @@
     "db:deploy": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:deploy",
     "db:generate": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:generate",
     "db:migrate": "bun --env-file-if-exists=.env run --filter '@menuza/db' db:migrate",
-    "docker:build": "bun run scripts/docker-build.ts",
+    "design:check": "bun run scripts/design-check.ts",
     "dev": "bun --env-file-if-exists=.env run scripts/dev.ts",
     "dev:commerce": "bun --env-file-if-exists=.env run --filter '@menuza/commerce' dev",
     "dev:tenant": "bun --env-file-if-exists=.env run --filter '@menuza/tenant' dev",
     "dev:web": "bun --env-file-if-exists=.env run --filter '@menuza/web' dev",
     "dev:worker": "bun --env-file-if-exists=.env run --filter '@menuza/worker' dev",
-    "design:check": "bun run scripts/design-check.ts",
+    "docker:build": "bun run scripts/docker-build.ts",
     "fmt": "bunx turbo run fmt --filter='@menuza/*'",
     "fmt:check": "bunx turbo run fmt:check --filter='@menuza/*'",
     "infra:down": "bun run scripts/infra-down.ts",
     "infra:up": "bun run scripts/infra-up.ts",
     "lint": "bunx turbo run lint --filter='@menuza/*'",
     "lint:fix": "bunx turbo run lint:fix --filter='@menuza/*'",
+    "prepare": "husky",
     "test": "bun test",
     "test:integration": "bun --env-file-if-exists=.env run scripts/test-integration.ts",
     "typecheck": "bun --env-file-if-exists=.env run scripts/typecheck.ts",
@@ -48,7 +49,16 @@
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "eslint-plugin-sonarjs": "4.2.2",
-    "turbo": "2.11.8"
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "turbo": "2.11.9"
   },
-  "packageManager": "bun@1.4.4-canary.1"
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": ">=1.4.3"
+    }
+  }
 }

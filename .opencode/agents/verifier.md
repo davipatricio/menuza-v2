@@ -9,6 +9,12 @@ permissions:
   - action: subagent
     resource: "*"
     effect: deny
+  - action: shell
+    resource: "git push *"
+    effect: deny
+  - action: shell
+    resource: "git commit *"
+    effect: deny
 ---
 
 Verify, do not fix. You may not edit files.

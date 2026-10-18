@@ -1,7 +1,8 @@
 # Worker image. Built via scripts/docker-build.ts (turbo prune --docker → tiny per-app context).
 #   bun run scripts/docker-build.ts worker
 # The compiled binary embeds the Bun runtime + bytecode; no node_modules ships.
-FROM docker.io/oven/bun:1.4.2 AS build
+# Bun canary channel: there is no immutable 1.4.4 build; canary is the only resolvable pin.
+FROM docker.io/oven/bun:canary AS build
 WORKDIR /app
 
 # json/: root manifest, pruned bun.lock, pruned workspace manifests.

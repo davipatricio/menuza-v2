@@ -15,6 +15,12 @@ permissions:
   - action: subagent
     resource: scout
     effect: allow
+  - action: shell
+    resource: "git push *"
+    effect: deny
+  - action: shell
+    resource: "git commit *"
+    effect: deny
 ---
 
 Judge one plan file. Do not write or rewrite it.

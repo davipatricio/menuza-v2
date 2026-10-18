@@ -18,7 +18,6 @@
     "@menuza/db": "workspace:*",
     "@menuza/orpc-server": "workspace:*",
     "@menuza/shared": "workspace:*",
-    "@types/web-push": "3.6.4",
     "bullmq": "6.3.14",
     "bullmq-otel": "2.0.1",
     "web-push": "3.6.7"
@@ -26,7 +25,8 @@
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
-    "bun-types": "1.4.3",
+    "@types/web-push": "3.6.4",
+    "bun-types": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

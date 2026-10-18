@@ -18,3 +18,5 @@ The repo is indexed in codebase-memory-mcp (project `C-Users-davip-Documents-Pro
 - `query_graph` — Cypher, e.g. `MATCH (f:Function)-[:CALLS]->(g) WHERE f.name='buildRpcFetch' RETURN g.name`.
 - `detect_changes` — map uncommitted diff to affected symbols with risk.
 - `check_index_coverage` — required before negative/exhaustive claims; read flagged ranges directly.
+- `search_code` — literal/regex text search inside the graph.
+- `index_repository` — force a re-index of the repository.

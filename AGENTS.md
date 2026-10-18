@@ -20,10 +20,10 @@
 
 ## Versions (locked)
 
-- Bun 1.4.4-canary.1 (workspaces, package manager, runner, test runner; `bun check` for type checking).
+- Bun canary channel — the moving `canary` release (workspaces, package manager, runner, test runner; `bun check` for type checking). No immutable 1.4.4 build exists to pin. Pinned in `devEngines.packageManager`, `.github/workflows/ci.yml` (`env.BUN_VERSION`) and the `oven/bun:canary` image tags.
 - TypeScript 7.0.2 only. No TS 5/6 fallback.
-- Next `16.4.0` (stable) with `experimental.useTypeScriptCli: true`.
-- React 19.3.0, React DOM 19.3.0.
+- Next `16.4.2` (stable) with `experimental.useTypeScriptCli: true`.
+- React 19.3.1, React DOM 19.3.1.
 - Valibot 1.5.0 (catalog; Standard Schema for all oRPC `.input`/`.output`/error
   `data` schemas). No Zod in first-party code — transitive Zod remains via
   `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
@@ -35,16 +35,16 @@
 - Prisma CLI `8.0.0-rc.22`, `@prisma/orm-postgres` `8.0.0-rc.17` (RC pin; bump CLI and
   ORM package together — wire/marker formats are versioned together).
 - BullMQ 6.3.14 over Bun's built-in `RedisClient` (adapter; ioredis removed).
-- Turborepo 2.11.8 (task DAG + local cache; no remote cache).
+- Turborepo 2.11.9 (task DAG + local cache; no remote cache).
 - OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.12.0 / 0.223.0) and
   `bullmq-otel` 2.0.1.
-- Sentry Bun 11.7.0 (APIs) + Sentry Next.js 11.7.0 (web); init is a no-op
+- Sentry Bun 11.8.0 (APIs) + Sentry Next.js 11.8.0 (web); init is a no-op
   without the DSN. LGPD PII scrubbing lives in `@menuza/shared/sentry-privacy`.
-- TanStack Query 5.104.2 (provider shell only; no queries yet).
+- TanStack Query 5.104.4 (provider shell; queries used by the coupons screens).
 - Serwist 9.5.13 (`@serwist/next`, `@serwist/turbopack`; SW compiled by esbuild and served at `/serwist/sw.js`).
 - esbuild 0.28.2 (Serwist SW bundler).
-- `@tanstack/query-persist-client-core` 5.104.2, `@tanstack/react-query-persist-client` 5.104.2, `idb-keyval` 6.3.0 (offline persister).
-- GitHub Actions (replaces GitLab CI per user direction).
+- `@tanstack/query-persist-client-core` 5.104.4, `@tanstack/react-query-persist-client` 5.104.4, `idb-keyval` 6.3.0 (offline persister).
+- GitHub Actions: `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel.
 
 ## Bun/catalog rules
 
@@ -64,7 +64,7 @@
 
 - One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Builds go through `bun run scripts/docker-build.ts <app>`; the context is the pruned monorepo, not the repo root.
 - Bun services (commerce, tenant, worker) ship as `bun build --compile` binaries — no tsdown, no node_modules in the runtime layer (`debian:bookworm-slim` + binary + ca-certificates).
-- Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:1.4.2-slim`; the pinned Bun 1.4.4-canary.1 has no Docker tag).
+- Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:canary-slim`; every image builds on `oven/bun:canary`).
 - Images are hermetic from env: scripts use `--env-file-if-exists`, so builds work without `.env`; runtime config is env-only. Never bake `.env`.
 - API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
 - CI compiles the binaries in the `build` job. No image pipeline, no deploy.
@@ -72,7 +72,7 @@
 ### Build pipeline: turbo prune + bytecode
 
 - **Builds go through `bun run scripts/docker-build.ts <app>`** — runs `turbo prune <app> --docker` into `.turbo/prune/<app>` (json/ = pruned manifests + lockfile, full/ = source), then builds `apps/<app>/Containerfile` with the pruned dir as context. Context is tiny and install layers are per-service (worker: 84 pkgs). Prune output is gitignored.
-- **Bytecode is on** (`--compile --bytecode --format=esm --minify --sourcemap` in the three Bun `build` scripts). ESM bytecode requires `--compile` + `--format=esm`; without `--format=esm` the CJS default fails on top-level `await`. Bytecode is tied to the exact Bun version — images bake `oven/bun:1.4.2`, so bytecode regenerates on every image build; bump the base image tag and rebuild together. Never commit `.jsc`/embedded bytecode as a release artifact outside images.
+- **Bytecode is on** (`--compile --bytecode --format=esm --minify --sourcemap` in the three Bun `build` scripts). ESM bytecode requires `--compile` + `--format=esm`; without `--format=esm` the CJS default fails on top-level `await`. Bytecode is tied to the exact Bun version — images bake the moving `oven/bun:canary` tag, so bytecode regenerates on every image build. Never commit `.jsc`/embedded bytecode as a release artifact outside images.
 
 ## Commands
 
@@ -88,15 +88,35 @@
 
 ### Lint/format baselines
 
-- Repo-wide `bun run lint` is red from pre-existing findings in untouched files, and
-  `bun run fmt:check` fails on untouched files too (four
-  `packages/api-tenant/.../panel/*.impl.ts`, nine `apps/web/.../catalog/*` route and table
-  files). Check your own paths instead of the repo-wide exit code: `bunx oxfmt <paths>` then
+- Repo-wide `bun run lint` / `bun run fmt:check` go through turbo; check your own
+  paths instead of trusting a repo-wide exit code: `bunx oxfmt <paths>` then
   `bunx oxlint <paths>`.
 - `anti-slop/require-readable-spacing` is autofixable (`bunx oxlint --fix <paths>`);
   re-run the formatter and lint afterwards and confirm a second pass changes nothing.
 - Format only the files a change touches — a package-wide `bun run fmt` rewrites
   unrelated files.
+
+## Git hooks
+
+- Husky 9 + lint-staged 17. `prepare: husky` in root `package.json`; hook at
+  `.husky/pre-commit` (plain POSIX script, no `husky.sh` sourcing) runs
+  `bunx lint-staged`.
+- `.lintstagedrc.json`: staged `*.{ts,tsx,js,jsx,mjs,cjs}` get `bunx oxfmt` then
+  `bunx oxlint --fix`; staged `*.{json,jsonc,md,css}` get `bunx oxfmt` only.
+- The hook only sees staged files. CI remains the repo-wide gate.
+- Never bypass with `--no-verify` unless the user explicitly asks.
+- `.husky/_/` is generated and gitignored; `.husky/pre-commit` is tracked.
+
+## Definition of done
+
+Run the canonical checks in this order, and report the result of each:
+
+1. `bun run design:check` — dashboard UI only (`apps/web/DESIGN.md`).
+2. `bun run typecheck`
+3. `bun test`
+4. `bun run lint`
+5. `bun run fmt:check`
+6. `bun run build`
 
 ## Codebase memory
 
@@ -192,9 +212,10 @@ Bias toward caution over speed. For trivial tasks, use judgment.
   `SENTRY_AUTH_TOKEN` is set. **API source maps are not uploaded**: the
   `bun build --compile` binary embeds its map and Sentry cannot symbolicate a
   compiled executable; the `--sourcemap` flag stays for Bun-native traces.
-- **TanStack Query**: `QueryProvider` in `apps/web` root layout (persisted via IndexedDB). No queries yet.
-- **Serwist (PWA)**: `next.config.ts` wrapped with `withSerwist`; service worker at `/serwist/sw.js`; manifest at `/manifest.webmanifest`; `SerwistProvider` in root layout. Background Sync drain wired; no push.
-- **GitHub Actions**: `.github/workflows/ci.yml` runs install → policy → typecheck → test → lint → fmt:check → build. No image pipeline, no deploy.
+- **TanStack Query**: `QueryProvider` in `apps/web` root layout (persisted via IndexedDB). The coupons screens are the first consumers (`useQuery`/`useMutation` in `coupons-table.tsx` / `coupon-form.tsx`); the offline mutation queue in `apps/web/src/offline` drains it.
+- **Serwist (PWA)**: `next.config.ts` wrapped with `withSerwist`; service worker at `/serwist/sw.js`; manifest at `/manifest.webmanifest`; `SerwistProvider` in root layout. Background Sync drain wired.
+- **Web Push**: VAPID, implemented end to end — sender and dispatcher in `apps/worker` (`src/push-sender.ts`, `src/push-dispatcher.ts`), subscription/preference routes in the `@menuza/api-tenant` push subdomain, contract in `@menuza/shared/push`. `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` are declared in `.env.example`; leaving any empty disables push.
+- **GitHub Actions**: `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel. No image pipeline, no deploy.
 
 ## Agent skills
 
@@ -226,11 +247,14 @@ Skills overlap, so load by tier — never all at once.
   additionally follows `apps/web/DESIGN.md`; verify with `bun run design:check`.
 - **Tier 1 — checkers, on demand:** `better-accessibility` (focus, ARIA, contrast),
   `better-layout` (responsive, no page-level horizontal overflow). Housekeeping:
-  `dead-code-auditor` (reports only — six categories, evidence-backed, never
-  deletes; ends by offering a `/plan`) and `ai-slop-cleaner` (bounded to the
-  calling task's changed files; behavior lock + fallback classification first,
-  passes 1–4, never masks architectural blockers). Both respect Surgical changes:
-  unrelated dead code is mentioned, not deleted.
+  `housekeeping` (repo-wide pass: probe reality, record a temporary `FINDINGS.md`
+  checkbox board, parallel read-only audit lanes, parallel disjoint-file fix wave,
+  full verify chain; never commits, never stages) then `dead-code-auditor` (reports
+  only — six categories, evidence-backed, never deletes; ends by offering a `/plan`)
+  and `ai-slop-cleaner` (bounded to the calling task's changed files; behavior lock
+  and fallback classification first, passes 1–4, never masks architectural
+  blockers). All three respect Surgical changes: unrelated dead code is mentioned,
+  not deleted.
 - **Tier 2 — one generator at a time:** `frontend-design` for product UI xor
   `design-taste-frontend` for marketing hero work. Never both on the same task.
 - **Tier 3 — do not auto-load:** `better-colors`, `better-typography`, `better-ui`,

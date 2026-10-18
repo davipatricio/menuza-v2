@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DataTable, dashboardTableFeatures } from "@/components/ui/data-table.tsx";
+import { Field, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { formatBrl } from "@/lib/format";
@@ -35,31 +36,40 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
 
   const categories = useMemo(() => {
     const map = new Map<string, string>();
+
     for (const product of products) {
       if (!product.categoryId || !product.categoryName) continue;
+
       if (!map.has(product.categoryId)) map.set(product.categoryId, product.categoryName);
     }
+
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [products]);
 
   const departments = useMemo(() => {
     const map = new Map<string, string>();
+
     for (const product of products) {
       if (!product.departmentId || !product.departmentName) continue;
+
       if (!map.has(product.departmentId)) map.set(product.departmentId, product.departmentName);
     }
+
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [products]);
 
   const tags = useMemo(() => {
     const map = new Map<string, string>();
+
     for (const product of products)
       for (const tag of product.tags) if (!map.has(tag.id)) map.set(tag.id, tag.name);
+
     return [...map.entries()].map(([id, name]) => ({ id, name }));
   }, [products]);
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+
     return products.filter((product) => {
       if (normalizedQuery) {
         const haystack = [
@@ -71,23 +81,35 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
+
         if (!haystack.includes(normalizedQuery)) return false;
       }
+
       if (status === "active" && !product.available) return false;
+
       if (status === "inactive" && product.available) return false;
+
       if (availableOnly && !product.available) return false;
+
       if (pricedOnly && product.priceCents === null) return false;
+
       if (untaggedOnly && product.tags.length > 0) return false;
+
       if (categoryId && product.categoryId !== categoryId) return false;
+
       if (departmentId && product.departmentId !== departmentId) return false;
+
       if (selectedTags.length > 0) {
         const productTagIds = new Set(product.tags.map((tag) => tag.id));
         const matchingTags = selectedTags.filter((tag) => productTagIds.has(tag));
         const hasAll = matchingTags.length === selectedTags.length;
         const hasAny = matchingTags.length > 0;
+
         if (tagMode === "any" && !hasAny) return false;
+
         if (tagMode === "all" && !hasAll) return false;
       }
+
       return true;
     });
   }, [
@@ -149,10 +171,13 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
           placeholder="Buscar por nome, categoria, departamento ou tag."
         />
         <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1 text-sm">
+          <label htmlFor="products-status" className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Disponibilidade</span>
             <select
+              id="products-status"
               value={status}
+              // SAFETY: the only <option> values are "all", "active" and "inactive",
+              // so the DOM can only produce one of them.
               onChange={(event) => setStatus(event.target.value as "all" | "active" | "inactive")}
               className="h-9 rounded-md border bg-background px-3 text-sm"
             >
@@ -161,9 +186,10 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
               <option value="inactive">Inativos</option>
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label htmlFor="products-category" className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Categoria</span>
             <select
+              id="products-category"
               value={categoryId}
               onChange={(event) => setCategoryId(event.target.value)}
               className="h-9 min-w-[180px] rounded-md border bg-background px-3 text-sm"
@@ -176,9 +202,10 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-sm">
+          <label htmlFor="products-department" className="flex flex-col gap-1 text-sm">
             <span className="font-medium">Departamento</span>
             <select
+              id="products-department"
               value={departmentId}
               onChange={(event) => setDepartmentId(event.target.value)}
               className="h-9 min-w-[180px] rounded-md border bg-background px-3 text-sm"
@@ -237,27 +264,30 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
               </div>
             </PopoverContent>
           </Popover>
-          <label className="flex items-center gap-2 text-sm">
+          <Field orientation="horizontal" className="w-auto">
             <Checkbox
+              id="products-available-only"
               checked={availableOnly}
               onCheckedChange={(checked) => setAvailableOnly(Boolean(checked))}
             />
-            Somente ativos
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+            <FieldLabel htmlFor="products-available-only">Somente ativos</FieldLabel>
+          </Field>
+          <Field orientation="horizontal" className="w-auto">
             <Checkbox
+              id="products-priced-only"
               checked={pricedOnly}
               onCheckedChange={(checked) => setPricedOnly(Boolean(checked))}
             />
-            Somente com preço
-          </label>
-          <label className="flex items-center gap-2 text-sm">
+            <FieldLabel htmlFor="products-priced-only">Somente com preço</FieldLabel>
+          </Field>
+          <Field orientation="horizontal" className="w-auto">
             <Checkbox
+              id="products-untagged-only"
               checked={untaggedOnly}
               onCheckedChange={(checked) => setUntaggedOnly(Boolean(checked))}
             />
-            Somente sem tags
-          </label>
+            <FieldLabel htmlFor="products-untagged-only">Somente sem tags</FieldLabel>
+          </Field>
           <button
             type="button"
             className="h-9 rounded-md border px-3 text-sm"

@@ -11,22 +11,20 @@ const os = implement(
 export const listDepartmentsImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
-  const { rows: departments, allProducts } = await inTenantScope(
-    store.tenantId,
-    async () => {
-      const rows = await db.orm.public.Department.where({ tenantId: store.tenantId })
-        .orderBy((d) => d.sortOrder.asc())
-        .all();
+  const { rows: departments, allProducts } = await inTenantScope(store.tenantId, async () => {
+    const rows = await db.orm.public.Department.where({ tenantId: store.tenantId })
+      .orderBy((d) => d.sortOrder.asc())
+      .all();
 
-      const allProducts = await db.orm.public.Product.where({ tenantId: store.tenantId })
-        .select("departmentId")
-        .all();
+    const allProducts = await db.orm.public.Product.where({ tenantId: store.tenantId })
+      .select("departmentId")
+      .all();
 
-      return { rows, allProducts };
-    },
-  );
+    return { rows, allProducts };
+  });
 
   const counts = new Map<string, number>();
+
   for (const product of allProducts) {
     if (!product.departmentId) continue;
     counts.set(product.departmentId, (counts.get(product.departmentId) ?? 0) + 1);

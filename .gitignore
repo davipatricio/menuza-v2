@@ -15,6 +15,9 @@ node_modules/
 out/
 dist/
 
+# Husky generated hooks
+.husky/_/
+
 # Prisma generated client
 packages/db/prisma/generated/
 

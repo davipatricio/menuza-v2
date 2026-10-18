@@ -33,13 +33,13 @@
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/valibot": "2.0.0-beta.35",
-    "@sentry/bun": "11.7.0",
+    "@sentry/bun": "11.8.0",
     "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
     "@types/node": "catalog:",
-    "bun-types": "1.4.3",
+    "bun-types": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

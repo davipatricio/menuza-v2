@@ -45,9 +45,9 @@
   `isUnscoped`) is owned here and exported from `@menuza/db/scope` (and re-exported on `@menuza/db`).
   Worker and server APIs import it directly. Do NOT create separate packages for tenant scoping.
 - The ORM predicate combinators `and` / `or` / `not` are re-exported from
-  `@prisma/db` (`@prisma/orm-postgres/orm-client`) so consumers can compose a
+  `@prisma/orm-postgres/orm-client` (`src/index.ts`) so consumers can compose a
   `where` callback without depending on the Prisma package directly — this
-  package owns that version pin.
+  package owns that version pin. `@prisma/db` is not a dependency here.
 - `where` has two call shapes and they are **not** composable: `where({ id })`
   takes a filter object, `where((field) => and(...))` takes a predicate. Passing
   both is a type error. Set operators (`in`, `notIn`) and null checks

@@ -1,6 +1,7 @@
 # Web (Next.js) image. Built via scripts/docker-build.ts (turbo prune --docker).
 # Next standalone output runs on Bun. Type checking stays enabled.
-FROM docker.io/oven/bun:1.4.2 AS build
+# Bun canary channel: there is no immutable 1.4.4 build; canary is the only resolvable pin.
+FROM docker.io/oven/bun:canary AS build
 WORKDIR /app
 
 # json/: root manifest, pruned bun.lock, pruned workspace manifests.
@@ -12,7 +13,7 @@ COPY full/ .
 RUN bun run --filter '@menuza/web' typegen
 RUN bun run --filter '@menuza/web' build
 
-FROM docker.io/oven/bun:1.4.2-slim
+FROM docker.io/oven/bun:canary-slim
 WORKDIR /app
 USER bun
 ENV NODE_ENV=production \

@@ -11,7 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 <!-- END:nextjs-agent-rules -->
 
 - Next.js 16.4 (stable), App Router, Server Components by default.
-- TypeScript v7 only — `experimental.useTypeScriptCli: true` is set in `next.config.ts` and verified against `next@16.4.0`.
+- TypeScript v7 only — `experimental.useTypeScriptCli: true` is set in `next.config.ts` and verified against `next@16.4.2`.
 - Build type checking is enabled (`typescript.ignoreBuildErrors: false`).
 - Host-aware routing in `src/proxy.ts`. Two modes:
   - `main` → marketing (pages at `/`, `/about`, `/pricing`, `/contact`) and dashboard
@@ -60,11 +60,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `bun run fmt` — it rewrites files outside the change.
 - `anti-slop/require-readable-spacing` is autofixable: `bunx oxlint --fix <paths>`,
   then re-run the formatter and lint again; formatting must not reintroduce findings.
-- Known-red baseline, not yours: repo-wide `bun run lint` fails on pre-existing
-  findings in untouched files, and `bun run fmt:check` fails on four untouched
-  `packages/api-tenant/.../panel/*.impl.ts` plus nine untouched `catalog/*` route and
-  table files under this app. Judge a change by linting its paths, not by the
-  repo-wide exit code.
+- `bunx oxfmt` is clean repo-wide; `bunx oxlint .` still reports pre-existing errors in
+  five untouched table files under `src/app/(dashboard)/dashboard/[storeSlug]/catalog/`
+  (`categories`, `departments`, `kits`, `products`, `tags`). Judge a change by
+  `bunx oxfmt <paths>` + `bunx oxlint <paths>`, not by the repo-wide exit code.
 - Dashboard auth: `/dashboard/login` and the `/dashboard/signup/*` wizard (conta →
   perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
   `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot
@@ -93,7 +92,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - `formatDateTime` (in `src/lib/format.ts`) is the one ISO→pt-BR date
     conversion, same edge-conversion role as `formatBrl`.
 - Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
-- PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest at `/public/manifest.webmanifest`.
+- PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest file at `public/manifest.webmanifest` served (and referenced in `layout.tsx` metadata) as `/manifest.webmanifest`.
   - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.
 - TanStack Query shell: `QueryProvider` in root layout wraps `PersistQueryClientProvider` with the IndexedDB persister from `src/offline`. No queries yet.
 - Browser clients hit same-origin `/commerce/...` and `/tenant/...` (rewritten to loopback APIs by `next.config.ts`).
@@ -107,8 +106,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Next.js 16.4 adoption
 
-- Versions: `next@16.4.0` (stable, dropped the canary pin) and `react`/`react-dom`
-  `19.3.0` (View Transitions, Fragment Refs, `browser()`). `cacheComponents` and
+- Versions: `next@16.4.2` (stable, dropped the canary pin) and `react`/`react-dom`
+  `19.3.1` (View Transitions, Fragment Refs, `browser()`). `cacheComponents` and
   `partialPrefetching` were already enabled; 16.4 keeps them as the recommended model.
 - `ensureStatic` guards the routes that must stay static:
   - `src/app/(marketing)/layout.tsx` → `ensureStatic = "navigation"`: the marketing
@@ -129,8 +128,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Compatibility flags
 
 - `experimental.useTypeScriptCli: true` — required because TS 7 does not expose the legacy compiler API. Documented by Next (https://github.com/vercel/next.js/blob/canary/packages/next/src/lib/typescript/runTypeScriptCli.ts). Removal condition: when Next ships a non-CLI type-check path that supports TS 7 without this flag.
-- `typedRoutes: true` - typed routes are on; `next.config.ts` is authoritative
-  (it says `false`).
+- `typedRoutes` is OFF: `next.config.ts` sets `typedRoutes: false` and that file is authoritative.
+  Links are typed as plain `string` routes.
 - `cacheComponents: true` — required for the app's static shells and Partial Prefetching.
 - `partialPrefetching: true` — required; prefetches static route parts by default.
 - `experimental.agentUpgrade: "latest"` — upgrade reminders on `next dev`/`next build`.

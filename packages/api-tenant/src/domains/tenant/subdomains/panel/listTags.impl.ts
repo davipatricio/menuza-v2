@@ -11,20 +11,18 @@ const os = implement(
 export const listTagsImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
-  const { rows: tags, productTags } = await inTenantScope(
-    store.tenantId,
-    async () => {
-      const rows = await db.orm.public.Tag.where({ tenantId: store.tenantId })
-        .orderBy((t) => t.sortOrder.asc())
-        .all();
+  const { rows: tags, productTags } = await inTenantScope(store.tenantId, async () => {
+    const rows = await db.orm.public.Tag.where({ tenantId: store.tenantId })
+      .orderBy((t) => t.sortOrder.asc())
+      .all();
 
-      const productTags = await db.orm.public.ProductTag.all();
+    const productTags = await db.orm.public.ProductTag.all();
 
-      return { rows, productTags };
-    },
-  );
+    return { rows, productTags };
+  });
 
   const counts = new Map<string, number>();
+
   for (const entry of productTags) {
     counts.set(entry.tagId, (counts.get(entry.tagId) ?? 0) + 1);
   }

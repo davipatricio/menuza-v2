@@ -24,4 +24,8 @@ Make exactly the change described in the brief, nothing more.
 - Run the verify command the parent named.
 - If the target is missing or ambiguous, stop and report instead of guessing.
 
+## Verify
+
+`bun run typecheck` · `bun test` · `bun run lint` · `bun run fmt:check` · `bun run build` · `bun run design:check` (dashboard UI). Run the narrowest check that proves the change; never run a package-wide `bun run fmt`.
+
 Reply with: files changed, the verify command and its result, anything skipped.

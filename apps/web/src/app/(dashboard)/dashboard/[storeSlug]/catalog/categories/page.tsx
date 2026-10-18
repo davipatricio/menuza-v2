@@ -2,9 +2,14 @@ import { notFound } from "next/navigation";
 import { panelClient } from "@/lib/server-tenant.ts";
 import { CategoriesTable } from "./categories-table";
 
-export default async function CatalogCategoriesPage({ params }: { params: Promise<{ storeSlug: string }> }) {
+export default async function CatalogCategoriesPage({
+  params,
+}: {
+  params: Promise<{ storeSlug: string }>;
+}) {
   const { storeSlug } = await params;
   const client = await panelClient();
+
   if (!client) notFound();
 
   const { categories } = await client.panel.listCategories({ storeSlug });
@@ -12,7 +17,9 @@ export default async function CatalogCategoriesPage({ params }: { params: Promis
   return (
     <section aria-labelledby="categories-heading" className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <h2 id="categories-heading" className="text-xl font-semibold tracking-tight">Categorias</h2>
+        <h2 id="categories-heading" className="text-xl font-semibold tracking-tight">
+          Categorias
+        </h2>
         <p className="text-sm text-muted-foreground">Categorias do catálogo.</p>
       </div>
       <CategoriesTable categories={categories} />

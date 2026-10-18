@@ -65,7 +65,7 @@
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
-      "computedHash": "52fa30810ae93ef288f8926e27624561ebd2e5b70d35682f4de70cb7131c92d1"
+      "computedHash": "41463de84d80d8839b1e9fc8ddfd140578443d095b53710d1f331dbab3079712"
     },
     "explain-interface": {
       "source": "jakubkrehel/skills",
@@ -83,7 +83,7 @@
       "source": "dmmulroy/anti-slop",
       "sourceType": "github",
       "skillPath": "skills/install-anti-slop/SKILL.md",
-      "computedHash": "d92d8dbdf1bd96e11ee33945dca76306179a7c415e7339769084b2c211c6897c"
+      "computedHash": "8d8038a81dba0c91ad935793d9fcc3f5ae5844e376b4b4113108213d91d42ea8"
     },
     "interface-review": {
       "source": "jakubkrehel/skills",

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { conflict, notFound, requireSession } from "../session/support.ts";
+import { conflict } from "../session/support.ts";
 import { db } from "@menuza/db";
 import { inTenantScope, resolveStore } from "./support.ts";
 

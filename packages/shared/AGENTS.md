@@ -1,7 +1,9 @@
 # @menuza/shared
 
 - Browser-safe contract package. NO server-only imports, NO env reads, NO database access.
-- Two explicit entrypoints: `@menuza/shared/commerce` and `@menuza/shared/tenant`.
+- Subpath entrypoints only (no root export, no `src/index.ts`): `@menuza/shared/commerce`,
+  `@menuza/shared/tenant`, `@menuza/shared/errors`, `@menuza/shared/push`,
+  `@menuza/shared/sentry-privacy`.
 - Contracts are defined first; implementations consume them. Changes go contract → server, never the reverse.
 - All inputs/outputs validated with Valibot (Standard Schema).
 - Tenant management contract exposes the health probe, the push routes

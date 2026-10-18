@@ -4,21 +4,21 @@
 
 ## Shape
 
-| Layer | Choice |
-| --- | --- |
-| Runtime | Bun (`bun check` for TS 7 type checking). TypeScript 7 only. |
-| Contracts | oRPC (typed contracts, exportable OpenAPI, streaming, compression) |
-| ORM | Prisma 8 + Prisma Migrate; `@prisma/orm-postgres` (ships its own `pg` binding) |
-| Web | Next 16 in `apps/web` — Server Components, RSC, Cache Components, partial prefetching, App Shell |
-| UI | shadcn/ui on Base UI (not Radix); Tailwind 4. Dashboard visual system, tokens and component recipes: `apps/web/DESIGN.md` |
-| Auth | Own: argon2, server-side sessions with revocation, httpOnly + SameSite cookies. 2FA/social out of MVP |
-| Queues/cache | Redis for cache + BullMQ. Scheduled jobs for Pix expiry, retries, async notifications |
-| Storage | S3-compatible (R2/B2) + Cloudflare CDN, signed per-tenant URLs |
-| Email | SMTP self-hosted behind a `Mailer` interface (SES swap later); SPF/DKIM/DMARC required |
-| SaaS billing | Asaas (recurring, Pix Automático, boleto); commission via split or manual transfer |
+| Layer         | Choice                                                                                                                                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime       | Bun (`bun check` for TS 7 type checking). TypeScript 7 only.                                                                                                                                  |
+| Contracts     | oRPC (typed contracts, exportable OpenAPI, streaming, compression)                                                                                                                            |
+| ORM           | Prisma 8 + Prisma Migrate; `@prisma/orm-postgres` (ships its own `pg` binding)                                                                                                                |
+| Web           | Next 16 in `apps/web` — Server Components, RSC, Cache Components, partial prefetching, App Shell                                                                                              |
+| UI            | shadcn/ui on Base UI (not Radix); Tailwind 4. Dashboard visual system, tokens and component recipes: `apps/web/DESIGN.md`                                                                     |
+| Auth          | Own: argon2, server-side sessions with revocation, httpOnly + SameSite cookies. 2FA/social out of MVP                                                                                         |
+| Queues/cache  | Redis for cache + BullMQ. Scheduled jobs for Pix expiry, retries, async notifications                                                                                                         |
+| Storage       | S3-compatible (R2/B2) + Cloudflare CDN, signed per-tenant URLs                                                                                                                                |
+| Email         | SMTP self-hosted behind a `Mailer` interface (SES swap later); SPF/DKIM/DMARC required                                                                                                        |
+| SaaS billing  | Asaas (recurring, Pix Automático, boleto); commission via split or manual transfer                                                                                                            |
 | Observability | OpenTelemetry traces; Sentry (web + api); Pino structured logs (planned, MEN-169 — today it is the tiny logger in `@menuza/orpc-server`); business audit in a dedicated table (not only logs) |
-| Hosting | VPS (Hetzner/Contabo); Postgres on its own VPS with a read replica; Caddy reverse proxy |
-| CI/CD | GitHub Actions: install, policy, typecheck, test, lint, build (no image pipeline, no deploy) |
+| Hosting       | VPS (Hetzner/Contabo); Postgres on its own VPS with a read replica; Caddy reverse proxy                                                                                                       |
+| CI/CD         | GitHub Actions: jobs `policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`; actions pinned by SHA and Bun from the moving `canary` channel (no image pipeline, no deploy)               |
 
 ## Repo map
 

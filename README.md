@@ -4,7 +4,7 @@ Local development foundation for the Menuza product. Not the commerce product.
 
 ## Prerequisites
 
-- **Bun 1.4.4-canary.1** (package manager, runtime, test runner, workspace orchestrator).
+- **Bun canary channel** — the moving `canary` release; `packageManager`, CI and the Containerfiles all use it. There is no immutable 1.4.4 build to pin.
 - **Podman** on a Debian/Ubuntu host OR **Podman inside WSL2** on Windows.
   - Windows host with WSL2: `podman-compose` 1.3.0+ must be available inside the WSL distribution.
   - Linux host: install `podman` and `podman-compose` natively.
@@ -16,16 +16,17 @@ Local development foundation for the Menuza product. Not the commerce product.
 # 1. Install dependencies (frozen lockfile)
 bun install --frozen-lockfile
 
-# 2. Bring up Postgres + Redis (preserves volumes across restarts)
+# 2. Bring up Postgres + Redis + Jaeger (preserves volumes across restarts)
 bun run infra:up
 
 # 3. Generate Prisma client and apply migrations
 cp .env.example .env
 bun run db:generate
-bun run db:migrate -- --name init
+bun run db:migrate -- --name init   # plans a migration (prisma migration plan)
+bun run db:deploy                   # applies it (prisma db migrate)
 
 # 4. Seed local tenants (idempotent)
-bun --filter '@menuza/db' prisma db seed
+bun run --filter '@menuza/db' db:seed
 
 # 5. Start all apps
 bun run dev
@@ -50,35 +51,38 @@ Then visit `http://menuza.localhost:3000` (marketing), `http://menuza.localhost:
 - `bun test` — workspace-policy + unit tests (no infra).
 - `bun run test:integration` — infra-backed checks.
 - `bun run build` — Prisma generate, Next typegen, Next build.
-- `bun run db:generate` / `db:migrate` / `db:deploy` / `db:studio` — Prisma lifecycle.
-- `bun run infra:up` / `infra:down` — Postgres + Redis.
+- `bun run db:generate` / `db:migrate` / `db:deploy` / `db:seed` / `db:verify` — Prisma lifecycle.
+- `bun run lint` / `lint:fix` — oxlint via turbo.
+- `bun run fmt` / `fmt:check` — oxfmt via turbo.
+- `bun run design:check` — dashboard UI design rules (`apps/web/DESIGN.md`).
+- `bun run infra:up` / `infra:down` — Postgres + Redis + Jaeger.
 - `bunx turbo run <task>` — Turborepo task DAG (local cache).
-- CI: GitHub Actions at `.github/workflows/ci.yml` (install, policy, typecheck, test, build).
+- CI: GitHub Actions at `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel.
 
 ## Migrations
 
-- `db:migrate` — interactive; creates a new migration under `packages/db/prisma/migrations/`.
-- `db:deploy` — applies committed migrations; used in CI and for production-like apply.
+- `db:migrate` — plans a new migration (`prisma migration plan`) under `packages/db/migrations/` (`migrations/app/<ts>_<name>` + `migrations/snapshots/<hash>`).
+- `db:deploy` — applies committed migrations (`prisma db migrate`); used in CI and for production-like apply.
 - Migrations are NEVER auto-applied at app startup.
 
 ## Infrastructure vs. apps
 
-- `infra/compose.yaml` runs Postgres and Redis only. Apps run via `bun run dev`.
+- `infra/compose.yaml` runs Postgres, Redis and Jaeger. Apps run via `bun run dev`.
 - App Dockerfiles, image pipelines, and deployment are explicitly out of scope for this foundation.
 
-## Canary upgrades
+## Toolchain pins
 
-When Next publishes a new canary:
+One source of truth per tool:
 
-1. Update the catalog entry in root `package.json`.
-2. Run `bun install`.
-3. Re-run `bun run typecheck` and `bun run build`.
-4. Update the recorded version in `AGENTS.md` and `PLAN.md` execution log.
-5. Commit the lockfile update.
+- **Bun** — the moving `canary` channel: `packageManager` in root `package.json`, the
+  `BUN_VERSION` env in CI, and the `oven/bun:canary` tags in the Containerfiles.
+- **Next / React / TypeScript** — pinned versions in `package.json` (catalog).
+- Bumping any of them: change the single pin, `bun install`, then re-run
+  `bun run typecheck`, `bun test` and `bun run build`.
 
 ## `apps/orpc-server`
 
-A **library**, not a service. It holds the shared router implementations and logging helpers. It does NOT listen, run as a dev server, or deploy.
+A **library**, not a service. It holds the shared server plumbing — fetch/RPC handlers, auth, tenant middleware, OTel/Sentry, logging. The routers live in `packages/api-commerce` and `packages/api-tenant`. It does NOT listen, run as a dev server, or deploy.
 
 ## Troubleshooting
 
