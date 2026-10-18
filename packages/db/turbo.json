@@ -1,0 +1,9 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "db:generate": {
+      "outputs": ["prisma/generated/**"]
+    }
+  }
+}

@@ -22,10 +22,10 @@
     "NEXT_PUBLIC_BUILD_REVISION"
   ],
   "tasks": {
+    // Per-workspace turbo.json overrides the outputs that differ (.next, prisma/generated).
     "build": {
       "dependsOn": ["^build", "db:generate", "typegen"],
-      // Only @menuza/web emits .next; the other workspaces emit dist/ or nothing.
-      "outputs": ["dist/**", "$TURBO_ROOT$/apps/web/.next/**"],
+      "outputs": ["dist/**"],
       "env": [
         "SENTRY_AUTH_TOKEN",
         "SENTRY_ORG",
@@ -56,13 +56,9 @@
       "dependsOn": [],
       "outputs": []
     },
-    "db:generate": {
-      "cache": false,
-      "outputs": ["$TURBO_ROOT$/packages/db/prisma/generated/**"]
-    },
+    "db:generate": {},
     "typegen": {
-      "cache": false,
-      "outputs": ["$TURBO_ROOT$/apps/web/.next/types/**"]
+      "cache": false
     }
   }
 }
