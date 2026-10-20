@@ -29,7 +29,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "TenantNotResolved": {
         "title": "TENANT_NOT_RESOLVED",
@@ -49,7 +54,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "ValidationFailed": {
         "title": "VALIDATION_FAILED",
@@ -69,7 +79,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "RateLimited": {
         "title": "RATE_LIMITED",
@@ -89,7 +104,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Internal": {
         "title": "INTERNAL",
@@ -109,7 +129,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "InvalidInput": {
         "title": "INVALID_INPUT",
@@ -142,14 +167,25 @@
                       "type": "string"
                     }
                   },
-                  "required": ["path", "message"]
+                  "required": [
+                    "path",
+                    "message"
+                  ]
                 }
               }
             },
-            "required": ["issues"]
+            "required": [
+              "issues"
+            ]
           }
         },
-        "required": ["defined", "code", "status", "message", "data"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message",
+          "data"
+        ]
       },
       "Unauthorized": {
         "title": "UNAUTHORIZED",
@@ -169,7 +205,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Forbidden": {
         "title": "FORBIDDEN",
@@ -189,7 +230,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "NotFound": {
         "title": "NOT_FOUND",
@@ -209,7 +255,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Conflict": {
         "title": "CONFLICT",
@@ -229,7 +280,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "OrderTransitionInvalid": {
         "title": "ORDER_TRANSITION_INVALID",
@@ -254,10 +310,18 @@
                 "type": "string"
               }
             },
-            "required": ["reason"]
+            "required": [
+              "reason"
+            ]
           }
         },
-        "required": ["defined", "code", "status", "message", "data"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message",
+          "data"
+        ]
       },
       "ReasonRequired": {
         "title": "REASON_REQUIRED",
@@ -277,7 +341,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       }
     }
   },
@@ -286,7 +355,9 @@
       "get": {
         "operationId": "getCommerceHealth",
         "summary": "Sonda de saúde do serviço de comércio.",
-        "tags": ["health"],
+        "tags": [
+          "health"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -306,7 +377,11 @@
                       "format": "date-time"
                     }
                   },
-                  "required": ["status", "service", "timestamp"]
+                  "required": [
+                    "status",
+                    "service",
+                    "timestamp"
+                  ]
                 }
               }
             }
@@ -415,7 +490,9 @@
       "get": {
         "operationId": "getPublicStore",
         "summary": "Dados públicos da loja do host resolvido, com o SEO já resolvido.",
-        "tags": ["public"],
+        "tags": [
+          "public"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -496,7 +573,12 @@
                       ]
                     }
                   },
-                  "required": ["tenantId", "slug", "displayName", "seo"]
+                  "required": [
+                    "tenantId",
+                    "slug",
+                    "displayName",
+                    "seo"
+                  ]
                 }
               }
             }
@@ -605,7 +687,9 @@
       "get": {
         "operationId": "listPublicMenu",
         "summary": "Cardápio público da loja: categorias e produtos vendáveis.",
-        "tags": ["public"],
+        "tags": [
+          "public"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -678,7 +762,12 @@
                                         "type": "boolean"
                                       }
                                     },
-                                    "required": ["id", "name", "priceCents", "available"]
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "priceCents",
+                                      "available"
+                                    ]
                                   }
                                 },
                                 "tags": {
@@ -701,7 +790,12 @@
                             }
                           }
                         },
-                        "required": ["id", "name", "sortOrder", "products"]
+                        "required": [
+                          "id",
+                          "name",
+                          "sortOrder",
+                          "products"
+                        ]
                       }
                     },
                     "uncategorized": {
@@ -754,7 +848,12 @@
                                   "type": "boolean"
                                 }
                               },
-                              "required": ["id", "name", "priceCents", "available"]
+                              "required": [
+                                "id",
+                                "name",
+                                "priceCents",
+                                "available"
+                              ]
                             }
                           },
                           "tags": {
@@ -777,7 +876,10 @@
                       }
                     }
                   },
-                  "required": ["categories", "uncategorized"]
+                  "required": [
+                    "categories",
+                    "uncategorized"
+                  ]
                 }
               }
             }
@@ -886,7 +988,9 @@
       "get": {
         "operationId": "listPublicSitemap",
         "summary": "Entradas de sitemap da loja do host resolvido.",
-        "tags": ["public"],
+        "tags": [
+          "public"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -908,7 +1012,11 @@
                             "format": "date-time"
                           },
                           "changeFrequency": {
-                            "enum": ["daily", "weekly", "monthly"],
+                            "enum": [
+                              "daily",
+                              "weekly",
+                              "monthly"
+                            ],
                             "type": "string"
                           },
                           "priority": {
@@ -917,11 +1025,18 @@
                             "maximum": 1
                           }
                         },
-                        "required": ["path", "lastModified", "changeFrequency", "priority"]
+                        "required": [
+                          "path",
+                          "lastModified",
+                          "changeFrequency",
+                          "priority"
+                        ]
                       }
                     }
                   },
-                  "required": ["entries"]
+                  "required": [
+                    "entries"
+                  ]
                 }
               }
             }
@@ -1030,7 +1145,9 @@
       "post": {
         "operationId": "createOrder",
         "summary": "Cria um pedido: precifica as linhas, aplica cupons e reserva a carteira.",
-        "tags": ["orders"],
+        "tags": [
+          "orders"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1104,7 +1221,11 @@
                           "minimum": 0
                         }
                       },
-                      "required": ["name", "unitPriceCents", "quantity"],
+                      "required": [
+                        "name",
+                        "unitPriceCents",
+                        "quantity"
+                      ],
                       "additionalProperties": false
                     },
                     "minItems": 1
@@ -1216,7 +1337,10 @@
                             "type": "string"
                           }
                         },
-                        "required": ["code", "reason"]
+                        "required": [
+                          "code",
+                          "reason"
+                        ]
                       }
                     }
                   },
@@ -1345,7 +1469,9 @@
       "get": {
         "operationId": "getOrder",
         "summary": "Um pedido completo, com itens, eventos e as transições permitidas ao chamador.",
-        "tags": ["orders"],
+        "tags": [
+          "orders"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1443,7 +1569,10 @@
                             "type": "string"
                           }
                         },
-                        "required": ["code", "reason"]
+                        "required": [
+                          "code",
+                          "reason"
+                        ]
                       }
                     },
                     "customerId": {
@@ -1578,7 +1707,14 @@
                             "format": "date-time"
                           }
                         },
-                        "required": ["id", "type", "fromValue", "toValue", "reason", "createdAt"]
+                        "required": [
+                          "id",
+                          "type",
+                          "fromValue",
+                          "toValue",
+                          "reason",
+                          "createdAt"
+                        ]
                       }
                     },
                     "allowedNextTransitions": {
@@ -1587,7 +1723,10 @@
                         "type": "object",
                         "properties": {
                           "axis": {
-                            "enum": ["financial", "fulfilment"],
+                            "enum": [
+                              "financial",
+                              "fulfilment"
+                            ],
                             "type": "string"
                           },
                           "to": {
@@ -1600,7 +1739,12 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["axis", "to", "capability", "requiresReason"]
+                        "required": [
+                          "axis",
+                          "to",
+                          "capability",
+                          "requiresReason"
+                        ]
                       }
                     }
                   },
@@ -1736,7 +1880,9 @@
       "post": {
         "operationId": "transitionOrder",
         "summary": "Move um dos dois eixos do pedido (financeiro ou de preparo).",
-        "tags": ["orders"],
+        "tags": [
+          "orders"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1756,7 +1902,10 @@
                 "type": "object",
                 "properties": {
                   "axis": {
-                    "enum": ["financial", "fulfilment"],
+                    "enum": [
+                      "financial",
+                      "fulfilment"
+                    ],
                     "type": "string"
                   },
                   "to": {
@@ -1767,7 +1916,10 @@
                     "type": "string"
                   }
                 },
-                "required": ["axis", "to"]
+                "required": [
+                  "axis",
+                  "to"
+                ]
               }
             }
           }
@@ -1806,7 +1958,10 @@
                       "type": "string"
                     }
                   },
-                  "required": ["financialStatus", "fulfilmentStatus"]
+                  "required": [
+                    "financialStatus",
+                    "fulfilmentStatus"
+                  ]
                 }
               }
             }
@@ -1918,7 +2073,9 @@
       "post": {
         "operationId": "recordOrderPayment",
         "summary": "Registra o recebimento do pedido e credita o cashback uma única vez.",
-        "tags": ["orders"],
+        "tags": [
+          "orders"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1965,7 +2122,10 @@
                       "minimum": 0
                     }
                   },
-                  "required": ["financialStatus", "cashbackCents"]
+                  "required": [
+                    "financialStatus",
+                    "cashbackCents"
+                  ]
                 }
               }
             }
@@ -2077,7 +2237,9 @@
       "post": {
         "operationId": "expireOrder",
         "summary": "Expira um pedido não pago e devolve a reserva da carteira (uso interno).",
-        "tags": ["orders"],
+        "tags": [
+          "orders"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2120,7 +2282,9 @@
                       "type": "string"
                     }
                   },
-                  "required": ["financialStatus"]
+                  "required": [
+                    "financialStatus"
+                  ]
                 }
               }
             }
@@ -2232,7 +2396,9 @@
       "get": {
         "operationId": "getWallet",
         "summary": "Saldo e extrato da carteira do cliente, do lançamento mais recente para o mais antigo.",
-        "tags": ["wallet"],
+        "tags": [
+          "wallet"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -2296,11 +2462,21 @@
                             "format": "date-time"
                           }
                         },
-                        "required": ["id", "kind", "amountCents", "orderId", "reason", "createdAt"]
+                        "required": [
+                          "id",
+                          "kind",
+                          "amountCents",
+                          "orderId",
+                          "reason",
+                          "createdAt"
+                        ]
                       }
                     }
                   },
-                  "required": ["balanceCents", "transactions"]
+                  "required": [
+                    "balanceCents",
+                    "transactions"
+                  ]
                 }
               }
             }
@@ -2406,7 +2582,9 @@
       "post": {
         "operationId": "adjustWallet",
         "summary": "Correção manual de saldo feita pela loja (crédito ou débito).",
-        "tags": ["wallet"],
+        "tags": [
+          "wallet"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2426,7 +2604,11 @@
                     "minLength": 1
                   }
                 },
-                "required": ["customerId", "amountCents", "reason"],
+                "required": [
+                  "customerId",
+                  "amountCents",
+                  "reason"
+                ],
                 "additionalProperties": false
               }
             }
@@ -2444,7 +2626,9 @@
                       "type": "number"
                     }
                   },
-                  "required": ["balanceCents"]
+                  "required": [
+                    "balanceCents"
+                  ]
                 }
               }
             }

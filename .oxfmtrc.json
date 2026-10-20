@@ -21,6 +21,7 @@
     "**/dist/**",
     "**/.turbo/**",
     "packages/db/prisma/generated/**",
+    "apps/orpc-server/openapi/**",
     "apps/web/.next/**",
     "**/*.tsbuildinfo",
     "**/*.min.*",

@@ -29,7 +29,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "TenantNotResolved": {
         "title": "TENANT_NOT_RESOLVED",
@@ -49,7 +54,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "ValidationFailed": {
         "title": "VALIDATION_FAILED",
@@ -69,7 +79,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "RateLimited": {
         "title": "RATE_LIMITED",
@@ -89,7 +104,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Internal": {
         "title": "INTERNAL",
@@ -109,7 +129,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Unauthorized": {
         "title": "UNAUTHORIZED",
@@ -129,7 +154,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Forbidden": {
         "title": "FORBIDDEN",
@@ -149,7 +179,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "NotFound": {
         "title": "NOT_FOUND",
@@ -169,7 +204,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "Conflict": {
         "title": "CONFLICT",
@@ -189,7 +229,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       },
       "OrderTransitionInvalid": {
         "title": "ORDER_TRANSITION_INVALID",
@@ -214,10 +259,18 @@
                 "type": "string"
               }
             },
-            "required": ["reason"]
+            "required": [
+              "reason"
+            ]
           }
         },
-        "required": ["defined", "code", "status", "message", "data"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message",
+          "data"
+        ]
       },
       "ReasonRequired": {
         "title": "REASON_REQUIRED",
@@ -237,7 +290,12 @@
           },
           "data": {}
         },
-        "required": ["defined", "code", "status", "message"]
+        "required": [
+          "defined",
+          "code",
+          "status",
+          "message"
+        ]
       }
     }
   },
@@ -246,7 +304,9 @@
       "get": {
         "operationId": "getTenantHealth",
         "summary": "Sonda de saúde do serviço de gestão (tenant).",
-        "tags": ["health"],
+        "tags": [
+          "health"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -266,7 +326,11 @@
                       "format": "date-time"
                     }
                   },
-                  "required": ["status", "service", "timestamp"]
+                  "required": [
+                    "status",
+                    "service",
+                    "timestamp"
+                  ]
                 }
               }
             }
@@ -372,7 +436,9 @@
       "get": {
         "operationId": "getPushPublicKey",
         "summary": "Chave pública VAPID usada para assinar inscrições de push.",
-        "tags": ["push"],
+        "tags": [
+          "push"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -386,7 +452,9 @@
                       "minLength": 1
                     }
                   },
-                  "required": ["publicKey"]
+                  "required": [
+                    "publicKey"
+                  ]
                 }
               }
             }
@@ -492,7 +560,9 @@
       "post": {
         "operationId": "subscribePush",
         "summary": "Registra ou atualiza a inscrição de push do dispositivo.",
-        "tags": ["push"],
+        "tags": [
+          "push"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -516,7 +586,10 @@
                         "minLength": 1
                       }
                     },
-                    "required": ["p256dh", "auth"],
+                    "required": [
+                      "p256dh",
+                      "auth"
+                    ],
                     "additionalProperties": false
                   },
                   "expirationTime": {
@@ -530,7 +603,10 @@
                     ]
                   }
                 },
-                "required": ["endpoint", "keys"],
+                "required": [
+                  "endpoint",
+                  "keys"
+                ],
                 "additionalProperties": false
               }
             }
@@ -548,7 +624,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -652,7 +730,9 @@
       "delete": {
         "operationId": "unsubscribePush",
         "summary": "Remove a inscrição de push do dispositivo.",
-        "tags": ["push"],
+        "tags": [
+          "push"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -665,7 +745,9 @@
                     "minLength": 1
                   }
                 },
-                "required": ["endpoint"],
+                "required": [
+                  "endpoint"
+                ],
                 "additionalProperties": false
               }
             }
@@ -683,7 +765,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -789,7 +873,9 @@
       "get": {
         "operationId": "getPushPreferences",
         "summary": "Lista os eventos de notificação habilitados para o membro.",
-        "tags": ["push"],
+        "tags": [
+          "push"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -812,7 +898,9 @@
                       }
                     }
                   },
-                  "required": ["events"]
+                  "required": [
+                    "events"
+                  ]
                 }
               }
             }
@@ -916,7 +1004,9 @@
       "put": {
         "operationId": "updatePushPreferences",
         "summary": "Substitui os eventos de notificação habilitados para o membro.",
-        "tags": ["push"],
+        "tags": [
+          "push"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -939,7 +1029,9 @@
                     "maxItems": 5
                   }
                 },
-                "required": ["events"],
+                "required": [
+                  "events"
+                ],
                 "additionalProperties": false
               }
             }
@@ -967,7 +1059,9 @@
                       }
                     }
                   },
-                  "required": ["events"]
+                  "required": [
+                    "events"
+                  ]
                 }
               }
             }
@@ -1073,7 +1167,9 @@
       "post": {
         "operationId": "loginTenantSession",
         "summary": "Autentica um membro do painel e abre uma sessão de gestão.",
-        "tags": ["session"],
+        "tags": [
+          "session"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1093,7 +1189,10 @@
                     "maxLength": 200
                   }
                 },
-                "required": ["email", "password"],
+                "required": [
+                  "email",
+                  "password"
+                ],
                 "additionalProperties": false
               }
             }
@@ -1128,11 +1227,19 @@
                           ]
                         },
                         "kind": {
-                          "enum": ["human", "bot"],
+                          "enum": [
+                            "human",
+                            "bot"
+                          ],
                           "type": "string"
                         }
                       },
-                      "required": ["id", "email", "name", "kind"]
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "kind"
+                      ]
                     },
                     "memberships": {
                       "type": "array",
@@ -1149,15 +1256,27 @@
                             "type": "string"
                           },
                           "role": {
-                            "enum": ["owner", "admin", "staff"],
+                            "enum": [
+                              "owner",
+                              "admin",
+                              "staff"
+                            ],
                             "type": "string"
                           }
                         },
-                        "required": ["tenantId", "tenantSlug", "tenantName", "role"]
+                        "required": [
+                          "tenantId",
+                          "tenantSlug",
+                          "tenantName",
+                          "role"
+                        ]
                       }
                     }
                   },
-                  "required": ["member", "memberships"]
+                  "required": [
+                    "member",
+                    "memberships"
+                  ]
                 }
               }
             }
@@ -1263,7 +1382,9 @@
       "post": {
         "operationId": "logoutTenantSession",
         "summary": "Revoga a sessão de gestão atual.",
-        "tags": ["session"],
+        "tags": [
+          "session"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1276,7 +1397,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -1382,7 +1505,9 @@
       "get": {
         "operationId": "getTenantSession",
         "summary": "Retorna o membro autenticado e as lojas às quais ele pertence.",
-        "tags": ["session"],
+        "tags": [
+          "session"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1412,11 +1537,19 @@
                           ]
                         },
                         "kind": {
-                          "enum": ["human", "bot"],
+                          "enum": [
+                            "human",
+                            "bot"
+                          ],
                           "type": "string"
                         }
                       },
-                      "required": ["id", "email", "name", "kind"]
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "kind"
+                      ]
                     },
                     "memberships": {
                       "type": "array",
@@ -1433,11 +1566,20 @@
                             "type": "string"
                           },
                           "role": {
-                            "enum": ["owner", "admin", "staff"],
+                            "enum": [
+                              "owner",
+                              "admin",
+                              "staff"
+                            ],
                             "type": "string"
                           }
                         },
-                        "required": ["tenantId", "tenantSlug", "tenantName", "role"]
+                        "required": [
+                          "tenantId",
+                          "tenantSlug",
+                          "tenantName",
+                          "role"
+                        ]
                       }
                     },
                     "onboarding": {
@@ -1446,13 +1588,24 @@
                           "type": "object",
                           "properties": {
                             "persona": {
-                              "enum": ["owner", "staff", "exploring", "partner"],
+                              "enum": [
+                                "owner",
+                                "staff",
+                                "exploring",
+                                "partner"
+                              ],
                               "type": "string"
                             },
                             "segment": {
                               "anyOf": [
                                 {
-                                  "enum": ["restaurant", "snack", "market", "sweets", "other"],
+                                  "enum": [
+                                    "restaurant",
+                                    "snack",
+                                    "market",
+                                    "sweets",
+                                    "other"
+                                  ],
                                   "type": "string"
                                 },
                                 {
@@ -1463,7 +1616,12 @@
                             "referral": {
                               "anyOf": [
                                 {
-                                  "enum": ["referral", "instagram", "google", "other"],
+                                  "enum": [
+                                    "referral",
+                                    "instagram",
+                                    "google",
+                                    "other"
+                                  ],
                                   "type": "string"
                                 },
                                 {
@@ -1472,7 +1630,11 @@
                               ]
                             }
                           },
-                          "required": ["persona", "segment", "referral"]
+                          "required": [
+                            "persona",
+                            "segment",
+                            "referral"
+                          ]
                         },
                         {
                           "type": "null"
@@ -1480,7 +1642,11 @@
                       ]
                     }
                   },
-                  "required": ["member", "memberships", "onboarding"]
+                  "required": [
+                    "member",
+                    "memberships",
+                    "onboarding"
+                  ]
                 }
               }
             }
@@ -1586,7 +1752,9 @@
       "post": {
         "operationId": "registerTenantAccount",
         "summary": "Cria uma conta de gestão e abre uma sessão.",
-        "tags": ["session"],
+        "tags": [
+          "session"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1614,7 +1782,12 @@
                     "maxLength": 200
                   }
                 },
-                "required": ["name", "email", "birthdate", "password"],
+                "required": [
+                  "name",
+                  "email",
+                  "birthdate",
+                  "password"
+                ],
                 "additionalProperties": false
               }
             }
@@ -1649,11 +1822,19 @@
                           ]
                         },
                         "kind": {
-                          "enum": ["human", "bot"],
+                          "enum": [
+                            "human",
+                            "bot"
+                          ],
                           "type": "string"
                         }
                       },
-                      "required": ["id", "email", "name", "kind"]
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "kind"
+                      ]
                     },
                     "memberships": {
                       "type": "array",
@@ -1670,15 +1851,27 @@
                             "type": "string"
                           },
                           "role": {
-                            "enum": ["owner", "admin", "staff"],
+                            "enum": [
+                              "owner",
+                              "admin",
+                              "staff"
+                            ],
                             "type": "string"
                           }
                         },
-                        "required": ["tenantId", "tenantSlug", "tenantName", "role"]
+                        "required": [
+                          "tenantId",
+                          "tenantSlug",
+                          "tenantName",
+                          "role"
+                        ]
                       }
                     }
                   },
-                  "required": ["member", "memberships"]
+                  "required": [
+                    "member",
+                    "memberships"
+                  ]
                 }
               }
             }
@@ -1784,7 +1977,9 @@
       "get": {
         "operationId": "listAccountSessions",
         "summary": "Lista as sessões ativas da conta, da mais recente para a mais antiga.",
-        "tags": ["account"],
+        "tags": [
+          "account"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1817,11 +2012,19 @@
                             "format": "date-time"
                           }
                         },
-                        "required": ["id", "current", "createdAt", "lastUsedAt", "expiresAt"]
+                        "required": [
+                          "id",
+                          "current",
+                          "createdAt",
+                          "lastUsedAt",
+                          "expiresAt"
+                        ]
                       }
                     }
                   },
-                  "required": ["sessions"]
+                  "required": [
+                    "sessions"
+                  ]
                 }
               }
             }
@@ -1927,7 +2130,9 @@
       "put": {
         "operationId": "changeAccountPassword",
         "summary": "Troca a senha da conta e revoga as demais sessões.",
-        "tags": ["account"],
+        "tags": [
+          "account"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1946,7 +2151,10 @@
                     "maxLength": 200
                   }
                 },
-                "required": ["currentPassword", "newPassword"],
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
                 "additionalProperties": false
               }
             }
@@ -1964,7 +2172,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["changed"]
+                  "required": [
+                    "changed"
+                  ]
                 }
               }
             }
@@ -2070,7 +2280,9 @@
       "delete": {
         "operationId": "revokeAccountSession",
         "summary": "Revoga uma sessão da conta pelo identificador.",
-        "tags": ["account"],
+        "tags": [
+          "account"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2104,7 +2316,9 @@
                       "type": "number"
                     }
                   },
-                  "required": ["revoked"]
+                  "required": [
+                    "revoked"
+                  ]
                 }
               }
             }
@@ -2210,7 +2424,9 @@
       "post": {
         "operationId": "revokeOtherAccountSessions",
         "summary": "Revoga todas as sessões da conta exceto a atual.",
-        "tags": ["account"],
+        "tags": [
+          "account"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2223,7 +2439,9 @@
                       "type": "number"
                     }
                   },
-                  "required": ["revoked"]
+                  "required": [
+                    "revoked"
+                  ]
                 }
               }
             }
@@ -2329,7 +2547,9 @@
       "get": {
         "operationId": "getPanelStore",
         "summary": "Resolve um slug de loja para o tenant e a membership do membro.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2360,7 +2580,11 @@
                       "type": "string"
                     },
                     "role": {
-                      "enum": ["owner", "admin", "staff"],
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "staff"
+                      ],
                       "type": "string"
                     },
                     "member": {
@@ -2384,14 +2608,28 @@
                           ]
                         },
                         "kind": {
-                          "enum": ["human", "bot"],
+                          "enum": [
+                            "human",
+                            "bot"
+                          ],
                           "type": "string"
                         }
                       },
-                      "required": ["id", "email", "name", "kind"]
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "kind"
+                      ]
                     }
                   },
-                  "required": ["tenantId", "tenantSlug", "tenantName", "role", "member"]
+                  "required": [
+                    "tenantId",
+                    "tenantSlug",
+                    "tenantName",
+                    "role",
+                    "member"
+                  ]
                 }
               }
             }
@@ -2497,7 +2735,9 @@
       "post": {
         "operationId": "createPanelStore",
         "summary": "Cria uma loja e vincula o membro autenticado como proprietário.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2515,7 +2755,10 @@
                     "pattern": "^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$"
                   }
                 },
-                "required": ["displayName", "slug"],
+                "required": [
+                  "displayName",
+                  "slug"
+                ],
                 "additionalProperties": false
               }
             }
@@ -2539,7 +2782,11 @@
                       "type": "string"
                     },
                     "role": {
-                      "enum": ["owner", "admin", "staff"],
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "staff"
+                      ],
                       "type": "string"
                     },
                     "member": {
@@ -2563,14 +2810,28 @@
                           ]
                         },
                         "kind": {
-                          "enum": ["human", "bot"],
+                          "enum": [
+                            "human",
+                            "bot"
+                          ],
                           "type": "string"
                         }
                       },
-                      "required": ["id", "email", "name", "kind"]
+                      "required": [
+                        "id",
+                        "email",
+                        "name",
+                        "kind"
+                      ]
                     }
                   },
-                  "required": ["tenantId", "tenantSlug", "tenantName", "role", "member"]
+                  "required": [
+                    "tenantId",
+                    "tenantSlug",
+                    "tenantName",
+                    "role",
+                    "member"
+                  ]
                 }
               }
             }
@@ -2676,7 +2937,9 @@
       "get": {
         "operationId": "listPanelOrders",
         "summary": "Lista os pedidos da loja, do mais recente ao mais antigo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2885,7 +3148,9 @@
                       }
                     }
                   },
-                  "required": ["orders"]
+                  "required": [
+                    "orders"
+                  ]
                 }
               }
             }
@@ -2991,7 +3256,9 @@
       "get": {
         "operationId": "getPanelOrder",
         "summary": "Detalha um pedido da loja pelo seu código.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -3265,7 +3532,9 @@
                       ]
                     }
                   },
-                  "required": ["order"]
+                  "required": [
+                    "order"
+                  ]
                 }
               }
             }
@@ -3371,7 +3640,9 @@
       "get": {
         "operationId": "getPanelOrderTransitions",
         "summary": "Lista as transições de pedido permitidas ao chamador.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -3408,7 +3679,10 @@
                         "type": "object",
                         "properties": {
                           "axis": {
-                            "enum": ["financial", "fulfilment"],
+                            "enum": [
+                              "financial",
+                              "fulfilment"
+                            ],
                             "type": "string"
                           },
                           "to": {
@@ -3418,11 +3692,17 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["axis", "to", "requiresReason"]
+                        "required": [
+                          "axis",
+                          "to",
+                          "requiresReason"
+                        ]
                       }
                     }
                   },
-                  "required": ["transitions"]
+                  "required": [
+                    "transitions"
+                  ]
                 }
               }
             }
@@ -3528,7 +3808,9 @@
       "post": {
         "operationId": "transitionPanelOrder",
         "summary": "Move um dos dois eixos do pedido (financeiro ou de preparo).",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -3559,7 +3841,10 @@
                 "type": "object",
                 "properties": {
                   "axis": {
-                    "enum": ["financial", "fulfilment"],
+                    "enum": [
+                      "financial",
+                      "fulfilment"
+                    ],
                     "type": "string"
                   },
                   "to": {
@@ -3572,7 +3857,10 @@
                     "maxLength": 500
                   }
                 },
-                "required": ["axis", "to"]
+                "required": [
+                  "axis",
+                  "to"
+                ]
               }
             }
           }
@@ -3616,7 +3904,10 @@
                         "type": "object",
                         "properties": {
                           "axis": {
-                            "enum": ["financial", "fulfilment"],
+                            "enum": [
+                              "financial",
+                              "fulfilment"
+                            ],
                             "type": "string"
                           },
                           "to": {
@@ -3626,11 +3917,19 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["axis", "to", "requiresReason"]
+                        "required": [
+                          "axis",
+                          "to",
+                          "requiresReason"
+                        ]
                       }
                     }
                   },
-                  "required": ["financialStatus", "fulfilmentStatus", "transitions"]
+                  "required": [
+                    "financialStatus",
+                    "fulfilmentStatus",
+                    "transitions"
+                  ]
                 }
               }
             }
@@ -3742,7 +4041,9 @@
       "post": {
         "operationId": "recordPanelOrderPayment",
         "summary": "Registra o recebimento do pedido e credita o cashback uma única vez.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -3814,7 +4115,10 @@
                         "type": "object",
                         "properties": {
                           "axis": {
-                            "enum": ["financial", "fulfilment"],
+                            "enum": [
+                              "financial",
+                              "fulfilment"
+                            ],
                             "type": "string"
                           },
                           "to": {
@@ -3824,11 +4128,19 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["axis", "to", "requiresReason"]
+                        "required": [
+                          "axis",
+                          "to",
+                          "requiresReason"
+                        ]
                       }
                     }
                   },
-                  "required": ["financialStatus", "fulfilmentStatus", "transitions"]
+                  "required": [
+                    "financialStatus",
+                    "fulfilmentStatus",
+                    "transitions"
+                  ]
                 }
               }
             }
@@ -3940,7 +4252,9 @@
       "get": {
         "operationId": "listPanelCustomers",
         "summary": "Lista os clientes da loja com os totais derivados dos pedidos.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -3999,7 +4313,9 @@
                       }
                     }
                   },
-                  "required": ["customers"]
+                  "required": [
+                    "customers"
+                  ]
                 }
               }
             }
@@ -4105,7 +4421,9 @@
       "get": {
         "operationId": "getPanelCustomer",
         "summary": "Detalha um cliente da loja e os pedidos dele.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -4161,7 +4479,14 @@
                           "minimum": 0
                         }
                       },
-                      "required": ["id", "name", "email", "phone", "ordersCount", "totalSpentCents"]
+                      "required": [
+                        "id",
+                        "name",
+                        "email",
+                        "phone",
+                        "ordersCount",
+                        "totalSpentCents"
+                      ]
                     },
                     "orders": {
                       "type": "array",
@@ -4296,7 +4621,10 @@
                       }
                     }
                   },
-                  "required": ["customer", "orders"]
+                  "required": [
+                    "customer",
+                    "orders"
+                  ]
                 }
               }
             }
@@ -4402,7 +4730,9 @@
       "get": {
         "operationId": "listPanelProducts",
         "summary": "Lista o catálogo da loja com o preço da variation padrão.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -4486,7 +4816,10 @@
                                   "type": "string"
                                 }
                               },
-                              "required": ["id", "name"]
+                              "required": [
+                                "id",
+                                "name"
+                              ]
                             }
                           },
                           "priceCents": {
@@ -4518,7 +4851,9 @@
                       }
                     }
                   },
-                  "required": ["products"]
+                  "required": [
+                    "products"
+                  ]
                 }
               }
             }
@@ -4622,7 +4957,9 @@
       "post": {
         "operationId": "createPanelProduct",
         "summary": "Cria um produto com as variações e as tags informadas.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -4717,7 +5054,10 @@
                           "minimum": 0
                         },
                         "stockMode": {
-                          "enum": ["controlled", "unlimited"],
+                          "enum": [
+                            "controlled",
+                            "unlimited"
+                          ],
                           "type": "string"
                         },
                         "stockQty": {
@@ -4732,7 +5072,12 @@
                           ]
                         }
                       },
-                      "required": ["name", "priceCents", "stockMode", "stockQty"],
+                      "required": [
+                        "name",
+                        "priceCents",
+                        "stockMode",
+                        "stockQty"
+                      ],
                       "additionalProperties": false
                     },
                     "minItems": 1,
@@ -4822,7 +5167,10 @@
                                 "type": "string"
                               }
                             },
-                            "required": ["id", "name"]
+                            "required": [
+                              "id",
+                              "name"
+                            ]
                           }
                         },
                         "priceCents": {
@@ -4869,7 +5217,10 @@
                                 "minimum": 0
                               },
                               "stockMode": {
-                                "enum": ["controlled", "unlimited"],
+                                "enum": [
+                                  "controlled",
+                                  "unlimited"
+                                ],
                                 "type": "string"
                               },
                               "stockQty": {
@@ -4884,7 +5235,13 @@
                                 ]
                               }
                             },
-                            "required": ["id", "name", "priceCents", "stockMode", "stockQty"]
+                            "required": [
+                              "id",
+                              "name",
+                              "priceCents",
+                              "stockMode",
+                              "stockQty"
+                            ]
                           }
                         }
                       },
@@ -4904,7 +5261,9 @@
                       ]
                     }
                   },
-                  "required": ["product"]
+                  "required": [
+                    "product"
+                  ]
                 }
               }
             }
@@ -5010,7 +5369,9 @@
       "get": {
         "operationId": "getPanelProduct",
         "summary": "Detalha um produto com as variações e as tags.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5102,7 +5463,10 @@
                                 "type": "string"
                               }
                             },
-                            "required": ["id", "name"]
+                            "required": [
+                              "id",
+                              "name"
+                            ]
                           }
                         },
                         "priceCents": {
@@ -5149,7 +5513,10 @@
                                 "minimum": 0
                               },
                               "stockMode": {
-                                "enum": ["controlled", "unlimited"],
+                                "enum": [
+                                  "controlled",
+                                  "unlimited"
+                                ],
                                 "type": "string"
                               },
                               "stockQty": {
@@ -5164,7 +5531,13 @@
                                 ]
                               }
                             },
-                            "required": ["id", "name", "priceCents", "stockMode", "stockQty"]
+                            "required": [
+                              "id",
+                              "name",
+                              "priceCents",
+                              "stockMode",
+                              "stockQty"
+                            ]
                           }
                         }
                       },
@@ -5184,7 +5557,9 @@
                       ]
                     }
                   },
-                  "required": ["product"]
+                  "required": [
+                    "product"
+                  ]
                 }
               }
             }
@@ -5288,7 +5663,9 @@
       "put": {
         "operationId": "updatePanelProduct",
         "summary": "Atualiza um produto, suas variações e suas tags.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5393,7 +5770,10 @@
                           "minimum": 0
                         },
                         "stockMode": {
-                          "enum": ["controlled", "unlimited"],
+                          "enum": [
+                            "controlled",
+                            "unlimited"
+                          ],
                           "type": "string"
                         },
                         "stockQty": {
@@ -5408,7 +5788,12 @@
                           ]
                         }
                       },
-                      "required": ["name", "priceCents", "stockMode", "stockQty"],
+                      "required": [
+                        "name",
+                        "priceCents",
+                        "stockMode",
+                        "stockQty"
+                      ],
                       "additionalProperties": false
                     },
                     "minItems": 1,
@@ -5498,7 +5883,10 @@
                                 "type": "string"
                               }
                             },
-                            "required": ["id", "name"]
+                            "required": [
+                              "id",
+                              "name"
+                            ]
                           }
                         },
                         "priceCents": {
@@ -5545,7 +5933,10 @@
                                 "minimum": 0
                               },
                               "stockMode": {
-                                "enum": ["controlled", "unlimited"],
+                                "enum": [
+                                  "controlled",
+                                  "unlimited"
+                                ],
                                 "type": "string"
                               },
                               "stockQty": {
@@ -5560,7 +5951,13 @@
                                 ]
                               }
                             },
-                            "required": ["id", "name", "priceCents", "stockMode", "stockQty"]
+                            "required": [
+                              "id",
+                              "name",
+                              "priceCents",
+                              "stockMode",
+                              "stockQty"
+                            ]
                           }
                         }
                       },
@@ -5580,7 +5977,9 @@
                       ]
                     }
                   },
-                  "required": ["product"]
+                  "required": [
+                    "product"
+                  ]
                 }
               }
             }
@@ -5684,7 +6083,9 @@
       "delete": {
         "operationId": "deletePanelProduct",
         "summary": "Exclui um produto do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5729,7 +6130,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -5835,7 +6238,9 @@
       "get": {
         "operationId": "listPanelCategories",
         "summary": "Lista as categorias do catálogo da loja com a contagem de itens.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -5872,11 +6277,17 @@
                             "minimum": 0
                           }
                         },
-                        "required": ["id", "name", "itemsCount"]
+                        "required": [
+                          "id",
+                          "name",
+                          "itemsCount"
+                        ]
                       }
                     }
                   },
-                  "required": ["categories"]
+                  "required": [
+                    "categories"
+                  ]
                 }
               }
             }
@@ -5980,7 +6391,9 @@
       "post": {
         "operationId": "createPanelCategory",
         "summary": "Cria uma categoria do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6010,7 +6423,10 @@
                     "minimum": 0
                   }
                 },
-                "required": ["name", "sortOrder"]
+                "required": [
+                  "name",
+                  "sortOrder"
+                ]
               }
             }
           }
@@ -6027,7 +6443,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -6133,7 +6551,9 @@
       "put": {
         "operationId": "updatePanelCategory",
         "summary": "Renomeia uma categoria do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6173,7 +6593,10 @@
                     "minimum": 0
                   }
                 },
-                "required": ["name", "sortOrder"]
+                "required": [
+                  "name",
+                  "sortOrder"
+                ]
               }
             }
           }
@@ -6190,7 +6613,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -6294,7 +6719,9 @@
       "delete": {
         "operationId": "deletePanelCategory",
         "summary": "Exclui uma categoria sem produtos.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6339,7 +6766,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -6444,7 +6873,9 @@
     "/panel/stores/{storeSlug}/departments": {
       "get": {
         "operationId": "listPanelDepartments",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6481,11 +6912,17 @@
                             "minimum": 0
                           }
                         },
-                        "required": ["id", "name", "itemsCount"]
+                        "required": [
+                          "id",
+                          "name",
+                          "itemsCount"
+                        ]
                       }
                     }
                   },
-                  "required": ["departments"]
+                  "required": [
+                    "departments"
+                  ]
                 }
               }
             }
@@ -6589,7 +7026,9 @@
       "post": {
         "operationId": "createPanelDepartment",
         "summary": "Cria um departamento do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6619,7 +7058,10 @@
                     "minimum": 0
                   }
                 },
-                "required": ["name", "sortOrder"]
+                "required": [
+                  "name",
+                  "sortOrder"
+                ]
               }
             }
           }
@@ -6636,7 +7078,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -6742,7 +7186,9 @@
       "put": {
         "operationId": "updatePanelDepartment",
         "summary": "Renomeia um departamento do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6782,7 +7228,10 @@
                     "minimum": 0
                   }
                 },
-                "required": ["name", "sortOrder"]
+                "required": [
+                  "name",
+                  "sortOrder"
+                ]
               }
             }
           }
@@ -6799,7 +7248,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -6903,7 +7354,9 @@
       "delete": {
         "operationId": "deletePanelDepartment",
         "summary": "Exclui um departamento sem produtos.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -6948,7 +7401,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -7053,7 +7508,9 @@
     "/panel/stores/{storeSlug}/tags": {
       "get": {
         "operationId": "listPanelTags",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -7090,11 +7547,17 @@
                             "minimum": 0
                           }
                         },
-                        "required": ["id", "name", "itemsCount"]
+                        "required": [
+                          "id",
+                          "name",
+                          "itemsCount"
+                        ]
                       }
                     }
                   },
-                  "required": ["tags"]
+                  "required": [
+                    "tags"
+                  ]
                 }
               }
             }
@@ -7198,7 +7661,9 @@
       "post": {
         "operationId": "createPanelTag",
         "summary": "Cria uma tag do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -7228,7 +7693,10 @@
                     "minimum": 0
                   }
                 },
-                "required": ["name", "sortOrder"]
+                "required": [
+                  "name",
+                  "sortOrder"
+                ]
               }
             }
           }
@@ -7245,7 +7713,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -7351,7 +7821,9 @@
       "put": {
         "operationId": "updatePanelTag",
         "summary": "Renomeia uma tag do catálogo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -7391,7 +7863,10 @@
                     "minimum": 0
                   }
                 },
-                "required": ["name", "sortOrder"]
+                "required": [
+                  "name",
+                  "sortOrder"
+                ]
               }
             }
           }
@@ -7408,7 +7883,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -7512,7 +7989,9 @@
       "delete": {
         "operationId": "deletePanelTag",
         "summary": "Exclui uma tag sem produtos.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -7557,7 +8036,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -7662,7 +8143,9 @@
     "/panel/stores/{storeSlug}/kits": {
       "get": {
         "operationId": "listPanelKits",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -7705,11 +8188,19 @@
                             "minimum": 0
                           }
                         },
-                        "required": ["id", "name", "mode", "available", "itemsCount"]
+                        "required": [
+                          "id",
+                          "name",
+                          "mode",
+                          "available",
+                          "itemsCount"
+                        ]
                       }
                     }
                   },
-                  "required": ["kits"]
+                  "required": [
+                    "kits"
+                  ]
                 }
               }
             }
@@ -7815,7 +8306,9 @@
       "get": {
         "operationId": "listPanelCoupons",
         "summary": "Lista os cupons da loja.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -7858,7 +8351,10 @@
                             ]
                           },
                           "discountType": {
-                            "enum": ["percentage", "fixed"],
+                            "enum": [
+                              "percentage",
+                              "fixed"
+                            ],
                             "type": "string"
                           },
                           "valueCents": {
@@ -7971,7 +8467,11 @@
                             "type": "boolean"
                           },
                           "status": {
-                            "enum": ["active", "expired", "disabled"],
+                            "enum": [
+                              "active",
+                              "expired",
+                              "disabled"
+                            ],
                             "type": "string"
                           }
                         },
@@ -7997,7 +8497,9 @@
                       }
                     }
                   },
-                  "required": ["coupons"]
+                  "required": [
+                    "coupons"
+                  ]
                 }
               }
             }
@@ -8101,7 +8603,9 @@
       "post": {
         "operationId": "createPanelCoupon",
         "summary": "Cria um cupom promocional.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -8131,7 +8635,10 @@
                     "maxLength": 280
                   },
                   "discountType": {
-                    "enum": ["percentage", "fixed"],
+                    "enum": [
+                      "percentage",
+                      "fixed"
+                    ],
                     "type": "string"
                   },
                   "discountValue": {
@@ -8172,7 +8679,11 @@
                     "type": "boolean"
                   },
                   "status": {
-                    "enum": ["active", "expired", "disabled"],
+                    "enum": [
+                      "active",
+                      "expired",
+                      "disabled"
+                    ],
                     "type": "string"
                   }
                 },
@@ -8216,7 +8727,10 @@
                           ]
                         },
                         "discountType": {
-                          "enum": ["percentage", "fixed"],
+                          "enum": [
+                            "percentage",
+                            "fixed"
+                          ],
                           "type": "string"
                         },
                         "valueCents": {
@@ -8329,7 +8843,11 @@
                           "type": "boolean"
                         },
                         "status": {
-                          "enum": ["active", "expired", "disabled"],
+                          "enum": [
+                            "active",
+                            "expired",
+                            "disabled"
+                          ],
                           "type": "string"
                         }
                       },
@@ -8354,7 +8872,9 @@
                       ]
                     }
                   },
-                  "required": ["coupon"]
+                  "required": [
+                    "coupon"
+                  ]
                 }
               }
             }
@@ -8460,7 +8980,9 @@
       "put": {
         "operationId": "updatePanelCoupon",
         "summary": "Atualiza um cupom promocional.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -8507,7 +9029,10 @@
                     ]
                   },
                   "discountType": {
-                    "enum": ["percentage", "fixed"],
+                    "enum": [
+                      "percentage",
+                      "fixed"
+                    ],
                     "type": "string"
                   },
                   "discountValue": {
@@ -8583,7 +9108,11 @@
                     "type": "boolean"
                   },
                   "status": {
-                    "enum": ["active", "expired", "disabled"],
+                    "enum": [
+                      "active",
+                      "expired",
+                      "disabled"
+                    ],
                     "type": "string"
                   }
                 },
@@ -8627,7 +9156,10 @@
                           ]
                         },
                         "discountType": {
-                          "enum": ["percentage", "fixed"],
+                          "enum": [
+                            "percentage",
+                            "fixed"
+                          ],
                           "type": "string"
                         },
                         "valueCents": {
@@ -8740,7 +9272,11 @@
                           "type": "boolean"
                         },
                         "status": {
-                          "enum": ["active", "expired", "disabled"],
+                          "enum": [
+                            "active",
+                            "expired",
+                            "disabled"
+                          ],
                           "type": "string"
                         }
                       },
@@ -8765,7 +9301,9 @@
                       ]
                     }
                   },
-                  "required": ["coupon"]
+                  "required": [
+                    "coupon"
+                  ]
                 }
               }
             }
@@ -8869,7 +9407,9 @@
       "delete": {
         "operationId": "deletePanelCoupon",
         "summary": "Exclui um cupom.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -8914,7 +9454,9 @@
                       "type": "boolean"
                     }
                   },
-                  "required": ["success"]
+                  "required": [
+                    "success"
+                  ]
                 }
               }
             }
@@ -9020,7 +9562,9 @@
       "get": {
         "operationId": "getPanelStoreSeo",
         "summary": "Retorna os modelos de SEO da loja e os valores padrão resolvidos.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -9131,19 +9675,35 @@
                           "type": "object",
                           "properties": {
                             "title": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "description": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "socialImageUrl": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             }
                           },
-                          "required": ["title", "description", "socialImageUrl"]
+                          "required": [
+                            "title",
+                            "description",
+                            "socialImageUrl"
+                          ]
                         }
                       },
                       "required": [
@@ -9156,7 +9716,10 @@
                       ]
                     }
                   },
-                  "required": ["settings", "resolved"]
+                  "required": [
+                    "settings",
+                    "resolved"
+                  ]
                 }
               }
             }
@@ -9260,7 +9823,9 @@
       "put": {
         "operationId": "savePanelStoreSeo",
         "summary": "Salva os modelos de SEO da loja.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -9313,7 +9878,11 @@
                     ]
                   }
                 },
-                "required": ["seoTitleTemplate", "seoDescriptionTemplate", "seoSocialImageUrl"]
+                "required": [
+                  "seoTitleTemplate",
+                  "seoDescriptionTemplate",
+                  "seoSocialImageUrl"
+                ]
               }
             }
           }
@@ -9416,19 +9985,35 @@
                           "type": "object",
                           "properties": {
                             "title": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "description": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "socialImageUrl": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             }
                           },
-                          "required": ["title", "description", "socialImageUrl"]
+                          "required": [
+                            "title",
+                            "description",
+                            "socialImageUrl"
+                          ]
                         }
                       },
                       "required": [
@@ -9441,7 +10026,10 @@
                       ]
                     }
                   },
-                  "required": ["settings", "resolved"]
+                  "required": [
+                    "settings",
+                    "resolved"
+                  ]
                 }
               }
             }
@@ -9547,7 +10135,9 @@
       "get": {
         "operationId": "listPanelSeoEntities",
         "summary": "Lista as entidades do tipo informado que aceitam override de SEO.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -9563,7 +10153,15 @@
             "in": "query",
             "name": "entityType",
             "schema": {
-              "enum": ["store", "department", "category", "tag", "product", "kit", "coupon"],
+              "enum": [
+                "store",
+                "department",
+                "category",
+                "tag",
+                "product",
+                "kit",
+                "coupon"
+              ],
               "type": "string"
             },
             "allowEmptyValue": true,
@@ -9605,11 +10203,18 @@
                             "type": "boolean"
                           }
                         },
-                        "required": ["entityType", "entityId", "name", "hasOverride"]
+                        "required": [
+                          "entityType",
+                          "entityId",
+                          "name",
+                          "hasOverride"
+                        ]
                       }
                     }
                   },
-                  "required": ["entities"]
+                  "required": [
+                    "entities"
+                  ]
                 }
               }
             }
@@ -9715,7 +10320,9 @@
       "get": {
         "operationId": "getPanelSeo",
         "summary": "Retorna o override salvo e os valores de SEO resolvidos da entidade.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -9732,7 +10339,15 @@
             "required": true,
             "name": "entityType",
             "schema": {
-              "enum": ["store", "department", "category", "tag", "product", "kit", "coupon"],
+              "enum": [
+                "store",
+                "department",
+                "category",
+                "tag",
+                "product",
+                "kit",
+                "coupon"
+              ],
               "type": "string"
             }
           },
@@ -9869,19 +10484,35 @@
                           "type": "object",
                           "properties": {
                             "title": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "description": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "socialImageUrl": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             }
                           },
-                          "required": ["title", "description", "socialImageUrl"]
+                          "required": [
+                            "title",
+                            "description",
+                            "socialImageUrl"
+                          ]
                         }
                       },
                       "required": [
@@ -9894,7 +10525,10 @@
                       ]
                     }
                   },
-                  "required": ["saved", "resolved"]
+                  "required": [
+                    "saved",
+                    "resolved"
+                  ]
                 }
               }
             }
@@ -9998,7 +10632,9 @@
       "put": {
         "operationId": "savePanelSeo",
         "summary": "Salva o override de SEO da entidade; campo vazio volta a herdar.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -10015,7 +10651,15 @@
             "required": true,
             "name": "entityType",
             "schema": {
-              "enum": ["store", "department", "category", "tag", "product", "kit", "coupon"],
+              "enum": [
+                "store",
+                "department",
+                "category",
+                "tag",
+                "product",
+                "kit",
+                "coupon"
+              ],
               "type": "string"
             }
           },
@@ -10091,7 +10735,13 @@
                     ]
                   }
                 },
-                "required": ["title", "description", "canonicalUrl", "socialImageUrl", "jsonLd"]
+                "required": [
+                  "title",
+                  "description",
+                  "canonicalUrl",
+                  "socialImageUrl",
+                  "jsonLd"
+                ]
               }
             }
           }
@@ -10219,19 +10869,35 @@
                           "type": "object",
                           "properties": {
                             "title": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "description": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "socialImageUrl": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             }
                           },
-                          "required": ["title", "description", "socialImageUrl"]
+                          "required": [
+                            "title",
+                            "description",
+                            "socialImageUrl"
+                          ]
                         }
                       },
                       "required": [
@@ -10244,7 +10910,10 @@
                       ]
                     }
                   },
-                  "required": ["saved", "resolved"]
+                  "required": [
+                    "saved",
+                    "resolved"
+                  ]
                 }
               }
             }
@@ -10348,7 +11017,9 @@
       "delete": {
         "operationId": "revertPanelSeo",
         "summary": "Descarta o override de SEO da entidade e volta a herdar tudo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -10365,7 +11036,15 @@
             "required": true,
             "name": "entityType",
             "schema": {
-              "enum": ["store", "department", "category", "tag", "product", "kit", "coupon"],
+              "enum": [
+                "store",
+                "department",
+                "category",
+                "tag",
+                "product",
+                "kit",
+                "coupon"
+              ],
               "type": "string"
             }
           },
@@ -10512,19 +11191,35 @@
                           "type": "object",
                           "properties": {
                             "title": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "description": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             },
                             "socialImageUrl": {
-                              "enum": ["entity", "store", "default"],
+                              "enum": [
+                                "entity",
+                                "store",
+                                "default"
+                              ],
                               "type": "string"
                             }
                           },
-                          "required": ["title", "description", "socialImageUrl"]
+                          "required": [
+                            "title",
+                            "description",
+                            "socialImageUrl"
+                          ]
                         }
                       },
                       "required": [
@@ -10537,7 +11232,10 @@
                       ]
                     }
                   },
-                  "required": ["saved", "resolved"]
+                  "required": [
+                    "saved",
+                    "resolved"
+                  ]
                 }
               }
             }
@@ -10643,7 +11341,9 @@
       "get": {
         "operationId": "listPanelAuditLogs",
         "summary": "Lista a trilha de auditoria da loja, do mais recente ao mais antigo.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -10689,11 +11389,20 @@
                             "format": "date-time"
                           }
                         },
-                        "required": ["id", "action", "actor", "target", "ip", "createdAt"]
+                        "required": [
+                          "id",
+                          "action",
+                          "actor",
+                          "target",
+                          "ip",
+                          "createdAt"
+                        ]
                       }
                     }
                   },
-                  "required": ["logs"]
+                  "required": [
+                    "logs"
+                  ]
                 }
               }
             }
@@ -10799,7 +11508,9 @@
       "get": {
         "operationId": "listPanelTeamMembers",
         "summary": "Lista os membros da equipe da loja com seus papéis.",
-        "tags": ["panel"],
+        "tags": [
+          "panel"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -10843,11 +11554,18 @@
                             "format": "email"
                           },
                           "kind": {
-                            "enum": ["human", "bot"],
+                            "enum": [
+                              "human",
+                              "bot"
+                            ],
                             "type": "string"
                           },
                           "role": {
-                            "enum": ["owner", "admin", "staff"],
+                            "enum": [
+                              "owner",
+                              "admin",
+                              "staff"
+                            ],
                             "type": "string"
                           },
                           "joinedAt": {
@@ -10855,11 +11573,20 @@
                             "format": "date-time"
                           }
                         },
-                        "required": ["memberId", "name", "email", "kind", "role", "joinedAt"]
+                        "required": [
+                          "memberId",
+                          "name",
+                          "email",
+                          "kind",
+                          "role",
+                          "joinedAt"
+                        ]
                       }
                     }
                   },
-                  "required": ["members"]
+                  "required": [
+                    "members"
+                  ]
                 }
               }
             }
@@ -10965,7 +11692,9 @@
       "post": {
         "operationId": "savePanelOnboarding",
         "summary": "Registra (ou atualiza) as respostas de onboarding do membro autenticado.",
-        "tags": ["profile"],
+        "tags": [
+          "profile"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -10974,19 +11703,37 @@
                 "type": "object",
                 "properties": {
                   "persona": {
-                    "enum": ["owner", "staff", "exploring", "partner"],
+                    "enum": [
+                      "owner",
+                      "staff",
+                      "exploring",
+                      "partner"
+                    ],
                     "type": "string"
                   },
                   "segment": {
-                    "enum": ["restaurant", "snack", "market", "sweets", "other"],
+                    "enum": [
+                      "restaurant",
+                      "snack",
+                      "market",
+                      "sweets",
+                      "other"
+                    ],
                     "type": "string"
                   },
                   "referral": {
-                    "enum": ["referral", "instagram", "google", "other"],
+                    "enum": [
+                      "referral",
+                      "instagram",
+                      "google",
+                      "other"
+                    ],
                     "type": "string"
                   }
                 },
-                "required": ["persona"],
+                "required": [
+                  "persona"
+                ],
                 "additionalProperties": false
               }
             }
@@ -11001,13 +11748,24 @@
                   "type": "object",
                   "properties": {
                     "persona": {
-                      "enum": ["owner", "staff", "exploring", "partner"],
+                      "enum": [
+                        "owner",
+                        "staff",
+                        "exploring",
+                        "partner"
+                      ],
                       "type": "string"
                     },
                     "segment": {
                       "anyOf": [
                         {
-                          "enum": ["restaurant", "snack", "market", "sweets", "other"],
+                          "enum": [
+                            "restaurant",
+                            "snack",
+                            "market",
+                            "sweets",
+                            "other"
+                          ],
                           "type": "string"
                         },
                         {
@@ -11018,7 +11776,12 @@
                     "referral": {
                       "anyOf": [
                         {
-                          "enum": ["referral", "instagram", "google", "other"],
+                          "enum": [
+                            "referral",
+                            "instagram",
+                            "google",
+                            "other"
+                          ],
                           "type": "string"
                         },
                         {
@@ -11027,7 +11790,11 @@
                       ]
                     }
                   },
-                  "required": ["persona", "segment", "referral"]
+                  "required": [
+                    "persona",
+                    "segment",
+                    "referral"
+                  ]
                 }
               }
             }
@@ -11133,7 +11900,9 @@
       "get": {
         "operationId": "resolveTenantByStorefrontHost",
         "summary": "Resolve um host de storefront para o tenant correspondente (uso interno).",
-        "tags": ["internal"],
+        "tags": [
+          "internal"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -11167,7 +11936,9 @@
                       ]
                     }
                   },
-                  "required": ["tenantId"]
+                  "required": [
+                    "tenantId"
+                  ]
                 }
               }
             }
