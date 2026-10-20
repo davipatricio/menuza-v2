@@ -12,7 +12,15 @@
 import { RedisClient } from "bun";
 import { Queue, QueueEvents, Worker, createBunRedisClient } from "bullmq";
 import { BullMQOtel } from "bullmq-otel";
-import { initOtel, initSentry, shutdownOtel } from "@menuza/orpc-server";
+import {
+  Sentry,
+  getTracer,
+  initOtel,
+  initSentry,
+  log,
+  newRequestId,
+  shutdownOtel,
+} from "@menuza/orpc-server";
 import { disconnectDb } from "@menuza/db";
 import { type PushJobPayload, parsePushJobPayload } from "@menuza/shared/push";
 import {
@@ -20,6 +28,11 @@ import {
   dispatchPushEvent,
   PUSH_NOTIFICATIONS_QUEUE,
 } from "./push-dispatcher.ts";
+import {
+  ORDERS_EXPIRY_QUEUE,
+  type OrderExpiryJobPayload,
+  dispatchOrderExpiry,
+} from "./orders-expiry.ts";
 
 initSentry({ service: "worker" });
 
@@ -93,9 +106,54 @@ const pushWorker = new Worker<PushJobPayload>(
   { connection, telemetry },
 );
 
+// Delayed per-order expiry. Same retry shape as push: a transport failure is
+// transient and must be retried; a terminal order is a 2xx no-op and completes.
+const expiryQueue = new Queue<OrderExpiryJobPayload>(ORDERS_EXPIRY_QUEUE, {
+  connection,
+  telemetry,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: { type: "exponential", delay: 1000 },
+    removeOnComplete: true,
+    removeOnFail: false,
+  },
+});
+
+const expiryWorker = new Worker<OrderExpiryJobPayload>(
+  ORDERS_EXPIRY_QUEUE,
+  async (job) => {
+    const requestId = newRequestId();
+    const span = getTracer("worker").startSpan(`orders.expire ${job.data.orderCode}`);
+
+    try {
+      await dispatchOrderExpiry(job.data);
+
+      log({ requestId, msg: "order expiry dispatched", orderCode: job.data.orderCode });
+    } catch (err) {
+      Sentry.captureException(err, { tags: { job: ORDERS_EXPIRY_QUEUE } });
+
+      log({
+        requestId,
+        level: "error",
+        msg: "order expiry failed",
+        orderCode: job.data.orderCode,
+        err: String(err),
+      });
+
+      // Rethrow so BullMQ applies the bounded retry/backoff above.
+      throw err;
+    } finally {
+      span.end();
+    }
+  },
+  { connection, telemetry },
+);
+
 await events.waitUntilReady();
 
-console.log(`[worker] queues ready (disposable ${smokeName}, durable ${PUSH_NOTIFICATIONS_QUEUE})`);
+console.log(
+  `[worker] queues ready (disposable ${smokeName}, durable ${PUSH_NOTIFICATIONS_QUEUE}, ${ORDERS_EXPIRY_QUEUE})`,
+);
 
 let shuttingDown = false;
 
@@ -111,6 +169,8 @@ const shutdown = async (signal: string) => {
     await smokeQueue.obliterate({ force: true });
     await pushWorker.close();
     await pushQueue.close();
+    await expiryWorker.close();
+    await expiryQueue.close();
     await disconnectDb();
     // Flush buffered spans before the OTLP transport goes away.
     await shutdownOtel();
