@@ -141,6 +141,28 @@ export function formatDateTime(iso: string): string {
   }).format(new Date(iso));
 }
 
+/**
+ * Tempo relativo curto para cartões de quadro: "agora", "12 min", "3 h", "2 d".
+ * O detalhe usa `formatDateTime`, que é a data absoluta.
+ */
+export function formatRelativeTime(iso: string, now = new Date()): string {
+  const elapsedMs = now.getTime() - new Date(iso).getTime();
+
+  if (Number.isNaN(elapsedMs)) return "";
+
+  const minutes = Math.floor(elapsedMs / 60_000);
+
+  if (minutes < 1) return "agora";
+
+  if (minutes < 60) return `${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) return `${hours} h`;
+
+  return `${Math.floor(hours / 24)} d`;
+}
+
 /** Primeiras letras de cada palavra, no máximo duas, em maiúsculas. */
 export function initials(name: string): string {
   return name

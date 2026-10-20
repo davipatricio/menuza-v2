@@ -4,7 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { formatBrl } from "@/lib/format.ts";
-import { ORDER_STATUS_LABELS } from "@/lib/panel-labels.ts";
+import { FULFILMENT_STATUS_LABELS } from "@/lib/panel-labels.ts";
 import { panelClient } from "@/lib/server-tenant.ts";
 import { EmptyState } from "../../_components/empty-state.tsx";
 import { CustomerCrumb } from "./customer-crumb.tsx";
@@ -95,7 +95,7 @@ export default async function CustomerDetailPage({
                   >
                     <span className="min-w-0 truncate font-medium">{order.code}</span>
                     <Badge variant="secondary" className="shrink-0">
-                      {ORDER_STATUS_LABELS[order.status]}
+                      {FULFILMENT_STATUS_LABELS[order.fulfilmentStatus]}
                     </Badge>
                     <span className="shrink-0 text-muted-foreground tabular-nums">
                       {formatBrl(order.totalCents)}

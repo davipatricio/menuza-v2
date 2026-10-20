@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DataTable, dashboardTableFeatures } from "@/components/ui/data-table.tsx";
@@ -23,7 +24,13 @@ type ProductRow = {
 
 type Mode = "any" | "all";
 
-export function ProductsTable({ products }: { products: ProductRow[] }) {
+export function ProductsTable({
+  products,
+  storeSlug,
+}: {
+  products: ProductRow[];
+  storeSlug: string;
+}) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
   const [categoryId, setCategoryId] = useState("");
@@ -126,7 +133,18 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
   ]);
 
   const columns: ColumnDef<typeof dashboardTableFeatures, ProductRow, unknown>[] = [
-    { accessorKey: "name", header: "Nome" },
+    {
+      accessorKey: "name",
+      header: "Nome",
+      cell: ({ row }) => (
+        <Link
+          href={`/dashboard/${storeSlug}/catalog/products/${row.original.id}`}
+          className="underline-offset-4 hover:underline"
+        >
+          {row.original.name}
+        </Link>
+      ),
+    },
     {
       accessorKey: "categoryName",
       header: "Categoria",

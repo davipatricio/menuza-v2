@@ -5,10 +5,17 @@ import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DataTable, dashboardTableFeatures } from "@/components/ui/data-table.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { TaxonomyRowActions } from "../_components/taxonomy-dialog.tsx";
 
 type CategoryRow = { id: string; name: string; itemsCount: number };
 
-export function CategoriesTable({ categories }: { categories: CategoryRow[] }) {
+export function CategoriesTable({
+  categories,
+  storeSlug,
+}: {
+  categories: CategoryRow[];
+  storeSlug: string;
+}) {
   const [query, setQuery] = useState("");
   const [usedOnly, setUsedOnly] = useState(false);
   const [minItems, setMinItems] = useState("");
@@ -31,6 +38,18 @@ export function CategoriesTable({ categories }: { categories: CategoryRow[] }) {
   const columns: ColumnDef<typeof dashboardTableFeatures, CategoryRow, unknown>[] = [
     { accessorKey: "name", header: "Nome" },
     { accessorKey: "itemsCount", header: "Itens" },
+    {
+      id: "actions",
+      header: "Ações",
+      cell: ({ row }) => (
+        <TaxonomyRowActions
+          entity="category"
+          storeSlug={storeSlug}
+          row={row.original}
+          sortOrder={categories.findIndex((category) => category.id === row.original.id)}
+        />
+      ),
+    },
   ];
 
   return (

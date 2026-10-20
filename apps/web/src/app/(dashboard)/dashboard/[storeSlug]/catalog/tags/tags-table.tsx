@@ -5,10 +5,11 @@ import { useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DataTable, dashboardTableFeatures } from "@/components/ui/data-table.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { TaxonomyRowActions } from "../_components/taxonomy-dialog.tsx";
 
 type TagRow = { id: string; name: string; itemsCount: number };
 
-export function TagsTable({ tags }: { tags: TagRow[] }) {
+export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: string }) {
   const [query, setQuery] = useState("");
   const [usedOnly, setUsedOnly] = useState(false);
   const [minItems, setMinItems] = useState("");
@@ -31,6 +32,18 @@ export function TagsTable({ tags }: { tags: TagRow[] }) {
   const columns: ColumnDef<typeof dashboardTableFeatures, TagRow, unknown>[] = [
     { accessorKey: "name", header: "Nome" },
     { accessorKey: "itemsCount", header: "Itens" },
+    {
+      id: "actions",
+      header: "Ações",
+      cell: ({ row }) => (
+        <TaxonomyRowActions
+          entity="tag"
+          storeSlug={storeSlug}
+          row={row.original}
+          sortOrder={tags.findIndex((tag) => tag.id === row.original.id)}
+        />
+      ),
+    },
   ];
 
   return (

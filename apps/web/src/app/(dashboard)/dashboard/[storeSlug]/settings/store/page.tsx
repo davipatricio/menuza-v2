@@ -1,6 +1,9 @@
-﻿import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+﻿import { notFound } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { panelClient } from "@/lib/server-tenant.ts";
 import { SettingsSection } from "../_components/settings-section.tsx";
 import { requireStore } from "../_components/require-store.ts";
+import { SeoSettingsForm } from "./seo-settings-form.tsx";
 
 export default async function StoreSettingsPage({
   params,
@@ -9,6 +12,11 @@ export default async function StoreSettingsPage({
 }) {
   const { storeSlug } = await params;
   const store = await requireStore(storeSlug);
+  const client = await panelClient();
+
+  if (!client) notFound();
+
+  const seo = await client.panel.getStoreSeo({ storeSlug });
 
   return (
     <SettingsSection
@@ -29,6 +37,8 @@ export default async function StoreSettingsPage({
           </dl>
         </CardContent>
       </Card>
+
+      <SeoSettingsForm storeSlug={storeSlug} storeName={store.displayName} initialData={seo} />
     </SettingsSection>
   );
 }

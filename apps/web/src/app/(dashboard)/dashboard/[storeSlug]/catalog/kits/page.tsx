@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
 import { KitsTable } from "./kits-table";
 
@@ -22,6 +23,13 @@ export default async function CatalogKitsPage({
         </h2>
         <p className="text-sm text-muted-foreground">Kits da loja.</p>
       </div>
+      <Alert>
+        <AlertTitle>Kits são somente leitura por enquanto</AlertTitle>
+        <AlertDescription>
+          A precificação de kits ainda está em definição. Esta lista mostra os kits da loja sem
+          edição.
+        </AlertDescription>
+      </Alert>
       <KitsTable kits={kits} />
     </section>
   );

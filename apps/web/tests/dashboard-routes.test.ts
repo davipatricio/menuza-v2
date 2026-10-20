@@ -10,8 +10,10 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
-  ORDER_STATUS_LABELS,
-  ORDER_STATUS_VARIANTS,
+  FINANCIAL_STATUS_LABELS,
+  FINANCIAL_STATUS_VARIANTS,
+  FULFILMENT_STATUS_LABELS,
+  FULFILMENT_STATUS_VARIANTS,
   MEMBER_KIND_LABELS,
 } from "../src/lib/panel-labels.ts";
 import {
@@ -23,7 +25,7 @@ import {
   maskIntegerInput,
   parseBrlToCents,
 } from "../src/lib/format.ts";
-import { OrderStatusSchema } from "@menuza/shared/tenant";
+import { FinancialStatusSchema, FulfilmentStatusSchema } from "@menuza/shared/tenant";
 
 const DASHBOARD_LEAVES = [
   "",
@@ -40,35 +42,50 @@ const DASHBOARD_LEAVES = [
   "/settings/account",
 ] as const;
 
-const ALL_STATUSES = [
+const ALL_FINANCIAL_STATUSES = [
   "pending",
-  "confirmed",
-  "ready",
-  "delivered",
-  "canceled",
   "awaiting_payment",
+  "pending_on_delivery",
   "paid",
-  "ready_for_pickup",
-  "completed",
   "refunded",
   "expired",
+  "canceled",
+] as const;
+
+const ALL_FULFILMENT_STATUSES = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
+  "ready_for_pickup",
+  "out_for_delivery",
+  "completed",
+  "canceled",
 ] as const;
 
 describe("panel labels", () => {
-  test("every contract order status has a pt-BR label and a badge variant", () => {
-    for (const status of ALL_STATUSES) {
-      expect(ORDER_STATUS_LABELS[status]).toBeTruthy();
-      expect(ORDER_STATUS_VARIANTS[status]).toBeTruthy();
+  test("every contract status has a pt-BR label and a badge variant on both axes", () => {
+    for (const status of ALL_FINANCIAL_STATUSES) {
+      expect(FINANCIAL_STATUS_LABELS[status]).toBeTruthy();
+      expect(FINANCIAL_STATUS_VARIANTS[status]).toBeTruthy();
+    }
+
+    for (const status of ALL_FULFILMENT_STATUSES) {
+      expect(FULFILMENT_STATUS_LABELS[status]).toBeTruthy();
+      expect(FULFILMENT_STATUS_VARIANTS[status]).toBeTruthy();
     }
   });
 
-  test("the label map covers exactly the contract's status enum", () => {
-    // SAFETY: the array above is the contract's closed set, read from the
-    // schema's options rather than hardcoded twice.
-    const fromSchema = OrderStatusSchema.options;
+  test("the label maps cover exactly the contract's status enums", () => {
+    // SAFETY: the arrays above are the contract's closed sets, read from the
+    // schemas' options rather than hardcoded twice.
+    const financial = FinancialStatusSchema.options;
+    const fulfilment = FulfilmentStatusSchema.options;
 
-    expect(fromSchema).toEqual([...ALL_STATUSES]);
-    expect(Object.keys(ORDER_STATUS_LABELS).sort()).toEqual([...fromSchema].sort());
+    expect(financial).toEqual([...ALL_FINANCIAL_STATUSES]);
+    expect(fulfilment).toEqual([...ALL_FULFILMENT_STATUSES]);
+    expect(Object.keys(FINANCIAL_STATUS_LABELS).sort()).toEqual([...financial].sort());
+    expect(Object.keys(FULFILMENT_STATUS_LABELS).sort()).toEqual([...fulfilment].sort());
   });
 
   test("initials takes at most two letters, uppercased", () => {

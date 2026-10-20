@@ -6,10 +6,17 @@ import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DataTable } from "@/components/ui/data-table.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { dashboardTableFeatures } from "@/components/ui/data-table.tsx";
+import { TaxonomyRowActions } from "../_components/taxonomy-dialog.tsx";
 
 type DepartmentRow = { id: string; name: string; itemsCount: number };
 
-export function DepartmentsTable({ departments }: { departments: DepartmentRow[] }) {
+export function DepartmentsTable({
+  departments,
+  storeSlug,
+}: {
+  departments: DepartmentRow[];
+  storeSlug: string;
+}) {
   const [query, setQuery] = useState("");
   const [usedOnly, setUsedOnly] = useState(false);
   const [minItems, setMinItems] = useState("");
@@ -32,6 +39,18 @@ export function DepartmentsTable({ departments }: { departments: DepartmentRow[]
   const columns: ColumnDef<typeof dashboardTableFeatures, DepartmentRow, unknown>[] = [
     { accessorKey: "name", header: "Nome" },
     { accessorKey: "itemsCount", header: "Itens" },
+    {
+      id: "actions",
+      header: "Ações",
+      cell: ({ row }) => (
+        <TaxonomyRowActions
+          entity="department"
+          storeSlug={storeSlug}
+          row={row.original}
+          sortOrder={departments.findIndex((department) => department.id === row.original.id)}
+        />
+      ),
+    },
   ];
 
   return (

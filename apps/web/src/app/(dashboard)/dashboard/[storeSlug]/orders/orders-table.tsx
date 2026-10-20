@@ -13,9 +13,14 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { DataTable, type DataTableFilterOption } from "@/components/ui/data-table.tsx";
 import { dashboardTableFeatures } from "@/components/ui/data-table.tsx";
 import { formatBrl } from "@/lib/format.ts";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_VARIANTS } from "@/lib/panel-labels.ts";
+import {
+  FINANCIAL_STATUS_LABELS,
+  FINANCIAL_STATUS_VARIANTS,
+  FULFILMENT_STATUS_LABELS,
+  FULFILMENT_STATUS_VARIANTS,
+} from "@/lib/panel-labels.ts";
 
-const STATUS_FILTER_OPTIONS: DataTableFilterOption[] = Object.entries(ORDER_STATUS_LABELS).map(
+const STATUS_FILTER_OPTIONS: DataTableFilterOption[] = Object.entries(FULFILMENT_STATUS_LABELS).map(
   ([value, label]) => ({ value, label }),
 );
 
@@ -45,12 +50,17 @@ function columns(
       cell: ({ row }) => <span className="tabular-nums">{formatBrl(row.original.totalCents)}</span>,
     },
     {
-      accessorKey: "status",
+      accessorKey: "fulfilmentStatus",
       header: "Status",
       cell: ({ row }) => (
-        <Badge variant={ORDER_STATUS_VARIANTS[row.original.status]}>
-          {ORDER_STATUS_LABELS[row.original.status]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={FULFILMENT_STATUS_VARIANTS[row.original.fulfilmentStatus]}>
+            {FULFILMENT_STATUS_LABELS[row.original.fulfilmentStatus]}
+          </Badge>
+          <Badge variant={FINANCIAL_STATUS_VARIANTS[row.original.financialStatus]}>
+            {FINANCIAL_STATUS_LABELS[row.original.financialStatus]}
+          </Badge>
+        </div>
       ),
     },
     {
@@ -90,13 +100,13 @@ export function OrdersTable({
         { key: "customerName", label: "Cliente" },
         { key: "totalCents", label: "Total", accessor: (r) => (r.totalCents / 100).toFixed(2) },
         {
-          key: "status",
+          key: "fulfilmentStatus",
           label: "Status",
-          accessor: (r) => ORDER_STATUS_LABELS[r.status] ?? r.status,
+          accessor: (r) => FULFILMENT_STATUS_LABELS[r.fulfilmentStatus] ?? r.fulfilmentStatus,
         },
         { key: "createdAt", label: "Data" },
       ]}
-      filterColumn="status"
+      filterColumn="fulfilmentStatus"
       filterOptions={STATUS_FILTER_OPTIONS}
       filterPlaceholder="Status…"
       filterLabel="Filtrar por status"
