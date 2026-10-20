@@ -156,19 +156,41 @@ export const GetStoreOutputSchema = v.object({
 // carries. The server turns it into a tenant and opens the scope; the client
 // never sends a tenantId.
 
-/** Mirrors the contract's `order_status` enum; the UI owns the pt-BR labels. */
-export const OrderStatusSchema = v.picklist([
+/**
+ * Mirrors the contract's `financial_status` enum (MEN-93 split the old
+ * single-axis `order_status`). The UI owns the pt-BR labels.
+ */
+export const FinancialStatusSchema = v.picklist([
   "pending",
-  "confirmed",
-  "ready",
-  "delivered",
-  "canceled",
   "awaiting_payment",
+  "pending_on_delivery",
   "paid",
-  "ready_for_pickup",
-  "completed",
   "refunded",
   "expired",
+  "canceled",
+]);
+
+/** Mirrors the contract's `fulfilment_status` enum (MEN-93). */
+export const FulfilmentStatusSchema = v.picklist([
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
+  "ready_for_pickup",
+  "out_for_delivery",
+  "completed",
+  "canceled",
+]);
+
+/** Mirrors the contract's `payment_method` enum. */
+export const PaymentMethodSchema = v.picklist([
+  "pix",
+  "credit",
+  "debit",
+  "meal_voucher",
+  "food_voucher",
+  "cash_on_delivery",
+  "card_on_delivery",
 ]);
 
 /** Mirrors the contract's `stock_mode` enum (MEN-81). */
@@ -200,18 +222,60 @@ export const PanelCustomerIdInputSchema = v.strictObject({
   customerId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
 });
 
-/** One order row as the panel's tables render it. `totalCents` is Int cents. */
+/**
+ * One order row as the panel's tables render it. Money is Int cents and the
+ * two status axes are independent (MEN-93); `paidAt`/`expiresAt` are optional
+ * timestamps, so they cross as null rather than being omitted.
+ */
 export const PanelOrderSchema = v.object({
   id: v.string(),
   code: v.string(),
   customerId: v.string(),
   customerName: v.string(),
+  subtotalCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  discountCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  shippingCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  walletAppliedCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  cashbackCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
   totalCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
-  status: OrderStatusSchema,
+  financialStatus: FinancialStatusSchema,
+  fulfilmentStatus: FulfilmentStatusSchema,
+  paymentMethod: v.nullable(PaymentMethodSchema),
+  paidAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+  expiresAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
   createdAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
-export const PanelOrderDetailSchema = PanelOrderSchema;
+/** One line of an order, with the name and price copied at checkout time. */
+export const PanelOrderItemSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  unitPriceCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  quantity: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  lineTotalCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  optionsLabel: v.nullable(v.string()),
+});
+
+/**
+ * One row of the append-only order trail. `type` stays free text so a new event
+ * the contract documents does not break an older panel; the UI owns the pt-BR
+ * labels. `actorName` is the member who performed it, `null` for the machine.
+ */
+export const PanelOrderEventSchema = v.object({
+  id: v.string(),
+  type: v.string(),
+  fromValue: v.nullable(v.string()),
+  toValue: v.nullable(v.string()),
+  reason: v.nullable(v.string()),
+  actorName: v.nullable(v.string()),
+  createdAt: v.pipe(v.string(), v.isoTimestamp()),
+});
+
+export const PanelOrderDetailSchema = v.object({
+  ...PanelOrderSchema.entries,
+  items: v.array(PanelOrderItemSchema),
+  events: v.array(PanelOrderEventSchema),
+});
 
 export const PanelOrdersOutputSchema = v.object({
   orders: v.array(PanelOrderSchema),
@@ -219,6 +283,48 @@ export const PanelOrdersOutputSchema = v.object({
 
 export const PanelOrderOutputSchema = v.object({
   order: PanelOrderDetailSchema,
+});
+
+/**
+ * The optional filters the board narrows by. They are part of the input rather
+ * than a separate procedure so the existing `{ storeSlug }` call keeps working.
+ */
+export const PanelOrdersInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  financialStatus: v.optional(FinancialStatusSchema),
+  fulfilmentStatus: v.optional(FulfilmentStatusSchema),
+  paymentMethod: v.optional(PaymentMethodSchema),
+});
+
+/** `refunded`, `expired` and `canceled` are the terminal money states. */
+export const OrderAxisSchema = v.picklist(["financial", "fulfilment"]);
+
+/**
+ * One legal move out of the order's current state, already filtered by the
+ * caller's capabilities — the dashboard renders these and nothing else.
+ */
+export const PanelOrderTransitionSchema = v.object({
+  axis: OrderAxisSchema,
+  to: v.string(),
+  requiresReason: v.boolean(),
+});
+
+export const PanelOrderTransitionsOutputSchema = v.object({
+  transitions: v.array(PanelOrderTransitionSchema),
+});
+
+/** What a mutation returns: both axes plus the moves that are still legal. */
+export const PanelOrderStateOutputSchema = v.object({
+  financialStatus: FinancialStatusSchema,
+  fulfilmentStatus: FulfilmentStatusSchema,
+  transitions: v.array(PanelOrderTransitionSchema),
+});
+
+export const PanelOrderTransitionInputSchema = v.object({
+  ...PanelOrderIdInputSchema.entries,
+  axis: OrderAxisSchema,
+  to: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  reason: v.optional(v.pipe(v.string(), v.maxLength(500))),
 });
 
 /** A customer plus the totals derived from their orders in this store. */
@@ -264,6 +370,152 @@ export const PanelProductsOutputSchema = v.object({
   products: v.array(PanelProductSchema),
 });
 
+// --- Catalog writes ----------------------------------------------------------
+//
+// The list shape above is unchanged; the detail adds the fields only the editor
+// needs (description, sortOrder, every variation with its stock) on top of it.
+
+export const PanelProductVariationSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  priceCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  stockMode: StockModeSchema,
+  stockQty: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+});
+
+export const PanelProductDetailSchema = v.object({
+  ...PanelProductSchema.entries,
+  description: v.nullable(v.string()),
+  sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  variations: v.array(PanelProductVariationSchema),
+});
+
+export const PanelProductOutputSchema = v.object({
+  product: PanelProductDetailSchema,
+});
+
+/** `deleteProduct` and the taxonomy writes report the mutation only. */
+export const PanelSuccessOutputSchema = v.object({ success: v.boolean() });
+
+/**
+ * The one stock rule a variation can break: `controlled` needs a quantity,
+ * `unlimited` must not carry one. Shared so the form can show the message under
+ * the field instead of only after a round trip.
+ */
+export function stockQtyIssue(stockMode: StockMode, stockQty: number | null): string | null {
+  if (stockMode === "controlled" && stockQty === null) {
+    return "Informe a quantidade em estoque.";
+  }
+
+  if (stockMode === "unlimited" && stockQty !== null) {
+    return "Produto sem controle de estoque não deve ter quantidade.";
+  }
+
+  return null;
+}
+
+export const ProductVariationInputSchema = v.pipe(
+  v.strictObject({
+    /** Present when the row already exists; omitted inserts a new variation. */
+    id: v.optional(
+      v.pipe(v.string("Variação inválida."), v.nonEmpty("Variação inválida."), v.maxLength(64)),
+    ),
+    name: v.pipe(
+      v.string("Informe o nome da variação."),
+      v.trim(),
+      v.nonEmpty("Informe o nome da variação."),
+      v.maxLength(80, "Use no máximo 80 caracteres."),
+    ),
+    priceCents: v.pipe(
+      v.number("Informe um preço válido."),
+      v.integer("Use um número inteiro."),
+      v.minValue(0, "O valor mínimo é 0."),
+    ),
+    stockMode: StockModeSchema,
+    stockQty: v.nullable(
+      v.pipe(
+        v.number("Informe uma quantidade válida."),
+        v.integer("Use um número inteiro."),
+        v.minValue(0, "O valor mínimo é 0."),
+      ),
+    ),
+  }),
+  v.forward(
+    v.check(
+      (variation) => stockQtyIssue(variation.stockMode, variation.stockQty) === null,
+      "Quantidade em estoque incompatível com o modo de estoque.",
+    ),
+    ["stockQty"],
+  ),
+);
+
+const catalogStoreSlug = v.pipe(
+  v.string("Loja inválida."),
+  v.nonEmpty("Loja inválida."),
+  v.maxLength(120, "Loja inválida."),
+);
+
+const catalogProductId = v.pipe(
+  v.string("Produto inválido."),
+  v.nonEmpty("Produto inválido."),
+  v.maxLength(64, "Produto inválido."),
+);
+
+const catalogSortOrder = v.pipe(
+  v.number("Informe uma ordem válida."),
+  v.integer("Use um número inteiro."),
+  v.minValue(0, "O valor mínimo é 0."),
+);
+
+const catalogNullableId = (message: string) =>
+  v.nullable(v.pipe(v.string(message), v.nonEmpty(message), v.maxLength(64, message)));
+
+const productName = v.pipe(
+  v.string("Informe o nome do produto."),
+  v.trim(),
+  v.nonEmpty("Informe o nome do produto."),
+  v.maxLength(120, "Use no máximo 120 caracteres."),
+);
+
+const productVariations = v.pipe(
+  v.array(ProductVariationInputSchema),
+  v.minLength(1, "Informe ao menos uma variação."),
+  v.maxLength(50, "Use no máximo 50 variações."),
+);
+
+export const CreateProductInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  name: productName,
+  description: v.nullable(
+    v.pipe(v.string("Descrição inválida."), v.maxLength(2000, "Use no máximo 2000 caracteres.")),
+  ),
+  categoryId: catalogNullableId("Categoria inválida."),
+  departmentId: catalogNullableId("Departamento inválido."),
+  tagIds: v.array(
+    v.pipe(
+      v.string("Tag inválida."),
+      v.nonEmpty("Tag inválida."),
+      v.maxLength(64, "Tag inválida."),
+    ),
+  ),
+  available: v.boolean(),
+  sortOrder: catalogSortOrder,
+  variations: productVariations,
+});
+
+export const UpdateProductInputSchema = v.strictObject({
+  ...CreateProductInputSchema.entries,
+  productId: catalogProductId,
+});
+
+/** `getProduct` and `deleteProduct` share the exact same addressing. */
+export const ProductIdInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  productId: catalogProductId,
+});
+
+export const DeleteProductInputSchema = ProductIdInputSchema;
+
 export const PanelCategorySchema = v.object({
   id: v.string(),
   name: v.string(),
@@ -304,6 +556,69 @@ export const PanelTagSchema = v.object({
 
 export const PanelTagsOutputSchema = v.object({
   tags: v.array(PanelTagSchema),
+});
+
+// --- Taxonomy writes ---------------------------------------------------------
+//
+// Categories, departments and tags share one shape: a name and a sort order.
+// Only the id field differs, so the three families stay copy-paste identical.
+
+const taxonomyName = v.pipe(
+  v.string("Informe o nome."),
+  v.trim(),
+  v.nonEmpty("Informe o nome."),
+  v.maxLength(80, "Use no máximo 80 caracteres."),
+);
+
+const taxonomyId = (message: string) =>
+  v.pipe(v.string(message), v.nonEmpty(message), v.maxLength(64, message));
+
+export const CreateCategoryInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  name: taxonomyName,
+  sortOrder: catalogSortOrder,
+});
+
+export const UpdateCategoryInputSchema = v.strictObject({
+  ...CreateCategoryInputSchema.entries,
+  categoryId: taxonomyId("Categoria inválida."),
+});
+
+export const DeleteCategoryInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  categoryId: taxonomyId("Categoria inválida."),
+});
+
+export const CreateDepartmentInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  name: taxonomyName,
+  sortOrder: catalogSortOrder,
+});
+
+export const UpdateDepartmentInputSchema = v.strictObject({
+  ...CreateDepartmentInputSchema.entries,
+  departmentId: taxonomyId("Departamento inválido."),
+});
+
+export const DeleteDepartmentInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  departmentId: taxonomyId("Departamento inválido."),
+});
+
+export const CreateTagInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  name: taxonomyName,
+  sortOrder: catalogSortOrder,
+});
+
+export const UpdateTagInputSchema = v.strictObject({
+  ...CreateTagInputSchema.entries,
+  tagId: taxonomyId("Tag inválida."),
+});
+
+export const DeleteTagInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  tagId: taxonomyId("Tag inválida."),
 });
 
 /** `valueCents` is set only for a fixed discount; percentages carry `valuePercent`. */
@@ -619,7 +934,7 @@ export const listOrders = panelRead
       tags: ["panel"],
     }),
   )
-  .input(PanelStoreInputSchema)
+  .input(PanelOrdersInputSchema)
   .output(PanelOrdersOutputSchema);
 
 export const getOrder = panelRead
@@ -634,6 +949,60 @@ export const getOrder = panelRead
   )
   .input(PanelOrderIdInputSchema)
   .output(PanelOrderOutputSchema);
+
+/**
+ * Order operations reuse the shared codes plus the two the pure engine can
+ * refuse with, so the dashboard can tell a stale button from a missing reason.
+ */
+const panelOrderContract = oc.errors({
+  ...sharedErrorCodes,
+  ORDER_TRANSITION_INVALID: {
+    message: "Transição de pedido não permitida.",
+    data: v.object({ reason: v.string() }),
+  },
+  REASON_REQUIRED: {
+    message: "Esta transição exige um motivo.",
+  },
+});
+
+export const getOrderTransitions = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/orders/{orderCode}/transitions",
+      operationId: "getPanelOrderTransitions",
+      summary: "Lista as transições de pedido permitidas ao chamador.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelOrderIdInputSchema)
+  .output(PanelOrderTransitionsOutputSchema);
+
+export const transitionOrder = panelOrderContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/orders/{orderCode}/transition",
+      operationId: "transitionPanelOrder",
+      summary: "Move um dos dois eixos do pedido (financeiro ou de preparo).",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelOrderTransitionInputSchema)
+  .output(PanelOrderStateOutputSchema);
+
+export const recordOrderPayment = panelOrderContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/orders/{orderCode}/payment",
+      operationId: "recordPanelOrderPayment",
+      summary: "Registra o recebimento do pedido e credita o cashback uma única vez.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelOrderIdInputSchema)
+  .output(PanelOrderStateOutputSchema);
 
 export const listCustomers = panelRead
   .meta(
@@ -674,6 +1043,58 @@ export const listProducts = panelRead
   .input(PanelStoreInputSchema)
   .output(PanelProductsOutputSchema);
 
+export const getProduct = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/products/{productId}",
+      operationId: "getPanelProduct",
+      summary: "Detalha um produto com as variações e as tags.",
+      tags: ["panel"],
+    }),
+  )
+  .input(ProductIdInputSchema)
+  .output(PanelProductOutputSchema);
+
+export const createProduct = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/products",
+      operationId: "createPanelProduct",
+      summary: "Cria um produto com as variações e as tags informadas.",
+      tags: ["panel"],
+    }),
+  )
+  .input(CreateProductInputSchema)
+  .output(PanelProductOutputSchema);
+
+export const updateProduct = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/products/{productId}",
+      operationId: "updatePanelProduct",
+      summary: "Atualiza um produto, suas variações e suas tags.",
+      tags: ["panel"],
+    }),
+  )
+  .input(UpdateProductInputSchema)
+  .output(PanelProductOutputSchema);
+
+export const deleteProduct = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/products/{productId}",
+      operationId: "deletePanelProduct",
+      summary: "Exclui um produto do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeleteProductInputSchema)
+  .output(PanelSuccessOutputSchema);
+
 export const listCategories = panelRead
   .meta(
     openapi({
@@ -710,6 +1131,123 @@ export const listTags = panelRead
   )
   .input(PanelStoreInputSchema)
   .output(PanelTagsOutputSchema);
+
+export const createCategory = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/categories",
+      operationId: "createPanelCategory",
+      summary: "Cria uma categoria do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(CreateCategoryInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const updateCategory = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/categories/{categoryId}",
+      operationId: "updatePanelCategory",
+      summary: "Renomeia uma categoria do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(UpdateCategoryInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const deleteCategory = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/categories/{categoryId}",
+      operationId: "deletePanelCategory",
+      summary: "Exclui uma categoria sem produtos.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeleteCategoryInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const createDepartment = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/departments",
+      operationId: "createPanelDepartment",
+      summary: "Cria um departamento do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(CreateDepartmentInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const updateDepartment = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/departments/{departmentId}",
+      operationId: "updatePanelDepartment",
+      summary: "Renomeia um departamento do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(UpdateDepartmentInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const deleteDepartment = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/departments/{departmentId}",
+      operationId: "deletePanelDepartment",
+      summary: "Exclui um departamento sem produtos.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeleteDepartmentInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const createTag = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/tags",
+      operationId: "createPanelTag",
+      summary: "Cria uma tag do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(CreateTagInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const updateTag = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/tags/{tagId}",
+      operationId: "updatePanelTag",
+      summary: "Renomeia uma tag do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(UpdateTagInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const deleteTag = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/tags/{tagId}",
+      operationId: "deletePanelTag",
+      summary: "Exclui uma tag sem produtos.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeleteTagInputSchema)
+  .output(PanelSuccessOutputSchema);
 
 export const listKits = panelRead
   .meta(
@@ -939,6 +1477,209 @@ export const deleteCoupon = sessionContract
   .input(DeleteCouponInputSchema)
   .output(couponDeletedOutput);
 
+// --- SEO (MEN-233 / MEN-253) --------------------------------------------------
+//
+// Five editable fields per entity, all nullable: `null` (or an empty string) is
+// "not set here", and the read side inherits the field from the store row, then
+// the store templates, then a static default. `canonicalUrl` and `jsonLd` are
+// entity-only — inheriting them would describe a different page.
+
+/** Mirrors the contract's `seo_entity_type` enum. */
+export const SeoEntityTypeSchema = v.picklist(
+  ["store", "department", "category", "tag", "product", "kit", "coupon"],
+  "Escolha um tipo de entidade.",
+);
+
+/** Which inheritance level won the field. `store` covers the settings template too. */
+export const SeoSourceSchema = v.picklist(["entity", "store", "default"]);
+
+/** Absolute http(s) URL, so a relative path cannot reach a `<link rel=canonical>`. */
+function seoUrlSchema(message: string) {
+  return v.pipe(
+    v.string(message),
+    v.check((value) => {
+      try {
+        const { protocol } = new URL(value);
+
+        return protocol === "http:" || protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, message),
+  );
+}
+
+export const SeoFieldsSchema = v.object({
+  title: v.nullable(
+    v.pipe(v.string("Título inválido."), v.maxLength(70, "Use no máximo 70 caracteres.")),
+  ),
+  description: v.nullable(
+    v.pipe(v.string("Descrição inválida."), v.maxLength(200, "Use no máximo 200 caracteres.")),
+  ),
+  canonicalUrl: v.nullable(
+    seoUrlSchema("Informe uma URL completa, começando com http:// ou https://."),
+  ),
+  socialImageUrl: v.nullable(
+    seoUrlSchema("Informe uma URL completa, começando com http:// ou https://."),
+  ),
+  jsonLd: v.nullable(
+    v.pipe(v.string("JSON-LD inválido."), v.maxLength(4000, "Use no máximo 4000 caracteres.")),
+  ),
+});
+
+export const SaveSeoInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  entityType: SeoEntityTypeSchema,
+  entityId: v.pipe(
+    v.string("Entidade inválida."),
+    v.nonEmpty("Entidade inválida."),
+    v.maxLength(64, "Entidade inválida."),
+  ),
+  ...SeoFieldsSchema.entries,
+});
+
+export const SaveStoreSeoSettingsInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  seoTitleTemplate: v.nullable(
+    v.pipe(v.string("Modelo inválido."), v.maxLength(120, "Use no máximo 120 caracteres.")),
+  ),
+  seoDescriptionTemplate: v.nullable(
+    v.pipe(v.string("Modelo inválido."), v.maxLength(200, "Use no máximo 200 caracteres.")),
+  ),
+  seoSocialImageUrl: v.nullable(
+    seoUrlSchema("Informe uma URL completa, começando com http:// ou https://."),
+  ),
+});
+
+export const StoreSeoSettingsSchema = v.object({
+  seoTitleTemplate: v.nullable(v.string()),
+  seoDescriptionTemplate: v.nullable(v.string()),
+  seoSocialImageUrl: v.nullable(v.string()),
+});
+
+export const SeoResolvedSchema = v.object({
+  title: v.string(),
+  description: v.nullable(v.string()),
+  canonicalUrl: v.nullable(v.string()),
+  socialImageUrl: v.nullable(v.string()),
+  jsonLd: v.nullable(v.string()),
+  source: v.object({
+    title: SeoSourceSchema,
+    description: SeoSourceSchema,
+    socialImageUrl: SeoSourceSchema,
+  }),
+});
+
+export const PanelSeoEntitySchema = v.object({
+  entityType: SeoEntityTypeSchema,
+  entityId: v.string(),
+  name: v.string(),
+  hasOverride: v.boolean(),
+});
+
+export const PanelSeoEntitiesInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  entityType: v.optional(SeoEntityTypeSchema),
+});
+
+export const PanelSeoEntitiesOutputSchema = v.object({
+  entities: v.array(PanelSeoEntitySchema),
+});
+
+export const PanelSeoInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  entityType: SeoEntityTypeSchema,
+  entityId: v.pipe(v.string("Entidade inválida."), v.nonEmpty("Entidade inválida.")),
+});
+
+export const PanelSeoOutputSchema = v.object({
+  saved: SeoFieldsSchema,
+  resolved: SeoResolvedSchema,
+});
+
+export const PanelStoreSeoOutputSchema = v.object({
+  settings: StoreSeoSettingsSchema,
+  resolved: SeoResolvedSchema,
+});
+
+export const getStoreSeo = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/seo",
+      operationId: "getPanelStoreSeo",
+      summary: "Retorna os modelos de SEO da loja e os valores padrão resolvidos.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelStoreSeoOutputSchema);
+
+export const saveStoreSeo = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/seo",
+      operationId: "savePanelStoreSeo",
+      summary: "Salva os modelos de SEO da loja.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SaveStoreSeoSettingsInputSchema)
+  .output(PanelStoreSeoOutputSchema);
+
+export const listSeoEntities = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/seo/entities",
+      operationId: "listPanelSeoEntities",
+      summary: "Lista as entidades do tipo informado que aceitam override de SEO.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelSeoEntitiesInputSchema)
+  .output(PanelSeoEntitiesOutputSchema);
+
+export const getSeo = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/seo/{entityType}/{entityId}",
+      operationId: "getPanelSeo",
+      summary: "Retorna o override salvo e os valores de SEO resolvidos da entidade.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelSeoInputSchema)
+  .output(PanelSeoOutputSchema);
+
+export const saveSeo = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/seo/{entityType}/{entityId}",
+      operationId: "savePanelSeo",
+      summary: "Salva o override de SEO da entidade; campo vazio volta a herdar.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SaveSeoInputSchema)
+  .output(PanelSeoOutputSchema);
+
+export const revertSeo = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/seo/{entityType}/{entityId}",
+      operationId: "revertPanelSeo",
+      summary: "Descarta o override de SEO da entidade e volta a herdar tudo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelSeoInputSchema)
+  .output(PanelSeoOutputSchema);
+
 export const listAuditLogs = panelRead
   .meta(
     openapi({
@@ -1005,17 +1746,39 @@ export const panelContractObject = {
   createStore,
   listOrders,
   getOrder,
+  getOrderTransitions,
+  transitionOrder,
+  recordOrderPayment,
   listCustomers,
   getCustomer,
   listProducts,
+  getProduct,
+  createProduct,
+  updateProduct,
+  deleteProduct,
   listCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   listDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
   listTags,
+  createTag,
+  updateTag,
+  deleteTag,
   listKits,
   listCoupons,
   createCoupon,
   updateCoupon,
   deleteCoupon,
+  getStoreSeo,
+  saveStoreSeo,
+  listSeoEntities,
+  getSeo,
+  saveSeo,
+  revertSeo,
   listAuditLogs,
   listTeamMembers,
 };
@@ -1035,15 +1798,45 @@ export type PanelOrder = v.InferOutput<typeof PanelOrderSchema>;
 
 export type PanelOrderDetail = v.InferOutput<typeof PanelOrderDetailSchema>;
 
+export type PanelOrderItem = v.InferOutput<typeof PanelOrderItemSchema>;
+
+export type PanelOrderEvent = v.InferOutput<typeof PanelOrderEventSchema>;
+
+export type PanelOrderTransition = v.InferOutput<typeof PanelOrderTransitionSchema>;
+
 export type PanelCustomer = v.InferOutput<typeof PanelCustomerSchema>;
 
 export type PanelCustomerDetail = v.InferOutput<typeof PanelCustomerDetailSchema>;
 
 export type PanelProduct = v.InferOutput<typeof PanelProductSchema>;
 
+export type PanelProductVariation = v.InferOutput<typeof PanelProductVariationSchema>;
+
+export type PanelProductDetail = v.InferOutput<typeof PanelProductDetailSchema>;
+
+/** The variation row the editor sends, after trimming and validation. */
+export type ProductVariationInput = v.InferOutput<typeof ProductVariationInputSchema>;
+
 export type PanelCategory = v.InferOutput<typeof PanelCategorySchema>;
 
 export type PanelCoupon = v.InferOutput<typeof PanelCouponSchema>;
+
+/** SEO row shapes: the saved override, the resolved values, and the list row. */
+export type SeoEntityType = v.InferOutput<typeof SeoEntityTypeSchema>;
+
+export type SeoFields = v.InferOutput<typeof SeoFieldsSchema>;
+
+export type SeoResolved = v.InferOutput<typeof SeoResolvedSchema>;
+
+export type SeoSource = v.InferOutput<typeof SeoSourceSchema>;
+
+export type StoreSeoSettings = v.InferOutput<typeof StoreSeoSettingsSchema>;
+
+export type PanelSeoEntity = v.InferOutput<typeof PanelSeoEntitySchema>;
+
+export type PanelSeo = v.InferOutput<typeof PanelSeoOutputSchema>;
+
+export type PanelStoreSeo = v.InferOutput<typeof PanelStoreSeoOutputSchema>;
 
 export type PanelAuditLog = v.InferOutput<typeof PanelAuditLogSchema>;
 
@@ -1053,7 +1846,11 @@ export type ActiveSession = v.InferOutput<typeof ActiveSessionSchema>;
 export type TeamMember = v.InferOutput<typeof TeamMemberSchema>;
 
 /** Enum unions, mirroring the contract's lowercase ASCII stored values. */
-export type OrderStatus = v.InferOutput<typeof OrderStatusSchema>;
+export type FinancialStatus = v.InferOutput<typeof FinancialStatusSchema>;
+
+export type FulfilmentStatus = v.InferOutput<typeof FulfilmentStatusSchema>;
+
+export type PaymentMethod = v.InferOutput<typeof PaymentMethodSchema>;
 
 export type StockMode = v.InferOutput<typeof StockModeSchema>;
 
