@@ -17,11 +17,23 @@ const inter = Inter({
   display: "swap",
 });
 
+// A loja define o próprio título em `generateMetadata`; aqui só o template que
+// ele herda (`Cardápio` vira `Cardápio · Menuza`), o padrão das páginas
+// institucionais e uma base para as URLs relativas que sobrarem. O esquema é o
+// do ambiente: `https` em produção, `http` no local.
+const mainDomain = (process.env.WEB_MAIN_DOMAIN ?? "").trim();
+
+const mainOrigin = mainDomain
+  ? `${process.env.NODE_ENV === "production" ? "https" : "http"}://${mainDomain}`
+  : null;
+
 export const metadata: Metadata = {
-  title: "Menuza",
-  description: "Fundação local do Menuza",
+  title: { default: "Menuza", template: "%s · Menuza" },
+  description:
+    "Cardápios, pedidos e gestão de lojas de comida em um só lugar. Monte o pedido pelo cardápio online da loja.",
   applicationName: "Menuza",
   manifest: "/manifest.webmanifest",
+  metadataBase: mainOrigin ? new URL(mainOrigin) : undefined,
 };
 
 export const viewport: Viewport = {

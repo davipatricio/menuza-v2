@@ -9,7 +9,8 @@
  *                      (/store, /menu, /cart, /checkout)
  *
  * Infrastructure paths (/serwist/*, /manifest.webmanifest, /favicon.ico,
- * /_next/static, /_next/image) are always permitted regardless of mode.
+ * /sitemap.xml, /robots.txt, /_next/static, /_next/image) are always permitted
+ * regardless of mode.
  * Hosts are resolved by an explicit allowlist (fail-closed): a `storefront`
  * entry in `WEB_HOST_MAP` is the storefront, `WEB_MAIN_DOMAIN` is the main
  * domain, and the development hosts are main outside production. Every other
@@ -73,7 +74,13 @@ const TRUSTED_PROXY_IPS = (process.env.TRUSTED_PROXY_HOP_IPS ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const ALWAYS_ALLOW = ["/serwist", "/manifest.webmanifest", "/favicon.ico"];
+const ALWAYS_ALLOW = [
+  "/serwist",
+  "/manifest.webmanifest",
+  "/favicon.ico",
+  "/sitemap.xml",
+  "/robots.txt",
+];
 
 const PREFIXES = {
   main: ["/about", "/pricing", "/contact", "/dashboard"],

@@ -7,7 +7,13 @@ import { describe, expect, test } from "bun:test";
 // Re-implement the same logic as `apps/web/src/proxy.ts` for unit testing without
 // importing Next-specific types. The production file remains the source of
 // truth; this re-implementation must be kept in sync.
-const ALWAYS_ALLOW = ["/serwist", "/manifest.webmanifest", "/favicon.ico"];
+const ALWAYS_ALLOW = [
+  "/serwist",
+  "/manifest.webmanifest",
+  "/favicon.ico",
+  "/sitemap.xml",
+  "/robots.txt",
+];
 
 const PREFIXES = {
   main: ["/about", "/pricing", "/contact", "/dashboard"],
@@ -99,6 +105,19 @@ describe("proxy logic", () => {
     expect(isAlwaysAllowed("/manifest.webmanifest")).toBe(true);
     expect(isAlwaysAllowed("/_next/static/chunks/main.js")).toBe(true);
     expect(isAlwaysAllowed("/api/foo")).toBe(false);
+  });
+
+  test("sitemap.xml and robots.txt are permitted in every mode", () => {
+    // Both routes read proxy-set headers and are mounted for every host, so
+    // they sit in the always-allow list next to the manifest.
+    expect(isAlwaysAllowed("/sitemap.xml")).toBe(true);
+    expect(isAlwaysAllowed("/robots.txt")).toBe(true);
+    // Not prefix matches: lookalikes stay denied.
+    expect(isAlwaysAllowed("/sitemap-other.xml")).toBe(false);
+    expect(isAlwaysAllowed("/robots.txt/extra")).toBe(false);
+    // The mode lists still deny the other mode's surfaces.
+    expect(isAllowed("main", "/store")).toBe(false);
+    expect(isAllowed("storefront", "/dashboard")).toBe(false);
   });
 
   test("isAllowed root is permitted in every mode", () => {
