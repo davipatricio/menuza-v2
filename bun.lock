@@ -149,6 +149,7 @@
       "name": "@menuza/api-commerce",
       "version": "0.0.0",
       "dependencies": {
+        "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@orpc/server": "catalog:",
@@ -210,6 +211,7 @@
       },
       "devDependencies": {
         "@oxlint/plugins": "catalog:",
+        "bun-types": "catalog:",
         "oxfmt": "catalog:",
         "oxlint": "catalog:",
         "typescript": "catalog:",

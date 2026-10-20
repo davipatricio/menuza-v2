@@ -9,6 +9,7 @@
     "./errors": "./src/errors/index.ts",
     "./push": "./src/push/index.ts",
     "./sentry-privacy": "./src/sentry-privacy/index.ts",
+    "./seo": "./src/seo/index.ts",
     "./tenant": "./src/tenant/index.ts"
   },
   "scripts": {
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
+    "bun-types": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"
