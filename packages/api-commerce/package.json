@@ -16,6 +16,7 @@
     "typecheck": "bun check"
   },
   "dependencies": {
+    "@menuza/db": "workspace:*",
     "@menuza/orpc-server": "workspace:*",
     "@menuza/shared": "workspace:*",
     "@orpc/server": "catalog:",
