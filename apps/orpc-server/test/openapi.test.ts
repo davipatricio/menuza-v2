@@ -19,6 +19,28 @@ import {
 // packages/shared/AGENTS.md for the convention.
 const COMMERCE_ROUTES = [
   { procedure: commerceContractObject.health, method: "get", path: "/health" },
+  { procedure: commerceContractObject.public.getStore, method: "get", path: "/store" },
+  { procedure: commerceContractObject.public.listMenu, method: "get", path: "/menu" },
+  { procedure: commerceContractObject.public.listSitemap, method: "get", path: "/sitemap" },
+  { procedure: commerceContractObject.orders.create, method: "post", path: "/orders" },
+  { procedure: commerceContractObject.orders.get, method: "get", path: "/orders/{code}" },
+  {
+    procedure: commerceContractObject.orders.transition,
+    method: "post",
+    path: "/orders/{code}/transition",
+  },
+  {
+    procedure: commerceContractObject.orders.recordPayment,
+    method: "post",
+    path: "/orders/{code}/payment",
+  },
+  {
+    procedure: commerceContractObject.orders.expire,
+    method: "post",
+    path: "/orders/{code}/expire",
+  },
+  { procedure: commerceContractObject.wallet.get, method: "get", path: "/wallet" },
+  { procedure: commerceContractObject.wallet.adjust, method: "post", path: "/wallet/adjust" },
 ] as const;
 
 const TENANT_ROUTES = [
@@ -82,6 +104,21 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/orders/{orderCode}",
   },
   {
+    procedure: tenantContractObject.panel.getOrderTransitions,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/orders/{orderCode}/transitions",
+  },
+  {
+    procedure: tenantContractObject.panel.transitionOrder,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/orders/{orderCode}/transition",
+  },
+  {
+    procedure: tenantContractObject.panel.recordOrderPayment,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/orders/{orderCode}/payment",
+  },
+  {
     procedure: tenantContractObject.panel.listCustomers,
     method: "get",
     path: "/panel/stores/{storeSlug}/customers",
@@ -97,9 +134,44 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/products",
   },
   {
+    procedure: tenantContractObject.panel.getProduct,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/products/{productId}",
+  },
+  {
+    procedure: tenantContractObject.panel.createProduct,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/products",
+  },
+  {
+    procedure: tenantContractObject.panel.updateProduct,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/products/{productId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteProduct,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/products/{productId}",
+  },
+  {
     procedure: tenantContractObject.panel.listCategories,
     method: "get",
     path: "/panel/stores/{storeSlug}/categories",
+  },
+  {
+    procedure: tenantContractObject.panel.createCategory,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/categories",
+  },
+  {
+    procedure: tenantContractObject.panel.updateCategory,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/categories/{categoryId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteCategory,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/categories/{categoryId}",
   },
   {
     procedure: tenantContractObject.panel.listDepartments,
@@ -107,9 +179,39 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/departments",
   },
   {
+    procedure: tenantContractObject.panel.createDepartment,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/departments",
+  },
+  {
+    procedure: tenantContractObject.panel.updateDepartment,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/departments/{departmentId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteDepartment,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/departments/{departmentId}",
+  },
+  {
     procedure: tenantContractObject.panel.listTags,
     method: "get",
     path: "/panel/stores/{storeSlug}/tags",
+  },
+  {
+    procedure: tenantContractObject.panel.createTag,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/tags",
+  },
+  {
+    procedure: tenantContractObject.panel.updateTag,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/tags/{tagId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteTag,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/tags/{tagId}",
   },
   {
     procedure: tenantContractObject.panel.listKits,
@@ -135,6 +237,36 @@ const TENANT_ROUTES = [
     procedure: tenantContractObject.panel.deleteCoupon,
     method: "delete",
     path: "/panel/stores/{storeSlug}/coupons/{couponId}",
+  },
+  {
+    procedure: tenantContractObject.panel.getStoreSeo,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/seo",
+  },
+  {
+    procedure: tenantContractObject.panel.saveStoreSeo,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/seo",
+  },
+  {
+    procedure: tenantContractObject.panel.listSeoEntities,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/seo/entities",
+  },
+  {
+    procedure: tenantContractObject.panel.getSeo,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/seo/{entityType}/{entityId}",
+  },
+  {
+    procedure: tenantContractObject.panel.saveSeo,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/seo/{entityType}/{entityId}",
+  },
+  {
+    procedure: tenantContractObject.panel.revertSeo,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/seo/{entityType}/{entityId}",
   },
   {
     procedure: tenantContractObject.panel.listAuditLogs,

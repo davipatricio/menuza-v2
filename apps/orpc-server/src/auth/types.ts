@@ -31,8 +31,12 @@ export const TENANT_CAPABILITIES = [
   "dashboard:read",
   "orders:read",
   "orders:write",
+  "orders:refund",
+  "wallet:adjust",
   "team:read",
   "team:write",
+  "seo:write",
+  "catalog:write",
 ] as const;
 
 export type TenantCapability = (typeof TENANT_CAPABILITIES)[number];

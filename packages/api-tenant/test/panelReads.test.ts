@@ -71,8 +71,17 @@ interface OrderRow {
   tenantId: string;
   code: string;
   customerId: string;
+  subtotalCents: number;
+  discountCents: number;
+  shippingCents: number;
+  walletAppliedCents: number;
+  cashbackCents: number;
   totalCents: number;
-  status: string;
+  financialStatus: string;
+  fulfilmentStatus: string;
+  paymentMethod: string | null;
+  paidAt: Temporal.PlainDateTime | null;
+  expiresAt: Temporal.PlainDateTime | null;
   createdAt: Temporal.PlainDateTime;
 }
 
@@ -84,6 +93,29 @@ interface ProductRow {
   categoryId: string | null;
   available: boolean;
   sortOrder: number;
+}
+
+interface OrderItemRow {
+  id: string;
+  tenantId: string;
+  orderId: string;
+  name: string;
+  unitPriceCents: number;
+  quantity: number;
+  lineTotalCents: number;
+  optionsLabel: string | null;
+}
+
+interface OrderEventRow {
+  id: string;
+  tenantId: string;
+  orderId: string;
+  type: string;
+  fromValue: string | null;
+  toValue: string | null;
+  actorMemberId: string | null;
+  reason: string | null;
+  createdAt: Temporal.PlainDateTime;
 }
 
 interface CategoryRow {
@@ -139,6 +171,10 @@ const customers: CustomerRow[] = [];
 
 const orders: OrderRow[] = [];
 
+const orderItems: OrderItemRow[] = [];
+
+const orderEvents: OrderEventRow[] = [];
+
 const products: ProductRow[] = [];
 
 const categories: CategoryRow[] = [];
@@ -159,6 +195,8 @@ const originals = {
   sessionCreate: db.orm.public.Session.create,
   customerWhere: db.orm.public.Customer.where,
   orderWhere: db.orm.public.Order.where,
+  orderItemWhere: db.orm.public.OrderItem.where,
+  orderEventWhere: db.orm.public.OrderEvent.where,
   productWhere: db.orm.public.Product.where,
   categoryWhere: db.orm.public.Category.where,
   couponWhere: db.orm.public.Coupon.where,
@@ -298,6 +336,26 @@ function installFakes() {
       ),
     )) as any;
 
+  // SAFETY: Mocking OrderItem.where; `getOrder` lists the lines of one order.
+  db.orm.public.OrderItem.where = ((filter: { tenantId: string; orderId?: string }) =>
+    rows(
+      orderItems.filter(
+        (row) =>
+          row.tenantId === filter.tenantId &&
+          (filter.orderId === undefined || row.orderId === filter.orderId),
+      ),
+    )) as any;
+
+  // SAFETY: Mocking OrderEvent.where; `getOrder` lists the trail of one order.
+  db.orm.public.OrderEvent.where = ((filter: { tenantId: string; orderId?: string }) =>
+    rows(
+      orderEvents.filter(
+        (row) =>
+          row.tenantId === filter.tenantId &&
+          (filter.orderId === undefined || row.orderId === filter.orderId),
+      ),
+    )) as any;
+
   // SAFETY: Mocking Product.where; `.include()` attaches the category and the
   // variations, both filtered to the same tenant.
   db.orm.public.Product.where = ((filter: TenantFilter) => {
@@ -344,6 +402,8 @@ function restoreFakes() {
   db.orm.public.Session.create = originals.sessionCreate;
   db.orm.public.Customer.where = originals.customerWhere;
   db.orm.public.Order.where = originals.orderWhere;
+  db.orm.public.OrderItem.where = originals.orderItemWhere;
+  db.orm.public.OrderEvent.where = originals.orderEventWhere;
   db.orm.public.Product.where = originals.productWhere;
   db.orm.public.Category.where = originals.categoryWhere;
   db.orm.public.Coupon.where = originals.couponWhere;
@@ -514,8 +574,17 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       tenantId: TENANT_ID,
       code: "ORD-101",
       customerId: CUSTOMER_ID,
+      subtotalCents: 14550,
+      discountCents: 0,
+      shippingCents: 0,
+      walletAppliedCents: 0,
+      cashbackCents: 145,
       totalCents: 14550,
-      status: "ready",
+      financialStatus: "paid",
+      fulfilmentStatus: "ready",
+      paymentMethod: "pix",
+      paidAt: at("2026-09-20 12:31"),
+      expiresAt: null,
       createdAt: at("2026-09-20 12:30"),
     });
 
@@ -524,8 +593,17 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       tenantId: OTHER_TENANT_ID,
       code: "ORD-999",
       customerId: OTHER_CUSTOMER_ID,
+      subtotalCents: 99900,
+      discountCents: 0,
+      shippingCents: 0,
+      walletAppliedCents: 0,
+      cashbackCents: 0,
       totalCents: 99900,
-      status: "pending",
+      financialStatus: "pending",
+      fulfilmentStatus: "pending",
+      paymentMethod: null,
+      paidAt: null,
+      expiresAt: null,
       createdAt: at("2026-09-20 13:00"),
     });
 
@@ -647,7 +725,9 @@ describe("panel reads — Unit (infrastructure-free)", () => {
         customerId: CUSTOMER_ID,
         customerName: "Maria Silva",
         totalCents: 14550,
-        status: "ready",
+        financialStatus: "paid",
+        fulfilmentStatus: "ready",
+        paymentMethod: "pix",
       });
       // No cross-tenant leak: ORD-999 belongs to the other store.
       expect(result.orders.some((order) => order.code === "ORD-999")).toBe(false);

@@ -32,9 +32,17 @@ export function toPanelTimestamp(value: Temporal.PlainDateTime): string {
   return `${value.toString({ smallestUnit: "second" })}Z`;
 }
 
+/** Nullable timestamps (`Order.paidAt` / `Order.expiresAt`) cross as null. */
+export function toOptionalPanelTimestamp(
+  value: Temporal.PlainDateTime | null | undefined,
+): string | null {
+  return value == null ? null : toPanelTimestamp(value);
+}
+
 /**
- * One order row as the panel's tables read it: ISO timestamp, Int cents, and
- * the customer's name resolved from the eager-loaded relation.
+ * One order row as the panel's tables read it: ISO timestamps, Int cents, the
+ * two status axes, and the customer's name resolved from the eager-loaded
+ * relation.
  */
 export function toPanelOrder(order: OrderWithCustomer): PanelOrder {
   // `Order.customerId` is NOT NULL with a RESTRICT FK, so the eager load
@@ -51,8 +59,17 @@ export function toPanelOrder(order: OrderWithCustomer): PanelOrder {
     code: order.code,
     customerId: order.customerId,
     customerName,
+    subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    shippingCents: order.shippingCents,
+    walletAppliedCents: order.walletAppliedCents,
+    cashbackCents: order.cashbackCents,
     totalCents: order.totalCents,
-    status: order.status,
+    financialStatus: order.financialStatus,
+    fulfilmentStatus: order.fulfilmentStatus,
+    paymentMethod: order.paymentMethod,
+    paidAt: toOptionalPanelTimestamp(order.paidAt),
+    expiresAt: toOptionalPanelTimestamp(order.expiresAt),
     createdAt: toPanelTimestamp(order.createdAt),
   };
 }
