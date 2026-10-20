@@ -363,146 +363,475 @@ if (mawifoodsId) {
     customerIdByEmail.set(fixture.email, customer.id);
   }
 
-  // The mockup's UPPERCASE statuses become the contract's lowercase ASCII set;
-  // the pt-BR labels stay in the UI.
-  const orderFixtures = [
-    {
-      code: "ORD-101",
-      email: "maria@example.com",
-      totalCents: 14550,
-      status: "ready",
-      at: "2026-09-20 12:30",
-    },
-    {
-      code: "ORD-102",
-      email: "joao@example.com",
-      totalCents: 8200,
-      status: "confirmed",
-      at: "2026-09-20 12:45",
-    },
-    {
-      code: "ORD-103",
-      email: "ana@example.com",
-      totalCents: 21000,
-      status: "delivered",
-      at: "2026-09-20 11:15",
-    },
-    {
-      code: "ORD-104",
-      email: "carlos@example.com",
-      totalCents: 4990,
-      status: "pending",
-      at: "2026-09-20 13:00",
-    },
-    {
-      code: "ORD-105",
-      email: "beatriz@example.com",
-      totalCents: 12000,
-      status: "canceled",
-      at: "2026-09-20 10:20",
-    },
-    {
-      code: "ORD-106",
-      email: "lucas@example.com",
-      totalCents: 9500,
-      status: "confirmed",
-      at: "2026-09-20 13:10",
-    },
-    {
-      code: "ORD-107",
-      email: "fernanda@example.com",
-      totalCents: 31000,
-      status: "ready",
-      at: "2026-09-20 13:15",
-    },
-    {
-      code: "ORD-108",
-      email: "rafael@example.com",
-      totalCents: 6400,
-      status: "pending",
-      at: "2026-09-20 13:20",
-    },
-    {
-      code: "ORD-109",
-      email: "juliana@example.com",
-      totalCents: 17820,
-      status: "delivered",
-      at: "2026-09-20 09:40",
-    },
-    {
-      code: "ORD-110",
-      email: "rodrigo@example.com",
-      totalCents: 5400,
-      status: "confirmed",
-      at: "2026-09-20 13:25",
-    },
-    {
-      code: "ORD-111",
-      email: "paula@example.com",
-      totalCents: 13290,
-      status: "awaiting_payment",
-      at: "2026-09-20 13:30",
-    },
-    {
-      code: "ORD-112",
-      email: "tiago@example.com",
-      totalCents: 8850,
-      status: "paid",
-      at: "2026-09-20 13:35",
-    },
-  ] as const;
-
-  for (const fixture of orderFixtures) {
-    await db.orm.public.Order.upsert({
-      create: {
-        id: stableId("order", fixture.code),
-        tenantId: mawifoodsId,
-        code: fixture.code,
-        // SAFETY: every fixture email is one of the customers seeded above.
-        customerId: customerIdByEmail.get(fixture.email)!,
-        totalCents: fixture.totalCents,
-        status: fixture.status,
-        createdAt: Temporal.PlainDateTime.from(fixture.at),
-      },
-      update: {},
-      conflictOn: { tenantId: mawifoodsId, code: fixture.code },
-    });
-  }
-
   // `value` is cents for a fixed discount and a whole percent for a percentage
-  // one — the same Int column, read through discountType.
+  // one — the same Int column, read through discountType. Seeded before the
+  // orders because `Order.couponId` names one of them, and `usageCount` is
+  // derived from the redemptions seeded below so the two can never disagree.
   const couponFixtures = [
-    {
-      code: "BEMVINDO10",
-      discountType: "percentage",
-      value: 10,
-      usageCount: 142,
-      status: "active",
-    },
-    { code: "QUERO20", discountType: "fixed", value: 2000, usageCount: 45, status: "active" },
-    {
-      code: "BLACKFRIDAY",
-      discountType: "percentage",
-      value: 30,
-      usageCount: 500,
-      status: "expired",
-    },
-    { code: "TESTE", discountType: "fixed", value: 500, usageCount: 0, status: "disabled" },
+    { code: "BEMVINDO10", discountType: "percentage", value: 10, status: "active" },
+    { code: "QUERO20", discountType: "fixed", value: 2000, status: "active" },
+    { code: "BLACKFRIDAY", discountType: "percentage", value: 30, status: "expired" },
+    { code: "TESTE", discountType: "fixed", value: 500, status: "disabled" },
   ] as const;
+
+  const redemptionFixtures = [
+    { code: "BEMVINDO10", orderCode: "ORD-101", email: "maria@example.com", discountCents: 618 },
+    { code: "QUERO20", orderCode: "ORD-103", email: "ana@example.com", discountCents: 2000 },
+    { code: "QUERO20", orderCode: "ORD-105", email: "beatriz@example.com", discountCents: 2000 },
+  ] as const;
+
+  const couponIdByCode = new Map<string, string>();
 
   for (const fixture of couponFixtures) {
-    await db.orm.public.Coupon.upsert({
+    const usageCount = redemptionFixtures.filter((r) => r.code === fixture.code).length;
+
+    const coupon = await db.orm.public.Coupon.upsert({
       create: {
         id: stableId("coupon", fixture.code),
         tenantId: mawifoodsId,
         code: fixture.code,
         discountType: fixture.discountType,
         value: fixture.value,
-        usageCount: fixture.usageCount,
+        usageCount,
         status: fixture.status,
       },
       update: {},
       conflictOn: { tenantId: mawifoodsId, code: fixture.code },
+    });
+
+    couponIdByCode.set(fixture.code, coupon.id);
+  }
+
+  // Two independent axes since MEN-93 split the old single `status`: money and
+  // fulfilment move on their own timelines. The spread covers every financial
+  // status the panel can show and most of the fulfilment ones. Money is derived
+  // here — `subtotal` is the sum of the items, `total` is
+  // `subtotal - discount + shipping` — because the contract's check enforces
+  // exactly that arithmetic.
+  const orderFixtures = [
+    {
+      code: "ORD-101",
+      email: "maria@example.com",
+      financialStatus: "paid",
+      fulfilmentStatus: "ready",
+      paymentMethod: "pix",
+      at: "2026-09-20 12:30",
+      paidAt: "2026-09-20 12:31",
+      discountCents: 618,
+      shippingCents: 0,
+      cashbackCents: 145,
+      walletAppliedCents: 0,
+      couponCode: "BEMVINDO10",
+      items: [
+        { product: "Marmita frango grelhado", quantity: 2 },
+        { product: "Suco verde 500ml", quantity: 1 },
+      ],
+    },
+    {
+      code: "ORD-102",
+      email: "joao@example.com",
+      financialStatus: "paid",
+      fulfilmentStatus: "confirmed",
+      paymentMethod: "credit",
+      at: "2026-09-20 12:45",
+      paidAt: "2026-09-20 12:46",
+      discountCents: 500,
+      shippingCents: 900,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita carne desfiada", quantity: 2 },
+        { product: "Brownie low carb", quantity: 1 },
+      ],
+    },
+    {
+      code: "ORD-103",
+      email: "ana@example.com",
+      financialStatus: "refunded",
+      fulfilmentStatus: "completed",
+      paymentMethod: "debit",
+      at: "2026-09-20 11:15",
+      paidAt: "2026-09-20 11:16",
+      discountCents: 2000,
+      shippingCents: 1500,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      couponCode: "QUERO20",
+      items: [
+        { product: "Marmita frango grelhado", quantity: 3 },
+        { product: "Suco verde 500ml", quantity: 3 },
+      ],
+    },
+    {
+      code: "ORD-104",
+      email: "carlos@example.com",
+      financialStatus: "canceled",
+      fulfilmentStatus: "canceled",
+      paymentMethod: null,
+      at: "2026-09-20 13:00",
+      paidAt: null,
+      discountCents: 0,
+      shippingCents: 0,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      items: [{ product: "Marmita carne desfiada", quantity: 1 }],
+    },
+    {
+      code: "ORD-105",
+      email: "beatriz@example.com",
+      financialStatus: "refunded",
+      fulfilmentStatus: "canceled",
+      paymentMethod: "pix",
+      at: "2026-09-20 10:20",
+      paidAt: "2026-09-20 10:21",
+      discountCents: 2000,
+      shippingCents: 0,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      couponCode: "QUERO20",
+      items: [
+        { product: "Marmita frango grelhado", quantity: 4 },
+        { product: "Suco verde 500ml", quantity: 2 },
+      ],
+    },
+    {
+      code: "ORD-106",
+      email: "lucas@example.com",
+      financialStatus: "paid",
+      fulfilmentStatus: "preparing",
+      paymentMethod: "meal_voucher",
+      at: "2026-09-20 13:10",
+      paidAt: "2026-09-20 13:11",
+      discountCents: 0,
+      shippingCents: 0,
+      cashbackCents: 95,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita carne desfiada", quantity: 3 },
+        { product: "Brownie low carb", quantity: 2 },
+      ],
+    },
+    {
+      code: "ORD-107",
+      email: "fernanda@example.com",
+      financialStatus: "paid",
+      fulfilmentStatus: "ready",
+      paymentMethod: "food_voucher",
+      at: "2026-09-20 13:15",
+      paidAt: "2026-09-20 13:16",
+      discountCents: 1500,
+      shippingCents: 1200,
+      cashbackCents: 310,
+      walletAppliedCents: 500,
+      items: [
+        { product: "Marmita frango grelhado", quantity: 5 },
+        { product: "Marmita carne desfiada", quantity: 5 },
+      ],
+    },
+    {
+      code: "ORD-108",
+      email: "rafael@example.com",
+      financialStatus: "expired",
+      fulfilmentStatus: "canceled",
+      paymentMethod: "pix",
+      at: "2026-09-20 13:20",
+      paidAt: null,
+      discountCents: 0,
+      shippingCents: 0,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita frango grelhado", quantity: 2 },
+        { product: "Suco verde 500ml", quantity: 1 },
+      ],
+    },
+    {
+      code: "ORD-109",
+      email: "juliana@example.com",
+      financialStatus: "paid",
+      fulfilmentStatus: "completed",
+      paymentMethod: "credit",
+      at: "2026-09-20 09:40",
+      paidAt: "2026-09-20 09:41",
+      discountCents: 1000,
+      shippingCents: 0,
+      cashbackCents: 178,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita carne desfiada", quantity: 6 },
+        { product: "Suco verde 500ml", quantity: 2 },
+      ],
+    },
+    {
+      code: "ORD-110",
+      email: "rodrigo@example.com",
+      financialStatus: "pending_on_delivery",
+      fulfilmentStatus: "confirmed",
+      paymentMethod: "cash_on_delivery",
+      at: "2026-09-20 13:25",
+      paidAt: null,
+      discountCents: 0,
+      shippingCents: 600,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita frango grelhado", quantity: 1 },
+        { product: "Brownie low carb", quantity: 1 },
+      ],
+    },
+    {
+      code: "ORD-111",
+      email: "paula@example.com",
+      financialStatus: "awaiting_payment",
+      fulfilmentStatus: "pending",
+      paymentMethod: "pix",
+      at: "2026-09-20 13:30",
+      paidAt: null,
+      expiresAt: "2026-09-20 14:00",
+      discountCents: 500,
+      shippingCents: 0,
+      cashbackCents: 0,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita carne desfiada", quantity: 4 },
+        { product: "Suco verde 500ml", quantity: 1 },
+      ],
+    },
+    {
+      code: "ORD-112",
+      email: "tiago@example.com",
+      financialStatus: "paid",
+      fulfilmentStatus: "out_for_delivery",
+      paymentMethod: "card_on_delivery",
+      at: "2026-09-20 13:35",
+      paidAt: "2026-09-20 13:36",
+      discountCents: 0,
+      shippingCents: 900,
+      cashbackCents: 88,
+      walletAppliedCents: 0,
+      items: [
+        { product: "Marmita frango grelhado", quantity: 2 },
+        { product: "Marmita carne desfiada", quantity: 1 },
+        { product: "Suco verde 500ml", quantity: 1 },
+      ],
+    },
+  ] as const;
+
+  const priceByProduct = new Map(productFixtures.map((p) => [p.name, p.priceCents]));
+
+  for (const fixture of orderFixtures) {
+    const orderId = stableId("order", fixture.code);
+
+    const items = fixture.items.map((item, index) => {
+      // SAFETY: every fixture item names one of the products seeded above.
+      const unitPriceCents = priceByProduct.get(item.product)!;
+
+      return {
+        id: stableId("orderItem", `${fixture.code}:${index}`),
+        name: item.product,
+        productId: stableId("product", item.product),
+        variationId: stableId("variation", item.product),
+        unitPriceCents,
+        quantity: item.quantity,
+        lineTotalCents: unitPriceCents * item.quantity,
+      };
+    });
+
+    const subtotalCents = items.reduce((sum, item) => sum + item.lineTotalCents, 0);
+
+    const totalCents = subtotalCents - fixture.discountCents + fixture.shippingCents;
+
+    const couponCode = "couponCode" in fixture ? fixture.couponCode : null;
+
+    const couponId = couponCode ? (couponIdByCode.get(couponCode) ?? null) : null;
+
+    await db.orm.public.Order.upsert({
+      create: {
+        id: orderId,
+        tenantId: mawifoodsId,
+        code: fixture.code,
+        // SAFETY: every fixture email is one of the customers seeded above.
+        customerId: customerIdByEmail.get(fixture.email)!,
+        subtotalCents,
+        discountCents: fixture.discountCents,
+        shippingCents: fixture.shippingCents,
+        walletAppliedCents: fixture.walletAppliedCents,
+        cashbackCents: fixture.cashbackCents,
+        totalCents,
+        financialStatus: fixture.financialStatus,
+        fulfilmentStatus: fixture.fulfilmentStatus,
+        paymentMethod: fixture.paymentMethod,
+        paidAt: fixture.paidAt ? Temporal.PlainDateTime.from(fixture.paidAt) : null,
+        expiresAt: "expiresAt" in fixture ? Temporal.PlainDateTime.from(fixture.expiresAt) : null,
+        couponId,
+        createdAt: Temporal.PlainDateTime.from(fixture.at),
+        updatedAt: Temporal.PlainDateTime.from(fixture.at),
+      },
+      update: {},
+      conflictOn: { tenantId: mawifoodsId, code: fixture.code },
+    });
+
+    for (const item of items) {
+      await db.orm.public.OrderItem.upsert({
+        create: { ...item, tenantId: mawifoodsId, orderId },
+        update: {},
+        conflictOn: { id: item.id },
+      });
+    }
+
+    // Append-only: the first event is the order being taken, the second the
+    // money settling (or the payment awaiting/never arriving).
+    const events = [
+      { type: "fulfilment_changed", fromValue: null, toValue: fixture.fulfilmentStatus },
+      { type: "financial_changed", fromValue: null, toValue: fixture.financialStatus },
+    ] as const;
+
+    for (const [index, event] of events.entries()) {
+      const id = stableId("orderEvent", `${fixture.code}:${index}`);
+
+      await db.orm.public.OrderEvent.upsert({
+        create: {
+          id,
+          tenantId: mawifoodsId,
+          orderId,
+          type: event.type,
+          fromValue: event.fromValue,
+          toValue: event.toValue,
+          createdAt: Temporal.PlainDateTime.from(fixture.at),
+        },
+        update: {},
+        conflictOn: { id },
+      });
+    }
+  }
+
+  for (const fixture of redemptionFixtures) {
+    const orderId = stableId("order", fixture.orderCode);
+    // SAFETY: every redemption names a coupon and an order seeded above.
+    const couponId = couponIdByCode.get(fixture.code)!;
+    const customerId = customerIdByEmail.get(fixture.email)!;
+
+    await db.orm.public.CouponRedemption.upsert({
+      create: {
+        id: stableId("couponRedemption", `${fixture.code}:${fixture.orderCode}`),
+        tenantId: mawifoodsId,
+        couponId,
+        orderId,
+        customerId,
+        discountCents: fixture.discountCents,
+      },
+      update: {},
+      conflictOn: { couponId, orderId },
+    });
+  }
+
+  // Maria's wallet: the cashback the seeded orders earned, spent down by one
+  // reserve. `balanceCents` is the rollup of the transactions below.
+  const walletId = stableId("wallet", "maria@example.com");
+
+  await db.orm.public.Wallet.upsert({
+    create: {
+      id: walletId,
+      tenantId: mawifoodsId,
+      // SAFETY: Maria's customer row is seeded above.
+      customerId: customerIdByEmail.get("maria@example.com")!,
+      balanceCents: 145,
+      updatedAt: Temporal.PlainDateTime.from("2026-09-20 12:32"),
+    },
+    update: {},
+    conflictOn: { tenantId: mawifoodsId, customerId: customerIdByEmail.get("maria@example.com")! },
+  });
+
+  const walletTransactions = [
+    {
+      kind: "cashback_credit",
+      amountCents: 145,
+      orderCode: "ORD-101",
+      reason: "Cashback do pedido ORD-101",
+      at: "2026-09-20 12:32",
+    },
+    {
+      kind: "reserve",
+      amountCents: -145,
+      orderCode: "ORD-101",
+      reason: "Reserva aplicada no pedido ORD-101",
+      at: "2026-09-20 12:33",
+    },
+    {
+      kind: "reserve_release",
+      amountCents: 145,
+      orderCode: "ORD-101",
+      reason: "Reserva liberada no pedido ORD-101",
+      at: "2026-09-20 12:34",
+    },
+  ] as const;
+
+  for (const fixture of walletTransactions) {
+    const id = stableId("walletTransaction", `${fixture.kind}:${fixture.at}`);
+
+    await db.orm.public.WalletTransaction.upsert({
+      create: {
+        id,
+        tenantId: mawifoodsId,
+        walletId,
+        orderId: stableId("order", fixture.orderCode),
+        kind: fixture.kind,
+        amountCents: fixture.amountCents,
+        reason: fixture.reason,
+        createdAt: Temporal.PlainDateTime.from(fixture.at),
+      },
+      update: {},
+      conflictOn: { id },
+    });
+  }
+
+  // SEO overrides: one store-wide settings row plus per-entity metadata.
+  const settingsId = stableId("storeSettings", "mawifoods");
+
+  await db.orm.public.StoreSettings.upsert({
+    create: {
+      id: settingsId,
+      tenantId: mawifoodsId,
+      seoTitleTemplate: "%s | Mawifoods",
+      seoDescriptionTemplate: "Marmitas frescas entregues no mesmo dia em São Paulo.",
+      seoSocialImageUrl: "https://mawifoods.example.com/og.png",
+      updatedAt: Temporal.PlainDateTime.from("2026-09-20 09:00"),
+    },
+    update: {},
+    conflictOn: { tenantId: mawifoodsId },
+  });
+
+  const seoFixtures = [
+    {
+      entityType: "store",
+      entityId: mawifoodsId,
+      title: "Mawifoods — marmitas frescas",
+      description: "Marmitas, bebidas e sobremesas com entrega no mesmo dia.",
+    },
+    {
+      entityType: "category",
+      entityId: stableId("category", "Marmitas"),
+      title: "Marmitas | Mawifoods",
+      description: "Marmitas preparadas no dia, com opções low carb.",
+    },
+  ] as const;
+
+  for (const fixture of seoFixtures) {
+    await db.orm.public.SeoMeta.upsert({
+      create: {
+        id: stableId("seoMeta", `${fixture.entityType}:${fixture.entityId}`),
+        tenantId: mawifoodsId,
+        entityType: fixture.entityType,
+        entityId: fixture.entityId,
+        title: fixture.title,
+        description: fixture.description,
+      },
+      update: {},
+      conflictOn: {
+        tenantId: mawifoodsId,
+        entityType: fixture.entityType,
+        entityId: fixture.entityId,
+      },
     });
   }
 

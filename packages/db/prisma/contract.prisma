@@ -22,6 +22,12 @@ model Tenant {
   coupons           Coupon[]
   auditLogs         AuditLog[]
   mealSubscriptions MealSubscription[]
+  orderItems        OrderItem[]
+  orderEvents       OrderEvent[]
+  couponRedemptions CouponRedemption[]
+  wallets           Wallet[]
+  seoMeta           SeoMeta[]
+  storeSettings     StoreSettings?
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -187,20 +193,79 @@ enum kit_mode {
   build_your_own
 }
 
-enum order_status {
+enum financial_status {
+  @@type("pg/text@1")
+
+  pending
+  awaiting_payment
+  pending_on_delivery
+  paid
+  refunded
+  expired
+  canceled
+}
+
+enum fulfilment_status {
   @@type("pg/text@1")
 
   pending
   confirmed
+  preparing
   ready
-  delivered
-  canceled
-  awaiting_payment
-  paid
   ready_for_pickup
+  out_for_delivery
   completed
+  canceled
+}
+
+enum payment_method {
+  @@type("pg/text@1")
+
+  pix
+  credit
+  debit
+  meal_voucher
+  food_voucher
+  cash_on_delivery
+  card_on_delivery
+}
+
+enum order_event_type {
+  @@type("pg/text@1")
+
+  financial_changed
+  fulfilment_changed
+  payment_recorded
   refunded
-  expired
+  cashback_credited
+  cashback_reversed
+  wallet_reserved
+  wallet_released
+  note
+}
+
+enum wallet_transaction_kind {
+  @@type("pg/text@1")
+
+  cashback_credit
+  store_credit
+  reserve
+  reserve_release
+  spend
+  reversal
+  adjustment
+}
+
+enum seo_entity_type {
+  @@type("pg/text@1")
+
+  store
+  department
+  category
+  tag
+  product
+  kit
+  coupon
 }
 
 enum discount_type {
@@ -293,6 +358,7 @@ model Product {
   department   Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_departmentId_fkey")
   variations   Variation[]
   tags         ProductTag[]
+  orderItems   OrderItem[]
 
   @@index([tenantId], map: "Product_tenantId_idx")
   @@index([categoryId], map: "Product_categoryId_idx")
@@ -314,6 +380,7 @@ model Variation {
   tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Variation_tenantId_fkey")
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Variation_productId_fkey")
   kitItems   KitItem[]
+  orderItems OrderItem[]
 
   @@unique([productId, name], map: "Variation_productId_name_key")
   @@index([tenantId], map: "Variation_tenantId_idx")
@@ -349,6 +416,7 @@ model Kit {
   available Boolean  @default(true)
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Kit_tenantId_fkey")
   items     KitItem[]
+  orderItems OrderItem[]
 
   @@index([tenantId], map: "Kit_tenantId_idx")
 
@@ -386,6 +454,8 @@ model Customer {
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Customer_tenantId_fkey")
   orders             Order[]
   mealSubscriptions MealSubscription[]
+  redemptions        CouponRedemption[]
+  wallets            Wallet[]
 
   @@unique([tenantId, email], map: "Customer_tenantId_email_key")
   @@index([tenantId], map: "Customer_tenantId_idx")
@@ -394,26 +464,207 @@ model Customer {
 }
 
 // A purchase belonging to a single tenant, never split across deliveries. The
-// single `status` mirrors the mockup's one-axis list; PRODUCT.md §15 calls for
-// three axes (financial / service / delivery) and MEN-93 splits this field.
+// two status axes are independent (MEN-93 split the old `status`): money and
+// fulfilment move on their own timelines, so one column cannot describe both.
+// Money is Int cents and `totalCents` is the arithmetic sum of the other
+// columns, enforced by the check below.
 model Order {
-  id          String       @id(map: "Order_pkey")
-  tenantId    String
-  code        String
-  customerId  String
-  totalCents  Int
-  status      order_status
-  createdAt   Timestamp(3) @default(now())
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Order_tenantId_fkey")
-  customer    Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "Order_customerId_fkey")
+  id                 String             @id(map: "Order_pkey")
+  tenantId           String
+  code               String
+  customerId         String
+  subtotalCents      Int
+  discountCents      Int                @default(0)
+  shippingCents      Int                @default(0)
+  walletAppliedCents Int                @default(0)
+  cashbackCents      Int                @default(0)
+  totalCents         Int
+  financialStatus    financial_status
+  fulfilmentStatus   fulfilment_status
+  paymentMethod      payment_method?
+  paidAt             Timestamp(3)?
+  expiresAt          Timestamp(3)?
+  couponId           String?
+  createdAt          Timestamp(3)       @default(now())
+  updatedAt          Timestamp(3)
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Order_tenantId_fkey")
+  customer           Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "Order_customerId_fkey")
+  coupon             Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Order_couponId_fkey")
+  items              OrderItem[]
+  events             OrderEvent[]
+  redemptions        CouponRedemption[]
+  walletTransactions WalletTransaction[]
 
   @@unique([tenantId, code], map: "Order_tenantId_code_key")
   @@index([tenantId], map: "Order_tenantId_idx")
   @@index([customerId], map: "Order_customerId_idx")
 
+  @@check(expression: "\"subtotalCents\" >= 0", name: "order_subtotal_non_negative")
+  @@check(expression: "\"discountCents\" >= 0", name: "order_discount_non_negative")
+  @@check(expression: "\"shippingCents\" >= 0", name: "order_shipping_non_negative")
+  @@check(expression: "\"walletAppliedCents\" >= 0", name: "order_wallet_applied_non_negative")
+  @@check(expression: "\"cashbackCents\" >= 0", name: "order_cashback_non_negative")
   @@check(expression: "\"totalCents\" >= 0", name: "order_total_non_negative")
+  @@check(
+    expression: "\"totalCents\" = \"subtotalCents\" - \"discountCents\" + \"shippingCents\"",
+    name: "order_total_matches_lines"
+  )
 
   @@map("Order")
+}
+
+// One line of an order. The name and the prices are copied at checkout time:
+// the catalog row may be renamed, repriced or deleted later, and the order must
+// keep showing what was actually bought.
+model OrderItem {
+  id             String     @id(map: "OrderItem_pkey")
+  tenantId       String
+  orderId        String
+  productId      String?
+  variationId    String?
+  kitId          String?
+  name           String
+  unitPriceCents Int
+  quantity       Int
+  lineTotalCents Int
+  optionsLabel   String?
+  tenant         Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "OrderItem_tenantId_fkey")
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "OrderItem_orderId_fkey")
+  product        Product?   @relation(fields: [productId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "OrderItem_productId_fkey")
+  variation      Variation? @relation(fields: [variationId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "OrderItem_variationId_fkey")
+  kit            Kit?       @relation(fields: [kitId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "OrderItem_kitId_fkey")
+
+  @@index([tenantId], map: "OrderItem_tenantId_idx")
+  @@index([orderId], map: "OrderItem_orderId_idx")
+
+  @@check(expression: "\"quantity\" > 0", name: "order_item_quantity_positive")
+  @@check(expression: "\"lineTotalCents\" >= 0", name: "order_item_line_total_non_negative")
+
+  @@map("OrderItem")
+}
+
+// Append-only trail of one order's status and money transitions. Nothing
+// updates or deletes a row here; an undo is another event. `fromValue` /
+// `toValue` carry the slugs of whichever axis the `type` names.
+model OrderEvent {
+  id            String           @id(map: "OrderEvent_pkey")
+  tenantId      String
+  orderId       String
+  type          order_event_type
+  fromValue     String?
+  toValue       String?
+  actorMemberId String?
+  reason        String?
+  detail        String?
+  createdAt     Timestamp(3)     @default(now())
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "OrderEvent_tenantId_fkey")
+  order         Order            @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "OrderEvent_orderId_fkey")
+
+  @@index([tenantId], map: "OrderEvent_tenantId_idx")
+  @@index([orderId], map: "OrderEvent_orderId_idx")
+
+  @@map("OrderEvent")
+}
+
+// A coupon actually used on an order, one row per (coupon, order). The two
+// uniques are what `Coupon.usageCount` and the per-customer limit are counted
+// from, so they are constraints rather than code.
+model CouponRedemption {
+  id            String   @id(map: "CouponRedemption_pkey")
+  tenantId      String
+  couponId      String
+  orderId       String
+  customerId    String
+  discountCents Int
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_tenantId_fkey")
+  coupon        Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_couponId_fkey")
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_orderId_fkey")
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_customerId_fkey")
+
+  @@unique([couponId, orderId], map: "CouponRedemption_couponId_orderId_key")
+  @@unique([couponId, customerId], map: "CouponRedemption_couponId_customerId_key")
+  @@index([tenantId], map: "CouponRedemption_tenantId_idx")
+
+  @@map("CouponRedemption")
+}
+
+// A customer's store credit and cashback balance, one wallet per customer per
+// tenant. `balanceCents` is the running total of `WalletTransaction` rows.
+model Wallet {
+  id           String              @id(map: "Wallet_pkey")
+  tenantId     String
+  customerId   String
+  balanceCents Int                 @default(0)
+  createdAt    Timestamp(3)        @default(now())
+  updatedAt    Timestamp(3)
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Wallet_tenantId_fkey")
+  customer     Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Wallet_customerId_fkey")
+  transactions WalletTransaction[]
+
+  @@unique([tenantId, customerId], map: "Wallet_tenantId_customerId_key")
+  @@index([tenantId], map: "Wallet_tenantId_idx")
+
+  @@check(expression: "\"balanceCents\" >= 0", name: "wallet_balance_non_negative")
+
+  @@map("Wallet")
+}
+
+// One movement of a wallet. `amountCents` is signed — a credit is positive, a
+// spend, reserve or reversal is negative — so the column is the ledger and
+// `Wallet.balanceCents` is its rollup.
+model WalletTransaction {
+  id            String                 @id(map: "WalletTransaction_pkey")
+  tenantId      String
+  walletId      String
+  orderId       String?
+  kind          wallet_transaction_kind
+  amountCents   Int
+  actorMemberId String?
+  reason        String?
+  createdAt     Timestamp(3)           @default(now())
+  wallet        Wallet                 @relation(fields: [walletId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "WalletTransaction_walletId_fkey")
+  order         Order?                 @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "WalletTransaction_orderId_fkey")
+
+  @@index([walletId], map: "WalletTransaction_walletId_idx")
+  @@index([tenantId], map: "WalletTransaction_tenantId_idx")
+
+  @@map("WalletTransaction")
+}
+
+// Per-entity SEO overrides. `jsonLd` is stored as text because the structured
+// data is authored/derived as JSON and never queried by field.
+model SeoMeta {
+  id             String          @id(map: "SeoMeta_pkey")
+  tenantId       String
+  entityType     seo_entity_type
+  entityId       String
+  title          String?
+  description    String?
+  canonicalUrl   String?
+  socialImageUrl String?
+  jsonLd         String?
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "SeoMeta_tenantId_fkey")
+
+  @@unique([tenantId, entityType, entityId], map: "SeoMeta_tenantId_entityType_entityId_key")
+  @@index([tenantId], map: "SeoMeta_tenantId_idx")
+
+  @@map("SeoMeta")
+}
+
+// Store-level settings that are one row per tenant (SEO templates today).
+model StoreSettings {
+  id                     String       @id(map: "StoreSettings_pkey")
+  tenantId               String
+  seoTitleTemplate       String?
+  seoDescriptionTemplate String?
+  seoSocialImageUrl      String?
+  createdAt              Timestamp(3) @default(now())
+  updatedAt              Timestamp(3)
+  tenant                 Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "StoreSettings_tenantId_fkey")
+
+  @@unique([tenantId], map: "StoreSettings_tenantId_key")
+
+  @@map("StoreSettings")
 }
 
 // A store-configured discount. `value` is cents when `discountType` is `fixed`
@@ -438,6 +689,8 @@ model Coupon {
   stackable    Boolean       @default(false)
   firstPurchaseOnly Boolean  @default(false)
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Coupon_tenantId_fkey")
+  orders       Order[]
+  redemptions  CouponRedemption[]
 
   @@unique([tenantId, code], map: "Coupon_tenantId_code_key")
   @@index([tenantId], map: "Coupon_tenantId_idx")
