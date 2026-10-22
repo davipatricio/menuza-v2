@@ -1,0 +1,402 @@
+"use client";
+
+import SmoothButton from "@/components/smoothui/smooth-button";
+import { ToggleGroupItem, ToggleGroupRoot } from "@/components/smoothui/toggle-group";
+import { cn } from "cn";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+
+const CARD_ANIMATION_DELAY = 0.1;
+
+interface PriceFlowProps {
+  className?: string;
+  value: number;
+}
+
+function PriceFlow({ value, className = "" }: PriceFlowProps) {
+  const [prevValue, setPrevValue] = useState(value);
+  const prevTensRef = useRef<HTMLSpanElement>(null);
+  const nextTensRef = useRef<HTMLSpanElement>(null);
+  const prevOnesRef = useRef<HTMLSpanElement>(null);
+  const nextOnesRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (value !== prevValue) {
+      const prevTens = prevTensRef.current;
+      const nextTens = nextTensRef.current;
+      const prevOnes = prevOnesRef.current;
+      const nextOnes = nextOnesRef.current;
+
+      if (prevTens && nextTens && Math.floor(value / 10) !== Math.floor(prevValue / 10)) {
+        if (Math.floor(value / 10) > Math.floor(prevValue / 10)) {
+          prevTens.classList.add("slide-out-up");
+          nextTens.classList.add("slide-in-up");
+        } else {
+          prevTens.classList.add("slide-out-down");
+          nextTens.classList.add("slide-in-down");
+        }
+
+        const handleTensAnimationEnd = () => {
+          prevTens.classList.remove("slide-out-up", "slide-out-down");
+          nextTens.classList.remove("slide-in-up", "slide-in-down");
+          prevTens.removeEventListener("animationend", handleTensAnimationEnd);
+        };
+
+        prevTens.addEventListener("animationend", handleTensAnimationEnd);
+      }
+
+      if (prevOnes && nextOnes && value % 10 !== prevValue % 10) {
+        setTimeout(() => {
+          if (value % 10 > prevValue % 10) {
+            prevOnes.classList.add("slide-out-up");
+            nextOnes.classList.add("slide-in-up");
+          } else {
+            prevOnes.classList.add("slide-out-down");
+            nextOnes.classList.add("slide-in-down");
+          }
+
+          const handleOnesAnimationEnd = () => {
+            prevOnes.classList.remove("slide-out-up", "slide-out-down");
+            nextOnes.classList.remove("slide-in-up", "slide-in-down");
+            prevOnes.removeEventListener("animationend", handleOnesAnimationEnd);
+          };
+
+          prevOnes.addEventListener("animationend", handleOnesAnimationEnd);
+        }, 50);
+      }
+
+      setPrevValue(value);
+    }
+  }, [value, prevValue]);
+
+  const formatValue = (val: number) => val.toString().padStart(2, "0");
+  const prevFormatted = formatValue(prevValue);
+  const currentFormatted = formatValue(value);
+
+  return (
+    <span className={cn("relative inline-flex items-center", className)}>
+      <span className="relative inline-block overflow-hidden">
+        <span
+          className="absolute inset-0 flex items-center justify-center"
+          ref={prevTensRef}
+          style={{ transform: "translateY(-100%)" }}
+        >
+          {prevFormatted[0]}
+        </span>
+        <span
+          className="flex items-center justify-center"
+          ref={nextTensRef}
+          style={{ transform: "translateY(0%)" }}
+        >
+          {currentFormatted[0]}
+        </span>
+      </span>
+      <span className="relative inline-block overflow-hidden">
+        <span
+          className="absolute inset-0 flex items-center justify-center"
+          ref={prevOnesRef}
+          style={{ transform: "translateY(-100%)" }}
+        >
+          {prevFormatted[1]}
+        </span>
+        <span
+          className="flex items-center justify-center"
+          ref={nextOnesRef}
+          style={{ transform: "translateY(0%)" }}
+        >
+          {currentFormatted[1]}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+export function PricingModern() {
+  const shouldReduceMotion = useReducedMotion();
+  const [isAnnual, setIsAnnual] = useState(true);
+
+  return (
+    <section>
+      <div className="relative bg-muted/50 py-16 md:py-32">
+        <div className="mx-auto max-w-5xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold text-balance md:text-4xl lg:text-5xl lg:tracking-tight">
+              Choose your perfect plan
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-lg text-balance text-foreground/70">
+              Modern pricing plans designed for teams of all sizes. Scale your business with
+              confidence.
+            </p>
+            <div className="my-12">
+              <ToggleGroupRoot
+                aria-label="Billing period"
+                className="mx-auto rounded-full border bg-background p-1"
+                onValueChange={(next) => {
+                  if (next[0] === "annually") {
+                    setIsAnnual(true);
+                  } else if (next[0] === "monthly") {
+                    setIsAnnual(false);
+                  }
+                }}
+                type="single"
+                value={[isAnnual ? "annually" : "monthly"]}
+              >
+                <ToggleGroupItem
+                  className="w-24 rounded-full data-pressed:bg-brand data-pressed:text-white dark:data-pressed:bg-brand"
+                  value="monthly"
+                >
+                  Monthly
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  className="w-24 rounded-full data-pressed:bg-brand data-pressed:text-white dark:data-pressed:bg-brand"
+                  value="annually"
+                >
+                  Annually
+                </ToggleGroupItem>
+              </ToggleGroupRoot>
+            </div>
+          </div>
+          <div className="container">
+            <div className="mx-auto max-w-6xl">
+              <div className="grid grid-cols-1 gap-6 *:p-8 md:grid-cols-3">
+                {/* Basic Plan */}
+                <motion.div
+                  animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  className="group relative flex h-[650px] cursor-pointer flex-col overflow-hidden rounded-2xl border bg-background p-8"
+                  data-animate-card
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 40 }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : { duration: 0.3, ease: [0.22, 1, 0.36, 1] }
+                  }
+                >
+                  <div className="card-content relative z-10 flex h-full flex-col">
+                    {/* Title */}
+                    <h3 className="mb-4 text-2xl font-bold text-foreground">Basic</h3>
+                    {/* Price & Duration */}
+                    <div className="mb-6">
+                      <span className="text-3xl font-semibold text-foreground">
+                        <PriceFlow value={isAnnual ? 10 : 15} />€
+                      </span>
+                      <span className="mx-2 text-foreground/70">•</span>
+                      <span className="text-foreground/70">Perfect for startups</span>
+                    </div>
+                    {/* CTA Button */}
+                    <SmoothButton className="mb-6 w-full" variant="outline">
+                      Get Started
+                    </SmoothButton>
+                    {/* Description */}
+                    <p className="mb-6 flex-grow text-sm leading-relaxed text-foreground/70">
+                      Essential features for growing businesses. Get started with everything you
+                      need to launch your project.
+                    </p>
+                    {/* What's Included */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-medium tracking-wider text-foreground/70 uppercase">
+                        What&apos;s included:
+                      </h4>
+                      <ul className="space-y-3">
+                        {[
+                          "1 Project",
+                          "Email Support",
+                          "Core Features",
+                          "Basic Analytics",
+                          "Standard Security",
+                          "Community Access",
+                        ].map((item) => (
+                          <li
+                            className="flex items-center gap-3 text-sm text-foreground"
+                            key={item}
+                          >
+                            <div className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-foreground">
+                              <svg
+                                aria-hidden="true"
+                                className="h-2 w-2 text-background"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  clipRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  fillRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+                {/* Pro Plan (Featured) */}
+                <motion.div
+                  animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  className="group relative flex h-[650px] cursor-pointer flex-col overflow-hidden rounded-2xl border bg-primary p-8"
+                  data-animate-card
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 40 }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : {
+                          delay: CARD_ANIMATION_DELAY,
+                          duration: 0.3,
+                          ease: [0.22, 1, 0.36, 1],
+                        }
+                  }
+                >
+                  {/* Gradient Accent */}
+                  <div className="gradient-accent absolute top-0 right-0 h-4 w-32 rounded-bl-2xl bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400" />
+
+                  <div className="card-content relative z-10 flex h-full flex-col">
+                    {/* Title */}
+                    <h3 className="mb-4 flex items-center gap-2 text-2xl font-bold text-foreground">
+                      Pro{" "}
+                      <div className="rounded-full bg-brand px-2 py-1 text-xs font-bold text-white">
+                        Most Popular
+                      </div>
+                    </h3>
+                    {/* Price & Duration */}
+                    <div className="mb-6">
+                      <span className="text-3xl font-semibold text-foreground">
+                        <PriceFlow value={isAnnual ? 25 : 35} />€
+                      </span>
+                      <span className="mx-2 text-foreground/70">•</span>
+                      <span className="text-foreground/70">Best for teams</span>
+                    </div>
+                    {/* CTA Button */}
+                    <SmoothButton className="mb-6 w-full" variant="candy">
+                      Get Started
+                    </SmoothButton>
+                    {/* Description */}
+                    <p className="mb-6 flex-grow text-sm leading-relaxed text-foreground/70">
+                      Advanced features for professional teams. Everything you need to scale your
+                      business with confidence.
+                    </p>
+                    {/* What's Included */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-medium tracking-wider text-foreground/70 uppercase">
+                        What&apos;s included:
+                      </h4>
+                      <ul className="space-y-3">
+                        {[
+                          "Unlimited Projects",
+                          "Priority Support",
+                          "Team Collaboration",
+                          "Advanced Analytics",
+                          "Custom Integrations",
+                          "API Access",
+                          "White-label Options",
+                          "Priority Updates",
+                        ].map((item) => (
+                          <li
+                            className="flex items-center gap-3 text-sm text-foreground"
+                            key={item}
+                          >
+                            <div className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-foreground">
+                              <svg
+                                aria-hidden="true"
+                                className="h-2 w-2 text-background"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  clipRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  fillRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+                {/* Enterprise Plan */}
+                <motion.div
+                  animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  className="group relative flex h-[650px] cursor-pointer flex-col overflow-hidden rounded-2xl border bg-background p-8"
+                  data-animate-card
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 40 }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : {
+                          delay: CARD_ANIMATION_DELAY * 2,
+                          duration: 0.3,
+                          ease: [0.22, 1, 0.36, 1],
+                        }
+                  }
+                >
+                  <div className="card-content relative z-10 flex h-full flex-col">
+                    {/* Title */}
+                    <h3 className="mb-4 text-2xl font-bold text-foreground">Enterprise</h3>
+                    {/* Price & Duration */}
+                    <div className="mb-6">
+                      <span className="text-3xl font-semibold text-foreground">Custom</span>
+                      <span className="mx-2 text-foreground/70">•</span>
+                      <span className="text-foreground/70">Tailored solutions</span>
+                    </div>
+                    {/* CTA Button */}
+                    <SmoothButton className="mb-6 w-full" variant="outline">
+                      Contact Sales
+                    </SmoothButton>
+                    {/* Description */}
+                    <p className="mb-6 flex-grow text-sm leading-relaxed text-foreground/70">
+                      Custom solutions for large organizations. Get dedicated support and tailored
+                      features for your enterprise needs.
+                    </p>
+                    {/* What's Included */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-medium tracking-wider text-foreground/70 uppercase">
+                        What&apos;s included:
+                      </h4>
+                      <ul className="space-y-3">
+                        {[
+                          "Everything in Pro",
+                          "Dedicated Manager",
+                          "Custom Integrations",
+                          "SLA & Support",
+                          "On-premise Options",
+                          "Advanced Security",
+                          "Training & Onboarding",
+                          "24/7 Phone Support",
+                        ].map((item) => (
+                          <li
+                            className="flex items-center gap-3 text-sm text-foreground"
+                            key={item}
+                          >
+                            <div className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-foreground">
+                              <svg
+                                aria-hidden="true"
+                                className="h-2 w-2 text-background"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  clipRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  fillRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default PricingModern;

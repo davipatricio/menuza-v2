@@ -1,0 +1,216 @@
+"use client";
+
+import SmoothButton from "@/components/smoothui/smooth-button";
+import { getAllPeople, getAvatarUrl, type Person } from "@/lib/smoothui-data";
+import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useState } from "react";
+
+const CARDS_PER_VIEW = 3; // Number of cards visible at once
+const CARD_WIDTH = 288;
+const CARD_GAP = 16;
+const AUTOPLAY_INTERVAL = 5000;
+const TRANSITION_TIMEOUT = 1500;
+const AVATAR_SIZE = 160;
+const STAGGER_DELAY = 0.1;
+
+interface TeamCarouselProps {
+  description?: string;
+  members?: Person[];
+  subtitle?: string;
+  title?: string;
+}
+
+export function TeamCarousel({
+  title = "Tech Pioneers",
+  subtitle = "building the future",
+  description = "We bring together brilliant developers, engineers, and tech innovators to create groundbreaking digital solutions.",
+  members = getAllPeople(),
+}: TeamCarouselProps) {
+  const shouldReduceMotion = useReducedMotion();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (!isAutoPlaying || isTransitioning) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % (members.length - CARDS_PER_VIEW + 1));
+    }, AUTOPLAY_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [members.length, isAutoPlaying, isTransitioning]);
+
+  const nextSlide = () => {
+    if (isTransitioning) {
+      return;
+    }
+    const maxIndex = members.length - CARDS_PER_VIEW;
+    if (currentIndex >= maxIndex) {
+      return;
+    }
+
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => Math.min(prev + 1, maxIndex));
+    setIsAutoPlaying(false);
+
+    setTimeout(() => {
+      setIsTransitioning(false);
+      setIsAutoPlaying(true);
+    }, TRANSITION_TIMEOUT);
+  };
+
+  const prevSlide = () => {
+    if (isTransitioning) {
+      return;
+    }
+    if (currentIndex <= 0) {
+      return;
+    }
+
+    setIsTransitioning(true);
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+    setIsAutoPlaying(false);
+
+    setTimeout(() => {
+      setIsTransitioning(false);
+      setIsAutoPlaying(true);
+    }, TRANSITION_TIMEOUT);
+  };
+
+  return (
+    <section className="overflow-hidden py-32">
+      <div className="mx-auto max-w-5xl px-8 lg:px-0">
+        <motion.div
+          initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+          transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.6 }}
+          viewport={{ once: true }}
+          whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+        >
+          <h2 className="text-5xl font-medium md:text-6xl">
+            {title} <br />
+            <span className="text-foreground/50">{subtitle}</span>
+          </h2>
+          <p className="mt-6 max-w-md text-foreground/70">{description}</p>
+        </motion.div>
+
+        <div className="relative">
+          {/* Navigation Buttons */}
+          <div className="mt-4 hidden items-center justify-end gap-4 md:flex">
+            <SmoothButton
+              aria-label="Previous slide"
+              disabled={currentIndex === 0 || isTransitioning}
+              onClick={prevSlide}
+              shape="pill"
+              size="icon-lg"
+              type="button"
+              variant="outline"
+            >
+              <svg
+                aria-hidden="true"
+                className="lucide lucide-arrow-left"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="m12 19-7-7 7-7" />
+                <path d="M19 12H5" />
+              </svg>
+            </SmoothButton>
+            <SmoothButton
+              aria-label="Next slide"
+              disabled={currentIndex >= members.length - CARDS_PER_VIEW || isTransitioning}
+              onClick={nextSlide}
+              shape="pill"
+              size="icon-lg"
+              type="button"
+              variant="outline"
+            >
+              <svg
+                aria-hidden="true"
+                className="lucide lucide-arrow-right"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </SmoothButton>
+          </div>
+
+          {/* Carousel Content */}
+          <div className="mt-16 [&>div[data-slot=carousel-content]]:overflow-visible">
+            <div className="overflow-hidden" data-slot="carousel-content">
+              <motion.div
+                animate={{ x: `-${currentIndex * (CARD_WIDTH + CARD_GAP)}px` }}
+                className="-ml-4 flex max-w-[min(calc(100vw-4rem),24rem)] select-none"
+                transition={
+                  shouldReduceMotion
+                    ? { duration: 0 }
+                    : { damping: 30, stiffness: 300, type: "spring" as const }
+                }
+              >
+                {members.map((member, index) => (
+                  <div
+                    className="max-w-72 min-w-0 shrink-0 grow-0 basis-full pl-4"
+                    data-slot="carousel-item"
+                    key={member.name}
+                  >
+                    <motion.div
+                      className="rounded-2xl border border-border bg-background p-7 text-center"
+                      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : { delay: index * STAGGER_DELAY, duration: 0.5 }
+                      }
+                      viewport={{ once: true }}
+                      whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                    >
+                      <img
+                        alt={member.name}
+                        className="mx-auto size-20 rounded-full border border-border"
+                        draggable={false}
+                        height={80}
+                        src={getAvatarUrl(member.avatar, AVATAR_SIZE)}
+                        width={80}
+                      />
+                      <div className="mt-6 flex flex-col justify-center">
+                        <p className="text-lg font-medium text-foreground">{member.name}</p>
+                        <p className="text-sm text-muted-foreground">{member.role}</p>
+                      </div>
+                      <div
+                        className="my-6 shrink-0 bg-border bg-linear-to-r from-background via-border to-background data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px"
+                        data-orientation="horizontal"
+                        data-slot="separator-root"
+                        role="none"
+                      />
+                      <p className="text-sm text-muted-foreground">{member.experience}</p>
+                    </motion.div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default TeamCarousel;

@@ -1,0 +1,6 @@
+/*
+ * Theme context for SmoothUI's CSS modules. Their `@reference` directives point
+ * here; importing Tailwind gives those modules the theme variables without
+ * emitting a second copy of the framework.
+ */
+@import "tailwindcss";

@@ -1,0 +1,178 @@
+"use client";
+
+import {
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  AccordionRoot,
+  AccordionTrigger,
+} from "@/components/smoothui/accordion";
+import { TabsIndicator, TabsList, TabsPanel, TabsRoot, TabsTab } from "@/components/smoothui/tabs";
+import { motion, useReducedMotion } from "motion/react";
+
+export interface FaqCategorizedProps {
+  categories?: Array<{
+    name: string;
+    faqs: Array<{
+      question: string;
+      answer: string;
+    }>;
+  }>;
+  description?: string;
+  title?: string;
+}
+
+const defaultCategories = [
+  {
+    faqs: [
+      {
+        answer:
+          "Setting up SmoothUI is straightforward. Install the package using npm or pnpm, then import the components you need. Our CLI tool can also help scaffold components directly into your project with the right dependencies.",
+        question: "How do I set up SmoothUI in my project?",
+      },
+      {
+        answer:
+          "SmoothUI requires React 18 or later, Next.js 13+, and Node.js 18+. You'll also need Tailwind CSS configured in your project. All modern browsers are supported.",
+        question: "What are the minimum requirements?",
+      },
+      {
+        answer:
+          "Use our CLI command `npx shadcn@latest add @smoothui/component-name` to add any component. This will install the component with all its dependencies and place it in your components directory.",
+        question: "How do I add my first component?",
+      },
+    ],
+    name: "Getting Started",
+  },
+  {
+    faqs: [
+      {
+        answer:
+          "Yes, SmoothUI is completely free and open source under the MIT license. You can use it in personal and commercial projects without any cost or attribution requirements.",
+        question: "Is SmoothUI free to use?",
+      },
+      {
+        answer:
+          "Since SmoothUI is free, there are no purchases to refund. For any premium services or support packages we may offer in the future, our refund policy will be clearly stated.",
+        question: "Do you offer refunds?",
+      },
+      {
+        answer:
+          "Currently, all components are free. If we introduce premium features, we'll support major credit cards, PayPal, and other popular payment methods through our secure payment processor.",
+        question: "What payment methods do you accept?",
+      },
+    ],
+    name: "Billing",
+  },
+  {
+    faqs: [
+      {
+        answer:
+          "SmoothUI supports all modern browsers including Chrome, Firefox, Safari, and Edge. We test across the latest versions and one version back for each browser to ensure compatibility.",
+        question: "Which browsers are supported?",
+      },
+      {
+        answer:
+          "Components are optimized for performance with tree-shaking support, minimal bundle size, and hardware-accelerated animations. We only animate transform and opacity properties to ensure 60fps animations.",
+        question: "How does SmoothUI affect performance?",
+      },
+      {
+        answer:
+          "Absolutely! SmoothUI is built with TypeScript and provides full type definitions for all components. You get autocomplete, type checking, and inline documentation in supported editors.",
+        question: "Is TypeScript supported?",
+      },
+      {
+        answer:
+          "Yes, all components use Tailwind CSS and CSS variables for styling. You can override styles using className props, customize the design tokens, or modify the component source directly.",
+        question: "Can I customize component styles?",
+      },
+    ],
+    name: "Technical",
+  },
+];
+
+export function FaqCategorized({
+  title = "Frequently Asked Questions",
+  description = "Find answers organized by topic",
+  categories = defaultCategories,
+}: FaqCategorizedProps) {
+  const shouldReduceMotion = useReducedMotion();
+  const defaultCategory = categories[0]?.name;
+
+  const springTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { bounce: 0.05, duration: 0.25, type: "spring" as const };
+
+  return (
+    <section className="py-20">
+      <div className="mx-auto max-w-4xl px-6">
+        <motion.div
+          animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          className="mb-12 text-center"
+          initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+          transition={springTransition}
+        >
+          <h2 className="mb-4 text-3xl font-bold text-foreground lg:text-4xl">{title}</h2>
+          <p className="mx-auto max-w-2xl text-lg text-foreground/70">{description}</p>
+        </motion.div>
+
+        <TabsRoot className="gap-0" defaultValue={defaultCategory}>
+          <motion.div
+            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            className="mb-8"
+            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 20 }}
+            transition={{
+              ...springTransition,
+              delay: shouldReduceMotion ? 0 : 0.1,
+            }}
+          >
+            <TabsList
+              activateOnFocus
+              className="[scrollbar-width:none] flex-nowrap justify-start gap-2 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
+              variant="underline"
+            >
+              {categories.map((category) => (
+                <TabsTab
+                  className="px-4 py-3 text-foreground/60 hover:text-foreground data-active:text-brand data-[state=active]:text-brand"
+                  key={category.name}
+                  value={category.name}
+                >
+                  {category.name}
+                </TabsTab>
+              ))}
+              <TabsIndicator />
+            </TabsList>
+          </motion.div>
+
+          {categories.map((category) => (
+            <TabsPanel
+              animated
+              className="pt-0 text-base text-foreground"
+              key={category.name}
+              tabIndex={-1}
+              value={category.name}
+            >
+              <AccordionRoot className="space-y-4 divide-y-0 rounded-none border-0">
+                {category.faqs.map((faq) => (
+                  <AccordionItem
+                    className="overflow-hidden rounded-xl border border-border bg-background transition-colors hover:border-brand"
+                    key={faq.question}
+                    value={faq.question}
+                  >
+                    <AccordionHeader>
+                      <AccordionTrigger className="px-5 py-5 text-base hover:bg-background/50">
+                        {faq.question}
+                      </AccordionTrigger>
+                    </AccordionHeader>
+                    <AccordionPanel className="text-foreground/70">{faq.answer}</AccordionPanel>
+                  </AccordionItem>
+                ))}
+              </AccordionRoot>
+            </TabsPanel>
+          ))}
+        </TabsRoot>
+      </div>
+    </section>
+  );
+}
+
+export default FaqCategorized;

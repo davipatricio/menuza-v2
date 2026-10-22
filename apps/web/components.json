@@ -19,6 +19,12 @@
   },
   "iconLibrary": "lucide",
   "registries": {
-    "@aceternity": "https://ui.aceternity.com/registry/{name}.json"
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
+    "@reui": "https://reui.io/r/styles/{style}/{name}.json",
+    "@smoothui": "https://smoothui.dev/r/{name}.json",
+    "@magicui": "https://magicui.design/r/{name}.json",
+    "@motion-primitives": "https://motion-primitives.com/c/{name}.json",
+    "@cult-ui": "https://www.cult-ui.com/r/{name}.json",
+    "@ecomcn": "https://ecomcn.vercel.app/r/{name}.json"
   }
 }

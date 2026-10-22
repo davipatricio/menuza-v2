@@ -1,7 +1,7 @@
 "use client";
 
-import { type FC, useRef } from "react";
-import { type HTMLMotionProps, motion } from "motion/react";
+import { type FC, useEffect, useRef } from "react";
+import { type HTMLMotionProps, motion, useAnimation, useInView } from "motion/react";
 
 type AnimationType =
   | "fadeIn"
@@ -197,8 +197,6 @@ const animationVariants = {
   },
 };
 
-// A framer motion text animation component
-// https://www.cult-ui.com/docs/components/text-animate
 const TextAnimate: FC<Props> = ({ text, type = "whipInUp", ...props }: Props) => {
   //   const { ref, inView } = useInView({
   //     threshold: 0.5,
@@ -206,9 +204,12 @@ const TextAnimate: FC<Props> = ({ text, type = "whipInUp", ...props }: Props) =>
   //   });
 
   const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
 
   const letters = Array.from(text);
   const { container, child } = animationVariants[type];
+
+  const ctrls = useAnimation();
 
   //   useEffect(() => {
   //     if (isInView) {
@@ -277,5 +278,4 @@ const TextAnimate: FC<Props> = ({ text, type = "whipInUp", ...props }: Props) =>
 };
 
 export { TextAnimate };
-
 export default TextAnimate;
