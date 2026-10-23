@@ -39,10 +39,16 @@ import {
 } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 
 export type TaxonomyEntity = "category" | "department" | "tag";
 
-export type TaxonomyRow = { id: string; name: string };
+export type TaxonomyRow = {
+  id: string;
+  name: string;
+  active?: boolean;
+  isActive?: boolean;
+};
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
 
@@ -50,7 +56,10 @@ function client() {
   return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
 }
 
-type TaxonomyWriteInput = { storeSlug: string; name: string; sortOrder: number };
+type TaxonomyWriteInput =
+  | { entity: "department"; storeSlug: string; name: string; active: boolean }
+  | { entity: "tag"; storeSlug: string; name: string; isActive: boolean }
+  | { entity: "category"; storeSlug: string; name: string; sortOrder: number };
 
 /** One label set per entity, so the three screens stay copy-identical. */
 const TAXONOMY: Record<
@@ -90,29 +99,80 @@ const TAXONOMY: Record<
   },
 };
 
-async function createEntity(entity: TaxonomyEntity, input: TaxonomyWriteInput) {
+/** Departments and tags share the active field; categories keep the order input. */
+const ACTIVE_COPY: Record<TaxonomyEntity, { label: string; description: string } | undefined> = {
+  category: undefined,
+  department: {
+    label: "Ativo",
+    description: "Departamentos inativos continuam cadastrados e podem ser reativados.",
+  },
+  tag: {
+    label: "Ativa",
+    description:
+      "Desative para ocultar a tag do cardápio. Os produtos e os filtros do painel continuam com ela.",
+  },
+};
+
+async function createEntity(input: TaxonomyWriteInput) {
   const panel = client().panel;
 
-  switch (entity) {
-    case "category":
-      return panel.createCategory(input);
-    case "department":
-      return panel.createDepartment(input);
-    case "tag":
-      return panel.createTag(input);
+  switch (input.entity) {
+    case "category": {
+      return panel.createCategory({
+        storeSlug: input.storeSlug,
+        name: input.name,
+        sortOrder: input.sortOrder,
+      });
+    }
+
+    case "department": {
+      return panel.createDepartment({
+        storeSlug: input.storeSlug,
+        name: input.name,
+        active: input.active,
+      });
+    }
+
+    case "tag": {
+      return panel.createTag({
+        storeSlug: input.storeSlug,
+        name: input.name,
+        isActive: input.isActive,
+      });
+    }
   }
 }
 
-async function updateEntity(entity: TaxonomyEntity, id: string, input: TaxonomyWriteInput) {
+async function updateEntity(id: string, input: TaxonomyWriteInput) {
   const panel = client().panel;
 
-  switch (entity) {
-    case "category":
-      return panel.updateCategory({ ...input, categoryId: id });
-    case "department":
-      return panel.updateDepartment({ ...input, departmentId: id });
-    case "tag":
-      return panel.updateTag({ ...input, tagId: id });
+  switch (input.entity) {
+    case "category": {
+      return panel.updateCategory({
+        storeSlug: input.storeSlug,
+        name: input.name,
+        sortOrder: input.sortOrder,
+        categoryId: id,
+      });
+    }
+
+    case "department": {
+      return panel.updateDepartment({
+        storeSlug: input.storeSlug,
+        name: input.name,
+        active: input.active,
+        departmentId: id,
+      });
+    }
+
+    case "tag": {
+      return panel.updateTag({
+        storeSlug: input.storeSlug,
+        name: input.name,
+        isActive: input.isActive,
+        tagId: id,
+      });
+    }
   }
 }
 
@@ -148,25 +208,64 @@ function serverMessage(error: Error, entity: TaxonomyEntity, action: "save" | "d
 
 const NAME_MAX = 80;
 
-function validate(name: string, sortOrder: string) {
+function validateName(name: string) {
   const trimmed = name.trim();
-  const order = Number(sortOrder);
-  const emptyOrder = sortOrder.trim() === "";
 
+  if (!trimmed) return "Informe o nome.";
+
+  if (trimmed.length > NAME_MAX) return "Use no máximo 80 caracteres.";
+
+  return undefined;
+}
+
+function validateSortOrder(sortOrder: string) {
+  const order = Number(sortOrder);
+
+  if (sortOrder.trim() === "") return "Informe uma ordem válida.";
+
+  if (!Number.isInteger(order)) return "Use um número inteiro.";
+
+  if (order < 0) return "O valor mínimo é 0.";
+
+  return undefined;
+}
+
+/** One description per entity, so create and edit read differently without nesting ternaries. */
+function formDescription(entity: TaxonomyEntity, editing: boolean): string {
+  if (entity === "department")
+    return editing
+      ? "Altere o nome ou o status do departamento."
+      : "Nome do departamento e se ele fica ativo.";
+
+  if (entity === "tag")
+    return editing
+      ? "Altere o nome da tag ou oculte-a do cardápio."
+      : "Dê um nome à tag e defina se ela aparece no cardápio.";
+
+  return editing ? "Altere o nome ou a posição na lista." : "Nome e posição na lista do catálogo.";
+}
+
+/** Categories validate the order input; departments and tags carry an active flag instead. */
+function validateFields(entity: TaxonomyEntity, name: string, order: string) {
   return {
-    name: !trimmed
-      ? "Informe o nome."
-      : trimmed.length > NAME_MAX
-        ? "Use no máximo 80 caracteres."
-        : undefined,
-    sortOrder: emptyOrder
-      ? "Informe uma ordem válida."
-      : !Number.isInteger(order)
-        ? "Use um número inteiro."
-        : order < 0
-          ? "O valor mínimo é 0."
-          : undefined,
+    name: validateName(name),
+    sortOrder: entity === "category" ? validateSortOrder(order) : undefined,
   };
+}
+
+/** The strict schemas reject extra keys, so each entity's arm carries only its own fields. */
+function writeInput(
+  entity: TaxonomyEntity,
+  storeSlug: string,
+  name: string,
+  active: boolean,
+  order: string,
+): TaxonomyWriteInput {
+  if (entity === "tag") return { entity: "tag", storeSlug, name, isActive: active };
+
+  if (entity === "department") return { entity: "department", storeSlug, name, active };
+
+  return { entity: "category", storeSlug, name, sortOrder: Number(order) };
 }
 
 /** Create and edit share one form dialog; `row` absent means create. */
@@ -186,20 +285,22 @@ function TaxonomyFormDialog({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const fieldId = useId();
+  const activeCopy = ACTIVE_COPY[entity];
   const [name, setName] = useState(row?.name ?? "");
+  const [active, setActive] = useState(row?.active ?? row?.isActive ?? true);
   const [order, setOrder] = useState(String(sortOrder));
   const [touched, setTouched] = useState({ name: false, sortOrder: false });
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const errors = validate(name, order);
+  const errors = validateFields(entity, name, order);
 
   const invalid = (field: "name" | "sortOrder") =>
     (touched[field] || submitted) && Boolean(errors[field]);
 
   const mutation = useMutation({
     mutationFn: (input: TaxonomyWriteInput) =>
-      row ? updateEntity(entity, row.id, input) : createEntity(entity, input),
+      row ? updateEntity(row.id, input) : createEntity(input),
     onSuccess: () => {
       router.refresh();
       onClose();
@@ -220,7 +321,7 @@ function TaxonomyFormDialog({
       return;
     }
 
-    mutation.mutate({ storeSlug, name: name.trim(), sortOrder: Number(order) });
+    mutation.mutate(writeInput(entity, storeSlug, name.trim(), active, order));
   };
 
   const error = (field: "name" | "sortOrder") =>
@@ -243,9 +344,7 @@ function TaxonomyFormDialog({
           <DialogTitle>
             {row ? TAXONOMY[entity].editDialog : TAXONOMY[entity].createDialog}
           </DialogTitle>
-          <DialogDescription>
-            {row ? "Altere o nome ou a posição na lista." : "Nome e posição na lista do catálogo."}
-          </DialogDescription>
+          <DialogDescription>{formDescription(entity, row !== undefined)}</DialogDescription>
         </DialogHeader>
 
         <form ref={formRef} className="flex flex-col gap-4" noValidate onSubmit={onSubmit}>
@@ -265,27 +364,43 @@ function TaxonomyFormDialog({
               {error("name")}
             </Field>
 
-            <Field data-invalid={invalid("sortOrder")}>
-              <FieldLabel htmlFor={`${fieldId}-sort`}>Ordem</FieldLabel>
-              <Input
-                id={`${fieldId}-sort`}
-                type="number"
-                min={0}
-                step={1}
-                inputMode="numeric"
-                value={order}
-                aria-invalid={invalid("sortOrder")}
-                aria-describedby={
-                  invalid("sortOrder") ? `${fieldId}-sort-error` : `${fieldId}-sort-description`
-                }
-                onChange={(event) => setOrder(event.target.value)}
-                onBlur={() => setTouched((current) => ({ ...current, sortOrder: true }))}
-              />
-              <FieldDescription id={`${fieldId}-sort-description`}>
-                Menor aparece primeiro.
-              </FieldDescription>
-              {error("sortOrder")}
-            </Field>
+            {activeCopy ? (
+              <Field orientation="horizontal">
+                <Switch
+                  id={`${fieldId}-active`}
+                  checked={active}
+                  onCheckedChange={setActive}
+                  aria-label={activeCopy.label}
+                  aria-describedby={`${fieldId}-active-description`}
+                />
+                <FieldLabel htmlFor={`${fieldId}-active`}>{activeCopy.label}</FieldLabel>
+                <FieldDescription id={`${fieldId}-active-description`}>
+                  {activeCopy.description}
+                </FieldDescription>
+              </Field>
+            ) : (
+              <Field data-invalid={invalid("sortOrder")}>
+                <FieldLabel htmlFor={`${fieldId}-sort`}>Ordem</FieldLabel>
+                <Input
+                  id={`${fieldId}-sort`}
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  value={order}
+                  aria-invalid={invalid("sortOrder")}
+                  aria-describedby={
+                    invalid("sortOrder") ? `${fieldId}-sort-error` : `${fieldId}-sort-description`
+                  }
+                  onChange={(event) => setOrder(event.target.value)}
+                  onBlur={() => setTouched((current) => ({ ...current, sortOrder: true }))}
+                />
+                <FieldDescription id={`${fieldId}-sort-description`}>
+                  Menor aparece primeiro.
+                </FieldDescription>
+                {error("sortOrder")}
+              </Field>
+            )}
           </FieldGroup>
 
           {serverError ? (
@@ -314,9 +429,11 @@ function TaxonomyFormDialog({
 export function TaxonomyCreateDialog({
   entity,
   storeSlug,
+  label,
 }: {
   entity: TaxonomyEntity;
   storeSlug: string;
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -324,7 +441,7 @@ export function TaxonomyCreateDialog({
     <>
       <Button onClick={() => setOpen(true)}>
         <Plus data-icon="inline-start" aria-hidden="true" />
-        {TAXONOMY[entity].createDialog}
+        {label ?? TAXONOMY[entity].createDialog}
       </Button>
       {open ? (
         <TaxonomyFormDialog
@@ -348,7 +465,7 @@ export function TaxonomyRowActions({
   entity: TaxonomyEntity;
   storeSlug: string;
   row: TaxonomyRow;
-  sortOrder: number;
+  sortOrder?: number;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -393,7 +510,7 @@ export function TaxonomyRowActions({
           entity={entity}
           storeSlug={storeSlug}
           row={row}
-          sortOrder={sortOrder}
+          sortOrder={sortOrder ?? 0}
           onClose={() => setEditing(false)}
         />
       ) : null}

@@ -28,7 +28,7 @@ export const createTagImpl = os.handler(async ({ input, context }) => {
       id: randomUUID(),
       tenantId: store.tenantId,
       name,
-      sortOrder: input.sortOrder,
+      isActive: input.isActive,
     }),
   );
 

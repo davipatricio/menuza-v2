@@ -1,0 +1,70 @@
+[
+  {
+    "id": "dropColumn.Tag.sortOrder",
+    "label": "Drop column \"sortOrder\" from \"Tag\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "sortOrder",
+        "table": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"sortOrder\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Tag", "sortOrder"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"sortOrder\"",
+        "sql": "ALTER TABLE \"public\".\"Tag\" DROP COLUMN \"sortOrder\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"sortOrder\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Tag", "sortOrder"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Tag.isActive",
+    "label": "Add column \"isActive\" to \"Tag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isActive",
+        "table": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isActive\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Tag", "isActive"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isActive\"",
+        "sql": "ALTER TABLE \"public\".\"Tag\" ADD COLUMN \"isActive\" bool DEFAULT true NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isActive\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Tag", "isActive"]
+      }
+    ]
+  }
+]

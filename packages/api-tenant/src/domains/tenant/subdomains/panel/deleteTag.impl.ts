@@ -29,7 +29,7 @@ export const deleteTagImpl = os.handler(async ({ input, context }) => {
   if (link) throw catalogConflict("Remova esta tag dos produtos antes de excluí-la.");
 
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Tag.where({ tenantId: store.tenantId, id: input.tagId }).delete(),
+    db.orm.public.Tag.where({ tenantId: store.tenantId, id: input.tagId }).deleteAll(),
   );
 
   return { success: true };

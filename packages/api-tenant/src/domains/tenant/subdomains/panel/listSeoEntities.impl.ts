@@ -93,7 +93,7 @@ async function loadEntities(
 
   if (entityType === "department") {
     const rows = await db.orm.public.Department.where({ tenantId })
-      .orderBy((d) => d.sortOrder.asc())
+      .orderBy((d) => d.name.asc())
       .all();
 
     return rows.map((row) => ({ id: row.id, name: row.name }));
@@ -101,7 +101,7 @@ async function loadEntities(
 
   if (entityType === "tag") {
     const rows = await db.orm.public.Tag.where({ tenantId })
-      .orderBy((t) => t.sortOrder.asc())
+      .orderBy((t) => t.name.asc())
       .all();
 
     return rows.map((row) => ({ id: row.id, name: row.name }));

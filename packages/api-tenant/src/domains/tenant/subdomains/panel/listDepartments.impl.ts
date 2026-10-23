@@ -13,7 +13,7 @@ export const listDepartmentsImpl = os.handler(async ({ input, context }) => {
 
   const { rows: departments, allProducts } = await inTenantScope(store.tenantId, async () => {
     const rows = await db.orm.public.Department.where({ tenantId: store.tenantId })
-      .orderBy((d) => d.sortOrder.asc())
+      .orderBy((d) => d.name.asc())
       .all();
 
     const allProducts = await db.orm.public.Product.where({ tenantId: store.tenantId })
@@ -34,6 +34,7 @@ export const listDepartmentsImpl = os.handler(async ({ input, context }) => {
     departments: departments.map((department) => ({
       id: department.id,
       name: department.name,
+      active: department.active,
       itemsCount: counts.get(department.id) ?? 0,
     })),
   };

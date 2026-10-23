@@ -31,8 +31,13 @@ export const deleteDepartmentImpl = os.handler(async ({ input, context }) => {
 
   if (product) throw catalogConflict("Mova os produtos deste departamento antes de excluí-lo.");
 
+  // `deleteAll`, not `delete`: RC.17 compiles `delete` from `where({ tenantId, id })`
+  // down to `id` only, and the isolation guard then rejects the write.
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Department.where({ tenantId: store.tenantId, id: input.departmentId }).delete(),
+    db.orm.public.Department.where({
+      tenantId: store.tenantId,
+      id: input.departmentId,
+    }).deleteAll(),
   );
 
   return { success: true };

@@ -628,6 +628,7 @@ export const PanelCategoriesOutputSchema = v.object({
 export const PanelDepartmentSchema = v.object({
   id: v.string(),
   name: v.string(),
+  active: v.boolean(),
   itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
 });
 
@@ -638,6 +639,7 @@ export const PanelDepartmentsOutputSchema = v.object({
 export const PanelTagSchema = v.object({
   id: v.string(),
   name: v.string(),
+  isActive: v.boolean(),
   itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
 });
 
@@ -647,8 +649,8 @@ export const PanelTagsOutputSchema = v.object({
 
 // --- Taxonomy writes ---------------------------------------------------------
 //
-// Categories, departments and tags share one shape: a name and a sort order.
-// Only the id field differs, so the three families stay copy-paste identical.
+// Categories keep a name and a sort order; departments carry a name and an
+// active flag — they have no ordering; tags carry a name and an active flag.
 
 const taxonomyName = v.pipe(
   v.string("Informe o nome."),
@@ -679,7 +681,7 @@ export const DeleteCategoryInputSchema = v.strictObject({
 export const CreateDepartmentInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   name: taxonomyName,
-  sortOrder: catalogSortOrder,
+  active: v.boolean(),
 });
 
 export const UpdateDepartmentInputSchema = v.strictObject({
@@ -695,7 +697,7 @@ export const DeleteDepartmentInputSchema = v.strictObject({
 export const CreateTagInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   name: taxonomyName,
-  sortOrder: catalogSortOrder,
+  isActive: v.boolean(),
 });
 
 export const UpdateTagInputSchema = v.strictObject({
@@ -1343,7 +1345,7 @@ export const updateTag = sessionContract
       method: "PUT",
       path: "/panel/stores/{storeSlug}/tags/{tagId}",
       operationId: "updatePanelTag",
-      summary: "Renomeia uma tag do catálogo.",
+      summary: "Atualiza o nome e a visibilidade de uma tag.",
       tags: ["panel"],
     }),
   )

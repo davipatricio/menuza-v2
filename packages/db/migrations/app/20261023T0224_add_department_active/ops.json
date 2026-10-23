@@ -1,0 +1,70 @@
+[
+  {
+    "id": "dropColumn.Department.sortOrder",
+    "label": "Drop column \"sortOrder\" from \"Department\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "sortOrder",
+        "table": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"sortOrder\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Department", "sortOrder"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"sortOrder\"",
+        "sql": "ALTER TABLE \"public\".\"Department\" DROP COLUMN \"sortOrder\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"sortOrder\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Department", "sortOrder"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Department.active",
+    "label": "Add column \"active\" to \"Department\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "active",
+        "table": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"active\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Department", "active"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"active\"",
+        "sql": "ALTER TABLE \"public\".\"Department\" ADD COLUMN \"active\" bool DEFAULT true NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"active\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Department", "active"]
+      }
+    ]
+  }
+]

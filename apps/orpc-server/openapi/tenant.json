@@ -7428,6 +7428,9 @@
                           "name": {
                             "type": "string"
                           },
+                          "active": {
+                            "type": "boolean"
+                          },
                           "itemsCount": {
                             "type": "integer",
                             "minimum": 0
@@ -7436,6 +7439,7 @@
                         "required": [
                           "id",
                           "name",
+                          "active",
                           "itemsCount"
                         ]
                       }
@@ -7574,14 +7578,13 @@
                     "minLength": 1,
                     "maxLength": 80
                   },
-                  "sortOrder": {
-                    "type": "integer",
-                    "minimum": 0
+                  "active": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
                   "name",
-                  "sortOrder"
+                  "active"
                 ]
               }
             }
@@ -7744,14 +7747,13 @@
                     "minLength": 1,
                     "maxLength": 80
                   },
-                  "sortOrder": {
-                    "type": "integer",
-                    "minimum": 0
+                  "active": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
                   "name",
-                  "sortOrder"
+                  "active"
                 ]
               }
             }
@@ -8063,6 +8065,9 @@
                           "name": {
                             "type": "string"
                           },
+                          "isActive": {
+                            "type": "boolean"
+                          },
                           "itemsCount": {
                             "type": "integer",
                             "minimum": 0
@@ -8071,6 +8076,7 @@
                         "required": [
                           "id",
                           "name",
+                          "isActive",
                           "itemsCount"
                         ]
                       }
@@ -8209,14 +8215,13 @@
                     "minLength": 1,
                     "maxLength": 80
                   },
-                  "sortOrder": {
-                    "type": "integer",
-                    "minimum": 0
+                  "isActive": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
                   "name",
-                  "sortOrder"
+                  "isActive"
                 ]
               }
             }
@@ -8341,7 +8346,7 @@
     "/panel/stores/{storeSlug}/tags/{tagId}": {
       "put": {
         "operationId": "updatePanelTag",
-        "summary": "Renomeia uma tag do catálogo.",
+        "summary": "Atualiza o nome e a visibilidade de uma tag.",
         "tags": [
           "panel"
         ],
@@ -8379,14 +8384,13 @@
                     "minLength": 1,
                     "maxLength": 80
                   },
-                  "sortOrder": {
-                    "type": "integer",
-                    "minimum": 0
+                  "isActive": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
                   "name",
-                  "sortOrder"
+                  "isActive"
                 ]
               }
             }

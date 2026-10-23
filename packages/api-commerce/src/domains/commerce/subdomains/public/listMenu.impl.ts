@@ -36,7 +36,9 @@ export const listMenuImpl = os.public.listMenu
             .select("id", "name", "priceCents", "stockMode", "stockQty")
             .orderBy((v) => v.name.asc()),
         )
-        .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("name")))
+        .include("tags", (productTag) =>
+          productTag.include("tag", (tag) => tag.select("name", "isActive")),
+        )
         .orderBy((product) => product.sortOrder.asc())
         .orderBy((product) => product.name.asc())
         .all();

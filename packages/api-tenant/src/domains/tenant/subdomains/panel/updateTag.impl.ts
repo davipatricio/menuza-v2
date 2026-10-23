@@ -32,9 +32,9 @@ export const updateTagImpl = os.handler(async ({ input, context }) => {
   }
 
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Tag.where({ tenantId: store.tenantId, id: input.tagId }).update({
+    db.orm.public.Tag.where({ tenantId: store.tenantId, id: input.tagId }).updateAll({
       name,
-      sortOrder: input.sortOrder,
+      isActive: input.isActive,
     }),
   );
 

@@ -42,7 +42,7 @@ type PublicProductRow = {
     stockMode: string;
     stockQty: number | null;
   }[];
-  tags: readonly { tag: { name: string } | null }[];
+  tags: readonly { tag: { name: string; isActive: boolean } | null }[];
 };
 
 /** The menu's product shape, shared by the listing and the direct URL read. */
@@ -61,6 +61,6 @@ export function toPublicProduct(product: PublicProductRow) {
       priceCents: variation.priceCents,
       available: variation.stockMode === "unlimited" || (variation.stockQty ?? 0) > 0,
     })),
-    tags: product.tags.flatMap((entry) => (entry.tag ? [entry.tag.name] : [])),
+    tags: product.tags.flatMap((entry) => (entry.tag?.isActive ? [entry.tag.name] : [])),
   };
 }

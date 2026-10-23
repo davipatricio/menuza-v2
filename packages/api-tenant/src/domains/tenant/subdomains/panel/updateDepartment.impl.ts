@@ -31,10 +31,12 @@ export const updateDepartmentImpl = os.handler(async ({ input, context }) => {
     if (duplicate) throw catalogConflict("Já existe um departamento com este nome.");
   }
 
+  // `updateAll`, not `update`: RC.17 compiles `update` from `where({ tenantId, id })`
+  // down to `id` only, and the isolation guard then rejects the write.
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Department.where({ tenantId: store.tenantId, id: input.departmentId }).update({
+    db.orm.public.Department.where({ tenantId: store.tenantId, id: input.departmentId }).updateAll({
       name,
-      sortOrder: input.sortOrder,
+      active: input.active,
     }),
   );
 

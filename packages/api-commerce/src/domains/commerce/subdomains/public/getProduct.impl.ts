@@ -31,7 +31,9 @@ export const getProductImpl = os.public.getProduct
             .select("id", "name", "priceCents", "stockMode", "stockQty")
             .orderBy((v) => v.name.asc()),
         )
-        .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("name")))
+        .include("tags", (productTag) =>
+          productTag.include("tag", (tag) => tag.select("name", "isActive")),
+        )
         .first(),
     );
 

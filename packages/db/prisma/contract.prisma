@@ -320,7 +320,8 @@ model Department {
   id        String     @id(map: "Department_pkey")
   tenantId  String
   name      String
-  sortOrder Int        @default(0)
+  // `active` is panel state; no query filters on it yet.
+  active    Boolean    @default(true)
   tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Department_tenantId_fkey")
   products  Product[]
 
@@ -334,7 +335,7 @@ model Tag {
   id        String       @id(map: "Tag_pkey")
   tenantId  String
   name      String
-  sortOrder Int          @default(0)
+  isActive  Boolean      @default(true)
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Tag_tenantId_fkey")
   products  ProductTag[]
 

@@ -20,6 +20,8 @@ import { createProductImpl } from "../src/domains/tenant/subdomains/panel/create
 import { updateProductImpl } from "../src/domains/tenant/subdomains/panel/updateProduct.impl.ts";
 import { deleteProductImpl } from "../src/domains/tenant/subdomains/panel/deleteProduct.impl.ts";
 import { deleteCategoryImpl } from "../src/domains/tenant/subdomains/panel/deleteCategory.impl.ts";
+import { listTagsImpl } from "../src/domains/tenant/subdomains/panel/listTags.impl.ts";
+import { updateTagImpl } from "../src/domains/tenant/subdomains/panel/updateTag.impl.ts";
 
 type Cell = string | number | boolean | null | Temporal.PlainDateTime;
 
@@ -69,6 +71,8 @@ function matches(row: Row, filter: Row): boolean {
  * A chainable stand-in. The procedures chain `.include()`, `.select()`,
  * `.orderBy()` and then a terminal, so only the terminal actually reached has
  * to answer. `decorate` is how the Product fake joins its relations.
+ * `all` answers the model-level terminal (`db.orm.public.<Model>.all()`), which
+ * `listTags` reads for the item counts.
  */
 function collection(source: Row[], decorate: (row: Row) => Row = (row) => row) {
   const where = (filter: Row) => {
@@ -113,7 +117,7 @@ function collection(source: Row[], decorate: (row: Row) => Row = (row) => row) {
     return decorate(row);
   };
 
-  return { where, create };
+  return { where, create, all: async () => source.map(decorate) };
 }
 
 function model(source: Row[]) {
@@ -183,7 +187,7 @@ const MODELS: Record<ModelName, Model> = {
  */
 function override(name: ModelName, key: keyof Model, value: Model[keyof Model]): void {
   // SAFETY: the ORM namespace is keyed by model name and every entry in
-  // `MODEL_NAMES` is present with the `where`/`create` slice this test fakes.
+  // `MODEL_NAMES` is present with the `where`/`create`/`all` slice this test fakes.
   const target = (db.orm.public as unknown as Record<ModelName, Model>)[name];
 
   Object.defineProperty(target, key, { value, writable: true, configurable: true });
@@ -210,6 +214,7 @@ function installFakes() {
   for (const name of MODEL_NAMES) {
     override(name, "where", MODELS[name].where);
     override(name, "create", MODELS[name].create);
+    override(name, "all", MODELS[name].all);
   }
 
   // SAFETY: the stub answers the same `orm` surface the procedures use; the
@@ -223,6 +228,7 @@ function restoreFakes() {
   for (const name of MODEL_NAMES) {
     override(name, "where", originals[name].where);
     override(name, "create", originals[name].create);
+    override(name, "all", originals[name].all);
   }
 }
 
@@ -348,10 +354,12 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
     });
 
     tagId = randomUUID();
-    tags.push({ id: tagId, tenantId: TENANT_ID, name: "Vegano", sortOrder: 0 });
+    tags.push({ id: tagId, tenantId: TENANT_ID, name: "Vegano", isActive: true });
+
+    tags.push({ id: randomUUID(), tenantId: TENANT_ID, name: "Açaí", isActive: false });
 
     otherTagId = randomUUID();
-    tags.push({ id: otherTagId, tenantId: OTHER_TENANT_ID, name: "Outro", sortOrder: 0 });
+    tags.push({ id: otherTagId, tenantId: OTHER_TENANT_ID, name: "Outro", isActive: true });
 
     categoryId = randomUUID();
     categories.push({
@@ -792,6 +800,54 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
         throw new Error("expected deleteCategory to fail");
       } catch (error) {
         // SAFETY: a referenced category only throws the CONFLICT code.
+        expect((error as { code: string }).code).toBe("CONFLICT");
+      }
+    });
+  });
+
+  describe("panel tag writes", () => {
+    test("listTags returns both tags in pt-BR name order with their active flag", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        listTagsImpl,
+        { storeSlug: "mawifoods" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.tags.map((tag) => tag.name)).toEqual(["Açaí", "Vegano"]);
+      expect(result.tags.map((tag) => tag.isActive)).toEqual([false, true]);
+    });
+
+    test("updateTag flips isActive while keeping the name", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        updateTagImpl,
+        { storeSlug: "mawifoods", tagId, name: "Vegano", isActive: false },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.success).toBe(true);
+
+      const row = tags.find((entry) => entry.id === tagId);
+
+      expect(row?.name).toBe("Vegano");
+      expect(row?.isActive).toBe(false);
+    });
+
+    test("a duplicate tag name is a CONFLICT", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(
+          updateTagImpl,
+          { storeSlug: "mawifoods", tagId, name: "Açaí", isActive: true },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected updateTag to fail");
+      } catch (error) {
+        // SAFETY: a duplicate name only throws the CONFLICT code.
         expect((error as { code: string }).code).toBe("CONFLICT");
       }
     });
