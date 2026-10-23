@@ -28,7 +28,7 @@ export const revertSeoImpl = os.handler(async ({ input, context }) => {
       tenantId: store.tenantId,
       entityType: input.entityType,
       entityId: input.entityId,
-    }).delete(),
+    }).deleteAll(),
   );
 
   return inTenantScope(store.tenantId, () =>

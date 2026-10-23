@@ -27,11 +27,7 @@ export interface CsvColumn<T> {
   accessor?: (row: T) => CsvCellValue;
 }
 
-export function exportToCsv<T extends object>(
-  columns: Array<CsvColumn<T>>,
-  rows: T[],
-  filename: string,
-): void {
+export function serializeCsv<T extends object>(columns: Array<CsvColumn<T>>, rows: T[]): string {
   const headerLine = columns.map((c) => sanitizeCsvCell(c.label)).join(",");
 
   const dataLines = rows.map((row) =>
@@ -51,8 +47,15 @@ export function exportToCsv<T extends object>(
       .join(","),
   );
 
-  const csvContent = [headerLine, ...dataLines].join("\r\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  return [headerLine, ...dataLines].join("\r\n");
+}
+
+export function exportToCsv<T extends object>(
+  columns: Array<CsvColumn<T>>,
+  rows: T[],
+  filename: string,
+): void {
+  const blob = new Blob([serializeCsv(columns, rows)], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", url);

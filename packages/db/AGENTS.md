@@ -56,6 +56,11 @@
 - Terminals: `updateAll` returns the updated **rows**; `updateAndCount` returns
   the **number** of affected rows. Use `updateAndCount` when the caller reports a
   count — `updateAll` would make you fetch every row just to measure it.
+- RC.17 planner pitfall: `update`/`delete` compiled from `where({ tenantId, id })`
+  keep only the unique `id` in SQL (the `tenantId` predicate is dropped), so the
+  isolation guard rejects them. Use `updateAll`/`deleteAll` (they keep the full
+  filter) for tenant-scoped writes by id; `upsert` is safe because its conflict
+  target carries `tenantId`.
 - `DATABASE_URL` comes from the repo-root `.env` in both places that need it:
   `prisma.config.ts` self-loads it via `process.loadEnvFile`, and runtime callers
   must export it before importing the client (`bun --env-file-if-exists=...` wrappers).

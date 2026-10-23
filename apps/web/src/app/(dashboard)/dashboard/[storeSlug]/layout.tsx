@@ -6,6 +6,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { ROLE_LABELS } from "@/lib/panel-labels.ts";
 import { panelClient, type TenantClient } from "@/lib/server-tenant.ts";
 import { AppSidebar } from "./_components/app-sidebar.tsx";
+import { CrumbLabelsProvider } from "./_components/crumb-labels.tsx";
 import { HeaderActions } from "../_components/header-actions.tsx";
 import { StoreBreadcrumb } from "./_components/store-breadcrumb.tsx";
 
@@ -76,29 +77,31 @@ export default async function StoreLayout({
         role={ROLE_LABELS[store.role]}
       />
       <SidebarInset>
-        <h1 className="sr-only">{store.tenantName}</h1>
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
-          <SidebarTrigger aria-label="Alternar navegação" className="shrink-0" />
-          <Suspense
-            fallback={
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">Dashboard</span>
-            }
-          >
-            <StoreBreadcrumb basePath={basePath} />
-          </Suspense>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-2.5 pl-2 text-xs font-medium text-muted-foreground sm:flex">
-              <ShieldCheck aria-hidden="true" className="size-3.5" />
-              <span>{memberName}</span>
-              <span aria-hidden="true" className="text-border">
-                |
+        <CrumbLabelsProvider>
+          <h1 className="sr-only">{store.tenantName}</h1>
+          <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
+            <SidebarTrigger aria-label="Alternar navegação" className="shrink-0" />
+            <Suspense
+              fallback={
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">Dashboard</span>
+              }
+            >
+              <StoreBreadcrumb basePath={basePath} />
+            </Suspense>
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-2.5 pl-2 text-xs font-medium text-muted-foreground sm:flex">
+                <ShieldCheck aria-hidden="true" className="size-3.5" />
+                <span>{memberName}</span>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
+                <span className="text-foreground">{ROLE_LABELS[store.role]}</span>
               </span>
-              <span className="text-foreground">{ROLE_LABELS[store.role]}</span>
-            </span>
-            <HeaderActions />
-          </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
+              <HeaderActions />
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
+        </CrumbLabelsProvider>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -364,16 +364,37 @@ export const PanelProductSchema = v.object({
   tags: v.array(PanelProductTagSchema),
   priceCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
   available: v.boolean(),
+  archived: v.boolean(),
+  hidden: v.boolean(),
+  private: v.boolean(),
+  sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+/**
+ * The list row adds what the table needs to avoid one detail request per row:
+ * the price window across variations and the stock summary.
+ */
+export const PanelProductListSchema = v.object({
+  ...PanelProductSchema.entries,
+  description: v.nullable(v.string()),
+  seoTitle: v.nullable(v.string()),
+  seoDescription: v.nullable(v.string()),
+  variationNames: v.array(v.string()),
+  variationCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  priceMinCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  priceMaxCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  stockQty: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  hasUnlimitedStock: v.boolean(),
 });
 
 export const PanelProductsOutputSchema = v.object({
-  products: v.array(PanelProductSchema),
+  products: v.array(PanelProductListSchema),
 });
 
 // --- Catalog writes ----------------------------------------------------------
 //
 // The list shape above is unchanged; the detail adds the fields only the editor
-// needs (description, sortOrder, every variation with its stock) on top of it.
+// needs (description, every variation with its stock) on top of it.
 
 export const PanelProductVariationSchema = v.object({
   id: v.string(),
@@ -386,7 +407,6 @@ export const PanelProductVariationSchema = v.object({
 export const PanelProductDetailSchema = v.object({
   ...PanelProductSchema.entries,
   description: v.nullable(v.string()),
-  sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
   variations: v.array(PanelProductVariationSchema),
 });
 
@@ -477,6 +497,18 @@ const productName = v.pipe(
   v.maxLength(120, "Use no máximo 120 caracteres."),
 );
 
+const productDescription = v.nullable(
+  v.pipe(v.string("Descrição inválida."), v.maxLength(2000, "Use no máximo 2000 caracteres.")),
+);
+
+const productCategoryId = catalogNullableId("Categoria inválida.");
+
+const productDepartmentId = catalogNullableId("Departamento inválido.");
+
+const productTagIds = v.array(
+  v.pipe(v.string("Tag inválida."), v.nonEmpty("Tag inválida."), v.maxLength(64, "Tag inválida.")),
+);
+
 const productVariations = v.pipe(
   v.array(ProductVariationInputSchema),
   v.minLength(1, "Informe ao menos uma variação."),
@@ -486,26 +518,36 @@ const productVariations = v.pipe(
 export const CreateProductInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   name: productName,
-  description: v.nullable(
-    v.pipe(v.string("Descrição inválida."), v.maxLength(2000, "Use no máximo 2000 caracteres.")),
-  ),
-  categoryId: catalogNullableId("Categoria inválida."),
-  departmentId: catalogNullableId("Departamento inválido."),
-  tagIds: v.array(
-    v.pipe(
-      v.string("Tag inválida."),
-      v.nonEmpty("Tag inválida."),
-      v.maxLength(64, "Tag inválida."),
-    ),
-  ),
+  description: productDescription,
+  categoryId: productCategoryId,
+  departmentId: productDepartmentId,
+  tagIds: productTagIds,
   available: v.boolean(),
+  archived: v.optional(v.boolean()),
+  hidden: v.optional(v.boolean()),
+  private: v.optional(v.boolean()),
   sortOrder: catalogSortOrder,
   variations: productVariations,
 });
 
+/**
+ * A partial update: an omitted field leaves the stored value untouched, while
+ * `null` still clears the nullable ones. Only the addressing is required.
+ */
 export const UpdateProductInputSchema = v.strictObject({
-  ...CreateProductInputSchema.entries,
+  storeSlug: catalogStoreSlug,
   productId: catalogProductId,
+  name: v.optional(productName),
+  description: v.optional(productDescription),
+  categoryId: v.optional(productCategoryId),
+  departmentId: v.optional(productDepartmentId),
+  tagIds: v.optional(productTagIds),
+  available: v.optional(v.boolean()),
+  archived: v.optional(v.boolean()),
+  hidden: v.optional(v.boolean()),
+  private: v.optional(v.boolean()),
+  sortOrder: v.optional(catalogSortOrder),
+  variations: v.optional(productVariations),
 });
 
 /** `getProduct` and `deleteProduct` share the exact same addressing. */
@@ -515,6 +557,51 @@ export const ProductIdInputSchema = v.strictObject({
 });
 
 export const DeleteProductInputSchema = ProductIdInputSchema;
+
+const bulkProductIds = v.pipe(
+  v.array(catalogProductId),
+  v.minLength(1, "Selecione ao menos um produto."),
+  v.maxLength(500, "Selecione no máximo 500 produtos por vez."),
+);
+
+/**
+ * One round trip for the table's bulk bar. Every field is optional, but at
+ * least one has to be present; tags are added, never replaced, so selecting a
+ * product that already has one is a no-op for that pair.
+ */
+export const BulkUpdateProductsInputSchema = v.pipe(
+  v.strictObject({
+    storeSlug: catalogStoreSlug,
+    productIds: bulkProductIds,
+    available: v.optional(v.boolean()),
+    addTagIds: v.optional(productTagIds),
+    categoryId: v.optional(productCategoryId),
+    departmentId: v.optional(productDepartmentId),
+  }),
+  v.check(
+    (input) =>
+      input.available !== undefined ||
+      input.addTagIds !== undefined ||
+      input.categoryId !== undefined ||
+      input.departmentId !== undefined,
+    "Informe ao menos uma alteração.",
+  ),
+);
+
+export const BulkUpdateProductsOutputSchema = v.object({
+  updated: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const BulkDeleteProductsInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  productIds: bulkProductIds,
+});
+
+/** Protected products are skipped instead of failing the whole selection. */
+export const BulkDeleteProductsOutputSchema = v.object({
+  deleted: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  skipped: v.array(v.object({ id: v.string(), name: v.string() })),
+});
 
 export const PanelCategorySchema = v.object({
   id: v.string(),
@@ -1095,6 +1182,33 @@ export const deleteProduct = sessionContract
   .input(DeleteProductInputSchema)
   .output(PanelSuccessOutputSchema);
 
+export const bulkUpdateProducts = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/products/bulk",
+      operationId: "bulkUpdatePanelProducts",
+      summary:
+        "Atualiza disponibilidade, categoria, departamento ou adiciona tags em vários produtos.",
+      tags: ["panel"],
+    }),
+  )
+  .input(BulkUpdateProductsInputSchema)
+  .output(BulkUpdateProductsOutputSchema);
+
+export const bulkDeleteProducts = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/products/bulk-delete",
+      operationId: "bulkDeletePanelProducts",
+      summary: "Exclui vários produtos, pulando os que pertencem a pedidos ou kits.",
+      tags: ["panel"],
+    }),
+  )
+  .input(BulkDeleteProductsInputSchema)
+  .output(BulkDeleteProductsOutputSchema);
+
 export const listCategories = panelRead
   .meta(
     openapi({
@@ -1527,6 +1641,11 @@ export const SeoFieldsSchema = v.object({
   ),
 });
 
+/**
+ * A partial save: an omitted field leaves the stored override untouched, while
+ * `null` clears it so the field inherits again. The read side then falls through
+ * to the store row, the templates and the static default.
+ */
 export const SaveSeoInputSchema = v.strictObject({
   ...PanelStoreInputSchema.entries,
   entityType: SeoEntityTypeSchema,
@@ -1535,7 +1654,11 @@ export const SaveSeoInputSchema = v.strictObject({
     v.nonEmpty("Entidade inválida."),
     v.maxLength(64, "Entidade inválida."),
   ),
-  ...SeoFieldsSchema.entries,
+  title: v.optional(SeoFieldsSchema.entries.title),
+  description: v.optional(SeoFieldsSchema.entries.description),
+  canonicalUrl: v.optional(SeoFieldsSchema.entries.canonicalUrl),
+  socialImageUrl: v.optional(SeoFieldsSchema.entries.socialImageUrl),
+  jsonLd: v.optional(SeoFieldsSchema.entries.jsonLd),
 });
 
 export const SaveStoreSeoSettingsInputSchema = v.strictObject({
@@ -1756,6 +1879,8 @@ export const panelContractObject = {
   createProduct,
   updateProduct,
   deleteProduct,
+  bulkUpdateProducts,
+  bulkDeleteProducts,
   listCategories,
   createCategory,
   updateCategory,
@@ -1809,6 +1934,8 @@ export type PanelCustomer = v.InferOutput<typeof PanelCustomerSchema>;
 export type PanelCustomerDetail = v.InferOutput<typeof PanelCustomerDetailSchema>;
 
 export type PanelProduct = v.InferOutput<typeof PanelProductSchema>;
+
+export type PanelProductList = v.InferOutput<typeof PanelProductListSchema>;
 
 export type PanelProductVariation = v.InferOutput<typeof PanelProductVariationSchema>;
 

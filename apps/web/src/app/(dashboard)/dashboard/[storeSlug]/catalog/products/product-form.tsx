@@ -3,16 +3,15 @@
 import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { createORPCClient, ORPCError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterContractClient } from "@orpc/contract";
 import { useMutation } from "@tanstack/react-query";
-import { cn } from "cn";
-import { Plus, Tag, Trash2 } from "lucide-react";
+import { Plus, Tag, Trash2, CircleHelp } from "lucide-react";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { CreateProductInputSchema, UpdateProductInputSchema } from "@menuza/shared/tenant";
-import type { PanelProductDetail, PanelSeo, StockMode } from "@menuza/shared/tenant";
+import type { PanelProductDetail, StockMode } from "@menuza/shared/tenant";
 
 import {
   AlertDialog,
@@ -33,7 +32,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
-import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
   Empty,
   EmptyDescription,
@@ -47,22 +45,13 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
   FieldTitle,
 } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import {
@@ -71,10 +60,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
-import { SeoForm } from "../../_components/seo-form.tsx";
 import { fieldErrors } from "../../../signup/_components/form-errors.ts";
-import { formatBrlInput, maskBrlInput, maskIntegerInput, parseBrlToCents } from "@/lib/format.ts";
+import { formatBrlInput, maskIntegerInput } from "@/lib/format.ts";
 import { STOCK_MODE_LABELS } from "@/lib/panel-labels.ts";
+import { useDirtySection, useLeaveGuard } from "./product-editor-guard.tsx";
+import { useProductWebMcp } from "./product-webmcp.ts";
+import { TagCombobox } from "./tag-combobox.tsx";
+import { TaxonomyCombobox } from "./taxonomy-combobox.tsx";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
 
@@ -84,8 +76,6 @@ function client() {
 
 /** `controlled` needs a quantity, `unlimited` must not carry one (contract rule). */
 const STOCK_MODES: StockMode[] = ["controlled", "unlimited"];
-
-const NO_SELECTION = "none";
 
 const GENERIC_CREATE_ERROR = "Não foi possível criar o produto. Tente novamente.";
 
@@ -110,6 +100,117 @@ type VariationValues = {
   stockMode: StockMode;
   stockQty: number | null;
 };
+
+/** The whole editor state, both as the form's values and as the save baseline. */
+type ProductValues = {
+  storeSlug: string;
+  name: string;
+  description: string;
+  categoryId: string | null;
+  departmentId: string | null;
+  tagIds: string[];
+  available: boolean;
+  archived: boolean;
+  hidden: boolean;
+  private: boolean;
+  sortOrder: number;
+  variations: VariationValues[];
+};
+
+/**
+ * A partial update: an omitted field leaves the stored value untouched, while
+ * `null` still clears the nullable ones. The addressing never travels in it.
+ */
+type ProductPatch = {
+  name?: string;
+  description?: string | null;
+  categoryId?: string | null;
+  departmentId?: string | null;
+  tagIds?: string[];
+  available?: boolean;
+  archived?: boolean;
+  hidden?: boolean;
+  private?: boolean;
+  sortOrder?: number;
+  variations?: VariationValues[];
+};
+
+/** Tag ids compare as a set: the click order is not part of the saved value. */
+function sameIds(left: string[], right: string[]) {
+  return left.length === right.length && [...left].sort().join(" ") === [...right].sort().join(" ");
+}
+
+/** Row `id` travels with the variation, so the API updates instead of recreating. */
+function sameVariations(left: VariationValues[], right: VariationValues[]) {
+  return (
+    left.length === right.length &&
+    left.every((row, index) => {
+      const other = right[index];
+
+      return (
+        other !== undefined &&
+        row.id === other.id &&
+        row.name === other.name &&
+        row.priceCents === other.priceCents &&
+        row.stockMode === other.stockMode &&
+        row.stockQty === other.stockQty
+      );
+    })
+  );
+}
+
+/**
+ * Only the fields the user changed. An omitted field leaves the stored value
+ * untouched; `null` clears a nullable one. Variations go as a whole array when
+ * any row differs, always keeping the row ids.
+ */
+function productPatch(baseline: ProductValues, values: ProductValues): ProductPatch {
+  const patch: ProductPatch = {};
+  const description = values.description.trim() === "" ? null : values.description;
+  const savedDescription = baseline.description.trim() === "" ? null : baseline.description;
+
+  if (values.name !== baseline.name) patch.name = values.name;
+
+  if (description !== savedDescription) patch.description = description;
+
+  if (values.categoryId !== baseline.categoryId) patch.categoryId = values.categoryId;
+
+  if (values.departmentId !== baseline.departmentId) patch.departmentId = values.departmentId;
+
+  if (!sameIds(values.tagIds, baseline.tagIds)) patch.tagIds = values.tagIds;
+
+  if (values.available !== baseline.available) patch.available = values.available;
+
+  if (values.archived !== baseline.archived) patch.archived = values.archived;
+
+  if (values.hidden !== baseline.hidden) patch.hidden = values.hidden;
+
+  if (values.private !== baseline.private) patch.private = values.private;
+
+  if (values.sortOrder !== baseline.sortOrder) patch.sortOrder = values.sortOrder;
+
+  if (!sameVariations(values.variations, baseline.variations)) patch.variations = values.variations;
+
+  return patch;
+}
+
+/** A copied snapshot, so later edits to the form never touch the baseline. */
+function snapshotOf(values: ProductValues): ProductValues {
+  return {
+    storeSlug: values.storeSlug,
+    name: values.name,
+    description: values.description,
+    categoryId: values.categoryId,
+    departmentId: values.departmentId,
+    tagIds: [...values.tagIds],
+    available: values.available,
+    archived: values.archived,
+    hidden: values.hidden,
+    private: values.private,
+    sortOrder: values.sortOrder,
+    variations: values.variations.map((variation) => ({ ...variation })),
+  };
+}
 
 /** Categories, departments and tags share the id/name shape the selects need. */
 type TaxonomyItem = { id: string; name: string };
@@ -167,7 +268,7 @@ function FormSection({
 
 /**
  * Campo de dinheiro em reais. O estado do formulário continua em centavos
- * inteiros; texto inválido vira `NaN` para o schema recusar.
+ * inteiros: o campo mostra o valor formatado e digita em dígitos.
  */
 function MoneyInput({
   id,
@@ -189,8 +290,7 @@ function MoneyInput({
   describedBy?: string;
 }) {
   // SAFETY: Number.isFinite exclui `undefined` e `NaN`; o `as number` só estreita o tipo já validado.
-  const committed = Number.isFinite(value) ? formatBrlInput(value as number) : "";
-  const [draft, setDraft] = useState<string | null>(null);
+  const display = Number.isFinite(value) ? formatBrlInput(value as number) : "";
 
   return (
     <InputGroup className="max-w-[14rem]">
@@ -198,43 +298,23 @@ function MoneyInput({
       <InputGroupInput
         id={id}
         type="text"
-        inputMode="decimal"
+        inputMode="numeric"
         autoComplete="off"
         spellCheck={false}
         disabled={disabled}
-        value={draft ?? committed}
+        value={display}
         placeholder={placeholder}
         aria-invalid={invalid}
         aria-describedby={describedBy}
-        onFocus={() => setDraft((current) => current ?? committed)}
+        onFocus={(event) => event.currentTarget.select()}
         onChange={(event) => {
-          // ponytail: máscara de milhar a cada tecla; editar no meio do valor
+          // ponytail: o texto é sempre o valor formatado, então editar no meio
           // joga o cursor para o fim — aceitável num campo curto.
-          const masked = maskBrlInput(event.target.value);
-          setDraft(masked);
+          const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
 
-          if (masked.trim() === "") {
-            onChange(undefined);
-
-            return;
-          }
-
-          try {
-            onChange(parseBrlToCents(masked));
-          } catch {
-            onChange(Number.NaN);
-          }
+          onChange(digits === "" ? undefined : Number(digits));
         }}
-        onBlur={() => {
-          try {
-            parseBrlToCents(draft ?? "");
-            setDraft(null);
-          } catch {
-            // Mantém o texto inválido visível; o erro do schema explica.
-          }
-
-          onBlur?.();
-        }}
+        onBlur={onBlur}
       />
     </InputGroup>
   );
@@ -271,56 +351,6 @@ function fieldDescribedBy(
   );
 }
 
-/** Select options for the two taxonomy fields, with the explicit "no value" row. */
-function taxonomyOptions(items: Array<{ id: string; name: string }>, emptyLabel: string) {
-  return [
-    { label: emptyLabel, value: NO_SELECTION },
-    ...items.map((item) => ({ label: item.name, value: item.id })),
-  ];
-}
-
-function TaxonomySelect({
-  field,
-  submitted,
-  items,
-  emptyLabel,
-  placeholder,
-}: {
-  field: any;
-  submitted: boolean;
-  items: Array<{ id: string; name: string }>;
-  emptyLabel: string;
-  placeholder: string;
-}) {
-  const options = taxonomyOptions(items, emptyLabel);
-
-  return (
-    <Select
-      items={options}
-      value={field.state.value ?? NO_SELECTION}
-      onValueChange={(next) => field.handleChange(next === NO_SELECTION ? null : next)}
-    >
-      <SelectTrigger
-        id={field.name}
-        aria-invalid={fieldInvalid(field, submitted)}
-        aria-describedby={fieldDescribedBy(field, field.name, submitted)}
-        className="w-full max-w-[20rem]"
-      >
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-}
-
 function VariationRow({
   form,
   variation,
@@ -340,9 +370,15 @@ function VariationRow({
   const unlimited = variation.stockMode === "unlimited";
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
+    <div
+      role="group"
+      aria-labelledby={`${base}-label`}
+      className="flex flex-col gap-3 rounded-lg border border-border p-3"
+    >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">Variação {index + 1}</p>
+        <p id={`${base}-label`} className="text-xs font-medium text-muted-foreground">
+          Variação {index + 1}
+        </p>
         {count > 1 ? (
           <Button
             type="button"
@@ -498,6 +534,52 @@ function VariationRow({
   );
 }
 
+/** One switch plus its gray help icon; the tooltip explains the visibility rule. */
+function VisibilityField({
+  form,
+  name,
+  label,
+  help,
+}: {
+  form: any;
+  name: "available" | "archived" | "hidden" | "private";
+  label: string;
+  help: string;
+}) {
+  return (
+    <form.Field name={name}>
+      {(field: any) => (
+        <Field orientation="horizontal" className="w-auto">
+          <Switch
+            id={field.name}
+            checked={field.state.value}
+            onCheckedChange={field.handleChange}
+          />
+          <div className="flex items-center gap-1">
+            <FieldLabel htmlFor={field.name}>{label}</FieldLabel>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    aria-label={`Ajuda sobre ${label}`}
+                  />
+                }
+              >
+                <CircleHelp data-icon aria-hidden="true" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-72">{help}</TooltipContent>
+            </Tooltip>
+          </div>
+        </Field>
+      )}
+    </form.Field>
+  );
+}
+
 function ProductFields({
   form,
   submitted,
@@ -566,12 +648,16 @@ function ProductFields({
               {(field: any) => (
                 <Field data-invalid={fieldInvalid(field, submitted)}>
                   <FieldLabel htmlFor={field.name}>Categoria</FieldLabel>
-                  <TaxonomySelect
-                    field={field}
-                    submitted={submitted}
+                  <TaxonomyCombobox
+                    id={field.name}
                     items={categories}
+                    value={field.state.value}
+                    onChange={field.handleChange}
                     emptyLabel="Sem categoria"
-                    placeholder="Sem categoria"
+                    placeholder="Buscar categoria…"
+                    invalid={fieldInvalid(field, submitted)}
+                    describedBy={fieldDescribedBy(field, field.name, submitted)}
+                    className="w-full max-w-[20rem]"
                   />
                   <FieldDescription id={`${field.name}-description`}>
                     Um produto pode ficar sem categoria.
@@ -584,12 +670,16 @@ function ProductFields({
               {(field: any) => (
                 <Field data-invalid={fieldInvalid(field, submitted)}>
                   <FieldLabel htmlFor={field.name}>Departamento</FieldLabel>
-                  <TaxonomySelect
-                    field={field}
-                    submitted={submitted}
+                  <TaxonomyCombobox
+                    id={field.name}
                     items={departments}
+                    value={field.state.value}
+                    onChange={field.handleChange}
                     emptyLabel="Sem departamento"
-                    placeholder="Sem departamento"
+                    placeholder="Buscar departamento…"
+                    invalid={fieldInvalid(field, submitted)}
+                    describedBy={fieldDescribedBy(field, field.name, submitted)}
+                    className="w-full max-w-[20rem]"
                   />
                   <FieldDescription id={`${field.name}-description`}>
                     Um produto pode ficar sem departamento.
@@ -601,8 +691,8 @@ function ProductFields({
 
           <form.Field name="tagIds">
             {(field: any) => (
-              <FieldSet>
-                <FieldLegend variant="label">Tags</FieldLegend>
+              <Field>
+                <FieldLabel htmlFor={field.name}>Tags</FieldLabel>
                 {tags.length === 0 ? (
                   <Empty className="border">
                     <EmptyHeader>
@@ -616,71 +706,75 @@ function ProductFields({
                     </EmptyHeader>
                   </Empty>
                 ) : (
-                  <div className="flex flex-wrap gap-3">
-                    {tags.map((tag) => {
-                      const id = `${field.name}-${tag.id}`;
-
-                      return (
-                        <Field key={tag.id} orientation="horizontal" className="w-auto">
-                          <Checkbox
-                            id={id}
-                            checked={field.state.value.includes(tag.id)}
-                            onCheckedChange={(checked: boolean) =>
-                              field.handleChange(
-                                checked
-                                  ? [...field.state.value, tag.id]
-                                  : field.state.value.filter((item: string) => item !== tag.id),
-                              )
-                            }
-                          />
-                          <FieldLabel htmlFor={id}>{tag.name}</FieldLabel>
-                        </Field>
-                      );
-                    })}
-                  </div>
+                  <TagCombobox
+                    id={field.name}
+                    tags={tags}
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    describedBy={`${field.name}-description`}
+                    className="w-full max-w-[28rem]"
+                  />
                 )}
-              </FieldSet>
+                <FieldDescription id={`${field.name}-description`}>
+                  Busque e selecione uma ou mais tags.
+                </FieldDescription>
+              </Field>
             )}
           </form.Field>
 
-          <div className="flex flex-wrap items-center gap-6">
-            <form.Field name="available">
-              {(field: any) => (
-                <Field orientation="horizontal" className="w-auto">
-                  <Checkbox
-                    id={field.name}
-                    checked={field.state.value}
-                    onCheckedChange={field.handleChange}
-                  />
-                  <FieldLabel htmlFor={field.name}>Disponível para venda</FieldLabel>
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="sortOrder">
-              {(field: any) => (
-                <Field data-invalid={fieldInvalid(field, submitted)}>
-                  <FieldLabel htmlFor={field.name}>Ordem</FieldLabel>
-                  <Input
-                    id={field.name}
-                    className="max-w-[10rem]"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={maskIntegerInput(String(field.state.value))}
-                    aria-invalid={fieldInvalid(field, submitted)}
-                    aria-describedby={fieldDescribedBy(field, field.name, submitted, false)}
-                    onChange={(event) => {
-                      const digits = event.target.value.replace(/\D/g, "");
-                      field.handleChange(digits === "" ? 0 : Number(digits));
-                    }}
-                    onBlur={field.handleBlur}
-                  />
-                  {fieldError(field, field.name, submitted)}
-                </Field>
-              )}
-            </form.Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <VisibilityField
+              form={form}
+              name="available"
+              label="Ativo"
+              help="Quando desativado, o produto não existe para o cliente: a URL direta responde 404 e ele sai do cardápio, da busca e do sitemap."
+            />
+            <VisibilityField
+              form={form}
+              name="archived"
+              label="Arquivado"
+              help="Pausa o produto temporariamente. A URL direta mostra o aviso de pausa, mas ele não é indexado nem aparece no cardápio."
+            />
+            <VisibilityField
+              form={form}
+              name="hidden"
+              label="Escondido"
+              help="Some do cardápio, da busca e do sitemap. Quem tiver a URL direta ainda abre e compra, se o produto estiver ativo."
+            />
+            <VisibilityField
+              form={form}
+              name="private"
+              label="Privado"
+              help="Exige uma conta da loja (dono, administrador ou membro) para abrir e comprar. Não aparece para clientes nem é indexado."
+            />
           </div>
+
+          <form.Field name="sortOrder">
+            {(field: any) => (
+              <Field data-invalid={fieldInvalid(field, submitted)}>
+                <FieldLabel htmlFor={field.name}>Ordem</FieldLabel>
+                <Input
+                  id={field.name}
+                  className="max-w-[10rem]"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={maskIntegerInput(String(field.state.value))}
+                  aria-invalid={fieldInvalid(field, submitted)}
+                  aria-describedby={fieldDescribedBy(field, field.name, submitted)}
+                  onChange={(event) => {
+                    const digits = event.target.value.replace(/\D/g, "");
+                    field.handleChange(digits === "" ? 0 : Number(digits));
+                  }}
+                  onBlur={field.handleBlur}
+                />
+                <FieldDescription id={`${field.name}-description`}>
+                  Menor número aparece primeiro na listagem.
+                </FieldDescription>
+                {fieldError(field, field.name, submitted)}
+              </Field>
+            )}
+          </form.Field>
         </FieldGroup>
       </FormSection>
 
@@ -733,6 +827,7 @@ function ProductFields({
                   Adicionar variação
                 </Button>
               </div>
+              {fieldError(field, field.name, submitted)}
             </div>
           )}
         </form.Field>
@@ -757,7 +852,13 @@ function submitWithFocus(form: any, event: FormEvent<HTMLFormElement>) {
     });
 }
 
-function DeleteProductButton({ storeSlug, productId }: { storeSlug: string; productId: string }) {
+export function DeleteProductButton({
+  storeSlug,
+  productId,
+}: {
+  storeSlug: string;
+  productId: string;
+}) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -775,10 +876,12 @@ function DeleteProductButton({ storeSlug, productId }: { storeSlug: string; prod
   });
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col items-end gap-3">
       <Button
         type="button"
         variant="destructive"
+        size="sm"
+        className="w-auto"
         onClick={() => {
           setServerError(null);
           setConfirming(true);
@@ -788,7 +891,7 @@ function DeleteProductButton({ storeSlug, productId }: { storeSlug: string; prod
       </Button>
 
       {serverError ? (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="w-full max-w-sm">
           <AlertTitle>Não foi possível excluir o produto</AlertTitle>
           <AlertDescription>{serverError}</AlertDescription>
         </Alert>
@@ -822,21 +925,19 @@ function DeleteProductButton({ storeSlug, productId }: { storeSlug: string; prod
 export function ProductForm({
   storeSlug,
   product,
-  seo,
   categories,
   departments,
   tags,
 }: {
   storeSlug: string;
   product?: PanelProductDetail;
-  seo?: PanelSeo;
   categories: TaxonomyItem[];
   departments: TaxonomyItem[];
   tags: TaxonomyItem[];
 }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
 
   const initialVariations: VariationValues[] = product
     ? product.variations.map((variation) => ({
@@ -848,7 +949,7 @@ export function ProductForm({
       }))
     : [{ name: "", priceCents: 0, stockMode: "controlled", stockQty: 0 }];
 
-  const defaultValues = {
+  const defaultValues: ProductValues = {
     storeSlug,
     name: product?.name ?? "",
     description: product?.description ?? "",
@@ -856,34 +957,60 @@ export function ProductForm({
     departmentId: product?.departmentId ?? null,
     tagIds: product?.tags.map((tag) => tag.id) ?? [],
     available: product?.available ?? true,
+    archived: product?.archived ?? false,
+    hidden: product?.hidden ?? false,
+    private: product?.private ?? false,
     sortOrder: product?.sortOrder ?? 0,
     variations: initialVariations,
   };
 
+  // What the next save compares against: the last submitted snapshot, so a
+  // second save never resends the first patch.
+  const [baseline, setBaseline] = useState<ProductValues>(() => snapshotOf(defaultValues));
+
   const mutation = useMutation({
-    mutationFn: async (values: any) => {
-      const payload = {
-        ...values,
-        description: String(values.description ?? "").trim() === "" ? null : values.description,
-      };
-
-      if (product) return client().panel.updateProduct({ ...payload, productId: product.id });
-
-      return client().panel.createProduct(payload);
-    },
-    onSuccess: (result) => {
+    mutationFn: async (values: ProductValues) => {
       if (product) {
-        setSaved(true);
+        const patch = productPatch(baseline, values);
+
+        if (Object.keys(patch).length === 0) return null;
+
+        const { product: updated } = await client().panel.updateProduct({
+          storeSlug,
+          productId: product.id,
+          ...patch,
+        });
+
+        return updated;
+      }
+
+      const { product: created } = await client().panel.createProduct({
+        ...values,
+        description: values.description.trim() === "" ? null : values.description,
+      });
+
+      return created;
+    },
+    onSuccess: (result, values) => {
+      if (!result) {
+        setStatus("Nenhuma alteração para salvar.");
+
+        return;
+      }
+
+      if (product) {
+        setBaseline(snapshotOf(values));
+        setStatus("Alterações salvas.");
         router.refresh();
 
         return;
       }
 
       // The note lives on the edit page, so it survives the navigation.
-      router.push(`/dashboard/${storeSlug}/catalog/products/${result.product.id}?created=1`);
+      router.push(`/dashboard/${storeSlug}/catalog/products/${result.id}?created=1`);
     },
     onError: (error) => {
-      setSaved(false);
+      setStatus(null);
       setServerError(serverMessage(error, product ? GENERIC_SAVE_ERROR : GENERIC_CREATE_ERROR));
     },
   });
@@ -896,9 +1023,35 @@ export function ProductForm({
     },
     onSubmit: async ({ value }) => {
       setServerError(null);
+      setStatus(null);
       await mutation.mutateAsync(value);
     },
   });
+
+  const formValues = useStore(form.store, (state: any) => state.values);
+
+  const currentValues: ProductValues = {
+    storeSlug,
+    name: formValues.name,
+    description: formValues.description ?? "",
+    categoryId: formValues.categoryId ?? null,
+    departmentId: formValues.departmentId ?? null,
+    tagIds: formValues.tagIds ?? [],
+    available: formValues.available,
+    archived: formValues.archived,
+    hidden: formValues.hidden,
+    private: formValues.private,
+    sortOrder: formValues.sortOrder,
+    variations: formValues.variations ?? [],
+  };
+
+  const dirty =
+    product !== undefined && Object.keys(productPatch(baseline, currentValues)).length > 0;
+
+  const leaveGuard = useLeaveGuard();
+
+  useDirtySection("product", dirty);
+  useProductWebMcp(form);
 
   return (
     <TooltipProvider>
@@ -925,62 +1078,40 @@ export function ProductForm({
             </Alert>
           ) : null}
 
-          {saved ? (
+          {status ? (
             <p role="status" className="text-sm text-muted-foreground">
-              Alterações salvas.
+              {status}
             </p>
           ) : null}
 
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-2",
-              product ? "justify-between" : "justify-end",
-            )}
-          >
-            {product ? <DeleteProductButton storeSlug={storeSlug} productId={product.id} /> : null}
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push(`/dashboard/${storeSlug}/catalog/products`)}
-              >
-                Cancelar
-              </Button>
-              <form.Subscribe selector={(state: any) => state.isSubmitting}>
-                {(isSubmitting: boolean) => (
-                  <Button type="submit" disabled={isSubmitting || mutation.isPending}>
-                    {isSubmitting || mutation.isPending ? (
-                      <Spinner data-icon="inline-start" />
-                    ) : null}
-                    {product ? "Salvar alterações" : "Criar produto"}
-                  </Button>
-                )}
-              </form.Subscribe>
-            </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const href = `/dashboard/${storeSlug}/catalog/products`;
+
+                if (leaveGuard) {
+                  leaveGuard.requestLeave(href);
+
+                  return;
+                }
+
+                router.push(href);
+              }}
+            >
+              Cancelar
+            </Button>
+            <form.Subscribe selector={(state: any) => state.isSubmitting}>
+              {(isSubmitting: boolean) => (
+                <Button type="submit" disabled={isSubmitting || mutation.isPending}>
+                  {isSubmitting || mutation.isPending ? <Spinner data-icon="inline-start" /> : null}
+                  {product ? "Salvar alterações" : "Criar produto"}
+                </Button>
+              )}
+            </form.Subscribe>
           </div>
         </form>
-
-        <section aria-labelledby="product-seo-heading" className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <h3 id="product-seo-heading" className="text-base font-semibold tracking-tight">
-              SEO
-            </h3>
-            <p className="text-sm text-pretty text-muted-foreground">
-              Como o produto aparece na busca e ao ser compartilhado.
-            </p>
-          </div>
-          {product && seo ? (
-            <SeoForm
-              storeSlug={storeSlug}
-              entityType="product"
-              entityId={product.id}
-              entityName={product.name}
-              initialData={seo}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">Salve o produto para editar o SEO.</p>
-          )}
-        </section>
       </div>
     </TooltipProvider>
   );

@@ -29,6 +29,20 @@ export const loadMenu = cache(async (): Promise<StorefrontMenu | null> => {
   return client ? await client.public.listMenu({}) : null;
 });
 
+/**
+ * One product by id. Unlike the menu, this answers hidden and archived items so
+ * the direct URL works; inactive and private come back as `null`.
+ */
+export const loadProduct = cache(async (productId: string): Promise<StorefrontProduct | null> => {
+  const client = await storefrontClient();
+
+  if (!client) return null;
+
+  const { product } = await client.public.getProduct({ productId });
+
+  return product;
+});
+
 /** Categorias e itens soltos na mesma lista, na ordem em que o cardápio mostra. */
 export function menuProducts(menu: StorefrontMenu): StorefrontProduct[] {
   return [...menu.categories.flatMap((category) => category.products), ...menu.uncategorized];

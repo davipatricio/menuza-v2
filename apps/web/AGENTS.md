@@ -78,6 +78,30 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   unknown slug and a non-member are both 404 and a freshly created store opens
   empty rather than 404ing. `src/lib/panel-labels.ts` is the only place the
   contract's ASCII enums become pt-BR, and `formatBrl` takes cents (ADR-0006).
+- Catalog products surface:
+  - List search/filters are URL state parsed **server-side** by
+    `catalog/products/product-search-params.ts` (`nuqs` parsers + `createLoader`).
+    `products-table.tsx` writes the same keys with `useQueryStates` (shallow,
+    debounced text) and resets `page`; filtering/ordering is a pure function in
+    `product-filter.ts` over the one `panel.listProducts` payload. Deterministic
+    order is `sortOrder` asc → name → id (`sortOrder` is part of
+    `PanelProductSchema`).
+  - "Exportar CSV" is a server route (`catalog/products/export/route.ts`) that
+    reuses the same parser/filter and the session client: `text/csv`, UTF-8 BOM,
+    `private, no-store`, attachment named after the store slug.
+  - The editor's Produto/SEO tabs are Base UI `keepMounted` panels, so unsaved
+    input survives tab switches; `?tab=seo` is shallow URL state (no server hit).
+    `product-form.tsx` and `_components/seo-form.tsx` diff against the initial
+    snapshot and send **partial** payloads: omitted = untouched, `null` =
+    clear/inherit, empty diff = no request. `MoneyInput` formats digits as cents
+    on every keystroke (not only on blur).
+  - **Money inputs reuse `MoneyInput`.** Any new price/cost/freight field copies
+    the live-formatting pattern from `product-form.tsx` (integer cents in form
+    state, `formatBrlInput` + digit-only `onChange` in the input); never a raw
+    `type="number"` or a blur-only formatter.
+  - Product search matches name, description, SEO title/description, variation
+    names, category, department and tags (`product-filter.ts`); the list payload
+    carries those fields so filtering stays server-side and request-free.
 - `settings/account` (password change + active sessions with revocation) and
   `settings/team` (read-only member/role list) are live, both added by MEN-225.
   The `account.*` procedures are **member-level** — they take no `storeSlug` —

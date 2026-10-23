@@ -32,7 +32,13 @@ Common rules: several active kits per store; fixed and free sizes; minimums/maxi
 
 - Models `Category`, `Product`, `Variation`, `Kit`, `KitItem` (`packages/db`) — all tenant-scoped, money as `Int` cents (ADR-0006), enum-ish columns as `text` + CHECK with ASCII slugs (`pt-BR` labels only in the UI).
 - Reads `panel.listProducts`, `panel.listCategories`; commerce side owns the buyer catalog.
-- Panel UI: `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/catalog/`.
+- Panel UI: `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/catalog/products/`.
+  - `page.tsx` parses `q`/`status`/`category`/`department`/`tag`/`page` **server-side** (`product-search-params.ts`, `nuqs` `createLoader`) and filters the single `panel.listProducts` payload in `product-filter.ts`. Order is `sortOrder` asc → name → id; `sortOrder` is on `PanelProductSchema`.
+  - `products-table.tsx` owns the URL toolbar (`useQueryStates`, shallow, debounced text) and resets `page` on filter changes.
+  - `export/route.ts` is the server CSV export: same parser/filter, `text/csv`, UTF-8 BOM, `private, no-store`.
+  - `[productId]/product-tabs.tsx` keeps Produto and SEO mounted; `?tab=seo` is shallow. `product-form.tsx` and `_components/seo-form.tsx` send **partial** patches (omitted = keep, `null` = clear/inherit; an empty diff makes no request), and `MoneyInput` formats cents live while typing.
+- `panel.updateProduct` / `panel.saveSeo` accept partial input (`UpdateProductInputSchema`, `SaveSeoInputSchema`); create stays fully required.
+- Prisma 8 RC.17 pitfall: `update`/`delete` by `{ tenantId, id }` compile without the `tenantId` predicate; the isolation guard rejects them. Tenant-scoped writes by id use `updateAll`/`deleteAll` (and `updateAndCount` for counts); `upsert` with `conflictOn` is fine.
 
 ## Checks
 

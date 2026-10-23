@@ -2,7 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { createORPCClient, ORPCError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterContractClient } from "@orpc/contract";
@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { fieldErrors } from "../../signup/_components/form-errors.ts";
+import { useDirtySection } from "../catalog/products/product-editor-guard.tsx";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
 
@@ -58,6 +59,37 @@ const GENERIC_REVERT_ERROR = "Não foi possível reverter o SEO. Tente novamente
  * `validators` entry — the same reason the coupon form does it.
  */
 const seoSchema: any = SaveSeoInputSchema;
+
+const SEO_FIELDS = ["title", "description", "canonicalUrl", "socialImageUrl", "jsonLd"] as const;
+
+/** The five editable fields plus the addressing the form carries along. */
+type SeoFormValues = SeoFields & {
+  storeSlug: string;
+  entityType: SeoEntityType;
+  entityId: string;
+};
+
+/**
+ * A partial save: an omitted field keeps the stored override, while `null` makes
+ * the field inherit again. Only what the user touched travels.
+ */
+function seoPatch(baseline: SeoFields, values: SeoFields): Partial<SeoFields> {
+  const patch: Partial<SeoFields> = {};
+
+  for (const field of SEO_FIELDS) {
+    if (values[field] !== baseline[field]) patch[field] = values[field];
+  }
+
+  return patch;
+}
+
+/**
+ * The product form also renders a `description` field, and both forms stay
+ * mounted in the tabs, so every DOM id here carries the `seo-` prefix.
+ */
+function domId(name: string) {
+  return `seo-${name}`;
+}
 
 const SOURCE_LABELS: Record<SeoSource, string> = {
   entity: "Definido nesta entidade",
@@ -81,12 +113,11 @@ function serverMessage(error: Error, fallback: string): string {
 }
 
 /**
- * The one SEO form the six `…/[id]/edit/seo` routes render (MEN-253).
- *
- * The server page hands over the already-loaded picture, so nothing is fetched
- * in the browser until a save. Every mutation returns the freshly resolved SEO
- * and that response replaces the local copy: it is what re-labels a field as
- * "Herdado da loja" or "Padrão" after a revert, with no reload.
+ * The SEO tab of the product editor. It is also the seam for any future entity
+ * editor: the server page hands over the already-loaded picture, so nothing is
+ * fetched in the browser until a save. Every mutation returns the freshly
+ * resolved SEO and that response replaces the local copy: it is what re-labels a
+ * field as "Herdado da loja" or "Padrão" after a revert, with no reload.
  */
 export function SeoForm({
   storeSlug,
@@ -103,24 +134,38 @@ export function SeoForm({
 }) {
   const [data, setData] = useState(initialData);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [confirmingRevert, setConfirmingRevert] = useState(false);
 
   const { saved: loaded, resolved } = data;
 
   const saveMutation = useMutation({
-    mutationFn: async (values: SeoFields) =>
-      client().panel.saveSeo({ storeSlug, entityType, entityId, ...values }),
-    onSuccess: (result) => {
-      setData(result);
-      setSaved(true);
+    mutationFn: async (values: SeoFormValues) => {
+      const patch = seoPatch(loaded, values);
+
+      if (Object.keys(patch).length === 0) return null;
+
+      return client().panel.saveSeo({ storeSlug, entityType, entityId, ...patch });
     },
-    onError: (error) => setServerError(serverMessage(error, GENERIC_SAVE_ERROR)),
+    onSuccess: (result) => {
+      if (!result) {
+        setStatus("Nenhuma alteração para salvar.");
+
+        return;
+      }
+
+      setData(result);
+      setStatus("SEO salvo.");
+    },
+    onError: (error) => {
+      setStatus(null);
+      setServerError(serverMessage(error, GENERIC_SAVE_ERROR));
+    },
   });
 
   const revertFieldMutation = useMutation({
     mutationFn: async (field: keyof SeoFields) =>
-      client().panel.saveSeo({ storeSlug, entityType, entityId, ...loaded, [field]: null }),
+      client().panel.saveSeo({ storeSlug, entityType, entityId, [field]: null }),
     onSuccess: (result) => {
       setData(result);
       setServerError(null);
@@ -143,7 +188,7 @@ export function SeoForm({
         jsonLd: null,
       });
       setServerError(null);
-      setSaved(false);
+      setStatus(null);
       setConfirmingRevert(false);
     },
     onError: (error) => {
@@ -169,10 +214,15 @@ export function SeoForm({
     },
     onSubmit: async ({ value }) => {
       setServerError(null);
-      setSaved(false);
+      setStatus(null);
       await saveMutation.mutateAsync(value);
     },
   });
+
+  const formValues = useStore(form.store, (state: any) => state.values);
+  const dirty = Object.keys(seoPatch(loaded, formValues)).length > 0;
+
+  useDirtySection("seo", dirty);
 
   // An error shows once the field was touched or the form was submitted, so a
   // submit never fails silently on a field the user never visited.
@@ -181,12 +231,13 @@ export function SeoForm({
     (field.state.meta.isTouched || form.state.isSubmitted) && !field.state.meta.isValid;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const describedBy = (field: any, name: string) => (invalid(field) ? `${name}-error` : undefined);
+  const describedBy = (field: any, name: string) =>
+    invalid(field) ? `${domId(name)}-error` : undefined;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const error = (field: any, name: string) =>
     invalid(field) ? (
-      <FieldError id={`${name}-error`} errors={fieldErrors(field.state.meta.errors)} />
+      <FieldError id={`${domId(name)}-error`} errors={fieldErrors(field.state.meta.errors)} />
     ) : null;
 
   const revertButton = (name: keyof SeoFields) => (
@@ -243,11 +294,11 @@ export function SeoForm({
               {(field: any) => (
                 <Field data-invalid={invalid(field)}>
                   <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={field.name}>Título</FieldLabel>
+                    <FieldLabel htmlFor={domId(field.name)}>Título</FieldLabel>
                     {revertButton("title")}
                   </div>
                   <Input
-                    id={field.name}
+                    id={domId(field.name)}
                     value={field.state.value ?? ""}
                     placeholder={resolved.title}
                     maxLength={70}
@@ -269,11 +320,11 @@ export function SeoForm({
               {(field: any) => (
                 <Field data-invalid={invalid(field)}>
                   <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={field.name}>Descrição</FieldLabel>
+                    <FieldLabel htmlFor={domId(field.name)}>Descrição</FieldLabel>
                     {revertButton("description")}
                   </div>
                   <Textarea
-                    id={field.name}
+                    id={domId(field.name)}
                     rows={3}
                     value={field.state.value ?? ""}
                     placeholder={resolved.description ?? "Sem descrição herdada."}
@@ -296,11 +347,11 @@ export function SeoForm({
               {(field: any) => (
                 <Field data-invalid={invalid(field)}>
                   <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={field.name}>URL canônica</FieldLabel>
+                    <FieldLabel htmlFor={domId(field.name)}>URL canônica</FieldLabel>
                     {revertButton("canonicalUrl")}
                   </div>
                   <Input
-                    id={field.name}
+                    id={domId(field.name)}
                     type="url"
                     inputMode="url"
                     autoComplete="off"
@@ -325,11 +376,11 @@ export function SeoForm({
               {(field: any) => (
                 <Field data-invalid={invalid(field)}>
                   <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={field.name}>Imagem para redes sociais</FieldLabel>
+                    <FieldLabel htmlFor={domId(field.name)}>Imagem para redes sociais</FieldLabel>
                     {revertButton("socialImageUrl")}
                   </div>
                   <Input
-                    id={field.name}
+                    id={domId(field.name)}
                     type="url"
                     inputMode="url"
                     autoComplete="off"
@@ -353,11 +404,11 @@ export function SeoForm({
               {(field: any) => (
                 <Field data-invalid={invalid(field)}>
                   <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={field.name}>JSON-LD</FieldLabel>
+                    <FieldLabel htmlFor={domId(field.name)}>JSON-LD</FieldLabel>
                     {revertButton("jsonLd")}
                   </div>
                   <Textarea
-                    id={field.name}
+                    id={domId(field.name)}
                     rows={8}
                     className="font-mono text-xs"
                     value={field.state.value ?? ""}
@@ -387,9 +438,9 @@ export function SeoForm({
         </Alert>
       ) : null}
 
-      {saved ? (
+      {status ? (
         <p role="status" className="text-sm text-muted-foreground">
-          SEO salvo.
+          {status}
         </p>
       ) : null}
 

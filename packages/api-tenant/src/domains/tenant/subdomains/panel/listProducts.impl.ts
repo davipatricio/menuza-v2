@@ -22,35 +22,72 @@ export const listProductsImpl = os.handler(async ({ input, context }) => {
       .include("department", (department) => department.select("id", "name"))
       .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("id", "name")))
       .include("variations", (variation) =>
-        variation.select("name", "priceCents").orderBy((v) => v.name.asc()),
+        variation
+          .select("name", "priceCents", "stockMode", "stockQty")
+          .orderBy((v) => v.name.asc()),
       )
       .orderBy((p) => p.sortOrder.asc())
       .all(),
   );
 
+  const seoRows = await inTenantScope(store.tenantId, () =>
+    db.orm.public.SeoMeta.where({ tenantId: store.tenantId, entityType: "product" })
+      .select("entityId", "title", "description")
+      .all(),
+  );
+
+  const seoByProduct = new Map(seoRows.map((row) => [row.entityId, row]));
+
   return {
-    products: products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      categoryId: product.category?.id ?? null,
-      categoryName: product.category?.name ?? null,
-      departmentId: product.department?.id ?? null,
-      departmentName: product.department?.name ?? null,
-      tags: (product.tags ?? [])
-        .map((entry: { tag: { id: string; name: string } | null; tagId: string }) => {
-          const tag = entry.tag;
+    products: products.map((product) => {
+      const prices = product.variations.map((variation) => variation.priceCents);
+      const seo = seoByProduct.get(product.id);
 
-          if (!tag) return null;
+      const controlled = product.variations.filter(
+        (variation) => variation.stockMode === "controlled",
+      );
 
-          return { id: tag.id, name: tag.name };
-        })
-        .filter((entry): entry is { id: string; name: string } => entry !== null),
-      priceCents:
-        product.variations.find((variation) => variation.name === "default")?.priceCents ??
-        product.variations[0]?.priceCents ??
-        null,
-      available: product.available,
-    })),
+      return {
+        id: product.id,
+        name: product.name,
+        description: product.description ?? null,
+        seoTitle: seo?.title ?? null,
+        seoDescription: seo?.description ?? null,
+        variationNames: product.variations.map((variation) => variation.name),
+        categoryId: product.category?.id ?? null,
+        categoryName: product.category?.name ?? null,
+        departmentId: product.department?.id ?? null,
+        departmentName: product.department?.name ?? null,
+        tags: (product.tags ?? [])
+          .map((entry: { tag: { id: string; name: string } | null; tagId: string }) => {
+            const tag = entry.tag;
+
+            if (!tag) return null;
+
+            return { id: tag.id, name: tag.name };
+          })
+          .filter((entry): entry is { id: string; name: string } => entry !== null),
+        priceCents:
+          product.variations.find((variation) => variation.name === "default")?.priceCents ??
+          product.variations[0]?.priceCents ??
+          null,
+        priceMinCents: prices.length > 0 ? Math.min(...prices) : null,
+        priceMaxCents: prices.length > 0 ? Math.max(...prices) : null,
+        variationCount: product.variations.length,
+        stockQty:
+          controlled.length > 0
+            ? controlled.reduce((total, variation) => total + (variation.stockQty ?? 0), 0)
+            : null,
+        hasUnlimitedStock: product.variations.some(
+          (variation) => variation.stockMode === "unlimited",
+        ),
+        available: product.available,
+        archived: product.archived,
+        hidden: product.hidden,
+        private: product.private,
+        sortOrder: product.sortOrder,
+      };
+    }),
   };
 });
 

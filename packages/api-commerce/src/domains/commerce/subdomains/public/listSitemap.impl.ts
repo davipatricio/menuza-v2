@@ -32,7 +32,11 @@ export const listSitemapImpl = os.public.listSitemap
           .select("id")
           .all(),
         tags: await db.orm.public.Tag.where({ tenantId: tenant.id }).select("id").all(),
-        products: await db.orm.public.Product.where({ tenantId: tenant.id }).select("id").all(),
+        products: (
+          await db.orm.public.Product.where({ tenantId: tenant.id })
+            .select("id", "available", "archived", "hidden", "private")
+            .all()
+        ).filter((row) => row.available && !row.archived && !row.hidden && !row.private),
         kits: await db.orm.public.Kit.where({ tenantId: tenant.id, available: true })
           .select("id")
           .all(),

@@ -6,7 +6,7 @@
  * crosses to the client.
  */
 import type { ReactNode } from "react";
-import { CrumbLabelsContext } from "../../_components/crumb-labels.tsx";
+import { usePublishCrumbLabel } from "../../_components/crumb-labels.tsx";
 
 export function CustomerCrumb({
   customerId,
@@ -17,9 +17,7 @@ export function CustomerCrumb({
   name: string;
   children: ReactNode;
 }) {
-  return (
-    <CrumbLabelsContext.Provider value={{ [customerId]: name }} key={customerId}>
-      {children}
-    </CrumbLabelsContext.Provider>
-  );
+  usePublishCrumbLabel(customerId, name);
+
+  return <>{children}</>;
 }

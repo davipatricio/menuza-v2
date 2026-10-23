@@ -52,10 +52,12 @@ export const deleteProductImpl = os.handler(async ({ input, context }) => {
         }
       }
 
+      // `delete` drops the non-unique tenantId predicate in Prisma 8 RC.17;
+      // `deleteAll` keeps it and still deletes the single row.
       await tx.orm.public.Product.where({
         tenantId: store.tenantId,
         id: input.productId,
-      }).delete();
+      }).deleteAll();
     }),
   );
 

@@ -39,20 +39,11 @@ import { formatBrl } from "@/lib/format.ts";
 import { absoluteUrl } from "@/lib/seo/base-url.ts";
 import { buildProductJsonLd, JsonLdScript } from "@/lib/seo/json-ld.ts";
 import { buildSeoMetadata } from "@/lib/seo/metadata.ts";
-import {
-  loadMenu,
-  loadStore,
-  menuProducts,
-  type StorefrontProduct,
-} from "../../_lib/storefront-data.ts";
+import { loadProduct, loadStore, type StorefrontProduct } from "../../_lib/storefront-data.ts";
 
 /** O item do cardápio, ou `null` quando o id não existe ou saiu da vitrine. */
 async function findProduct(productId: string): Promise<StorefrontProduct | null> {
-  const menu = await loadMenu();
-
-  if (!menu) return null;
-
-  return menuProducts(menu).find((item) => item.id === productId) ?? null;
+  return loadProduct(productId);
 }
 
 /**
@@ -72,12 +63,14 @@ export async function generateMetadata({
 
   const price = `A partir de ${formatBrl(product.fromPriceCents)}.`;
 
-  return await buildSeoMetadata({
+  const metadata = await buildSeoMetadata({
     title: product.name,
     description: product.description ? `${product.description} ${price}` : price,
     path: `/menu/${product.id}`,
     socialImageUrl: store.seo.socialImageUrl,
   });
+
+  return product.archived ? { ...metadata, robots: { index: false, follow: false } } : metadata;
 }
 
 export default async function ProductDetailPage({
@@ -101,7 +94,7 @@ export default async function ProductDetailPage({
       description: product.description,
       url,
       imageUrl: null,
-      available: product.available,
+      available: product.available && !product.archived,
       priceCents: product.variations.map((variation) => variation.priceCents),
     }),
   );
@@ -140,14 +133,15 @@ export default async function ProductDetailPage({
               ))}
             </div>
           ) : null}
-          {product.available ? null : (
+          {product.archived ? (
             <Alert>
-              <AlertTitle>Indisponível no momento</AlertTitle>
+              <AlertTitle>Pausado temporariamente</AlertTitle>
               <AlertDescription>
-                A loja pausou este item. Confira as outras opções do cardápio.
+                A loja pausou este item por tempo indeterminado. Confira as outras opções do
+                cardápio.
               </AlertDescription>
             </Alert>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 

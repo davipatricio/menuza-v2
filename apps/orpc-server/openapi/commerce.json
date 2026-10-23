@@ -736,6 +736,9 @@
                                 "available": {
                                   "type": "boolean"
                                 },
+                                "archived": {
+                                  "type": "boolean"
+                                },
                                 "sortOrder": {
                                   "type": "number"
                                 },
@@ -782,6 +785,7 @@
                                 "name",
                                 "description",
                                 "available",
+                                "archived",
                                 "sortOrder",
                                 "fromPriceCents",
                                 "variations",
@@ -820,6 +824,9 @@
                             ]
                           },
                           "available": {
+                            "type": "boolean"
+                          },
+                          "archived": {
                             "type": "boolean"
                           },
                           "sortOrder": {
@@ -868,6 +875,7 @@
                           "name",
                           "description",
                           "available",
+                          "archived",
                           "sortOrder",
                           "fromPriceCents",
                           "variations",
@@ -879,6 +887,226 @@
                   "required": [
                     "categories",
                     "uncategorized"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado., Entrada inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidInput"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{productId}": {
+      "get": {
+        "operationId": "getPublicProduct",
+        "summary": "Um produto vendável pelo id, para a página de URL direta.",
+        "tags": [
+          "public"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "productId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "product": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "available": {
+                              "type": "boolean"
+                            },
+                            "archived": {
+                              "type": "boolean"
+                            },
+                            "sortOrder": {
+                              "type": "number"
+                            },
+                            "fromPriceCents": {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            "variations": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "priceCents": {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  "available": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "priceCents",
+                                  "available"
+                                ]
+                              }
+                            },
+                            "tags": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "description",
+                            "available",
+                            "archived",
+                            "sortOrder",
+                            "fromPriceCents",
+                            "variations",
+                            "tags"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "product"
                   ]
                 }
               }

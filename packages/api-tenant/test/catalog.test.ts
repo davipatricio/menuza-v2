@@ -74,6 +74,16 @@ function collection(source: Row[], decorate: (row: Row) => Row = (row) => row) {
   const where = (filter: Row) => {
     const found = () => source.filter((row) => matches(row, filter));
 
+    const updateAll = async (data: Row) => {
+      for (const row of found()) Object.assign(row, data);
+
+      return found().map(decorate);
+    };
+
+    const deleteAll = async () => {
+      for (const row of found()) source.splice(source.indexOf(row), 1);
+    };
+
     const builder = (): any => ({
       select: () => builder(),
       include: () => builder(),
@@ -84,14 +94,12 @@ function collection(source: Row[], decorate: (row: Row) => Row = (row) => row) {
         return row === undefined ? null : decorate(row);
       },
       all: async () => found().map(decorate),
-      update: async (data: Row) => {
-        for (const row of found()) Object.assign(row, data);
-
-        return found().map(decorate);
-      },
-      delete: async () => {
-        for (const row of found()) source.splice(source.indexOf(row), 1);
-      },
+      // The real ORM's `update`/`delete` drop the tenantId predicate (RC.17);
+      // the procedures use the `*All` terminals, so the fake mirrors both.
+      update: updateAll,
+      updateAll,
+      delete: deleteAll,
+      deleteAll,
     });
 
     return builder();
@@ -297,6 +305,8 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
 
   let otherTagId = "";
 
+  let otherCategoryId = "";
+
   let categoryId = "";
 
   beforeAll(async () => {
@@ -348,6 +358,14 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       id: categoryId,
       tenantId: TENANT_ID,
       name: "Marmitas",
+      sortOrder: 0,
+    });
+
+    otherCategoryId = randomUUID();
+    categories.push({
+      id: otherCategoryId,
+      tenantId: OTHER_TENANT_ID,
+      name: "De Outro",
       sortOrder: 0,
     });
   });
@@ -529,6 +547,147 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       );
 
       expect(variations.filter((row) => row.productId === created.product.id)).toHaveLength(1);
+    });
+
+    test("a scalar-only patch leaves the variations and the tags untouched", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput({ tagIds: [tagId] }), {
+        context: { reqHeaders },
+      });
+
+      const productId = created.product.id;
+      const variationIds = created.product.variations.map((variation) => variation.id);
+
+      const result = await call(
+        updateProductImpl,
+        {
+          storeSlug: "mawifoods",
+          productId,
+          name: "Marmita vegana renomeada",
+          available: false,
+        },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.product.name).toBe("Marmita vegana renomeada");
+      expect(result.product.available).toBe(false);
+      expect(result.product.variations.map((variation) => variation.id)).toEqual(variationIds);
+      expect(result.product.tags).toEqual([{ id: tagId, name: "Vegano" }]);
+      expect(productTags.filter((row) => row.productId === productId)).toHaveLength(1);
+    });
+
+    test("an omitted categoryId is not ownership-checked", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), {
+        context: { reqHeaders },
+      });
+
+      // A stale foreign reference: only a payload that carries the id is checked.
+      Object.assign(
+        products.find((row) => row.id === created.product.id)!,
+        {
+          categoryId: otherCategoryId,
+        },
+      );
+
+      const result = await call(
+        updateProductImpl,
+        { storeSlug: "mawifoods", productId: created.product.id, name: "Marmita renomeada" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.product.name).toBe("Marmita renomeada");
+      expect(result.product.categoryId).toBe(otherCategoryId);
+    });
+
+    test("a foreign categoryId is NOT_FOUND", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), {
+        context: { reqHeaders },
+      });
+
+      try {
+        await call(
+          updateProductImpl,
+          { storeSlug: "mawifoods", productId: created.product.id, categoryId: otherCategoryId },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected updateProduct to fail");
+      } catch (error) {
+        // SAFETY: the tenant guard only throws the NOT_FOUND code.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
+    });
+
+    test("a solo variations payload still replaces the set", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(
+        createProductImpl,
+        productInput({
+          variations: [
+            { name: "default", priceCents: 1990, stockMode: "unlimited", stockQty: null },
+            { name: "grande", priceCents: 2490, stockMode: "unlimited", stockQty: null },
+          ],
+        }),
+        { context: { reqHeaders } },
+      );
+
+      const productId = created.product.id;
+      const keptId = created.product.variations[0]!.id;
+
+      await call(
+        updateProductImpl,
+        {
+          storeSlug: "mawifoods",
+          productId,
+          variations: [
+            {
+              id: keptId,
+              name: "default",
+              priceCents: 990,
+              stockMode: "unlimited",
+              stockQty: null,
+            },
+          ],
+        },
+        { context: { reqHeaders } },
+      );
+
+      const rows = variations.filter((row) => row.productId === productId);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.priceCents).toBe(990);
+      expect(products.find((row) => row.id === productId)?.name).toBe("Marmita vegana");
+    });
+
+    test("a solo tagIds payload still replaces the tags", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), {
+        context: { reqHeaders },
+      });
+
+      const productId = created.product.id;
+
+      await call(
+        updateProductImpl,
+        { storeSlug: "mawifoods", productId, tagIds: [tagId] },
+        { context: { reqHeaders } },
+      );
+
+      expect(productTags.filter((row) => row.productId === productId)).toHaveLength(1);
+
+      await call(
+        updateProductImpl,
+        { storeSlug: "mawifoods", productId, tagIds: [] },
+        { context: { reqHeaders } },
+      );
+
+      expect(productTags.filter((row) => row.productId === productId)).toHaveLength(0);
     });
 
     test("an unknown productId is NOT_FOUND", async () => {

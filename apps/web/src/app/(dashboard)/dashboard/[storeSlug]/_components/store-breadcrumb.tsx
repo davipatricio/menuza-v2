@@ -16,6 +16,8 @@ import { useCrumbLabels } from "./crumb-labels.tsx";
 const SEGMENT_LABELS = {
   orders: "Pedidos",
   catalog: "Catálogo",
+  products: "Produtos",
+  new: "Novo",
   customers: "Clientes",
   coupons: "Cupons",
   audit: "Auditoria",

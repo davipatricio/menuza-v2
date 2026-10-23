@@ -47,6 +47,9 @@ export const createProductImpl = os.handler(async ({ input, context }) => {
         categoryId: input.categoryId,
         departmentId: input.departmentId,
         available: input.available,
+        archived: input.archived ?? false,
+        hidden: input.hidden ?? false,
+        private: input.private ?? false,
         sortOrder: input.sortOrder,
       });
 

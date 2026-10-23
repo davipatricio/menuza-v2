@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { sanitizeCsvCell } from "../src/lib/csv-export.ts";
+import { sanitizeCsvCell, serializeCsv } from "../src/lib/csv-export.ts";
 
 describe("csv-export", () => {
   test("neutralizes formula injection characters", () => {
@@ -17,5 +17,22 @@ describe("csv-export", () => {
   test("handles empty and nullish", () => {
     expect(sanitizeCsvCell(null)).toBe("");
     expect(sanitizeCsvCell(undefined)).toBe("");
+  });
+
+  test("serializes a header and CRLF-separated rows", () => {
+    const rows = [
+      { name: "Café", price: 5 },
+      { name: 'Pão, "integral"', price: null },
+    ];
+
+    expect(
+      serializeCsv(
+        [
+          { key: "name", label: "Produto" },
+          { key: "price", label: "Preço" },
+        ],
+        rows,
+      ),
+    ).toBe('Produto,Preço\r\nCafé,5\r\n"Pão, ""integral""",');
   });
 });

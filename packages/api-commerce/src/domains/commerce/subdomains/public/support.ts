@@ -27,3 +27,40 @@ export function toIsoTimestamp(value: Temporal.PlainDateTime): string {
 export function loadTenant(tenantId: string | undefined) {
   return tenantId === undefined ? null : db.orm.public.Tenant.where({ id: tenantId }).first();
 }
+
+type PublicProductRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  available: boolean;
+  archived: boolean;
+  sortOrder: number;
+  variations: readonly {
+    id: string;
+    name: string;
+    priceCents: number;
+    stockMode: string;
+    stockQty: number | null;
+  }[];
+  tags: readonly { tag: { name: string } | null }[];
+};
+
+/** The menu's product shape, shared by the listing and the direct URL read. */
+export function toPublicProduct(product: PublicProductRow) {
+  return {
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    available: product.available,
+    archived: product.archived,
+    sortOrder: product.sortOrder,
+    fromPriceCents: Math.min(...product.variations.map((variation) => variation.priceCents)),
+    variations: product.variations.map((variation) => ({
+      id: variation.id,
+      name: variation.name,
+      priceCents: variation.priceCents,
+      available: variation.stockMode === "unlimited" || (variation.stockQty ?? 0) > 0,
+    })),
+    tags: product.tags.flatMap((entry) => (entry.tag ? [entry.tag.name] : [])),
+  };
+}

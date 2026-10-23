@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
+import { CircleCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
-import { ProductForm } from "../product-form.tsx";
+import { ProductTabs } from "./product-tabs.tsx";
+import { ProductCrumb } from "./product-crumb.tsx";
+import { DeleteProductButton } from "../product-form.tsx";
 
 // Reads the session and the store slug on every request, like the shell.
 export const instant = false;
@@ -47,34 +50,42 @@ export default async function EditProductPage({
   if (!data) notFound();
 
   return (
-    <section aria-labelledby="product-edit-heading" className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 id="product-edit-heading" className="text-xl font-semibold tracking-tight">
-            Editar produto
-          </h2>
-          <Badge variant={data.product.available ? "default" : "secondary"}>
-            {data.product.available ? "Disponível" : "Indisponível"}
-          </Badge>
+    <ProductCrumb productId={data.product.id} name={data.product.name}>
+      <section aria-labelledby="product-edit-heading" className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id="product-edit-heading" className="text-xl font-semibold tracking-tight">
+                Editar produto
+              </h2>
+              <Badge variant={data.product.available ? "default" : "secondary"}>
+                {data.product.available ? "Disponível" : "Indisponível"}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {data.product.name}: altere identificação, variações, estoque e SEO.
+            </p>
+          </div>
+          <DeleteProductButton storeSlug={storeSlug} productId={data.product.id} />
         </div>
-        <p className="text-sm text-muted-foreground">
-          {data.product.name}: altere identificação, variações, estoque e SEO.
-        </p>
-      </div>
-      {created ? (
-        <Alert>
-          <AlertTitle>Produto criado</AlertTitle>
-          <AlertDescription>Os dados foram salvos. Agora você pode editar o SEO.</AlertDescription>
-        </Alert>
-      ) : null}
-      <ProductForm
-        storeSlug={storeSlug}
-        product={data.product}
-        seo={data.seo}
-        categories={data.categories}
-        departments={data.departments}
-        tags={data.tags}
-      />
-    </section>
+        {created ? (
+          <Alert>
+            <CircleCheck aria-hidden="true" />
+            <AlertTitle>Produto criado</AlertTitle>
+            <AlertDescription>
+              Os dados foram salvos. Agora você pode editar o SEO.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        <ProductTabs
+          storeSlug={storeSlug}
+          product={data.product}
+          seo={data.seo}
+          categories={data.categories}
+          departments={data.departments}
+          tags={data.tags}
+        />
+      </section>
+    </ProductCrumb>
   );
 }

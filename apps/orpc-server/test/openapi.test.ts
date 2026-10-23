@@ -21,6 +21,11 @@ const COMMERCE_ROUTES = [
   { procedure: commerceContractObject.health, method: "get", path: "/health" },
   { procedure: commerceContractObject.public.getStore, method: "get", path: "/store" },
   { procedure: commerceContractObject.public.listMenu, method: "get", path: "/menu" },
+  {
+    procedure: commerceContractObject.public.getProduct,
+    method: "get",
+    path: "/products/{productId}",
+  },
   { procedure: commerceContractObject.public.listSitemap, method: "get", path: "/sitemap" },
   { procedure: commerceContractObject.orders.create, method: "post", path: "/orders" },
   { procedure: commerceContractObject.orders.get, method: "get", path: "/orders/{code}" },
@@ -152,6 +157,16 @@ const TENANT_ROUTES = [
     procedure: tenantContractObject.panel.deleteProduct,
     method: "delete",
     path: "/panel/stores/{storeSlug}/products/{productId}",
+  },
+  {
+    procedure: tenantContractObject.panel.bulkUpdateProducts,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/products/bulk",
+  },
+  {
+    procedure: tenantContractObject.panel.bulkDeleteProducts,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/products/bulk-delete",
   },
   {
     procedure: tenantContractObject.panel.listCategories,

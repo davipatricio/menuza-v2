@@ -92,6 +92,9 @@ interface ProductRow {
   description: string | null;
   categoryId: string | null;
   available: boolean;
+  archived: boolean;
+  hidden: boolean;
+  private: boolean;
   sortOrder: number;
 }
 
@@ -198,6 +201,7 @@ const originals = {
   orderItemWhere: db.orm.public.OrderItem.where,
   orderEventWhere: db.orm.public.OrderEvent.where,
   productWhere: db.orm.public.Product.where,
+  seoMetaWhere: db.orm.public.SeoMeta.where,
   categoryWhere: db.orm.public.Category.where,
   couponWhere: db.orm.public.Coupon.where,
   auditWhere: db.orm.public.AuditLog.where,
@@ -382,6 +386,9 @@ function installFakes() {
     };
   }) as any;
 
+  // SAFETY: Mocking SeoMeta.where; `listProducts` reads product overrides.
+  db.orm.public.SeoMeta.where = (() => rows([])) as any;
+
   // SAFETY: Mocking Category.where; the panel orders by sortOrder.
   db.orm.public.Category.where = ((filter: TenantFilter) =>
     rows(byTenant(categories, filter))) as any;
@@ -405,6 +412,7 @@ function restoreFakes() {
   db.orm.public.OrderItem.where = originals.orderItemWhere;
   db.orm.public.OrderEvent.where = originals.orderEventWhere;
   db.orm.public.Product.where = originals.productWhere;
+  db.orm.public.SeoMeta.where = originals.seoMetaWhere;
   db.orm.public.Category.where = originals.categoryWhere;
   db.orm.public.Coupon.where = originals.couponWhere;
   db.orm.public.AuditLog.where = originals.auditWhere;
@@ -625,6 +633,9 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       description: null,
       categoryId,
       available: true,
+      archived: false,
+      hidden: false,
+      private: false,
       sortOrder: 1,
     });
 

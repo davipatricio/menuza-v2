@@ -74,6 +74,9 @@ export function toProductDetail(product: ProductWithRelations): PanelProductDeta
     tags: tagsOf(product),
     priceCents: priceOf(variations),
     available: product.available,
+    archived: product.archived,
+    hidden: product.hidden,
+    private: product.private,
     sortOrder: product.sortOrder,
     variations,
   };
@@ -112,13 +115,21 @@ export async function variationInUse(
   return orderItem !== null;
 }
 
-/** Category, department and tags must belong to the same tenant as the store. */
+/**
+ * Category, department and tags must belong to the same tenant as the store.
+ * `undefined` means the caller omitted the field and it is left untouched, so
+ * there is nothing to check; `null` clears the relation.
+ */
 export async function assertOwnedIds(
   tx: CatalogTx,
   tenantId: string,
-  input: { categoryId: string | null; departmentId: string | null; tagIds: string[] },
+  input: {
+    categoryId?: string | null;
+    departmentId?: string | null;
+    tagIds?: readonly string[];
+  },
 ): Promise<void> {
-  if (input.categoryId !== null) {
+  if (input.categoryId !== null && input.categoryId !== undefined) {
     const category = await tx.orm.public.Category.where({
       tenantId,
       id: input.categoryId,
@@ -127,7 +138,7 @@ export async function assertOwnedIds(
     if (!category) throw notFound();
   }
 
-  if (input.departmentId !== null) {
+  if (input.departmentId !== null && input.departmentId !== undefined) {
     const department = await tx.orm.public.Department.where({
       tenantId,
       id: input.departmentId,
@@ -136,7 +147,7 @@ export async function assertOwnedIds(
     if (!department) throw notFound();
   }
 
-  for (const tagId of new Set(input.tagIds)) {
+  for (const tagId of new Set(input.tagIds ?? [])) {
     const tag = await tx.orm.public.Tag.where({ tenantId, id: tagId }).first();
 
     if (!tag) throw notFound();

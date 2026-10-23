@@ -5,6 +5,7 @@ export {
   healthInput,
   healthOutput,
   getStore,
+  getProduct,
   listMenu,
   listSitemap,
   orderContract,

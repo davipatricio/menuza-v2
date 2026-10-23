@@ -74,6 +74,8 @@ export interface DataTableProps<TData extends object> {
   searchColumn?: string;
   exportFilename?: string;
   exportColumns?: Array<CsvColumn<TData>>;
+  /** Server route that streams the current rows as CSV; wins over `exportColumns`. */
+  exportHref?: string;
   filterColumn?: string;
   filterOptions?: DataTableFilterOption[];
   filterPlaceholder?: string;
@@ -125,6 +127,17 @@ function ariaSortFor(state: false | "asc" | "desc"): "ascending" | "descending" 
   if (state === "desc") return "descending";
 
   return "none";
+}
+
+/** `ColumnMeta` is an open bag; this table only reads the optional `width` key. */
+type ColumnWidthMeta = { width?: number };
+
+function columnWidth(
+  meta: ColumnWidthMeta | undefined,
+): { width: number; minWidth: number } | undefined {
+  const width = meta?.width;
+
+  return typeof width === "number" ? { width, minWidth: width } : undefined;
 }
 
 function SortIndicator({ state }: { state: false | "asc" | "desc" }) {
@@ -223,8 +236,29 @@ function DataTableFilter<TData extends object>({
   );
 }
 
-function DataTableExportButton({ visible, onExport }: { visible: boolean; onExport: () => void }) {
+function DataTableExportButton({
+  visible,
+  exportHref,
+  onExport,
+}: {
+  visible: boolean;
+  exportHref?: string;
+  onExport: () => void;
+}) {
   if (!visible) return null;
+
+  if (exportHref) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        nativeButton={false}
+        render={<a href={exportHref} download aria-label="Exportar CSV" />}
+      >
+        Exportar CSV
+      </Button>
+    );
+  }
 
   return (
     <Button variant="outline" size="sm" onClick={onExport}>
@@ -277,6 +311,7 @@ export function DataTable<TData extends object>({
   searchColumn,
   exportFilename = "export",
   exportColumns,
+  exportHref,
   filterColumn,
   filterOptions,
   filterPlaceholder = "Filtrar…",
@@ -320,11 +355,18 @@ export function DataTable<TData extends object>({
   };
 
   const searchInputId = React.useId();
+  const canExport = Boolean(exportColumns || exportHref);
   const rows = table.getRowModel().rows;
 
   return (
     <div className="flex flex-col gap-4">
-      {hideToolbar ? null : (
+      {hideToolbar ? (
+        canExport ? (
+          <div className="flex justify-end">
+            <DataTableExportButton visible exportHref={exportHref} onExport={handleExport} />
+          </div>
+        ) : null
+      ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-1 flex-wrap items-center gap-2">
             <DataTableSearch
@@ -344,7 +386,11 @@ export function DataTable<TData extends object>({
               label={filterLabel}
             />
           </div>
-          <DataTableExportButton visible={Boolean(exportColumns)} onExport={handleExport} />
+          <DataTableExportButton
+            visible={canExport}
+            exportHref={exportHref}
+            onExport={handleExport}
+          />
         </div>
       )}
 
@@ -363,6 +409,7 @@ export function DataTable<TData extends object>({
                     <TableHead
                       key={header.id}
                       aria-sort={canSort ? ariaSortFor(isSorted) : undefined}
+                      style={columnWidth(header.column.columnDef.meta)}
                     >
                       {header.isPlaceholder ? null : canSort ? (
                         <button
@@ -403,7 +450,7 @@ export function DataTable<TData extends object>({
                     }
                   >
                     {row.getAllCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} style={columnWidth(cell.column.columnDef.meta)}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}

@@ -43,6 +43,7 @@ browser ──same-origin──► apps/web (Next)
 - Tenant scoping is `withTenant`/`unscoped` (AsyncLocalStorage) from `@menuza/db/scope`. The Prisma `tenantIsolationMiddleware()` is **fail-closed**: a tenant-scoped model queried/mutated without `tenantId` throws `TenantIsolationError`. Scope is the **second line of defence** — every query still carries an explicit `where.tenantId`.
 - The only intentionally global lookup is storefront `host → tenant` (`internal.resolveHost`, token-gated, `unscoped()`); `apps/web` never reads `Domain` directly (ADR-0005).
 - Data details (`packages/db`): `Int` cents (ADR-0006), `Timestamp(3)` ⇄ `Temporal.PlainDateTime`, enum-ish columns are `text` + CHECK over ASCII slugs with pt-BR labels in the UI only, `TENANT_SCOPED_MODELS` is derived from the contract (not hand-listed).
+- Panel writes are **partial**: `updateProduct`/`saveSeo` treat an omitted key as untouched and `null` as clear/inherit (create stays fully required). Prisma 8 RC.17 drops non-unique predicates from `update`/`delete` (`where({ tenantId, id })` compiles to `WHERE id = …`), which the isolation guard rejects; tenant-scoped writes by id use `updateAll`/`deleteAll` (or `updateAndCount` when only the count matters).
 
 ## Worker, Redis and async work
 

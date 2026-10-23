@@ -13,6 +13,7 @@ import { implement } from "@orpc/server";
 import { commerceContractObject } from "@menuza/shared/commerce";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
 import { db, withTenant } from "@menuza/db";
+import { toPublicProduct } from "./support.ts";
 
 const os = implement(commerceContractObject);
 
@@ -46,26 +47,16 @@ export const listMenuImpl = os.public.listMenu
     const sellable = products.flatMap((product) => {
       const variations = product.variations ?? [];
 
+      // Inactive is nonexistent; archived, hidden and private stay out of the
+      // listing (hidden is only reachable by its direct URL).
+      if (!product.available || product.archived || product.hidden || product.private) return [];
+
       if (variations.length === 0) return [];
 
       return [
         {
           categoryId: product.categoryId,
-          menuProduct: {
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            available: product.available,
-            sortOrder: product.sortOrder,
-            fromPriceCents: Math.min(...variations.map((variation) => variation.priceCents)),
-            variations: variations.map((variation) => ({
-              id: variation.id,
-              name: variation.name,
-              priceCents: variation.priceCents,
-              available: variation.stockMode === "unlimited" || (variation.stockQty ?? 0) > 0,
-            })),
-            tags: (product.tags ?? []).flatMap((entry) => (entry.tag ? [entry.tag.name] : [])),
-          },
+          menuProduct: toPublicProduct(product),
         },
       ];
     });

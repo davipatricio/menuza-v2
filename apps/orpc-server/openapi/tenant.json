@@ -4835,6 +4835,95 @@
                           },
                           "available": {
                             "type": "boolean"
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          },
+                          "hidden": {
+                            "type": "boolean"
+                          },
+                          "private": {
+                            "type": "boolean"
+                          },
+                          "sortOrder": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "seoTitle": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "seoDescription": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "variationNames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "variationCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "priceMinCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priceMaxCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "stockQty": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "hasUnlimitedStock": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -4846,7 +4935,20 @@
                           "departmentName",
                           "tags",
                           "priceCents",
-                          "available"
+                          "available",
+                          "archived",
+                          "hidden",
+                          "private",
+                          "sortOrder",
+                          "description",
+                          "seoTitle",
+                          "seoDescription",
+                          "variationNames",
+                          "variationCount",
+                          "priceMinCents",
+                          "priceMaxCents",
+                          "stockQty",
+                          "hasUnlimitedStock"
                         ]
                       }
                     }
@@ -5030,6 +5132,15 @@
                   "available": {
                     "type": "boolean"
                   },
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "private": {
+                    "type": "boolean"
+                  },
                   "sortOrder": {
                     "type": "integer",
                     "minimum": 0
@@ -5187,6 +5298,19 @@
                         "available": {
                           "type": "boolean"
                         },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        },
+                        "private": {
+                          "type": "boolean"
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
                         "description": {
                           "anyOf": [
                             {
@@ -5196,10 +5320,6 @@
                               "type": "null"
                             }
                           ]
-                        },
-                        "sortOrder": {
-                          "type": "integer",
-                          "minimum": 0
                         },
                         "variations": {
                           "type": "array",
@@ -5255,8 +5375,11 @@
                         "tags",
                         "priceCents",
                         "available",
-                        "description",
+                        "archived",
+                        "hidden",
+                        "private",
                         "sortOrder",
+                        "description",
                         "variations"
                       ]
                     }
@@ -5483,6 +5606,19 @@
                         "available": {
                           "type": "boolean"
                         },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        },
+                        "private": {
+                          "type": "boolean"
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
                         "description": {
                           "anyOf": [
                             {
@@ -5492,10 +5628,6 @@
                               "type": "null"
                             }
                           ]
-                        },
-                        "sortOrder": {
-                          "type": "integer",
-                          "minimum": 0
                         },
                         "variations": {
                           "type": "array",
@@ -5551,8 +5683,11 @@
                         "tags",
                         "priceCents",
                         "available",
-                        "description",
+                        "archived",
+                        "hidden",
+                        "private",
                         "sortOrder",
+                        "description",
                         "variations"
                       ]
                     }
@@ -5689,7 +5824,6 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -5746,6 +5880,15 @@
                   "available": {
                     "type": "boolean"
                   },
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  },
+                  "private": {
+                    "type": "boolean"
+                  },
                   "sortOrder": {
                     "type": "integer",
                     "minimum": 0
@@ -5799,17 +5942,7 @@
                     "minItems": 1,
                     "maxItems": 50
                   }
-                },
-                "required": [
-                  "name",
-                  "description",
-                  "categoryId",
-                  "departmentId",
-                  "tagIds",
-                  "available",
-                  "sortOrder",
-                  "variations"
-                ]
+                }
               }
             }
           }
@@ -5903,6 +6036,19 @@
                         "available": {
                           "type": "boolean"
                         },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        },
+                        "private": {
+                          "type": "boolean"
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
                         "description": {
                           "anyOf": [
                             {
@@ -5912,10 +6058,6 @@
                               "type": "null"
                             }
                           ]
-                        },
-                        "sortOrder": {
-                          "type": "integer",
-                          "minimum": 0
                         },
                         "variations": {
                           "type": "array",
@@ -5971,8 +6113,11 @@
                         "tags",
                         "priceCents",
                         "available",
-                        "description",
+                        "archived",
+                        "hidden",
+                        "private",
                         "sortOrder",
+                        "description",
                         "variations"
                       ]
                     }
@@ -6132,6 +6277,382 @@
                   },
                   "required": [
                     "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/stores/{storeSlug}/products/bulk": {
+      "post": {
+        "operationId": "bulkUpdatePanelProducts",
+        "summary": "Atualiza disponibilidade, categoria, departamento ou adiciona tags em vários produtos.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  },
+                  "available": {
+                    "type": "boolean"
+                  },
+                  "addTagIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "categoryId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "departmentId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "productIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "updated"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/stores/{storeSlug}/products/bulk-delete": {
+      "post": {
+        "operationId": "bulkDeletePanelProducts",
+        "summary": "Exclui vários produtos, pulando os que pertencem a pedidos ou kits.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  }
+                },
+                "required": [
+                  "productIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "skipped": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "deleted",
+                    "skipped"
                   ]
                 }
               }
@@ -10675,7 +11196,6 @@
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -10734,14 +11254,7 @@
                       }
                     ]
                   }
-                },
-                "required": [
-                  "title",
-                  "description",
-                  "canonicalUrl",
-                  "socialImageUrl",
-                  "jsonLd"
-                ]
+                }
               }
             }
           }

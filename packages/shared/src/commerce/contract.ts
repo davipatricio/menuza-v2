@@ -60,6 +60,7 @@ export const PublicProductSchema = v.object({
   name: v.string(),
   description: v.nullable(v.string()),
   available: v.boolean(),
+  archived: v.boolean(),
   sortOrder: v.number(),
   fromPriceCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
   variations: v.array(
@@ -135,9 +136,32 @@ export const listSitemap = commerceContract
   .input(v.strictObject({}))
   .output(publicSitemapOutput);
 
+/**
+ * One product by id, for the direct URL. Hidden products are reachable here;
+ * archived ones come back so the page can render the pause notice; an inactive
+ * or private product is `null` (the caller decides between 404 and a gate).
+ */
+export const getProduct = commerceContract
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/products/{productId}",
+      operationId: "getPublicProduct",
+      summary: "Um produto vendável pelo id, para a página de URL direta.",
+      tags: ["public"],
+    }),
+  )
+  .input(
+    v.strictObject({
+      productId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+    }),
+  )
+  .output(v.object({ product: v.nullable(PublicProductSchema) }));
+
 export const publicContractObject = {
   getStore,
   listMenu,
+  getProduct,
   listSitemap,
 };
 

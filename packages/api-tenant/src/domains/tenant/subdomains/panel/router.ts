@@ -12,6 +12,8 @@ import { getProductImpl } from "./getProduct.impl.ts";
 import { createProductImpl } from "./createProduct.impl.ts";
 import { updateProductImpl } from "./updateProduct.impl.ts";
 import { deleteProductImpl } from "./deleteProduct.impl.ts";
+import { bulkUpdateProductsImpl } from "./bulkUpdateProducts.impl.ts";
+import { bulkDeleteProductsImpl } from "./bulkDeleteProducts.impl.ts";
 import { listCategoriesImpl } from "./listCategories.impl.ts";
 import { createCategoryImpl } from "./createCategory.impl.ts";
 import { updateCategoryImpl } from "./updateCategory.impl.ts";
@@ -53,6 +55,8 @@ export const panelSubdomainRouter = {
   createProduct: createProductImpl,
   updateProduct: updateProductImpl,
   deleteProduct: deleteProductImpl,
+  bulkUpdateProducts: bulkUpdateProductsImpl,
+  bulkDeleteProducts: bulkDeleteProductsImpl,
   listCategories: listCategoriesImpl,
   createCategory: createCategoryImpl,
   updateCategory: updateCategoryImpl,

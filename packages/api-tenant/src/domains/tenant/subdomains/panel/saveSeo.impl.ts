@@ -18,7 +18,8 @@ const os = implement(
 ).$context<RequestHeadersHandlerPluginContext>();
 
 /**
- * Saves one entity's override. Empty fields are written as `null`, which is the
+ * Saves one entity's override, partially: an omitted field keeps the stored
+ * value, `null` (or an empty string) is written as `null`, which is the
  * per-field "revert" the form offers: `resolveSeo` then falls through to the
  * store row, the templates, and the static default in turn (MEN-253).
  *
@@ -34,14 +35,31 @@ export const saveSeoImpl = os.handler(async ({ input, context }) => {
     loadEntityName(store.tenantId, input.entityType, input.entityId, store.tenantName),
   );
 
+  const existing = await inTenantScope(store.tenantId, () =>
+    db.orm.public.SeoMeta.where({
+      tenantId: store.tenantId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+    }).first(),
+  );
+
   const fields = toSeoFields({
     entityType: input.entityType,
     entityId: input.entityId,
-    title: seoText(input.title),
-    description: seoText(input.description),
-    canonicalUrl: seoText(input.canonicalUrl),
-    socialImageUrl: seoText(input.socialImageUrl),
-    jsonLd: seoText(input.jsonLd),
+    title: input.title === undefined ? (existing?.title ?? null) : seoText(input.title),
+    description:
+      input.description === undefined
+        ? (existing?.description ?? null)
+        : seoText(input.description),
+    canonicalUrl:
+      input.canonicalUrl === undefined
+        ? (existing?.canonicalUrl ?? null)
+        : seoText(input.canonicalUrl),
+    socialImageUrl:
+      input.socialImageUrl === undefined
+        ? (existing?.socialImageUrl ?? null)
+        : seoText(input.socialImageUrl),
+    jsonLd: input.jsonLd === undefined ? (existing?.jsonLd ?? null) : seoText(input.jsonLd),
   });
 
   // Parsed here, never in the browser: a broken block would otherwise ship to
@@ -50,11 +68,13 @@ export const saveSeoImpl = os.handler(async ({ input, context }) => {
 
   await inTenantScope(store.tenantId, async () => {
     if (isEmptySeo(fields)) {
+      // `delete` drops the non-unique tenantId predicate in Prisma 8 RC.17;
+      // `deleteAll` keeps it (the entity columns are equally non-unique).
       await db.orm.public.SeoMeta.where({
         tenantId: store.tenantId,
         entityType: input.entityType,
         entityId: input.entityId,
-      }).delete();
+      }).deleteAll();
 
       return;
     }
