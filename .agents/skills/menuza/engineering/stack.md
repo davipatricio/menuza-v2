@@ -33,6 +33,16 @@ Workspace map, dependency direction and where a change belongs: `monorepo.md`. I
 - ADR-0005 surfaces by path and store slug
 - ADR-0006 integer cents, not decimal
 
+## Dashboard assistant (Komi)
+
+- Komi is the dashboard's AI assistant and it is **mock-only**: canned pt-BR replies from an in-memory adapter. No backend, no network call, no env var.
+- Mounted once in `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/layout.tsx`, as the last child of `<SidebarProvider>`, so it covers every `/dashboard/[storeSlug]/*` page and nothing else — not `/dashboard`, login, signup, the storefront or marketing.
+- `apps/web/src/components/assistant-ui/komi-assistant.tsx` is the first-party wrapper (`AssistantRuntimeProvider` + `useRemoteThreadListRuntime`); everything under `apps/web/src/components/assistant-ui/elements/**` is vendored registry code.
+- Vendored from `https://r.assistant-ui.com/styles/base-nova/assistant-modal.json` and its `registryDependencies`. **Base UI flavor only** — the `new-york` flavor of the same element imports `radix-ui`, which is banned here.
+- Deps are local to `apps/web` (single consumer, not catalog): `@assistant-ui/react` 0.15.31, `@assistant-ui/react-markdown` 0.14.24, `remark-gfm` 4.0.1, `tw-shimmer` 0.4.14, `zustand` 5.0.16.
+- Detailed rules — mount point, upstream deltas to preserve when re-vendoring, controls that stay hidden, lint overrides: `apps/web/AGENTS.md` and `apps/web/src/components/AGENTS.md`.
+- A real provider is not wired: conversation state is memory-only, so a reload resets the thread.
+
 ## Technical pendencies (`PRODUCT.md` §27)
 
 Prisma on the Bun runtime in production; Postgres adapter and connection impact; oRPC contract format (procedures vs streamable) and route versioning; `Mailer` interface with SMTP driver + SES stub; migration lock in production; log/trace/audit retention for LGPD; DR for a single VPS (snapshots, tested restore); VPS monitoring (CPU/RAM/disk/BullMQ) with basic alerts.

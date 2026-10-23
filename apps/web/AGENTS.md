@@ -55,6 +55,64 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   of casting each `validators` entry — every `as` needs its own `SAFETY:` comment
   (`anti-slop/require-safety-comment-for-type-assertion`).
 
+## Komi assistant (dashboard)
+
+- Komi is the dashboard's AI assistant and it is **mock-only**: canned replies from an
+  in-memory adapter. No backend, no network call, no env var.
+- Mounted once, in `src/app/(dashboard)/dashboard/[storeSlug]/layout.tsx`, as the last
+  child of `<SidebarProvider>` (after `</SidebarInset>`), so it covers every
+  `/dashboard/[storeSlug]/*` page. It is not on `/dashboard` (the store picker), login,
+  signup, the storefront or marketing.
+- Launcher: a floating button bottom-right (`fixed end-4 bottom-4 size-11`) that opens a
+  400px-wide resizable chat panel portalled above the shell — thread list ("Conversas"),
+  composer, message actions, three suggestion chips.
+- First-party code is a single file: `src/components/assistant-ui/komi-assistant.tsx` (the
+  runtime wrapper). The rest of `src/components/assistant-ui/elements/` and
+  `src/hooks/use-attachment-src.ts` are vendored registry files, changed only by the
+  deltas below.
+- Vendored from `https://r.assistant-ui.com/styles/base-nova/assistant-modal.json` and
+  its `registryDependencies` under `https://r.assistant-ui.com/base/<item>.json`. **Base
+  UI flavor only**: the `new-york` flavor of the same element imports `radix-ui`, which
+  this repo bans — never swap it in.
+- `src/lib/utils.ts` exists only because the vendored tree imports `cn` from the
+  `@/lib/utils` alias in `components.json`; it is one line (`export { cn } from "cn";`).
+  The five new deps are local to `apps/web/package.json` (single consumer, not catalog):
+  `@assistant-ui/react` 0.15.31, `@assistant-ui/react-markdown` 0.14.24, `remark-gfm`
+  4.0.1, `tw-shimmer` 0.4.14, `zustand` 5.0.16.
+- `AssistantRuntimeProvider` + `useRemoteThreadListRuntime` over
+  `InMemoryThreadListAdapter`; `KomiModelAdapter: ChatModelAdapter` returns canned pt-BR
+  replies after a ~700ms abortable delay, keyword-routed (catálogo/produtos/estoque,
+  pedidos, cupom/promoção/desconto, vitrine/loja, else round-robin).
+- A `KomiThreadListAdapter` subclass seeds the thread title "Komi" in `initialize`. All
+  state is in memory, so a reload resets the conversation.
+- Deliberate deltas from upstream — **preserve these when re-vendoring**: pt-BR strings in
+  `assistant-modal.aui.tsx`, `thread.aui.tsx`, `thread-list.aui.tsx`; the duplicated
+  `sr-only` label on `AssistantModalButton` removed (the a11y tree read "Abrir Komi Abrir
+  Komi"); `<ComposerAddAttachment />` not rendered (no attachment adapter, so it is a
+  dead control) with the composer action row moved `justify-between` → `justify-end`;
+  both composers' textareas use `outline-hidden!` and their shells
+  `focus-within:border-ring/60`, because the unlayered global `:focus-visible` rule in
+  `globals.css` beat the old `outline-none` and drew an orange ring inside the bubble;
+  `AssistantModalButton` has a hover/focus sheen sweep on the otherwise unused
+  `--btn-sheen` token and `--duration-move`, transform-only, `motion-reduce:hidden`.
+- No adapter is mounted for attachments, voice/dictation, feedback (helpful/not helpful),
+  branch navigation or export. Those controls stay hidden, not translated-and-dead.
+- `.oxlintrc.json` lists `assistant-ui/**` and `hooks/use-attachment-src.ts` in both
+  vendored override blocks, plus a third block scoped to `assistant-ui/**` that turns off
+  five upstream-flagged rules (`jsx-a11y/anchor-has-content`,
+  `jsx-a11y/heading-has-content`, `jsx-a11y/media-has-caption`, `jsx-a11y/no-autofocus`,
+  `promise/no-callback-in-promise`) — upstream false positives oxlint cannot see through
+  dynamic `{children}`, or deliberate upstream behaviour.
+- `bun run design:check` scans `src/app/(dashboard)` only, not `src/components/**`, so the
+  vendored tree sits outside that gate and has to be kept honest by hand.
+- The vendored animation classes (`animate-in`, `fade-in-0`, `zoom-in-95`) are inert:
+  `tw-animate-css` is not a dependency. A known repo-wide gap — do not fix it for Komi
+  alone.
+- `.aui.tsx` files are ordinary `.tsx` to the toolchain — matched by the `tsconfig`
+  `src/**/*.tsx` glob and linted/formatted by oxlint and oxfmt like anything else, so the
+  override block above is the only thing keeping upstream's a11y patterns quiet. A green
+  lint run is not evidence that a file was skipped.
+
 ## Lint and format
 
 - Format only what you touched: `bunx oxfmt <paths>`. Never a package-wide

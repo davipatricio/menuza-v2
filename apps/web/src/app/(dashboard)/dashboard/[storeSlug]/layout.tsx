@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
+import { KomiAssistant } from "@/components/assistant-ui/komi-assistant.tsx";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar.tsx";
 import { ROLE_LABELS } from "@/lib/panel-labels.ts";
 import { panelClient, type TenantClient } from "@/lib/server-tenant.ts";
@@ -103,6 +104,7 @@ export default async function StoreLayout({
           <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
         </CrumbLabelsProvider>
       </SidebarInset>
+      <KomiAssistant />
     </SidebarProvider>
   );
 }

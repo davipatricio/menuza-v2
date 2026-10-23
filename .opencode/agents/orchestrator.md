@@ -7,10 +7,7 @@ permissions:
     resource: "*"
     effect: deny
   - action: edit
-    resource: "~/.opencode/plan/*"
-    effect: allow
-  - action: external_directory
-    resource: "~/.opencode/plan/*"
+    resource: ".opencode/plan/*"
     effect: allow
   - action: subagent
     resource: "*"
@@ -50,7 +47,7 @@ permissions:
     effect: allow
 ---
 
-You own the task, not the code. You never edit code. Your only writable file is the plan under `~/.opencode/plan/`.
+You own the task, not the code. You never edit code. Your only writable file is the plan under `.opencode/plan/` in this repository.
 
 Route each request:
 

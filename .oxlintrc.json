@@ -148,6 +148,7 @@
         "apps/web/src/components/ecomcn/**",
         "apps/web/src/components/smoothui/**",
         "apps/web/src/components/reui/**",
+        "apps/web/src/components/assistant-ui/**",
         "apps/web/src/lib/smoothui-data/**",
         "apps/web/src/lib/address-format.ts",
         "apps/web/src/lib/filter-params.ts",
@@ -155,6 +156,7 @@
         "apps/web/src/hooks/use-mobile.ts",
         "apps/web/src/hooks/use-file-upload.ts",
         "apps/web/src/hooks/use-copy-to-clipboard.ts",
+        "apps/web/src/hooks/use-attachment-src.ts",
         "apps/web/src/hooks/use-filter-params.ts",
         "apps/web/src/hooks/use-order-totals.ts"
       ],
@@ -175,6 +177,7 @@
       // and correctness rules above stay on.
       "files": [
         "apps/web/src/components/reui/**",
+        "apps/web/src/components/assistant-ui/**",
         "apps/web/src/components/smoothui/**",
         "apps/web/src/components/ui/motion-primitives/**",
         "apps/web/src/components/ui/magicui/**",
@@ -185,7 +188,8 @@
         "apps/web/src/lib/filter-params.ts",
         "apps/web/src/lib/tracking-events.ts",
         "apps/web/src/hooks/use-file-upload.ts",
-        "apps/web/src/hooks/use-copy-to-clipboard.ts"
+        "apps/web/src/hooks/use-copy-to-clipboard.ts",
+        "apps/web/src/hooks/use-attachment-src.ts"
       ],
       "rules": {
         "anti-slop/no-known-value-widening": "off",
@@ -204,7 +208,8 @@
         "react/purity": "off",
         "react/immutability": "off",
         "react/preserve-manual-memoization": "off",
-        "react/static-components": "off"
+        "react/static-components": "off",
+        "nextjs/no-img-element": "off"
       }
     },
     {
@@ -218,6 +223,17 @@
       ],
       "rules": {
         "nextjs/no-img-element": "off"
+      }
+    },
+    {
+      // assistant-ui vendored tree: upstream false positives (dynamic children) and intentional autoFocus/media/promise patterns — see D12.
+      "files": ["apps/web/src/components/assistant-ui/**"],
+      "rules": {
+        "jsx-a11y/anchor-has-content": "off",
+        "jsx-a11y/heading-has-content": "off",
+        "jsx-a11y/media-has-caption": "off",
+        "jsx-a11y/no-autofocus": "off",
+        "promise/no-callback-in-promise": "off"
       }
     },
     {

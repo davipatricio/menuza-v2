@@ -503,7 +503,6 @@ function VariationRow({
               <FieldLabel htmlFor={field.name}>Quantidade</FieldLabel>
               <Input
                 id={field.name}
-                className="max-w-[10rem]"
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
@@ -596,14 +595,13 @@ function ProductFields({
   return (
     <>
       <FormSection title="Identificação" description="Nome, descrição e onde o produto aparece.">
-        <FieldGroup className="gap-4">
+        <FieldGroup className="grid gap-4 lg:grid-cols-2">
           <form.Field name="name">
             {(field: any) => (
               <Field data-invalid={fieldInvalid(field, submitted)}>
                 <FieldLabel htmlFor={field.name}>Nome</FieldLabel>
                 <Input
                   id={field.name}
-                  className="max-w-[24rem]"
                   maxLength={120}
                   value={field.state.value}
                   aria-invalid={fieldInvalid(field, submitted)}
@@ -620,9 +618,35 @@ function ProductFields({
             )}
           </form.Field>
 
-          <form.Field name="description">
+          <form.Field name="sortOrder">
             {(field: any) => (
               <Field data-invalid={fieldInvalid(field, submitted)}>
+                <FieldLabel htmlFor={field.name}>Ordem</FieldLabel>
+                <Input
+                  id={field.name}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={maskIntegerInput(String(field.state.value))}
+                  aria-invalid={fieldInvalid(field, submitted)}
+                  aria-describedby={fieldDescribedBy(field, field.name, submitted)}
+                  onChange={(event) => {
+                    const digits = event.target.value.replace(/\D/g, "");
+                    field.handleChange(digits === "" ? 0 : Number(digits));
+                  }}
+                  onBlur={field.handleBlur}
+                />
+                <FieldDescription id={`${field.name}-description`}>
+                  Menor número aparece primeiro na listagem.
+                </FieldDescription>
+                {fieldError(field, field.name, submitted)}
+              </Field>
+            )}
+          </form.Field>
+
+          <form.Field name="description">
+            {(field: any) => (
+              <Field data-invalid={fieldInvalid(field, submitted)} className="lg:col-span-2">
                 <FieldLabel htmlFor={field.name}>Descrição</FieldLabel>
                 <Textarea
                   id={field.name}
@@ -643,7 +667,7 @@ function ProductFields({
             )}
           </form.Field>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 lg:contents">
             <form.Field name="categoryId">
               {(field: any) => (
                 <Field data-invalid={fieldInvalid(field, submitted)}>
@@ -657,7 +681,7 @@ function ProductFields({
                     placeholder="Buscar categoria…"
                     invalid={fieldInvalid(field, submitted)}
                     describedBy={fieldDescribedBy(field, field.name, submitted)}
-                    className="w-full max-w-[20rem]"
+                    className="w-full"
                   />
                   <FieldDescription id={`${field.name}-description`}>
                     Um produto pode ficar sem categoria.
@@ -679,7 +703,7 @@ function ProductFields({
                     placeholder="Buscar departamento…"
                     invalid={fieldInvalid(field, submitted)}
                     describedBy={fieldDescribedBy(field, field.name, submitted)}
-                    className="w-full max-w-[20rem]"
+                    className="w-full"
                   />
                   <FieldDescription id={`${field.name}-description`}>
                     Um produto pode ficar sem departamento.
@@ -691,7 +715,7 @@ function ProductFields({
 
           <form.Field name="tagIds">
             {(field: any) => (
-              <Field>
+              <Field className="lg:col-span-2">
                 <FieldLabel htmlFor={field.name}>Tags</FieldLabel>
                 {tags.length === 0 ? (
                   <Empty className="border">
@@ -712,7 +736,7 @@ function ProductFields({
                     value={field.state.value}
                     onChange={field.handleChange}
                     describedBy={`${field.name}-description`}
-                    className="w-full max-w-[28rem]"
+                    className="w-full"
                   />
                 )}
                 <FieldDescription id={`${field.name}-description`}>
@@ -722,7 +746,7 @@ function ProductFields({
             )}
           </form.Field>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2">
             <VisibilityField
               form={form}
               name="available"
@@ -748,33 +772,6 @@ function ProductFields({
               help="Exige uma conta da loja (dono, administrador ou membro) para abrir e comprar. Não aparece para clientes nem é indexado."
             />
           </div>
-
-          <form.Field name="sortOrder">
-            {(field: any) => (
-              <Field data-invalid={fieldInvalid(field, submitted)}>
-                <FieldLabel htmlFor={field.name}>Ordem</FieldLabel>
-                <Input
-                  id={field.name}
-                  className="max-w-[10rem]"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={maskIntegerInput(String(field.state.value))}
-                  aria-invalid={fieldInvalid(field, submitted)}
-                  aria-describedby={fieldDescribedBy(field, field.name, submitted)}
-                  onChange={(event) => {
-                    const digits = event.target.value.replace(/\D/g, "");
-                    field.handleChange(digits === "" ? 0 : Number(digits));
-                  }}
-                  onBlur={field.handleBlur}
-                />
-                <FieldDescription id={`${field.name}-description`}>
-                  Menor número aparece primeiro na listagem.
-                </FieldDescription>
-                {fieldError(field, field.name, submitted)}
-              </Field>
-            )}
-          </form.Field>
         </FieldGroup>
       </FormSection>
 
@@ -1055,7 +1052,7 @@ export function ProductForm({
 
   return (
     <TooltipProvider>
-      <div className="flex w-full max-w-3xl flex-col gap-6">
+      <div className="flex w-full max-w-5xl flex-col gap-6">
         <form className="flex flex-col gap-6" onSubmit={(event) => submitWithFocus(form, event)}>
           <form.Subscribe selector={(state: any) => state.isSubmitted}>
             {(submitted: boolean) => (
