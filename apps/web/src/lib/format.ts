@@ -10,6 +10,42 @@ export function formatBrl(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
 
+/** Contagem inteira no formato pt-BR, com separador de milhar. */
+export function formatInteger(value: number): string {
+  return new Intl.NumberFormat("pt-BR").format(value);
+}
+
+/**
+ * Valor compacto para eixos e rótulos de gráfico, sem o símbolo: `1320000`
+ * vira `"13,2 mil"`. O contexto do gráfico diz que o valor está em reais.
+ */
+export function formatBrlCompact(cents: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(cents / 100);
+}
+
+/** Decimal com casas fixas, para médias como "1,4" itens por pedido. */
+export function formatDecimal(value: number, fractionDigits = 1): string {
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
+/**
+ * Percentual já calculado (`43` vira `"43%"`). Recebe o número em pontos
+ * percentuais, não a fração, para o chamador não repetir `* 100` na tela.
+ */
+export function formatPercent(value: number, fractionDigits = 0): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "percent",
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value / 100);
+}
+
 /**
  * Dígitos de um campo de dinheiro, sem o símbolo: `1550` vira `"15,50"`.
  * O prefixo `R$` fica no addon do `InputGroup`, nunca dentro do valor.

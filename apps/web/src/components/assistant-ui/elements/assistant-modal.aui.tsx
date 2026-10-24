@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, ChevronDownIcon, HistoryIcon, PlusIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, HistoryIcon, PlusIcon, XIcon } from "lucide-react";
 
 import {
   type ComponentPropsWithoutRef,
@@ -14,6 +14,7 @@ import {
 import { ThreadListPrimitive, useAuiEvent, useAuiState } from "@assistant-ui/react";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 
+import { KOMI_NUDGE_EVENT, type KomiNudgeDetail } from "@/components/assistant-ui/komi-nudge.ts";
 import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import {
   ThreadListItems,
@@ -21,11 +22,13 @@ import {
   ThreadListSearch,
 } from "@/components/assistant-ui/elements/thread-list.aui";
 import { TooltipIconButton } from "@/components/assistant-ui/elements/tooltip-icon-button";
+import { Button } from "@/components/ui/button.tsx";
 import { type ModalView, useModalSize } from "../utils/modal-size";
 
 export const AssistantModal: FC = () => {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<ModalView>("thread");
+  const [nudge, setNudge] = useState<{ id: number; message: string } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { size, reset, handleProps } = useModalSize(contentRef);
   const thread = useMemo(() => <Thread />, []);
@@ -34,6 +37,28 @@ export const AssistantModal: FC = () => {
     setView("thread");
     setOpen(true);
   });
+
+  useEffect(() => {
+    const onNudge = (event: Event) => {
+      const detail = (event as CustomEvent<KomiNudgeDetail>).detail;
+
+      if (!detail?.message) return;
+
+      setNudge({ id: Date.now(), message: detail.message });
+    };
+
+    window.addEventListener(KOMI_NUDGE_EVENT, onNudge);
+
+    return () => window.removeEventListener(KOMI_NUDGE_EVENT, onNudge);
+  }, []);
+
+  useEffect(() => {
+    if (!nudge) return;
+
+    const timer = window.setTimeout(() => setNudge(null), 12_000);
+
+    return () => window.clearTimeout(timer);
+  }, [nudge]);
 
   return (
     <PopoverPrimitive.Root
@@ -45,12 +70,65 @@ export const AssistantModal: FC = () => {
         ) {
           eventDetails.cancel();
         } else {
-          if (open) setView("thread");
+          if (open) {
+            setView("thread");
+            setNudge(null);
+          }
           setOpen(open);
         }
       }}
     >
       <div className="aui-root aui-modal-anchor fixed end-4 bottom-4 size-11">
+        {nudge && !open ? (
+          <div className="animate-in fade-in slide-in-from-bottom-2 absolute end-0 bottom-14 z-40 w-64 duration-200 motion-reduce:animate-none">
+            <div className="relative rounded-xl bg-popover p-3 text-popover-foreground shadow-md ring-1 ring-foreground/10">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute end-1 top-1 text-muted-foreground"
+                aria-label="Fechar dica da Komi"
+                onClick={() => setNudge(null)}
+              >
+                <XIcon data-icon aria-hidden="true" />
+              </Button>
+
+              <div className="flex items-start gap-2 pr-4">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <BotIcon className="size-4" aria-hidden="true" />
+                </span>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <p className="text-sm font-medium">Komi</p>
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className="text-xs text-pretty text-muted-foreground"
+                  >
+                    {nudge.message}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={() => {
+                  setNudge(null);
+                  setOpen(true);
+                }}
+              >
+                Falar com a Komi
+              </Button>
+
+              <span
+                aria-hidden="true"
+                className="absolute end-4 -bottom-1 size-2.5 rotate-45 border-r border-b border-foreground/10 bg-popover"
+              />
+            </div>
+          </div>
+        ) : null}
+
         <PopoverPrimitive.Trigger
           render={(props, state) => <AssistantModalButton {...props} open={state.open} />}
         />
