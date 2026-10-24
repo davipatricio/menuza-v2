@@ -130,9 +130,8 @@ export default async function MenuPage() {
 
   if (!menu) notFound();
 
-  const isEmpty =
-    menu.categories.every((category) => category.products.length === 0) &&
-    menu.uncategorized.length === 0;
+  // The server already drops empty groups, so an empty tree means no items.
+  const isEmpty = menu.departments.length === 0 && menu.uncategorized.length === 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -158,26 +157,51 @@ export default async function MenuPage() {
       ) : null}
 
       <TooltipProvider>
-        {menu.categories
-          .filter((category) => category.products.length > 0)
-          .map((category) => (
-            <section
-              key={category.id}
-              aria-labelledby={`category-${category.id}`}
-              className="flex flex-col gap-3"
-            >
-              <h2 id={`category-${category.id}`} className="text-lg font-medium">
-                {category.name}
-              </h2>
-              <ul className="grid gap-3 sm:grid-cols-2">
-                {category.products.map((product) => (
-                  <li key={product.id}>
-                    <ProductCard product={product} />
-                  </li>
+        {menu.departments.map((department) => (
+          <section
+            key={department.id}
+            aria-labelledby={`department-${department.id}`}
+            className="flex flex-col gap-5"
+          >
+            <h2 id={`department-${department.id}`} className="text-xl font-semibold">
+              {department.name}
+            </h2>
+
+            {department.categories.map((category) => (
+              <section
+                key={category.id}
+                aria-labelledby={`category-${department.id}-${category.id}`}
+                className="flex flex-col gap-4"
+              >
+                <h3 id={`category-${department.id}-${category.id}`} className="text-lg font-medium">
+                  {category.name}
+                </h3>
+
+                {category.subcategories.map((subcategory) => (
+                  <section
+                    key={subcategory.id}
+                    aria-labelledby={`subcategory-${department.id}-${category.id}-${subcategory.id}`}
+                    className="flex flex-col gap-3"
+                  >
+                    <h4
+                      id={`subcategory-${department.id}-${category.id}-${subcategory.id}`}
+                      className="text-sm font-medium text-muted-foreground"
+                    >
+                      {subcategory.name}
+                    </h4>
+                    <ul className="grid gap-3 sm:grid-cols-2">
+                      {subcategory.products.map((product) => (
+                        <li key={product.id}>
+                          <ProductCard product={product} />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
                 ))}
-              </ul>
-            </section>
-          ))}
+              </section>
+            ))}
+          </section>
+        ))}
 
         {menu.uncategorized.length > 0 ? (
           <section aria-labelledby="category-uncategorized" className="flex flex-col gap-3">

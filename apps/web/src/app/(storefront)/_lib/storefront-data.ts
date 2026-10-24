@@ -43,7 +43,14 @@ export const loadProduct = cache(async (productId: string): Promise<StorefrontPr
   return product;
 });
 
-/** Categorias e itens soltos na mesma lista, na ordem em que o cardápio mostra. */
+/** Itens publicados e itens soltos na mesma lista, na ordem em que o cardápio mostra. */
 export function menuProducts(menu: StorefrontMenu): StorefrontProduct[] {
-  return [...menu.categories.flatMap((category) => category.products), ...menu.uncategorized];
+  return [
+    ...menu.departments.flatMap((department) =>
+      department.categories.flatMap((category) =>
+        category.subcategories.flatMap((subcategory) => subcategory.products),
+      ),
+    ),
+    ...menu.uncategorized,
+  ];
 }

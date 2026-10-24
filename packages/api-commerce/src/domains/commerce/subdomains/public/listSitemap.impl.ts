@@ -27,8 +27,10 @@ export const listSitemapImpl = os.public.listSitemap
     const { categories, departments, tags, products, kits } = await withTenant(
       tenant.id,
       async () => ({
-        categories: await db.orm.public.Category.where({ tenantId: tenant.id }).select("id").all(),
-        departments: await db.orm.public.Department.where({ tenantId: tenant.id })
+        categories: await db.orm.public.Category.where({ tenantId: tenant.id, active: true })
+          .select("id")
+          .all(),
+        departments: await db.orm.public.Department.where({ tenantId: tenant.id, active: true })
           .select("id")
           .all(),
         tags: await db.orm.public.Tag.where({ tenantId: tenant.id, isActive: true })
