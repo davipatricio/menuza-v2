@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
 import { Tag } from "lucide-react";
 import {
   Empty,
@@ -9,20 +11,38 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { TableLoading } from "../../_components/table-loading.tsx";
 import { TaxonomyCreateDialog } from "../_components/taxonomy-dialog.tsx";
 import { TagsTable } from "./tags-table";
 
-export default async function CatalogTagsPage({
-  params,
-}: {
-  params: Promise<{ storeSlug: string }>;
-}) {
-  const { storeSlug } = await params;
+async function getTags(storeSlug: string) {
+  "use cache: private";
+  cacheTag(`dashboard:tags:${storeSlug}`);
+  cacheLife({ stale: 300 });
   const client = await panelClient();
 
-  if (!client) notFound();
+  if (!client) return null;
 
   const { tags } = await client.panel.listTags({ storeSlug });
+
+  return tags;
+}
+
+export const instant = true;
+
+export default function CatalogTagsPage({ params }: { params: Promise<{ storeSlug: string }> }) {
+  return (
+    <Suspense fallback={<TableLoading label="Carregando tags" />}>
+      <CatalogTags params={params} />
+    </Suspense>
+  );
+}
+
+async function CatalogTags({ params }: { params: Promise<{ storeSlug: string }> }) {
+  const { storeSlug } = await params;
+  const tags = await getTags(storeSlug);
+
+  if (!tags) notFound();
 
   return (
     <section aria-labelledby="tags-heading" className="flex flex-col gap-4">

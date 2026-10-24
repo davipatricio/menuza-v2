@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
 import { FolderTree } from "lucide-react";
 import {
   Empty,
@@ -9,22 +11,41 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { TableLoading } from "../../_components/table-loading.tsx";
 import { TaxonomyCreateDialog } from "../_components/taxonomy-dialog.tsx";
 import { DepartmentsTable } from "./departments-table";
 
-export const instant = false;
+async function getDepartments(storeSlug: string) {
+  "use cache: private";
+  cacheTag(`dashboard:departments:${storeSlug}`);
+  cacheLife({ stale: 300 });
+  const client = await panelClient();
 
-export default async function CatalogDepartmentsPage({
+  if (!client) return null;
+  const { departments } = await client.panel.listDepartments({ storeSlug });
+
+  return departments;
+}
+
+export const instant = true;
+
+export default function CatalogDepartmentsPage({
   params,
 }: {
   params: Promise<{ storeSlug: string }>;
 }) {
+  return (
+    <Suspense fallback={<TableLoading label="Carregando departamentos" />}>
+      <CatalogDepartments params={params} />
+    </Suspense>
+  );
+}
+
+async function CatalogDepartments({ params }: { params: Promise<{ storeSlug: string }> }) {
   const { storeSlug } = await params;
-  const client = await panelClient();
+  const departments = await getDepartments(storeSlug);
 
-  if (!client) notFound();
-
-  const { departments } = await client.panel.listDepartments({ storeSlug });
+  if (!departments) notFound();
 
   return (
     <section aria-labelledby="departments-heading" className="flex flex-col gap-4">

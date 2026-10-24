@@ -1,19 +1,42 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { TableLoading } from "../../_components/table-loading.tsx";
 import { TaxonomyCreateDialog } from "../_components/taxonomy-dialog.tsx";
 import { CategoriesTable } from "./categories-table";
 
-export default async function CatalogCategoriesPage({
+async function getCategories(storeSlug: string) {
+  "use cache: private";
+  cacheTag(`dashboard:categories:${storeSlug}`);
+  cacheLife({ stale: 300 });
+  const client = await panelClient();
+
+  if (!client) return null;
+  const { categories } = await client.panel.listCategories({ storeSlug });
+
+  return categories;
+}
+
+export const instant = true;
+
+export default function CatalogCategoriesPage({
   params,
 }: {
   params: Promise<{ storeSlug: string }>;
 }) {
+  return (
+    <Suspense fallback={<TableLoading label="Carregando categorias" />}>
+      <CatalogCategories params={params} />
+    </Suspense>
+  );
+}
+
+async function CatalogCategories({ params }: { params: Promise<{ storeSlug: string }> }) {
   const { storeSlug } = await params;
-  const client = await panelClient();
+  const categories = await getCategories(storeSlug);
 
-  if (!client) notFound();
-
-  const { categories } = await client.panel.listCategories({ storeSlug });
+  if (!categories) notFound();
 
   return (
     <section aria-labelledby="categories-heading" className="flex flex-col gap-4">

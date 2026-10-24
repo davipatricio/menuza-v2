@@ -1,7 +1,6 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
@@ -78,6 +77,7 @@ import { Spinner } from "@/components/ui/spinner.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import { formatBrl } from "@/lib/format";
+import { HoverPrefetchLink } from "./hover-prefetch-link.tsx";
 import { type ProductTaxonomy, countActiveProductFilters } from "./product-filter.ts";
 import { productSearchParams } from "./product-search-params.ts";
 import { TagCombobox } from "./tag-combobox.tsx";
@@ -477,12 +477,12 @@ export function ProductsTable({
       accessorKey: "name",
       header: "Produto",
       cell: ({ row }) => (
-        <Link
+        <HoverPrefetchLink
           href={`/dashboard/${storeSlug}/catalog/products/${row.original.id}`}
           className="font-medium underline-offset-4 hover:underline"
         >
           {row.original.name}
-        </Link>
+        </HoverPrefetchLink>
       ),
     },
     {
@@ -939,12 +939,12 @@ export function ProductsTable({
                     />
                     <div className="min-w-0 flex-1">
                       <CardTitle className="truncate text-sm">
-                        <Link
+                        <HoverPrefetchLink
                           href={`/dashboard/${storeSlug}/catalog/products/${product.id}`}
                           className="underline-offset-4 hover:underline"
                         >
                           {product.name}
-                        </Link>
+                        </HoverPrefetchLink>
                       </CardTitle>
                       <CardDescription className="truncate">
                         {product.categoryName ?? "Sem categoria"} ·{" "}

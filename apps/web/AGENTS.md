@@ -47,7 +47,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `Button`: `jsx-a11y/control-has-associated-label` reads the rendered element, and
   the visible text must be contained in the label (WCAG 2.5.3).
 - Route skeletons: form/settings routes ship `loading.tsx` with `SimpleLoading`;
-  table routes use `TableLoading`.
+  table routes use `TableLoading`. A catalog page also returns that same component
+  as its page-level `<Suspense>` fallback, so the heading frames the wait;
+  `loading.tsx` stays as the hard-load fallback.
 - `useForm` + a contract schema: writing optional fields as bare `undefined` in
   `defaultValues` narrows the inferred form type to `undefined`, so the schema stops
   being assignable to `validators`. Widen the schema once into a typed const
@@ -119,10 +121,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `bun run fmt` — it rewrites files outside the change.
 - `anti-slop/require-readable-spacing` is autofixable: `bunx oxlint --fix <paths>`,
   then re-run the formatter and lint again; formatting must not reintroduce findings.
-- `bunx oxfmt` is clean repo-wide; `bunx oxlint .` still reports pre-existing errors in
-  five untouched table files under `src/app/(dashboard)/dashboard/[storeSlug]/catalog/`
-  (`categories`, `departments`, `kits`, `products`, `tags`). Judge a change by
-  `bunx oxfmt <paths>` + `bunx oxlint <paths>`, not by the repo-wide exit code.
+- `bunx oxfmt` is clean repo-wide. `bun run lint` exits **0**: the sonarjs rules are
+  warn severity and the script runs `oxlint .` without `--deny-warnings`, so the repo
+  reports ~830 warnings and no errors. The `catalog/` table files carry the known
+  complexity warnings (`kits-table.tsx`, `products-table.tsx`); `categories-table.tsx`,
+  `departments-table.tsx` and `tags-table.tsx` report none today. Judge a change by
+  `bunx oxfmt <paths>` + `bunx oxlint <paths>` on the files you touched, not by the
+  repo-wide totals.
 - Dashboard auth: `/dashboard/login` and the `/dashboard/signup/*` wizard (conta →
   perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
   `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot
@@ -136,6 +141,28 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   unknown slug and a non-member are both 404 and a freshly created store opens
   empty rather than 404ing. `src/lib/panel-labels.ts` is the only place the
   contract's ASCII enums become pt-BR, and `formatBrl` takes cents (ADR-0006).
+  - No data-bearing App Shell: the shell awaits `params.storeSlug`, so the App
+    Shell (shared across links, URL-data free) cannot carry store or session data.
+    Do not add `ensureStatic` or a shell cache to the dashboard.
+  - Every catalog page is a synchronous `instant = true` default export returning
+    one `<Suspense>` whose child awaits `params`/`searchParams`/`panelClient()` in
+    a single `Promise.all` (products, new, editor, departments, tags, categories,
+    kits).
+  - Private caches only: `'use cache: private'`, never plain `'use cache'` for
+    panel data. Lists (departments/tags/categories/kits) use
+    `cacheLife({ stale: 300 })`; the product-form taxonomy and the editor's
+    product/SEO reads use `stale: 30`. `cacheTag` values are inert until a Server
+    Action or Route Handler invalidates them — nothing calls `revalidateTag` yet.
+  - The products list is deliberately uncached (an editor save refreshes only the
+    editor route, so a TTL would show the user their own edit for ≥30s); the
+    overview stays uncached with `instant = false`.
+  - Product row/card links use `HoverPrefetchLink`
+    (`catalog/products/hover-prefetch-link.tsx`), which flips `prefetch` from
+    `"auto"` to `true` on hover/focus. Do not add `prefetch={true}` to sidebar,
+    filter or "Novo produto" links, and never `prefetch={true}` on a destination
+    whose data is not cached behind a `<Suspense>` boundary.
+  - `prefetch()` / `navigation()` from `next/cache` remain unused (a blocking
+    layout gives them nothing to defer).
 - Catalog products surface:
   - List search/filters are URL state parsed **server-side** by
     `catalog/products/product-search-params.ts` (`nuqs` parsers + `createLoader`).
@@ -200,9 +227,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
     nav and Suspense fallbacks stay static while `CommerceStatusCard` streams per request.
   - The dashboard shell intentionally stays dynamic (`instant = false`, session read per
     request), so it sets no `ensureStatic`.
-- `navigation()` / `prefetch()` (`next/cache`) are available but unused: the only
-  request-time content (`CommerceStatusCard`) is an uncached fetch already deferred by its
-  `<Suspense>` boundary, so no extra stage boundary is needed.
+- `navigation()` / `prefetch()` (`next/cache`) stay unused for the dashboard reason
+  above (a blocking layout, no data-bearing App Shell). Per-link `prefetch={true}` is now
+  used on product rows through `HoverPrefetchLink`. `CommerceStatusCard` stays an
+  uncached fetch deferred by its `<Suspense>` boundary, so no extra stage boundary is
+  needed.
 - Not adopted: `reactCompiler` + `turbopackRustReactCompiler` (experimental; rewrites
   memoization across the client tree) and `turbopackAdditionalRoots` (for symlinked deps
   outside the project root / a global virtual store — this repo uses Bun workspaces).

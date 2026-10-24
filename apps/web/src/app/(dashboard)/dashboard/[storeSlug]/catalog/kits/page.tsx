@@ -1,19 +1,39 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import { cacheLife, cacheTag } from "next/cache";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { TableLoading } from "../../_components/table-loading.tsx";
 import { KitsTable } from "./kits-table";
 
-export default async function CatalogKitsPage({
-  params,
-}: {
-  params: Promise<{ storeSlug: string }>;
-}) {
-  const { storeSlug } = await params;
+async function getKits(storeSlug: string) {
+  "use cache: private";
+  cacheTag(`dashboard:kits:${storeSlug}`);
+  cacheLife({ stale: 300 });
   const client = await panelClient();
 
-  if (!client) notFound();
+  if (!client) return null;
 
   const { kits } = await client.panel.listKits({ storeSlug });
+
+  return kits;
+}
+
+export const instant = true;
+
+export default function CatalogKitsPage({ params }: { params: Promise<{ storeSlug: string }> }) {
+  return (
+    <Suspense fallback={<TableLoading label="Carregando kits" />}>
+      <CatalogKits params={params} />
+    </Suspense>
+  );
+}
+
+async function CatalogKits({ params }: { params: Promise<{ storeSlug: string }> }) {
+  const { storeSlug } = await params;
+  const kits = await getKits(storeSlug);
+
+  if (!kits) notFound();
 
   return (
     <section aria-labelledby="kits-heading" className="flex flex-col gap-4">

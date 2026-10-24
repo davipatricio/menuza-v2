@@ -77,7 +77,7 @@ Shell (`dashboard/[storeSlug]/layout.tsx`): `SidebarProvider` → `AppSidebar` (
 
 Nav groups: **Operação** (Dashboard, Pedidos), **Catálogo** (Produtos, Kits, Departamentos, Categorias, Tags), **Relacionamento** (Clientes, Cupons, Auditoria), **Configurações** collapsible (Loja, Entrega, Pagamentos, Notificações, Equipe, Conta). Mobile closes on navigation (`MobileSidebarCloser`); collapsed sidebar opens on demand instead of navigating blind.
 
-Page pattern: Server Component reads through `panelClient()` and hands rows to a client island (`*-table.tsx` / `*-tabs.tsx`). No data fetch in the browser. Every route ships `loading.tsx` (table skeleton via `table-loading.tsx`, never a blank frame). Every page opens with `h2 text-xl font-semibold tracking-tight` + a `text-sm text-muted-foreground` description inside a `<section aria-labelledby>`, left-aligned with the content column — never a second `h1`, never a centered form under a left-aligned title.
+Page pattern: the default export is a **synchronous** Server Component returning one `<Suspense>` with the same skeleton as `loading.tsx`; the async child awaits `params`/`searchParams`/`panelClient()` in a single `Promise.all`, reads through `panelClient()` and hands rows to a client island (`*-table.tsx` / `*-tabs.tsx`). The heading paints before the read, so navigation shows the frame instead of a blank one. No data fetch in the browser. Every route still ships `loading.tsx` (table skeleton via `table-loading.tsx`, never a blank frame) for the hard load. Every page opens with `h2 text-xl font-semibold tracking-tight` + a `text-sm text-muted-foreground` description inside a `<section aria-labelledby>`, left-aligned with the content column — never a second `h1`, never a centered form under a left-aligned title.
 
 Section pattern: `SettingsSection` (or the same shape) — `h2#headingId` + `text-sm text-muted-foreground` description + children, `gap-6` / `gap-1.5`. The five settings pages must read as one product.
 
@@ -145,8 +145,8 @@ Don't: raw Tailwind colors (`bg-blue-500`, `text-red-600`, `text-emerald-600`, `
 
 ## Iteration Guide
 
-New dashboard page: Server `page.tsx` (panel read) + `loading.tsx` (table skeleton) + `*-table.tsx` island (columns, `Badge` variants, `formatBrl`, export columns) + labels in `panel-labels.ts` if a new enum appears.
+New dashboard page: synchronous `page.tsx` exporting `instant = true` and returning one `<Suspense fallback={<TableLoading label="Carregando …" />}>`; an async child does the panel read (`Promise.all` on `params`/`searchParams`/`panelClient()`); plus `loading.tsx` (same `TableLoading`) and a `*-table.tsx` island (columns, `Badge` variants, `formatBrl`, export columns) + labels in `panel-labels.ts` if a new enum appears. `'use cache: private'` only for a read with a same-route mutation (model: `.agents/skills/menuza/engineering/route-stages.md`).
 
-New form route: Server `page.tsx` (heading + description) + `loading.tsx` + a `*-form.tsx` island (`@tanstack/react-form` + the shared Valibot schema, `FieldGroup`/`Field`, submit-aware field errors, `Alert` for server errors, `Spinner` on the submit button, `ToggleGroup` for small option sets).
+New form route: synchronous `page.tsx` exporting `instant = true` and returning one `<Suspense fallback={<SimpleLoading … />}>` around the heading + description and a `*-form.tsx` island (`@tanstack/react-form` + the shared Valibot schema, `FieldGroup`/`Field`, submit-aware field errors, `Alert` for server errors, `Spinner` on the submit button, `ToggleGroup` for small option sets), plus `loading.tsx` with the same `SimpleLoading`.
 
 Then run `bun run design:check`, `bun run typecheck`, `bun run lint`. No new tokens, no new shadow tiers, no new motion curves without updating this file first.

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PackageOpen, Plus } from "lucide-react";
@@ -11,22 +12,42 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { TableLoading } from "../../_components/table-loading.tsx";
 import { buildProductTaxonomy, filterProducts, sortProducts } from "./product-filter.ts";
 import { loadProductSearchParams } from "./product-search-params.ts";
 import { ProductsTable } from "./products-table";
 
-export const instant = false;
+// Deliberately uncached: `router.refresh()` on a save clears only the current
+// route's client cache, so a TTL here would show the user their own edit for at
+// least 30s.
+export const instant = true;
 
-export default async function CatalogProductsPage({
+export default function CatalogProductsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ storeSlug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { storeSlug } = await params;
-  const filters = await loadProductSearchParams(searchParams);
-  const client = await panelClient();
+  return (
+    <Suspense fallback={<TableLoading label="Carregando produtos" />}>
+      <CatalogProducts params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function CatalogProducts({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ storeSlug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ storeSlug }, filters, client] = await Promise.all([
+    params,
+    loadProductSearchParams(searchParams),
+    panelClient(),
+  ]);
 
   if (!client) notFound();
 
