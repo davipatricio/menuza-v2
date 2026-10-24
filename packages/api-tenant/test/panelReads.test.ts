@@ -90,12 +90,13 @@ interface ProductRow {
   tenantId: string;
   name: string;
   description: string | null;
-  categoryId: string | null;
+  subcategoryId: string | null;
   available: boolean;
   archived: boolean;
   hidden: boolean;
   private: boolean;
   sortOrder: number;
+  updatedAt: Temporal.PlainDateTime;
 }
 
 interface OrderItemRow {
@@ -126,6 +127,31 @@ interface CategoryRow {
   tenantId: string;
   name: string;
   sortOrder: number;
+  active: boolean;
+  updatedAt: Temporal.PlainDateTime;
+}
+
+interface SubcategoryRow {
+  id: string;
+  tenantId: string;
+  categoryId: string;
+  name: string;
+  sortOrder: number;
+  active: boolean;
+  updatedAt: Temporal.PlainDateTime;
+}
+
+interface DepartmentRow {
+  id: string;
+  tenantId: string;
+  name: string;
+  active: boolean;
+  updatedAt: Temporal.PlainDateTime;
+}
+
+interface CategoryDepartmentRow {
+  categoryId: string;
+  departmentId: string;
 }
 
 interface VariationRow {
@@ -182,6 +208,12 @@ const products: ProductRow[] = [];
 
 const categories: CategoryRow[] = [];
 
+const subcategories: SubcategoryRow[] = [];
+
+const departments: DepartmentRow[] = [];
+
+const categoryDepartments: CategoryDepartmentRow[] = [];
+
 const variations: VariationRow[] = [];
 
 const coupons: CouponRow[] = [];
@@ -203,6 +235,10 @@ const originals = {
   productWhere: db.orm.public.Product.where,
   seoMetaWhere: db.orm.public.SeoMeta.where,
   categoryWhere: db.orm.public.Category.where,
+  subcategoryWhere: db.orm.public.Subcategory.where,
+  departmentWhere: db.orm.public.Department.where,
+  categoryDepartmentWhere: db.orm.public.CategoryDepartment.where,
+  categoryDepartmentAll: db.orm.public.CategoryDepartment.all,
   couponWhere: db.orm.public.Coupon.where,
   auditWhere: db.orm.public.AuditLog.where,
 };
@@ -360,23 +396,22 @@ function installFakes() {
       ),
     )) as any;
 
-  // SAFETY: Mocking Product.where; `.include()` attaches the category and the
-  // variations, both filtered to the same tenant.
+  // SAFETY: Mocking Product.where; `.include()` attaches the variations,
+  // filtered to the same tenant.
   db.orm.public.Product.where = ((filter: TenantFilter) => {
     const source = byTenant(products, filter);
 
     const withRelations = () =>
       source.map((product) => ({
         ...product,
-        category: categories.find((c) => c.id === product.categoryId) ?? null,
         variations: variations.filter(
           (v) => v.tenantId === filter.tenantId && v.productId === product.id,
         ),
       }));
 
     return {
-      // The panel chains two `.include()` calls (category, variations) before
-      // ordering, so the joined shape is produced on the first one and kept.
+      // The panel chains `.include()` calls before ordering, so the joined
+      // shape is produced on the first one and kept.
       include: () => rows(withRelations()),
       // The category tab counts by selecting just the foreign key, with no
       // relation loaded.
@@ -392,6 +427,37 @@ function installFakes() {
   // SAFETY: Mocking Category.where; the panel orders by sortOrder.
   db.orm.public.Category.where = ((filter: TenantFilter) =>
     rows(byTenant(categories, filter))) as any;
+
+  // SAFETY: Mocking Subcategory.where; listProducts and the category counts
+  // read the tenant's rows, optionally narrowed to one category.
+  db.orm.public.Subcategory.where = ((filter: TenantFilter & { categoryId?: string }) =>
+    rows(
+      byTenant(subcategories, filter).filter(
+        (row) => filter.categoryId === undefined || row.categoryId === filter.categoryId,
+      ),
+    )) as any;
+
+  // SAFETY: Mocking Department.where; the panel lists them by tenant.
+  db.orm.public.Department.where = ((filter: TenantFilter) =>
+    rows(byTenant(departments, filter))) as any;
+
+  // SAFETY: Mocking CategoryDepartment; the links are read whole and filtered
+  // by one side.
+  db.orm.public.CategoryDepartment.all = (async () => categoryDepartments) as any;
+
+  // SAFETY: mocking CategoryDepartment.where; only the object filter and the
+  // `.select()`/`.all()` terminals are read.
+  db.orm.public.CategoryDepartment.where = ((filter: {
+    categoryId?: string;
+    departmentId?: string;
+  }) =>
+    rows(
+      categoryDepartments.filter(
+        (row) =>
+          (filter.categoryId === undefined || row.categoryId === filter.categoryId) &&
+          (filter.departmentId === undefined || row.departmentId === filter.departmentId),
+      ),
+    )) as any;
 
   // SAFETY: Mocking Coupon.where; the panel orders by code.
   db.orm.public.Coupon.where = ((filter: TenantFilter) => rows(byTenant(coupons, filter))) as any;
@@ -414,6 +480,10 @@ function restoreFakes() {
   db.orm.public.Product.where = originals.productWhere;
   db.orm.public.SeoMeta.where = originals.seoMetaWhere;
   db.orm.public.Category.where = originals.categoryWhere;
+  db.orm.public.Subcategory.where = originals.subcategoryWhere;
+  db.orm.public.Department.where = originals.departmentWhere;
+  db.orm.public.CategoryDepartment.where = originals.categoryDepartmentWhere;
+  db.orm.public.CategoryDepartment.all = originals.categoryDepartmentAll;
   db.orm.public.Coupon.where = originals.couponWhere;
   db.orm.public.AuditLog.where = originals.auditWhere;
 }
@@ -622,7 +692,33 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       tenantId: TENANT_ID,
       name: "Marmitas",
       sortOrder: 1,
+      active: true,
+      updatedAt: at("2026-01-01 00:00"),
     });
+
+    const subcategoryId = randomUUID();
+
+    subcategories.push({
+      id: subcategoryId,
+      tenantId: TENANT_ID,
+      categoryId,
+      name: "Geral",
+      sortOrder: 0,
+      active: true,
+      updatedAt: at("2026-01-01 00:00"),
+    });
+
+    const departmentId = randomUUID();
+
+    departments.push({
+      id: departmentId,
+      tenantId: TENANT_ID,
+      name: "Cozinha",
+      active: true,
+      updatedAt: at("2026-01-01 00:00"),
+    });
+
+    categoryDepartments.push({ categoryId, departmentId });
 
     const productId = randomUUID();
 
@@ -631,12 +727,13 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       tenantId: TENANT_ID,
       name: "Marmita frango grelhado",
       description: null,
-      categoryId,
+      subcategoryId,
       available: true,
       archived: false,
       hidden: false,
       private: false,
       sortOrder: 1,
+      updatedAt: at("2026-01-01 00:00"),
     });
 
     variations.push({
@@ -647,6 +744,60 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       priceCents: 2490,
       stockMode: "unlimited",
       stockQty: null,
+    });
+
+    const acaiId = randomUUID();
+
+    // No subcategory, so the taxonomy counts stay on the Marmita fixture while
+    // these rows exercise the computed product sorts.
+    products.push({
+      id: acaiId,
+      tenantId: TENANT_ID,
+      name: "Açaí",
+      description: null,
+      subcategoryId: null,
+      available: true,
+      archived: false,
+      hidden: false,
+      private: false,
+      sortOrder: 2,
+      updatedAt: at("2026-01-02 00:00"),
+    });
+
+    variations.push({
+      id: randomUUID(),
+      tenantId: TENANT_ID,
+      productId: acaiId,
+      name: "default",
+      priceCents: 3000,
+      stockMode: "controlled",
+      stockQty: 5,
+    });
+
+    const boloId = randomUUID();
+
+    products.push({
+      id: boloId,
+      tenantId: TENANT_ID,
+      name: "Bolo",
+      description: null,
+      subcategoryId: null,
+      available: true,
+      archived: false,
+      hidden: false,
+      private: false,
+      sortOrder: 3,
+      updatedAt: at("2026-01-03 00:00"),
+    });
+
+    variations.push({
+      id: randomUUID(),
+      tenantId: TENANT_ID,
+      productId: boloId,
+      name: "default",
+      priceCents: 1000,
+      stockMode: "controlled",
+      stockQty: 0,
     });
 
     coupons.push({
@@ -838,13 +989,75 @@ describe("panel reads — Unit (infrastructure-free)", () => {
         { context: { reqHeaders } },
       );
 
-      expect(result.products).toHaveLength(1);
-      expect(result.products[0]).toMatchObject({
-        name: "Marmita frango grelhado",
+      const marmita = result.products.find((product) => product.name === "Marmita frango grelhado");
+
+      expect(marmita).toMatchObject({
         categoryName: "Marmitas",
+        subcategoryName: "Geral",
+        departmentNames: ["Cozinha"],
         priceCents: 2490,
         available: true,
       });
+    });
+
+    test("orders by price in both directions, with null prices last", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const asc = await call(
+        listProductsImpl,
+        { storeSlug: "mawifoods", sortBy: "price", order: "asc" },
+        { context: { reqHeaders } },
+      );
+
+      expect(asc.products.map((product) => product.name)).toEqual([
+        "Bolo",
+        "Marmita frango grelhado",
+        "Açaí",
+      ]);
+
+      const desc = await call(
+        listProductsImpl,
+        { storeSlug: "mawifoods", sortBy: "price", order: "desc" },
+        { context: { reqHeaders } },
+      );
+
+      expect(desc.products.map((product) => product.name)).toEqual([
+        "Açaí",
+        "Marmita frango grelhado",
+        "Bolo",
+      ]);
+    });
+
+    test("orders by stock and keeps rows without controlled stock last", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        listProductsImpl,
+        { storeSlug: "mawifoods", sortBy: "stock", order: "asc" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.products.map((product) => product.name)).toEqual([
+        "Bolo",
+        "Açaí",
+        "Marmita frango grelhado",
+      ]);
+    });
+
+    test("orders by category and keeps uncategorized rows last", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        listProductsImpl,
+        { storeSlug: "mawifoods", sortBy: "category", order: "asc" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.products.map((product) => product.name)).toEqual([
+        "Marmita frango grelhado",
+        "Açaí",
+        "Bolo",
+      ]);
     });
   });
 
@@ -863,7 +1076,18 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       const only = categories[0]!;
 
       expect(only).toBeDefined();
-      expect(result.categories).toEqual([{ id: only?.id, name: "Marmitas", itemsCount: 1 }]);
+      expect(result.categories).toEqual([
+        {
+          id: only?.id,
+          name: "Marmitas",
+          active: true,
+          sortOrder: 1,
+          itemsCount: 1,
+          updatedAt: "2026-01-01T00:00:00Z",
+          departmentIds: [departments[0]!.id],
+          departmentNames: ["Cozinha"],
+        },
+      ]);
     });
   });
 

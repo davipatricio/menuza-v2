@@ -4743,6 +4743,38 @@
               "minLength": 1,
               "maxLength": 120
             }
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "enum": [
+                "sortOrder",
+                "name",
+                "updatedAt",
+                "price",
+                "category",
+                "stock"
+              ],
+              "type": "string",
+              "default": "sortOrder"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -4784,7 +4816,7 @@
                               }
                             ]
                           },
-                          "departmentId": {
+                          "subcategoryId": {
                             "anyOf": [
                               {
                                 "type": "string"
@@ -4794,7 +4826,7 @@
                               }
                             ]
                           },
-                          "departmentName": {
+                          "subcategoryName": {
                             "anyOf": [
                               {
                                 "type": "string"
@@ -4803,6 +4835,18 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "departmentIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "departmentNames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "tags": {
                             "type": "array",
@@ -4848,6 +4892,10 @@
                           "sortOrder": {
                             "type": "integer",
                             "minimum": 0
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
                           },
                           "description": {
                             "anyOf": [
@@ -4931,8 +4979,10 @@
                           "name",
                           "categoryId",
                           "categoryName",
-                          "departmentId",
-                          "departmentName",
+                          "subcategoryId",
+                          "subcategoryName",
+                          "departmentIds",
+                          "departmentNames",
                           "tags",
                           "priceCents",
                           "available",
@@ -4940,6 +4990,7 @@
                           "hidden",
                           "private",
                           "sortOrder",
+                          "updatedAt",
                           "description",
                           "seoTitle",
                           "seoDescription",
@@ -5097,19 +5148,7 @@
                       }
                     ]
                   },
-                  "categoryId": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "departmentId": {
+                  "subcategoryId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -5198,8 +5237,7 @@
                 "required": [
                   "name",
                   "description",
-                  "categoryId",
-                  "departmentId",
+                  "subcategoryId",
                   "tagIds",
                   "available",
                   "sortOrder",
@@ -5246,7 +5284,7 @@
                             }
                           ]
                         },
-                        "departmentId": {
+                        "subcategoryId": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -5256,7 +5294,7 @@
                             }
                           ]
                         },
-                        "departmentName": {
+                        "subcategoryName": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -5265,6 +5303,18 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "departmentIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "departmentNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "tags": {
                           "type": "array",
@@ -5310,6 +5360,10 @@
                         "sortOrder": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
                         },
                         "description": {
                           "anyOf": [
@@ -5370,8 +5424,10 @@
                         "name",
                         "categoryId",
                         "categoryName",
-                        "departmentId",
-                        "departmentName",
+                        "subcategoryId",
+                        "subcategoryName",
+                        "departmentIds",
+                        "departmentNames",
                         "tags",
                         "priceCents",
                         "available",
@@ -5379,6 +5435,7 @@
                         "hidden",
                         "private",
                         "sortOrder",
+                        "updatedAt",
                         "description",
                         "variations"
                       ]
@@ -5554,7 +5611,7 @@
                             }
                           ]
                         },
-                        "departmentId": {
+                        "subcategoryId": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -5564,7 +5621,7 @@
                             }
                           ]
                         },
-                        "departmentName": {
+                        "subcategoryName": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -5573,6 +5630,18 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "departmentIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "departmentNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "tags": {
                           "type": "array",
@@ -5618,6 +5687,10 @@
                         "sortOrder": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
                         },
                         "description": {
                           "anyOf": [
@@ -5678,8 +5751,10 @@
                         "name",
                         "categoryId",
                         "categoryName",
-                        "departmentId",
-                        "departmentName",
+                        "subcategoryId",
+                        "subcategoryName",
+                        "departmentIds",
+                        "departmentNames",
                         "tags",
                         "priceCents",
                         "available",
@@ -5687,6 +5762,7 @@
                         "hidden",
                         "private",
                         "sortOrder",
+                        "updatedAt",
                         "description",
                         "variations"
                       ]
@@ -5845,19 +5921,7 @@
                       }
                     ]
                   },
-                  "categoryId": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "departmentId": {
+                  "subcategoryId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -5984,7 +6048,7 @@
                             }
                           ]
                         },
-                        "departmentId": {
+                        "subcategoryId": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -5994,7 +6058,7 @@
                             }
                           ]
                         },
-                        "departmentName": {
+                        "subcategoryName": {
                           "anyOf": [
                             {
                               "type": "string"
@@ -6003,6 +6067,18 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "departmentIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "departmentNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
                         },
                         "tags": {
                           "type": "array",
@@ -6048,6 +6124,10 @@
                         "sortOrder": {
                           "type": "integer",
                           "minimum": 0
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
                         },
                         "description": {
                           "anyOf": [
@@ -6108,8 +6188,10 @@
                         "name",
                         "categoryId",
                         "categoryName",
-                        "departmentId",
-                        "departmentName",
+                        "subcategoryId",
+                        "subcategoryName",
+                        "departmentIds",
+                        "departmentNames",
                         "tags",
                         "priceCents",
                         "available",
@@ -6117,6 +6199,7 @@
                         "hidden",
                         "private",
                         "sortOrder",
+                        "updatedAt",
                         "description",
                         "variations"
                       ]
@@ -6426,19 +6509,7 @@
                       "maxLength": 64
                     }
                   },
-                  "categoryId": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 64
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "departmentId": {
+                  "subcategoryId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -6772,6 +6843,73 @@
               "minLength": 1,
               "maxLength": 120
             }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "default": ""
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "enum": [
+                "all",
+                "active",
+                "inactive"
+              ],
+              "type": "string",
+              "default": "all"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "departmentId",
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": ""
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "enum": [
+                "name",
+                "itemsCount",
+                "updatedAt",
+                "sortOrder"
+              ],
+              "type": "string",
+              "default": "sortOrder"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -6793,15 +6931,43 @@
                           "name": {
                             "type": "string"
                           },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "sortOrder": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
                           "itemsCount": {
                             "type": "integer",
                             "minimum": 0
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "departmentIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "departmentNames": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           }
                         },
                         "required": [
                           "id",
                           "name",
-                          "itemsCount"
+                          "active",
+                          "sortOrder",
+                          "itemsCount",
+                          "updatedAt",
+                          "departmentIds",
+                          "departmentNames"
                         ]
                       }
                     }
@@ -6942,11 +7108,24 @@
                   "sortOrder": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "departmentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
                   }
                 },
                 "required": [
                   "name",
-                  "sortOrder"
+                  "sortOrder",
+                  "active",
+                  "departmentIds"
                 ]
               }
             }
@@ -7112,11 +7291,24 @@
                   "sortOrder": {
                     "type": "integer",
                     "minimum": 0
+                  },
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "departmentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
                   }
                 },
                 "required": [
                   "name",
-                  "sortOrder"
+                  "sortOrder",
+                  "active",
+                  "departmentIds"
                 ]
               }
             }
@@ -7391,6 +7583,751 @@
         }
       }
     },
+    "/panel/stores/{storeSlug}/subcategories": {
+      "get": {
+        "operationId": "listPanelSubcategories",
+        "summary": "Lista as subcategorias da loja com a contagem de itens.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "default": ""
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "enum": [
+                "all",
+                "active",
+                "inactive"
+              ],
+              "type": "string",
+              "default": "all"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "categoryId",
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "default": ""
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "enum": [
+                "name",
+                "itemsCount",
+                "updatedAt",
+                "sortOrder"
+              ],
+              "type": "string",
+              "default": "sortOrder"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subcategories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "categoryId": {
+                            "type": "string"
+                          },
+                          "categoryName": {
+                            "type": "string"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "sortOrder": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "itemsCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "categoryId",
+                          "categoryName",
+                          "active",
+                          "sortOrder",
+                          "itemsCount",
+                          "updatedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "subcategories"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPanelSubcategory",
+        "summary": "Cria uma subcategoria dentro de uma categoria.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "categoryId",
+                  "sortOrder",
+                  "active"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/stores/{storeSlug}/subcategories/{subcategoryId}": {
+      "put": {
+        "operationId": "updatePanelSubcategory",
+        "summary": "Atualiza uma subcategoria.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "in": "path",
+            "required": true,
+            "name": "subcategoryId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "categoryId",
+                  "sortOrder",
+                  "active"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePanelSubcategory",
+        "summary": "Exclui uma subcategoria sem produtos.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "in": "path",
+            "required": true,
+            "name": "subcategoryId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/stores/{storeSlug}/departments": {
       "get": {
         "operationId": "listPanelDepartments",
@@ -7407,6 +8344,61 @@
               "minLength": 1,
               "maxLength": 120
             }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "default": ""
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "enum": [
+                "all",
+                "active",
+                "inactive"
+              ],
+              "type": "string",
+              "default": "all"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "enum": [
+                "name",
+                "itemsCount",
+                "updatedAt"
+              ],
+              "type": "string",
+              "default": "name"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -7434,13 +8426,18 @@
                           "itemsCount": {
                             "type": "integer",
                             "minimum": 0
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
                           }
                         },
                         "required": [
                           "id",
                           "name",
                           "active",
-                          "itemsCount"
+                          "itemsCount",
+                          "updatedAt"
                         ]
                       }
                     }
@@ -7749,6 +8746,18 @@
                   },
                   "active": {
                     "type": "boolean"
+                  },
+                  "moveProductsToCategoryId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -8044,6 +9053,34 @@
               "minLength": 1,
               "maxLength": 120
             }
+          },
+          {
+            "in": "query",
+            "name": "sortBy",
+            "schema": {
+              "enum": [
+                "name",
+                "itemsCount"
+              ],
+              "type": "string",
+              "default": "name"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {

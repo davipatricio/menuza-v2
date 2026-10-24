@@ -189,6 +189,26 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/categories/{categoryId}",
   },
   {
+    procedure: tenantContractObject.panel.listSubcategories,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/subcategories",
+  },
+  {
+    procedure: tenantContractObject.panel.createSubcategory,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/subcategories",
+  },
+  {
+    procedure: tenantContractObject.panel.updateSubcategory,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/subcategories/{subcategoryId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteSubcategory,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/subcategories/{subcategoryId}",
+  },
+  {
     procedure: tenantContractObject.panel.listDepartments,
     method: "get",
     path: "/panel/stores/{storeSlug}/departments",

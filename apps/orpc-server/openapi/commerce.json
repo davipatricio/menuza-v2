@@ -698,7 +698,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "categories": {
+                    "departments": {
                       "type": "array",
                       "items": {
                         "type": "object",
@@ -709,10 +709,7 @@
                           "name": {
                             "type": "string"
                           },
-                          "sortOrder": {
-                            "type": "number"
-                          },
-                          "products": {
+                          "categories": {
                             "type": "array",
                             "items": {
                               "type": "object",
@@ -723,30 +720,10 @@
                                 "name": {
                                   "type": "string"
                                 },
-                                "description": {
-                                  "anyOf": [
-                                    {
-                                      "type": "string"
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
-                                },
-                                "available": {
-                                  "type": "boolean"
-                                },
-                                "archived": {
-                                  "type": "boolean"
-                                },
                                 "sortOrder": {
                                   "type": "number"
                                 },
-                                "fromPriceCents": {
-                                  "type": "integer",
-                                  "minimum": 0
-                                },
-                                "variations": {
+                                "subcategories": {
                                   "type": "array",
                                   "items": {
                                     "type": "object",
@@ -757,39 +734,105 @@
                                       "name": {
                                         "type": "string"
                                       },
-                                      "priceCents": {
-                                        "type": "integer",
-                                        "minimum": 0
+                                      "sortOrder": {
+                                        "type": "number"
                                       },
-                                      "available": {
-                                        "type": "boolean"
+                                      "products": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {
+                                              "type": "string"
+                                            },
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "description": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "available": {
+                                              "type": "boolean"
+                                            },
+                                            "archived": {
+                                              "type": "boolean"
+                                            },
+                                            "sortOrder": {
+                                              "type": "number"
+                                            },
+                                            "fromPriceCents": {
+                                              "type": "integer",
+                                              "minimum": 0
+                                            },
+                                            "variations": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "id": {
+                                                    "type": "string"
+                                                  },
+                                                  "name": {
+                                                    "type": "string"
+                                                  },
+                                                  "priceCents": {
+                                                    "type": "integer",
+                                                    "minimum": 0
+                                                  },
+                                                  "available": {
+                                                    "type": "boolean"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "id",
+                                                  "name",
+                                                  "priceCents",
+                                                  "available"
+                                                ]
+                                              }
+                                            },
+                                            "tags": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "string"
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "id",
+                                            "name",
+                                            "description",
+                                            "available",
+                                            "archived",
+                                            "sortOrder",
+                                            "fromPriceCents",
+                                            "variations",
+                                            "tags"
+                                          ]
+                                        }
                                       }
                                     },
                                     "required": [
                                       "id",
                                       "name",
-                                      "priceCents",
-                                      "available"
+                                      "sortOrder",
+                                      "products"
                                     ]
-                                  }
-                                },
-                                "tags": {
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string"
                                   }
                                 }
                               },
                               "required": [
                                 "id",
                                 "name",
-                                "description",
-                                "available",
-                                "archived",
                                 "sortOrder",
-                                "fromPriceCents",
-                                "variations",
-                                "tags"
+                                "subcategories"
                               ]
                             }
                           }
@@ -797,8 +840,7 @@
                         "required": [
                           "id",
                           "name",
-                          "sortOrder",
-                          "products"
+                          "categories"
                         ]
                       }
                     },
@@ -885,7 +927,7 @@
                     }
                   },
                   "required": [
-                    "categories",
+                    "departments",
                     "uncategorized"
                   ]
                 }

@@ -55,7 +55,11 @@ const productTags: Row[] = [];
 
 const categories: Row[] = [];
 
+const subcategories: Row[] = [];
+
 const departments: Row[] = [];
+
+const categoryDepartments: Row[] = [];
 
 const tags: Row[] = [];
 
@@ -134,10 +138,36 @@ const PRODUCT_MODEL = collection(products, (product) => {
 });
 
 function joinProduct(product: Row): Row {
+  const subcategory =
+    subcategories.find((subcategory) => subcategory.id === product.subcategoryId) ?? null;
+
+  const category =
+    subcategory === null
+      ? null
+      : (categories.find((entry) => entry.id === subcategory.categoryId) ?? null);
+
+  const departmentLinks =
+    category === null
+      ? []
+      : categoryDepartments.flatMap((link) =>
+          link.categoryId === category.id
+            ? [
+                {
+                  department: departments.find((entry) => entry.id === link.departmentId) ?? null,
+                },
+              ]
+            : [],
+        );
+
   const joined = {
     ...product,
-    category: categories.find((category) => category.id === product.categoryId) ?? null,
-    department: departments.find((department) => department.id === product.departmentId) ?? null,
+    subcategory:
+      subcategory === null
+        ? null
+        : {
+            ...subcategory,
+            category: category === null ? null : { ...category, departments: departmentLinks },
+          },
     tags: productTags.flatMap((link) =>
       link.productId === product.id
         ? [{ ...link, tag: tags.find((tag) => tag.id === link.tagId) ?? null }]
@@ -159,7 +189,9 @@ const MODEL_NAMES = [
   "Variation",
   "ProductTag",
   "Category",
+  "Subcategory",
   "Department",
+  "CategoryDepartment",
   "Tag",
   "OrderItem",
   "KitItem",
@@ -175,7 +207,9 @@ const MODELS: Record<ModelName, Model> = {
   Variation: model(variations),
   ProductTag: model(productTags),
   Category: model(categories),
+  Subcategory: model(subcategories),
   Department: model(departments),
+  CategoryDepartment: model(categoryDepartments),
   Tag: model(tags),
   OrderItem: model(orderItems),
   KitItem: model(kitItems),
@@ -289,8 +323,7 @@ function productInput(overrides: Partial<ProductInput> = {}): ProductInput {
     storeSlug: "mawifoods",
     name: "Marmita vegana",
     description: null,
-    categoryId: null,
-    departmentId: null,
+    subcategoryId: null,
     tagIds: [],
     available: true,
     sortOrder: 0,
@@ -314,6 +347,10 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
   let otherCategoryId = "";
 
   let categoryId = "";
+
+  let subcategoryId = "";
+
+  let otherSubcategoryId = "";
 
   beforeAll(async () => {
     installFakes();
@@ -369,12 +406,34 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       sortOrder: 0,
     });
 
+    subcategoryId = randomUUID();
+    subcategories.push({
+      id: subcategoryId,
+      tenantId: TENANT_ID,
+      categoryId,
+      name: "Geral",
+      sortOrder: 0,
+      active: true,
+      updatedAt: at("2026-01-01 00:00"),
+    });
+
     otherCategoryId = randomUUID();
     categories.push({
       id: otherCategoryId,
       tenantId: OTHER_TENANT_ID,
       name: "De Outro",
       sortOrder: 0,
+    });
+
+    otherSubcategoryId = randomUUID();
+    subcategories.push({
+      id: otherSubcategoryId,
+      tenantId: OTHER_TENANT_ID,
+      categoryId: otherCategoryId,
+      name: "De Outro",
+      sortOrder: 0,
+      active: true,
+      updatedAt: at("2026-01-01 00:00"),
     });
   });
 
@@ -417,7 +476,7 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
         createProductImpl,
         productInput({
           tagIds: [tagId],
-          categoryId,
+          subcategoryId,
           variations: [
             { name: "default", priceCents: 1990, stockMode: "unlimited", stockQty: null },
             { name: "grande", priceCents: 2490, stockMode: "controlled", stockQty: 7 },
@@ -585,7 +644,7 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       expect(productTags.filter((row) => row.productId === productId)).toHaveLength(1);
     });
 
-    test("an omitted categoryId is not ownership-checked", async () => {
+    test("an omitted subcategoryId is not ownership-checked", async () => {
       const reqHeaders = await sessionCookie();
 
       const created = await call(createProductImpl, productInput(), {
@@ -596,7 +655,7 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       Object.assign(
         products.find((row) => row.id === created.product.id)!,
         {
-          categoryId: otherCategoryId,
+          subcategoryId: otherSubcategoryId,
         },
       );
 
@@ -607,10 +666,12 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       );
 
       expect(result.product.name).toBe("Marmita renomeada");
-      expect(result.product.categoryId).toBe(otherCategoryId);
+      expect(products.find((row) => row.id === created.product.id)?.subcategoryId).toBe(
+        otherSubcategoryId,
+      );
     });
 
-    test("a foreign categoryId is NOT_FOUND", async () => {
+    test("a foreign subcategoryId is NOT_FOUND", async () => {
       const reqHeaders = await sessionCookie();
 
       const created = await call(createProductImpl, productInput(), {
@@ -620,7 +681,11 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       try {
         await call(
           updateProductImpl,
-          { storeSlug: "mawifoods", productId: created.product.id, categoryId: otherCategoryId },
+          {
+            storeSlug: "mawifoods",
+            productId: created.product.id,
+            subcategoryId: otherSubcategoryId,
+          },
           { context: { reqHeaders } },
         );
         throw new Error("expected updateProduct to fail");
@@ -789,7 +854,7 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
     test("a category with a product is a CONFLICT", async () => {
       const reqHeaders = await sessionCookie();
 
-      await call(createProductImpl, productInput({ categoryId }), { context: { reqHeaders } });
+      await call(createProductImpl, productInput({ subcategoryId }), { context: { reqHeaders } });
 
       try {
         await call(
