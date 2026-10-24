@@ -5,6 +5,7 @@ import { tenantContractObject } from "@menuza/shared/tenant";
 import { db } from "@menuza/db";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { catalogConflict } from "./catalog.ts";
+import { now } from "./taxonomy.ts";
 
 const os = implement(
   tenantContractObject.panel.createDepartment,
@@ -29,6 +30,7 @@ export const createDepartmentImpl = os.handler(async ({ input, context }) => {
       tenantId: store.tenantId,
       name,
       active: input.active,
+      updatedAt: now(),
     }),
   );
 

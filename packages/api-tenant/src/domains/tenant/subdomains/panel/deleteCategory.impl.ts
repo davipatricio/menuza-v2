@@ -5,12 +5,13 @@ import { db } from "@menuza/db";
 import { notFound } from "../session/support.ts";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { catalogConflict } from "./catalog.ts";
+import { productCountOf } from "./taxonomy.ts";
 
 const os = implement(
   tenantContractObject.panel.deleteCategory,
 ).$context<RequestHeadersHandlerPluginContext>();
 
-/** A category still attached to a product would be orphaned by the delete. */
+/** A category with products in any of its subcategories would orphan them. */
 export const deleteCategoryImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
@@ -22,14 +23,20 @@ export const deleteCategoryImpl = os.handler(async ({ input, context }) => {
 
   if (!existing) throw notFound();
 
-  const product = await inTenantScope(store.tenantId, () =>
-    db.orm.public.Product.where({ tenantId: store.tenantId, categoryId: input.categoryId }).first(),
-  );
-
-  if (product) throw catalogConflict("Mova os produtos desta categoria antes de excluí-la.");
-
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Category.where({ tenantId: store.tenantId, id: input.categoryId }).delete(),
+    db.transaction(async (tx) => {
+      const products = await productCountOf(tx, store.tenantId, [input.categoryId]);
+
+      if (products > 0) {
+        throw catalogConflict("Mova os produtos desta categoria antes de excluí-la.");
+      }
+
+      // The subcategories and department links cascade from the category.
+      await tx.orm.public.Category.where({
+        tenantId: store.tenantId,
+        id: input.categoryId,
+      }).deleteAll();
+    }),
   );
 
   return { success: true };

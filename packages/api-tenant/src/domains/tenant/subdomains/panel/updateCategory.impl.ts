@@ -5,11 +5,17 @@ import { db } from "@menuza/db";
 import { notFound } from "../session/support.ts";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { catalogConflict } from "./catalog.ts";
+import { assertOwnedDepartments, now, replaceCategoryDepartments } from "./taxonomy.ts";
 
 const os = implement(
   tenantContractObject.panel.updateCategory,
 ).$context<RequestHeadersHandlerPluginContext>();
 
+/**
+ * Full replace: the name, the order, the active flag and the department set are
+ * written together. The links are swapped inside the transaction, so a failure
+ * never leaves a category half-linked.
+ */
 export const updateCategoryImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
@@ -32,9 +38,23 @@ export const updateCategoryImpl = os.handler(async ({ input, context }) => {
   }
 
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Category.where({ tenantId: store.tenantId, id: input.categoryId }).update({
-      name,
-      sortOrder: input.sortOrder,
+    db.transaction(async (tx) => {
+      await assertOwnedDepartments(tx, store.tenantId, input.departmentIds);
+
+      // `updateAll`, not `update`: RC.17 compiles `update` from
+      // `where({ tenantId, id })` down to `id` only, and the isolation guard
+      // then rejects the write.
+      await tx.orm.public.Category.where({
+        tenantId: store.tenantId,
+        id: input.categoryId,
+      }).updateAll({
+        name,
+        sortOrder: input.sortOrder,
+        active: input.active,
+        updatedAt: now(),
+      });
+
+      await replaceCategoryDepartments(tx, input.categoryId, input.departmentIds);
     }),
   );
 

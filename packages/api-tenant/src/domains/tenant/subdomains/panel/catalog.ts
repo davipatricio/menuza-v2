@@ -11,6 +11,7 @@ import { ORPCError } from "@orpc/server";
 import { db } from "@menuza/db";
 import type { PanelProductDetail } from "@menuza/shared/tenant";
 import { notFound } from "../session/support.ts";
+import { isoOf } from "./taxonomy.ts";
 
 /** The client and a transaction expose the same `orm` surface. */
 export type CatalogTx = { readonly orm: typeof db.orm };
@@ -22,8 +23,17 @@ export function catalogConflict(message: string) {
 /** The detail loader: every field the editor renders, in one round trip. */
 export function loadProduct(tx: CatalogTx, tenantId: string, productId: string) {
   return tx.orm.public.Product.where({ tenantId, id: productId })
-    .include("category", (category) => category.select("id", "name"))
-    .include("department", (department) => department.select("id", "name"))
+    .include("subcategory", (subcategory) =>
+      subcategory
+        .select("id", "name", "categoryId")
+        .include("category", (category) =>
+          category
+            .select("id", "name")
+            .include("departments", (link) =>
+              link.include("department", (department) => department.select("id", "name")),
+            ),
+        ),
+    )
     .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("id", "name")))
     .include("variations", (variation) =>
       variation
@@ -63,14 +73,25 @@ function priceOf(variations: { name: string; priceCents: number }[]): number | n
 export function toProductDetail(product: ProductWithRelations): PanelProductDetail {
   const variations = variationsOf(product);
 
+  const subcategory = product.subcategory ?? null;
+  const category = subcategory?.category ?? null;
+
+  // The product's departments are its category's, not its own: a product sits
+  // under one subcategory and the category decides where it appears.
+  const departments = (category?.departments ?? [])
+    .flatMap((link) => (link.department === null ? [] : [link.department]))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR") || a.id.localeCompare(b.id));
+
   return {
     id: product.id,
     name: product.name,
     description: product.description ?? null,
-    categoryId: product.category?.id ?? null,
-    categoryName: product.category?.name ?? null,
-    departmentId: product.department?.id ?? null,
-    departmentName: product.department?.name ?? null,
+    categoryId: category?.id ?? null,
+    categoryName: category?.name ?? null,
+    subcategoryId: subcategory?.id ?? null,
+    subcategoryName: subcategory?.name ?? null,
+    departmentIds: departments.map((department) => department.id),
+    departmentNames: departments.map((department) => department.name),
     tags: tagsOf(product),
     priceCents: priceOf(variations),
     available: product.available,
@@ -78,6 +99,7 @@ export function toProductDetail(product: ProductWithRelations): PanelProductDeta
     hidden: product.hidden,
     private: product.private,
     sortOrder: product.sortOrder,
+    updatedAt: isoOf(product.updatedAt),
     variations,
   };
 }
@@ -116,7 +138,7 @@ export async function variationInUse(
 }
 
 /**
- * Category, department and tags must belong to the same tenant as the store.
+ * Subcategory and tags must belong to the same tenant as the store.
  * `undefined` means the caller omitted the field and it is left untouched, so
  * there is nothing to check; `null` clears the relation.
  */
@@ -124,27 +146,17 @@ export async function assertOwnedIds(
   tx: CatalogTx,
   tenantId: string,
   input: {
-    categoryId?: string | null;
-    departmentId?: string | null;
+    subcategoryId?: string | null;
     tagIds?: readonly string[];
   },
 ): Promise<void> {
-  if (input.categoryId !== null && input.categoryId !== undefined) {
-    const category = await tx.orm.public.Category.where({
+  if (input.subcategoryId !== null && input.subcategoryId !== undefined) {
+    const subcategory = await tx.orm.public.Subcategory.where({
       tenantId,
-      id: input.categoryId,
+      id: input.subcategoryId,
     }).first();
 
-    if (!category) throw notFound();
-  }
-
-  if (input.departmentId !== null && input.departmentId !== undefined) {
-    const department = await tx.orm.public.Department.where({
-      tenantId,
-      id: input.departmentId,
-    }).first();
-
-    if (!department) throw notFound();
+    if (!subcategory) throw notFound();
   }
 
   for (const tagId of new Set(input.tagIds ?? [])) {

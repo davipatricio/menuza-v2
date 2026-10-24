@@ -14,6 +14,7 @@ import {
   toProductDetail,
   variationInUse,
 } from "./catalog.ts";
+import { now } from "./taxonomy.ts";
 
 const os = implement(
   tenantContractObject.panel.updateProduct,
@@ -23,13 +24,13 @@ const os = implement(
 type ProductScalarPatch = {
   name?: string;
   description?: string | null;
-  categoryId?: string | null;
-  departmentId?: string | null;
+  subcategoryId?: string | null;
   available?: boolean;
   archived?: boolean;
   hidden?: boolean;
   private?: boolean;
   sortOrder?: number;
+  updatedAt?: Temporal.PlainDateTime;
 };
 
 /**
@@ -73,15 +74,15 @@ export const updateProductImpl = os.handler(async ({ input, context }) => {
   assertUniqueVariationNames(variations);
 
   // Only the keys the caller actually sent: an omitted field is left alone.
-  const patch: ProductScalarPatch = {};
+  // `updatedAt` always moves, because the row was edited even when only its
+  // variations or tags changed.
+  const patch: ProductScalarPatch = { updatedAt: now() };
 
   if (input.name !== undefined) patch.name = input.name;
 
   if (input.description !== undefined) patch.description = input.description;
 
-  if (input.categoryId !== undefined) patch.categoryId = input.categoryId;
-
-  if (input.departmentId !== undefined) patch.departmentId = input.departmentId;
+  if (input.subcategoryId !== undefined) patch.subcategoryId = input.subcategoryId;
 
   if (input.available !== undefined) patch.available = input.available;
 

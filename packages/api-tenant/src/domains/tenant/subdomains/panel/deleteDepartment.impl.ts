@@ -10,7 +10,11 @@ const os = implement(
   tenantContractObject.panel.deleteDepartment,
 ).$context<RequestHeadersHandlerPluginContext>();
 
-/** A department still attached to a product would be orphaned by the delete. */
+/**
+ * A department still linked to a category cannot be deleted: the link would
+ * disappear with it and the category would silently lose its grouping. Unlink
+ * the categories first.
+ */
 export const deleteDepartmentImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
@@ -22,14 +26,13 @@ export const deleteDepartmentImpl = os.handler(async ({ input, context }) => {
 
   if (!existing) throw notFound();
 
-  const product = await inTenantScope(store.tenantId, () =>
-    db.orm.public.Product.where({
-      tenantId: store.tenantId,
-      departmentId: input.departmentId,
-    }).first(),
+  const linked = await inTenantScope(store.tenantId, () =>
+    db.orm.public.CategoryDepartment.where({ departmentId: input.departmentId }).first(),
   );
 
-  if (product) throw catalogConflict("Mova os produtos deste departamento antes de excluí-lo.");
+  if (linked) {
+    throw catalogConflict("Desvincule as categorias deste departamento antes de excluí-lo.");
+  }
 
   // `deleteAll`, not `delete`: RC.17 compiles `delete` from `where({ tenantId, id })`
   // down to `id` only, and the isolation guard then rejects the write.

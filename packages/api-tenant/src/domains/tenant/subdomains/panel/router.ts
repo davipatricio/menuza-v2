@@ -18,6 +18,10 @@ import { listCategoriesImpl } from "./listCategories.impl.ts";
 import { createCategoryImpl } from "./createCategory.impl.ts";
 import { updateCategoryImpl } from "./updateCategory.impl.ts";
 import { deleteCategoryImpl } from "./deleteCategory.impl.ts";
+import { listSubcategoriesImpl } from "./listSubcategories.impl.ts";
+import { createSubcategoryImpl } from "./createSubcategory.impl.ts";
+import { updateSubcategoryImpl } from "./updateSubcategory.impl.ts";
+import { deleteSubcategoryImpl } from "./deleteSubcategory.impl.ts";
 import { listDepartmentsImpl } from "./listDepartments.impl.ts";
 import { createDepartmentImpl } from "./createDepartment.impl.ts";
 import { updateDepartmentImpl } from "./updateDepartment.impl.ts";
@@ -61,6 +65,10 @@ export const panelSubdomainRouter = {
   createCategory: createCategoryImpl,
   updateCategory: updateCategoryImpl,
   deleteCategory: deleteCategoryImpl,
+  listSubcategories: listSubcategoriesImpl,
+  createSubcategory: createSubcategoryImpl,
+  updateSubcategory: updateSubcategoryImpl,
+  deleteSubcategory: deleteSubcategoryImpl,
   listDepartments: listDepartmentsImpl,
   createDepartment: createDepartmentImpl,
   updateDepartment: updateDepartmentImpl,

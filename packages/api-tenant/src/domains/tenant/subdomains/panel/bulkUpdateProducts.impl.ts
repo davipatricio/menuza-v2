@@ -5,6 +5,7 @@ import { db } from "@menuza/db";
 import { notFound } from "../session/support.ts";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { assertOwnedIds } from "./catalog.ts";
+import { now } from "./taxonomy.ts";
 
 const os = implement(
   tenantContractObject.panel.bulkUpdateProducts,
@@ -12,8 +13,8 @@ const os = implement(
 
 type ProductBulkPatch = {
   available?: boolean;
-  categoryId?: string | null;
-  departmentId?: string | null;
+  subcategoryId?: string | null;
+  updatedAt?: Temporal.PlainDateTime;
 };
 
 /**
@@ -39,24 +40,19 @@ export const bulkUpdateProductsImpl = os.handler(async ({ input, context }) => {
       if (owned.length !== productIds.length) throw notFound();
 
       await assertOwnedIds(tx, store.tenantId, {
-        categoryId: input.categoryId,
-        departmentId: input.departmentId,
+        subcategoryId: input.subcategoryId,
         tagIds: input.addTagIds,
       });
 
-      const patch: ProductBulkPatch = {};
+      const patch: ProductBulkPatch = { updatedAt: now() };
 
       if (input.available !== undefined) patch.available = input.available;
 
-      if (input.categoryId !== undefined) patch.categoryId = input.categoryId;
+      if (input.subcategoryId !== undefined) patch.subcategoryId = input.subcategoryId;
 
-      if (input.departmentId !== undefined) patch.departmentId = input.departmentId;
-
-      if (Object.keys(patch).length > 0) {
-        await tx.orm.public.Product.where({ tenantId: store.tenantId })
-          .where((product) => product.id.in(productIds))
-          .updateAll(patch);
-      }
+      await tx.orm.public.Product.where({ tenantId: store.tenantId })
+        .where((product) => product.id.in(productIds))
+        .updateAll(patch);
 
       if (input.addTagIds !== undefined && input.addTagIds.length > 0) {
         const tagIds = [...new Set(input.addTagIds)];

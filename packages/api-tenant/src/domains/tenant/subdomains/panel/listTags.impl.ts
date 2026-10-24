@@ -14,9 +14,6 @@ export const listTagsImpl = os.handler(async ({ input, context }) => {
   const { rows: tags, productTags } = await inTenantScope(store.tenantId, async () => {
     const rows = await db.orm.public.Tag.where({ tenantId: store.tenantId }).all();
 
-    // Names are unique per tenant; the id tiebreaker only keeps the order total.
-    rows.sort((a, b) => a.name.localeCompare(b.name, "pt-BR") || a.id.localeCompare(b.id));
-
     const productTags = await db.orm.public.ProductTag.all();
 
     return { rows, productTags };
@@ -28,14 +25,25 @@ export const listTagsImpl = os.handler(async ({ input, context }) => {
     counts.set(entry.tagId, (counts.get(entry.tagId) ?? 0) + 1);
   }
 
-  return {
-    tags: tags.map((tag) => ({
-      id: tag.id,
-      name: tag.name,
-      isActive: tag.isActive,
-      itemsCount: counts.get(tag.id) ?? 0,
-    })),
-  };
+  const direction = input.order === "desc" ? -1 : 1;
+
+  const result = tags.map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    isActive: tag.isActive,
+    itemsCount: counts.get(tag.id) ?? 0,
+  }));
+
+  // Names are unique per tenant; the id tiebreaker only keeps the order total.
+  result.sort((a, b) =>
+    input.sortBy === "itemsCount"
+      ? direction * (a.itemsCount - b.itemsCount) ||
+        a.name.localeCompare(b.name, "pt-BR") ||
+        a.id.localeCompare(b.id)
+      : direction * a.name.localeCompare(b.name, "pt-BR") || a.id.localeCompare(b.id),
+  );
+
+  return { tags: result };
 });
 
 export type ListTagsImpl = typeof listTagsImpl;

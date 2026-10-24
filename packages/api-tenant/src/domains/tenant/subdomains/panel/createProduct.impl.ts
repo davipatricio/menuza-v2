@@ -11,6 +11,7 @@ import {
   loadProduct,
   toProductDetail,
 } from "./catalog.ts";
+import { now } from "./taxonomy.ts";
 
 const os = implement(
   tenantContractObject.panel.createProduct,
@@ -44,13 +45,13 @@ export const createProductImpl = os.handler(async ({ input, context }) => {
         tenantId: store.tenantId,
         name: input.name,
         description: input.description,
-        categoryId: input.categoryId,
-        departmentId: input.departmentId,
+        subcategoryId: input.subcategoryId,
         available: input.available,
         archived: input.archived ?? false,
         hidden: input.hidden ?? false,
         private: input.private ?? false,
         sortOrder: input.sortOrder,
+        updatedAt: now(),
       });
 
       for (const variation of variations) {
