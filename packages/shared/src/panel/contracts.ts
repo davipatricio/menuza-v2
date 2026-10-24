@@ -359,8 +359,10 @@ export const PanelProductSchema = v.object({
   name: v.string(),
   categoryId: v.nullable(v.string()),
   categoryName: v.nullable(v.string()),
-  departmentId: v.nullable(v.string()),
-  departmentName: v.nullable(v.string()),
+  subcategoryId: v.nullable(v.string()),
+  subcategoryName: v.nullable(v.string()),
+  departmentIds: v.array(v.string()),
+  departmentNames: v.array(v.string()),
   tags: v.array(PanelProductTagSchema),
   priceCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
   available: v.boolean(),
@@ -368,6 +370,7 @@ export const PanelProductSchema = v.object({
   hidden: v.boolean(),
   private: v.boolean(),
   sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
 /**
@@ -501,9 +504,7 @@ const productDescription = v.nullable(
   v.pipe(v.string("Descrição inválida."), v.maxLength(2000, "Use no máximo 2000 caracteres.")),
 );
 
-const productCategoryId = catalogNullableId("Categoria inválida.");
-
-const productDepartmentId = catalogNullableId("Departamento inválido.");
+const productSubcategoryId = catalogNullableId("Subcategoria inválida.");
 
 const productTagIds = v.array(
   v.pipe(v.string("Tag inválida."), v.nonEmpty("Tag inválida."), v.maxLength(64, "Tag inválida.")),
@@ -519,8 +520,7 @@ export const CreateProductInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   name: productName,
   description: productDescription,
-  categoryId: productCategoryId,
-  departmentId: productDepartmentId,
+  subcategoryId: productSubcategoryId,
   tagIds: productTagIds,
   available: v.boolean(),
   archived: v.optional(v.boolean()),
@@ -539,8 +539,7 @@ export const UpdateProductInputSchema = v.strictObject({
   productId: catalogProductId,
   name: v.optional(productName),
   description: v.optional(productDescription),
-  categoryId: v.optional(productCategoryId),
-  departmentId: v.optional(productDepartmentId),
+  subcategoryId: v.optional(productSubcategoryId),
   tagIds: v.optional(productTagIds),
   available: v.optional(v.boolean()),
   archived: v.optional(v.boolean()),
@@ -575,15 +574,13 @@ export const BulkUpdateProductsInputSchema = v.pipe(
     productIds: bulkProductIds,
     available: v.optional(v.boolean()),
     addTagIds: v.optional(productTagIds),
-    categoryId: v.optional(productCategoryId),
-    departmentId: v.optional(productDepartmentId),
+    subcategoryId: v.optional(productSubcategoryId),
   }),
   v.check(
     (input) =>
       input.available !== undefined ||
       input.addTagIds !== undefined ||
-      input.categoryId !== undefined ||
-      input.departmentId !== undefined,
+      input.subcategoryId !== undefined,
     "Informe ao menos uma alteração.",
   ),
 );
@@ -606,7 +603,23 @@ export const BulkDeleteProductsOutputSchema = v.object({
 export const PanelCategorySchema = v.object({
   id: v.string(),
   name: v.string(),
+  active: v.boolean(),
+  sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
   itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
+  departmentIds: v.array(v.string()),
+  departmentNames: v.array(v.string()),
+});
+
+export const PanelSubcategorySchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  categoryId: v.string(),
+  categoryName: v.string(),
+  active: v.boolean(),
+  sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
 export const PanelKitSchema = v.object({
@@ -625,11 +638,16 @@ export const PanelCategoriesOutputSchema = v.object({
   categories: v.array(PanelCategorySchema),
 });
 
+export const PanelSubcategoriesOutputSchema = v.object({
+  subcategories: v.array(PanelSubcategorySchema),
+});
+
 export const PanelDepartmentSchema = v.object({
   id: v.string(),
   name: v.string(),
   active: v.boolean(),
   itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
 export const PanelDepartmentsOutputSchema = v.object({
@@ -647,6 +665,62 @@ export const PanelTagsOutputSchema = v.object({
   tags: v.array(PanelTagSchema),
 });
 
+// --- Taxonomy list inputs ----------------------------------------------------
+//
+// The dashboard writes its filters, sort and order to the URL, so the server
+// receives them as input. Every key is optional with a default, which keeps the
+// earlier `{ storeSlug }` callers validating unchanged.
+
+const taxonomyQuery = v.optional(v.pipe(v.string(), v.maxLength(120)), "");
+
+const taxonomyStatus = v.optional(v.picklist(["all", "active", "inactive"]), "all");
+
+const taxonomyOrder = v.optional(v.picklist(["asc", "desc"]), "asc");
+
+/** Empty means "all" for the two relational filters. */
+const taxonomyFilterId = v.optional(v.pipe(v.string(), v.maxLength(64)), "");
+
+export const ListDepartmentsInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  q: taxonomyQuery,
+  status: taxonomyStatus,
+  sortBy: v.optional(v.picklist(["name", "itemsCount", "updatedAt"]), "name"),
+  order: taxonomyOrder,
+});
+
+export const ListCategoriesInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  q: taxonomyQuery,
+  status: taxonomyStatus,
+  departmentId: taxonomyFilterId,
+  sortBy: v.optional(v.picklist(["name", "itemsCount", "updatedAt", "sortOrder"]), "sortOrder"),
+  order: taxonomyOrder,
+});
+
+export const ListSubcategoriesInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  q: taxonomyQuery,
+  status: taxonomyStatus,
+  categoryId: taxonomyFilterId,
+  sortBy: v.optional(v.picklist(["name", "itemsCount", "updatedAt", "sortOrder"]), "sortOrder"),
+  order: taxonomyOrder,
+});
+
+export const ListProductsInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  sortBy: v.optional(
+    v.picklist(["sortOrder", "name", "updatedAt", "price", "category", "stock"]),
+    "sortOrder",
+  ),
+  order: taxonomyOrder,
+});
+
+export const ListTagsInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  sortBy: v.optional(v.picklist(["name", "itemsCount"]), "name"),
+  order: taxonomyOrder,
+});
+
 // --- Taxonomy writes ---------------------------------------------------------
 //
 // Categories keep a name and a sort order; departments carry a name and an
@@ -662,10 +736,14 @@ const taxonomyName = v.pipe(
 const taxonomyId = (message: string) =>
   v.pipe(v.string(message), v.nonEmpty(message), v.maxLength(64, message));
 
+const categoryDepartmentIds = v.array(taxonomyId("Departamento inválido."));
+
 export const CreateCategoryInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   name: taxonomyName,
   sortOrder: catalogSortOrder,
+  active: v.boolean(),
+  departmentIds: categoryDepartmentIds,
 });
 
 export const UpdateCategoryInputSchema = v.strictObject({
@@ -678,6 +756,24 @@ export const DeleteCategoryInputSchema = v.strictObject({
   categoryId: taxonomyId("Categoria inválida."),
 });
 
+export const CreateSubcategoryInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  name: taxonomyName,
+  categoryId: taxonomyId("Categoria inválida."),
+  sortOrder: catalogSortOrder,
+  active: v.boolean(),
+});
+
+export const UpdateSubcategoryInputSchema = v.strictObject({
+  ...CreateSubcategoryInputSchema.entries,
+  subcategoryId: taxonomyId("Subcategoria inválida."),
+});
+
+export const DeleteSubcategoryInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  subcategoryId: taxonomyId("Subcategoria inválida."),
+});
+
 export const CreateDepartmentInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   name: taxonomyName,
@@ -687,6 +783,8 @@ export const CreateDepartmentInputSchema = v.strictObject({
 export const UpdateDepartmentInputSchema = v.strictObject({
   ...CreateDepartmentInputSchema.entries,
   departmentId: taxonomyId("Departamento inválido."),
+  /** Products move here in the same transaction when the department is deactivated. */
+  moveProductsToCategoryId: v.optional(v.nullable(taxonomyId("Categoria inválida."))),
 });
 
 export const DeleteDepartmentInputSchema = v.strictObject({
@@ -1129,7 +1227,7 @@ export const listProducts = panelRead
       tags: ["panel"],
     }),
   )
-  .input(PanelStoreInputSchema)
+  .input(ListProductsInputSchema)
   .output(PanelProductsOutputSchema);
 
 export const getProduct = panelRead
@@ -1221,7 +1319,7 @@ export const listCategories = panelRead
       tags: ["panel"],
     }),
   )
-  .input(PanelStoreInputSchema)
+  .input(ListCategoriesInputSchema)
   .output(PanelCategoriesOutputSchema);
 
 export const listDepartments = panelRead
@@ -1233,7 +1331,7 @@ export const listDepartments = panelRead
       tags: ["panel"],
     }),
   )
-  .input(PanelStoreInputSchema)
+  .input(ListDepartmentsInputSchema)
   .output(PanelDepartmentsOutputSchema);
 
 export const listTags = panelRead
@@ -1245,7 +1343,7 @@ export const listTags = panelRead
       tags: ["panel"],
     }),
   )
-  .input(PanelStoreInputSchema)
+  .input(ListTagsInputSchema)
   .output(PanelTagsOutputSchema);
 
 export const createCategory = sessionContract
@@ -1285,6 +1383,58 @@ export const deleteCategory = sessionContract
     }),
   )
   .input(DeleteCategoryInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const listSubcategories = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/subcategories",
+      operationId: "listPanelSubcategories",
+      summary: "Lista as subcategorias da loja com a contagem de itens.",
+      tags: ["panel"],
+    }),
+  )
+  .input(ListSubcategoriesInputSchema)
+  .output(PanelSubcategoriesOutputSchema);
+
+export const createSubcategory = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/subcategories",
+      operationId: "createPanelSubcategory",
+      summary: "Cria uma subcategoria dentro de uma categoria.",
+      tags: ["panel"],
+    }),
+  )
+  .input(CreateSubcategoryInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const updateSubcategory = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/subcategories/{subcategoryId}",
+      operationId: "updatePanelSubcategory",
+      summary: "Atualiza uma subcategoria.",
+      tags: ["panel"],
+    }),
+  )
+  .input(UpdateSubcategoryInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const deleteSubcategory = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/subcategories/{subcategoryId}",
+      operationId: "deletePanelSubcategory",
+      summary: "Exclui uma subcategoria sem produtos.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeleteSubcategoryInputSchema)
   .output(PanelSuccessOutputSchema);
 
 export const createDepartment = sessionContract
@@ -1887,6 +2037,10 @@ export const panelContractObject = {
   createCategory,
   updateCategory,
   deleteCategory,
+  listSubcategories,
+  createSubcategory,
+  updateSubcategory,
+  deleteSubcategory,
   listDepartments,
   createDepartment,
   updateDepartment,
@@ -1947,6 +2101,10 @@ export type PanelProductDetail = v.InferOutput<typeof PanelProductDetailSchema>;
 export type ProductVariationInput = v.InferOutput<typeof ProductVariationInputSchema>;
 
 export type PanelCategory = v.InferOutput<typeof PanelCategorySchema>;
+
+export type PanelSubcategory = v.InferOutput<typeof PanelSubcategorySchema>;
+
+export type PanelDepartment = v.InferOutput<typeof PanelDepartmentSchema>;
 
 export type PanelCoupon = v.InferOutput<typeof PanelCouponSchema>;
 

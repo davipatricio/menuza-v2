@@ -74,13 +74,32 @@ export const PublicProductSchema = v.object({
   tags: v.array(v.string()),
 });
 
+/**
+ * The storefront menu is nested three levels deep: department > category >
+ * subcategory, with the products last. Departments are ordered by name (they
+ * have no `sortOrder` column); categories and subcategories by `sortOrder`, then
+ * name. Inactive levels and empty groups are dropped server-side.
+ */
 export const publicMenuOutput = v.object({
-  categories: v.array(
+  departments: v.array(
     v.object({
       id: v.string(),
       name: v.string(),
-      sortOrder: v.number(),
-      products: v.array(PublicProductSchema),
+      categories: v.array(
+        v.object({
+          id: v.string(),
+          name: v.string(),
+          sortOrder: v.number(),
+          subcategories: v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              sortOrder: v.number(),
+              products: v.array(PublicProductSchema),
+            }),
+          ),
+        }),
+      ),
     }),
   ),
   uncategorized: v.array(PublicProductSchema),
