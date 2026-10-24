@@ -1,0 +1,174 @@
+[
+  {
+    "id": "table.ProductNutrition",
+    "label": "Create table \"ProductNutrition\"",
+    "summary": "Creates table \"ProductNutrition\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "ProductNutrition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"ProductNutrition\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductNutrition\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"ProductNutrition\"",
+        "sql": "CREATE TABLE \"public\".\"ProductNutrition\" (\n  \"addedSugarsMg\" int4,\n  \"basis\" text DEFAULT 'solid' NOT NULL,\n  \"carbsMg\" int4,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"energyKcal\" int4,\n  \"fiberMg\" int4,\n  \"householdMeasure\" text,\n  \"id\" text NOT NULL,\n  \"labelFormat\" text DEFAULT 'vertical' NOT NULL,\n  \"notes\" text,\n  \"portionMilli\" int4,\n  \"productId\" text NOT NULL,\n  \"proteinMg\" int4,\n  \"published\" bool DEFAULT false NOT NULL,\n  \"referenceAt\" timestamp(3),\n  \"saturatedFatMg\" int4,\n  \"servingsPerPack\" int4,\n  \"showHighAddedSugar\" bool DEFAULT false NOT NULL,\n  \"showHighSatFat\" bool DEFAULT false NOT NULL,\n  \"showHighSodium\" bool DEFAULT false NOT NULL,\n  \"sodiumMg\" int4,\n  \"source\" text DEFAULT 'manual' NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"totalFatMg\" int4,\n  \"totalSugarsMg\" int4,\n  \"transFatMg\" int4,\n  \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  CONSTRAINT \"ProductNutrition_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"ProductNutrition_basis_check_68e7bd4f\" CHECK (\"basis\" IN ('solid', 'liquid')),\n  CONSTRAINT \"ProductNutrition_labelFormat_check_0c42dc77\" CHECK (\"labelFormat\" IN ('vertical', 'simplified')),\n  CONSTRAINT \"ProductNutrition_source_check_6cb8808f\" CHECK (\"source\" IN ('manual', 'lab', 'supplier_label', 'database', 'estimate')),\n  CONSTRAINT \"product_nutrition_added_sugars_lte_total_3f18961d\" CHECK (\"addedSugarsMg\" IS NULL OR \"totalSugarsMg\" IS NULL OR \"addedSugarsMg\" <= \"totalSugarsMg\"),\n  CONSTRAINT \"product_nutrition_added_sugars_non_negative_022bd555\" CHECK (\"addedSugarsMg\" IS NULL OR \"addedSugarsMg\" >= 0),\n  CONSTRAINT \"product_nutrition_carbs_non_negative_d82b29bb\" CHECK (\"carbsMg\" IS NULL OR \"carbsMg\" >= 0),\n  CONSTRAINT \"product_nutrition_energy_non_negative_6b58d52b\" CHECK (\"energyKcal\" IS NULL OR \"energyKcal\" >= 0),\n  CONSTRAINT \"product_nutrition_fat_sum_fd3e689b\" CHECK (\"saturatedFatMg\" IS NULL OR \"transFatMg\" IS NULL OR \"totalFatMg\" IS NULL OR \"saturatedFatMg\" + \"transFatMg\" <= \"totalFatMg\"),\n  CONSTRAINT \"product_nutrition_fiber_non_negative_ac7b8695\" CHECK (\"fiberMg\" IS NULL OR \"fiberMg\" >= 0),\n  CONSTRAINT \"product_nutrition_portion_positive_46e9a389\" CHECK (\"portionMilli\" IS NULL OR \"portionMilli\" > 0),\n  CONSTRAINT \"product_nutrition_protein_non_negative_b0d9690e\" CHECK (\"proteinMg\" IS NULL OR \"proteinMg\" >= 0),\n  CONSTRAINT \"product_nutrition_saturated_fat_non_negative_da7b6a18\" CHECK (\"saturatedFatMg\" IS NULL OR \"saturatedFatMg\" >= 0),\n  CONSTRAINT \"product_nutrition_servings_positive_ab1dd3a8\" CHECK (\"servingsPerPack\" IS NULL OR \"servingsPerPack\" > 0),\n  CONSTRAINT \"product_nutrition_sodium_non_negative_2c6d9761\" CHECK (\"sodiumMg\" IS NULL OR \"sodiumMg\" >= 0),\n  CONSTRAINT \"product_nutrition_total_fat_non_negative_402e18d5\" CHECK (\"totalFatMg\" IS NULL OR \"totalFatMg\" >= 0),\n  CONSTRAINT \"product_nutrition_total_sugars_non_negative_aa52d3a2\" CHECK (\"totalSugarsMg\" IS NULL OR \"totalSugarsMg\" >= 0),\n  CONSTRAINT \"product_nutrition_trans_fat_non_negative_5ffb64c8\" CHECK (\"transFatMg\" IS NULL OR \"transFatMg\" >= 0)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"ProductNutrition\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"ProductNutrition\""]
+      }
+    ]
+  },
+  {
+    "id": "unique.ProductNutrition.ProductNutrition_productId_key",
+    "label": "Add unique constraint on \"ProductNutrition\" (productId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "ProductNutrition_productId_key",
+        "table": "ProductNutrition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"ProductNutrition_productId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductNutrition_productId_key", "public", "\"public\".\"ProductNutrition\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"ProductNutrition_productId_key\"",
+        "sql": "ALTER TABLE \"public\".\"ProductNutrition\" ADD CONSTRAINT \"ProductNutrition_productId_key\" UNIQUE (\"productId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"ProductNutrition_productId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductNutrition_productId_key", "public", "\"public\".\"ProductNutrition\""]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductNutrition.ProductNutrition_tenantId_idx",
+    "label": "Create index \"ProductNutrition_tenantId_idx\" on \"ProductNutrition\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductNutrition_tenantId_idx",
+        "table": "ProductNutrition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductNutrition_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductNutrition_tenantId_idx\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductNutrition_tenantId_idx\"",
+        "sql": "CREATE INDEX \"ProductNutrition_tenantId_idx\" ON \"public\".\"ProductNutrition\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductNutrition_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"ProductNutrition_tenantId_idx\""]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductNutrition.ProductNutrition_tenantId_fkey",
+    "label": "Add foreign key \"ProductNutrition_tenantId_fkey\" on \"ProductNutrition\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductNutrition_tenantId_fkey",
+        "table": "ProductNutrition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductNutrition_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductNutrition_tenantId_fkey", "public", "\"public\".\"ProductNutrition\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductNutrition_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductNutrition\"\nADD CONSTRAINT \"ProductNutrition_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductNutrition_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductNutrition_tenantId_fkey", "public", "\"public\".\"ProductNutrition\""]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductNutrition.ProductNutrition_productId_fkey",
+    "label": "Add foreign key \"ProductNutrition_productId_fkey\" on \"ProductNutrition\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductNutrition_productId_fkey",
+        "table": "ProductNutrition"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductNutrition_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductNutrition_productId_fkey", "public", "\"public\".\"ProductNutrition\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductNutrition_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductNutrition\"\nADD CONSTRAINT \"ProductNutrition_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"Product\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductNutrition_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductNutrition_productId_fkey", "public", "\"public\".\"ProductNutrition\""]
+      }
+    ]
+  }
+]

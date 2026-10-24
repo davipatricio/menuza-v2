@@ -9,7 +9,7 @@
  */
 import { ORPCError } from "@orpc/server";
 import { db } from "@menuza/db";
-import type { PanelProductDetail } from "@menuza/shared/tenant";
+import type { PanelProductDetail, PanelProductNutrition } from "@menuza/shared/tenant";
 import { notFound } from "../session/support.ts";
 import { isoOf } from "./taxonomy.ts";
 
@@ -22,25 +22,55 @@ export function catalogConflict(message: string) {
 
 /** The detail loader: every field the editor renders, in one round trip. */
 export function loadProduct(tx: CatalogTx, tenantId: string, productId: string) {
-  return tx.orm.public.Product.where({ tenantId, id: productId })
-    .include("subcategory", (subcategory) =>
-      subcategory
-        .select("id", "name", "categoryId")
-        .include("category", (category) =>
-          category
-            .select("id", "name")
-            .include("departments", (link) =>
-              link.include("department", (department) => department.select("id", "name")),
-            ),
+  return (
+    tx.orm.public.Product.where({ tenantId, id: productId })
+      .include("subcategory", (subcategory) =>
+        subcategory
+          .select("id", "name", "categoryId")
+          .include("category", (category) =>
+            category
+              .select("id", "name")
+              .include("departments", (link) =>
+                link.include("department", (department) => department.select("id", "name")),
+              ),
+          ),
+      )
+      .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("id", "name")))
+      .include("variations", (variation) =>
+        variation
+          .select("id", "name", "priceCents", "stockMode", "stockQty")
+          .orderBy((v) => v.name.asc()),
+      )
+      // 1:1 with the product, so the label rides along in the same round trip.
+      .include("nutrition", (nutrition) =>
+        nutrition.select(
+          "basis",
+          "labelFormat",
+          "source",
+          "referenceAt",
+          "energyKcal",
+          "carbsMg",
+          "totalSugarsMg",
+          "addedSugarsMg",
+          "proteinMg",
+          "totalFatMg",
+          "saturatedFatMg",
+          "transFatMg",
+          "fiberMg",
+          "sodiumMg",
+          "portionMilli",
+          "householdMeasure",
+          "servingsPerPack",
+          "showHighAddedSugar",
+          "showHighSatFat",
+          "showHighSodium",
+          "published",
+          "notes",
+          "updatedAt",
         ),
-    )
-    .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("id", "name")))
-    .include("variations", (variation) =>
-      variation
-        .select("id", "name", "priceCents", "stockMode", "stockQty")
-        .orderBy((v) => v.name.asc()),
-    )
-    .first();
+      )
+      .first()
+  );
 }
 
 export type ProductWithRelations = NonNullable<Awaited<ReturnType<typeof loadProduct>>>;
@@ -68,6 +98,43 @@ function priceOf(variations: { name: string; priceCents: number }[]): number | n
     variations[0]?.priceCents ??
     null
   );
+}
+
+/**
+ * The 1:1 label row in the contract's shape, `null` when the product has none.
+ * The two timestamps are UTC-naive columns, so they go out through `isoOf` like
+ * every other `updatedAt` in the panel.
+ */
+function nutritionOf(product: ProductWithRelations): PanelProductNutrition | null {
+  const nutrition = product.nutrition;
+
+  if (!nutrition) return null;
+
+  return {
+    basis: nutrition.basis,
+    labelFormat: nutrition.labelFormat,
+    source: nutrition.source,
+    referenceAt: nutrition.referenceAt === null ? null : isoOf(nutrition.referenceAt),
+    energyKcal: nutrition.energyKcal,
+    carbsMg: nutrition.carbsMg,
+    totalSugarsMg: nutrition.totalSugarsMg,
+    addedSugarsMg: nutrition.addedSugarsMg,
+    proteinMg: nutrition.proteinMg,
+    totalFatMg: nutrition.totalFatMg,
+    saturatedFatMg: nutrition.saturatedFatMg,
+    transFatMg: nutrition.transFatMg,
+    fiberMg: nutrition.fiberMg,
+    sodiumMg: nutrition.sodiumMg,
+    portionMilli: nutrition.portionMilli,
+    householdMeasure: nutrition.householdMeasure,
+    servingsPerPack: nutrition.servingsPerPack,
+    showHighAddedSugar: nutrition.showHighAddedSugar,
+    showHighSatFat: nutrition.showHighSatFat,
+    showHighSodium: nutrition.showHighSodium,
+    published: nutrition.published,
+    notes: nutrition.notes,
+    updatedAt: isoOf(nutrition.updatedAt),
+  };
 }
 
 export function toProductDetail(product: ProductWithRelations): PanelProductDetail {
@@ -101,6 +168,7 @@ export function toProductDetail(product: ProductWithRelations): PanelProductDeta
     sortOrder: product.sortOrder,
     updatedAt: isoOf(product.updatedAt),
     variations,
+    nutrition: nutritionOf(product),
   };
 }
 

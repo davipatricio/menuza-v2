@@ -26,6 +26,19 @@ export function formatBrlCompact(cents: number): string {
   }).format(cents / 100);
 }
 
+/**
+ * Nutriente com as casas que o Anexo III exige. `null` vira "—" em vez de
+ * "0", para a prévia não afirmar um valor que ninguém preencheu.
+ */
+export function formatNutrient(value: number | null, fractionDigits: 0 | 1 | 2): string {
+  if (value === null) return "—";
+
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
 /** Decimal com casas fixas, para médias como "1,4" itens por pedido. */
 export function formatDecimal(value: number, fractionDigits = 1): string {
   return new Intl.NumberFormat("pt-BR", {

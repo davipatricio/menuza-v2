@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { UtensilsIcon } from "lucide-react";
@@ -78,8 +79,20 @@ function ProductCard({ product }: { product: MenuProduct }) {
     <Card
       size="sm"
       aria-disabled={!product.available}
-      className="h-full aria-disabled:bg-muted/40 aria-disabled:text-muted-foreground"
+      className="h-full overflow-hidden aria-disabled:bg-muted/40 aria-disabled:text-muted-foreground"
     >
+      {product.imageUrl ? (
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            sizes="(min-width: 640px) 50vw, 100vw"
+            className="object-cover"
+          />
+        </div>
+      ) : null}
+
       <CardHeader>
         <CardTitle>
           {product.available ? (

@@ -258,6 +258,7 @@ if (mawifoodsId) {
   // Each fixture product sits under its category's "Geral" subcategory, which is
   // the level a product actually attaches to.
   const generalSubcategoryIdByCategory = new Map<string, string>();
+  const categoryIdByName = new Map<string, string>();
 
   for (const fixture of categoryFixtures) {
     const category = await db.orm.public.Category.upsert({
@@ -271,6 +272,8 @@ if (mawifoodsId) {
       update: {},
       conflictOn: { tenantId: mawifoodsId, name: fixture.name },
     });
+
+    categoryIdByName.set(fixture.name, category.id);
 
     // SAFETY: every fixture department is one of the two seeded above.
     const departmentId = departmentIdByName.get(fixture.department)!;
@@ -337,6 +340,421 @@ if (mawifoodsId) {
       },
       update: {},
       conflictOn: { productId, name: "default" },
+    });
+  }
+
+  // --- Mawi Foods / carnes (demo import) --------------------------------------
+  //
+  // The 14 dishes below mirror the public Mawi Foods "Marmitas de Carne" menu:
+  // name, description, 300 g price, image and the supplier's per-100 g label.
+  // `source` is `supplier_label`, not a lab result; this is demo seed data.
+  const marmitasCategoryId = categoryIdByName.get("Marmitas");
+
+  if (!marmitasCategoryId) throw new Error("[db:seed] Marmitas category missing");
+
+  const carnesSubcategory = await db.orm.public.Subcategory.upsert({
+    create: {
+      id: stableId("subcategory", "Marmitas:Carnes"),
+      tenantId: mawifoodsId,
+      categoryId: marmitasCategoryId,
+      name: "Carnes",
+      sortOrder: 1,
+      active: true,
+    },
+    update: {},
+    conflictOn: { categoryId: marmitasCategoryId, name: "Carnes" },
+  });
+
+  const mawiTagNames = ["Zero Lactose", "Low Carb", "Tradicional Fit"] as const;
+  const tagIdByName = new Map<string, string>();
+
+  for (const name of mawiTagNames) {
+    const tag = await db.orm.public.Tag.upsert({
+      create: {
+        id: stableId("tag", name),
+        tenantId: mawifoodsId,
+        name,
+        isActive: true,
+      },
+      update: {},
+      conflictOn: { tenantId: mawifoodsId, name },
+    });
+
+    tagIdByName.set(name, tag.id);
+  }
+
+  const mawiProducts = [
+    {
+      name: "Carne de Panela com Calabresa, Arroz Branco e Purê de Batata",
+      slug: "carne-de-panela-calabresa-arroz-pure-de-batata",
+      priceCents: 3020,
+      tags: [],
+      description:
+        "Experimente nossa Carne de Panela com Calabresa, acompanhada de Arroz branco e Purê de Batata. Feita com patinho suculento, linguiça calabresa e temperos frescos como tomilho e salsa, essa refeição é um verdadeiro aconchego para o paladar.",
+      nutrition: {
+        energyKcal: 118,
+        carbsG: 12,
+        totalSugarsG: 0.6,
+        addedSugarsG: 0,
+        proteinG: 8.1,
+        totalFatG: 3.9,
+        saturatedFatG: 1.2,
+        transFatG: 0,
+        fiberG: 0.7,
+        sodiumMg: 270,
+      },
+    },
+    {
+      name: "Fraldinha ao Alho com Arroz Branco e Feijão Carioca",
+      slug: "fraldinha-ao-alho-arroz-branco-feijao",
+      priceCents: 3770,
+      tags: ["Tradicional Fit"],
+      description:
+        "A fraldinha é preparada com temperos naturais, garantindo maciez e sabor marcante. O arroz branco soltinho e o feijão carioca bem temperado formam uma combinação clássica e reconfortante, perfeita para uma refeição completa e nutritiva.",
+      nutrition: {
+        energyKcal: 163,
+        carbsG: 14,
+        totalSugarsG: 0,
+        addedSugarsG: 0,
+        proteinG: 8.4,
+        totalFatG: 7.9,
+        saturatedFatG: 1.8,
+        transFatG: 0,
+        fiberG: 3,
+        sodiumMg: 357,
+      },
+    },
+    {
+      name: "Panqueca de Carne com Molho de Tomate",
+      slug: "panqueca-de-carne-com-molho-de-tomate",
+      priceCents: 2990,
+      tags: ["Low Carb", "Tradicional Fit"],
+      description:
+        "Delicie-se com nossa panqueca recheada com patinho e coberta com um molho de tomate suculento e bem temperado. A massa é super levinha, tornando esta refeição irresistível!",
+      nutrition: {
+        energyKcal: 124,
+        carbsG: 11,
+        totalSugarsG: 3.1,
+        addedSugarsG: 0,
+        proteinG: 7.2,
+        totalFatG: 5.3,
+        saturatedFatG: 1.5,
+        transFatG: 0,
+        fiberG: 1.7,
+        sodiumMg: 358,
+      },
+    },
+    {
+      name: "Feijoada Light",
+      slug: "feijoada-light",
+      priceCents: 2830,
+      tags: ["Zero Lactose", "Tradicional Fit"],
+      description:
+        "Nossa feijoada light traz a tradição brasileira em versão mais leve: feijão preto, carne seca desfiada, calabresa e bacon na medida, com menos gordura e sódio. Acompanha couve refogada, farofa temperada caseira e arroz integral. Marmita congelada de 300 g: é só aquecer e servir, em qualquer dia da semana.",
+      nutrition: {
+        energyKcal: 120,
+        carbsG: 13,
+        totalSugarsG: 0,
+        addedSugarsG: 0,
+        proteinG: 5.8,
+        totalFatG: 4.8,
+        saturatedFatG: 1.3,
+        transFatG: 0,
+        fiberG: 3.6,
+        sodiumMg: 347,
+      },
+    },
+    {
+      name: "Picadinho de Carne com Cenoura e Batata (Acompanha Arroz Integral e Feijão)",
+      slug: "picadinho-de-carne-com-cenoura-batata-arroz-e-feijao",
+      priceCents: 2990,
+      tags: ["Zero Lactose", "Tradicional Fit"],
+      description:
+        "Um clássico da comida brasileira que dispensa apresentações. Nossa combinação perfeita de picadinho, arroz integral e feijão, preparada com ingredientes frescos para ressaltar o sabor deste prato.",
+      nutrition: {
+        energyKcal: 115,
+        carbsG: 10,
+        totalSugarsG: 0,
+        addedSugarsG: 0,
+        proteinG: 8.2,
+        totalFatG: 4.2,
+        saturatedFatG: 0.9,
+        transFatG: 0,
+        fiberG: 3,
+        sodiumMg: 374,
+      },
+    },
+    {
+      name: "Carne Moída com Mix de Legumes e Arroz Integral",
+      slug: "carne-moida-com-mix-de-legumes-e-arroz",
+      priceCents: 3240,
+      tags: ["Zero Lactose", "Low Carb", "Tradicional Fit"],
+      description:
+        "Nossa chef apresenta um prato delicioso e nutritivo: patinho moído com mix de legumes e arroz integral. A carne moída é preparada com temperos especiais, acompanhada de legumes frescos e arroz integral, proporcionando uma refeição balanceada e saudável. Uma marmita que combina sabor e nutrição, indispensável no seu pedido!",
+      nutrition: {
+        energyKcal: 129,
+        carbsG: 11,
+        totalSugarsG: 0.6,
+        addedSugarsG: 0,
+        proteinG: 9.4,
+        totalFatG: 4.9,
+        saturatedFatG: 1.1,
+        transFatG: 0,
+        fiberG: 1.5,
+        sodiumMg: 345,
+      },
+    },
+    {
+      name: "Carne Louca, Couve e Purê de Abóbora (Low Carb)",
+      slug: "carne-louca-couve-e-pure-de-abobora",
+      priceCents: 3560,
+      tags: ["Low Carb"],
+      description:
+        "Esse é um prato simples, porém muito saboroso, um clássico brasileiro direto para sua mesa. Carne louca, preparada com temperos naturais, acompanhada de couve fresquinha e um levíssimo purê de abóbora. Uma combinação perfeita que une tradição e sabor, ideal para uma refeição equilibrada e nutritiva.",
+      nutrition: {
+        energyKcal: 89,
+        carbsG: 3.8,
+        totalSugarsG: 1.3,
+        addedSugarsG: 0,
+        proteinG: 9.2,
+        totalFatG: 3.5,
+        saturatedFatG: 1,
+        transFatG: 0,
+        fiberG: 1.6,
+        sodiumMg: 473,
+      },
+    },
+    {
+      name: "Fusilli à Bolonhesa",
+      slug: "fusilli-bolonhesa",
+      priceCents: 2990,
+      tags: ["Tradicional Fit"],
+      description:
+        "Fusilli à bolonhesa com molho de carne bem temperado e muçarela ralada por cima, que derrete e realça o sabor. Um clássico caseiro, simples e irresistível.",
+      nutrition: {
+        energyKcal: 153,
+        carbsG: 15,
+        totalSugarsG: 2.1,
+        addedSugarsG: 0,
+        proteinG: 9.1,
+        totalFatG: 5.9,
+        saturatedFatG: 1.6,
+        transFatG: 0,
+        fiberG: 1.9,
+        sodiumMg: 437,
+      },
+    },
+    {
+      name: "Almôndega Recheada com Muçarela (Acompanha Purê de Batata Doce e Couve-Flor)",
+      slug: "almondega-recheada-com-mucarela-pure-de-batata-doce-e-couve-flor",
+      priceCents: 3550,
+      tags: ["Low Carb"],
+      description:
+        "Duas deliciosas almôndegas de patinho recheadas com muçarela, cobertas com molho de tomate rústico 100% natural e sem adição de açúcar ou conservantes. Acompanhadas por um mix de couve-flor e purê de batata doce, esse prato é perfeito para quem busca uma refeição leve e saborosa!",
+      nutrition: {
+        energyKcal: 140,
+        carbsG: 16,
+        totalSugarsG: 0,
+        addedSugarsG: 0,
+        proteinG: 6,
+        totalFatG: 4.9,
+        saturatedFatG: 1.3,
+        transFatG: 0,
+        fiberG: 2.3,
+        sodiumMg: 350,
+      },
+    },
+    {
+      name: "Arroz Integral com Carne Seca, Abóbora e Queijo Coalho",
+      slug: "arroz-integral-com-carne-seca-abobora-e-queijo-coalho",
+      priceCents: 3470,
+      tags: ["Tradicional Fit"],
+      description:
+        "Descubra o arroz integral como você nunca viu! Com ingredientes de dar água na boca: abóbora, carne seca e queijo coalho, este prato oferece um sabor único. Concorde comigo: esta é a combinação perfeita para a sua refeição!",
+      nutrition: {
+        energyKcal: 126,
+        carbsG: 14,
+        totalSugarsG: 0,
+        addedSugarsG: 0,
+        proteinG: 8.1,
+        totalFatG: 3.9,
+        saturatedFatG: 1.1,
+        transFatG: 0,
+        fiberG: 1.5,
+        sodiumMg: 388,
+      },
+    },
+    {
+      name: "Carne Moída com Quiabo, Acompanha Tutu de Feijão e Arroz Branco",
+      slug: "carne-moida-com-quiabo-arroz-branco-e-tutu-de-feijao",
+      priceCents: 2820,
+      tags: ["Zero Lactose", "Low Carb", "Tradicional Fit"],
+      description:
+        "Este prato une tradição e saúde. A carne moída é cozida lentamente com temperos naturais, resultando em um molho encorpado e saboroso. O quiabo, preparado de forma macia, adiciona uma textura levemente adocicada. Para acompanhar, o tutu de feijão é uma opção fit, feito com feijão carioca batido e couve, ideal para quem busca uma alimentação saudável. O arroz branco completa esse prato típico do sertão.",
+      nutrition: {
+        energyKcal: 112,
+        carbsG: 12,
+        totalSugarsG: 0,
+        addedSugarsG: 0,
+        proteinG: 8,
+        totalFatG: 3.1,
+        saturatedFatG: 0.7,
+        transFatG: 0,
+        fiberG: 3,
+        sodiumMg: 318,
+      },
+    },
+    {
+      name: "Quibe de Forno com Arroz Integral Árabe",
+      slug: "quibe-de-forno",
+      priceCents: 2840,
+      tags: ["Zero Lactose", "Tradicional Fit"],
+      description:
+        "Da cozinha árabe diretamente para o seu freezer, nosso Quibe de Forno é uma verdadeira explosão de sabores. Feito com carne moída temperada e assada à perfeição, ele é acompanhado por um delicioso arroz integral árabe com lentilhas e cebolas caramelizadas. Essa combinação autêntica e saborosa é uma das mais pedidas, e não é difícil entender o porquê!",
+      nutrition: {
+        energyKcal: 150,
+        carbsG: 16,
+        totalSugarsG: 1.5,
+        addedSugarsG: 0,
+        proteinG: 10,
+        totalFatG: 4.7,
+        saturatedFatG: 1,
+        transFatG: 0,
+        fiberG: 3.9,
+        sodiumMg: 419,
+      },
+    },
+    {
+      name: "Ragu de Carne Moída com Polenta Cremosa (Low Carb)",
+      slug: "ragu-de-carne-moida-com-polenta",
+      priceCents: 2580,
+      tags: ["Zero Lactose", "Low Carb", "Tradicional Fit"],
+      description:
+        "O ragu de carne é um suculento molho à base de carne cozida lentamente. Embora a palavra tenha origem francesa, a receita foi criada na Itália. Tradicionalmente utilizado para acompanhar massas, nossa chef escolheu uma polenta cremosa como acompanhamento. Essa combinação ficou deliciosa!",
+      nutrition: {
+        energyKcal: 97,
+        carbsG: 9.6,
+        totalSugarsG: 0.8,
+        addedSugarsG: 0,
+        proteinG: 6,
+        totalFatG: 3.5,
+        saturatedFatG: 0.8,
+        transFatG: 0,
+        fiberG: 1.3,
+        sodiumMg: 463,
+      },
+    },
+    {
+      name: "Strogonoff de Carne com Batata Assada e Arroz Branco",
+      slug: "strogooff-de-carne-com-batata-assada-e-arroz",
+      priceCents: 3010,
+      tags: ["Tradicional Fit"],
+      description:
+        "Prepare-se para uma explosão de sabores com nosso strogonoff de carne, acompanhado de arroz branco perfeitamente cozido e batatas assadas, marca registrada da Mawi. Esse clássico é feito com carne suculenta e é preparado com cuidado e qualidade. Venha experimentar e descubra o prazer de uma refeição clássica!",
+      nutrition: {
+        energyKcal: 155,
+        carbsG: 15,
+        totalSugarsG: 2.4,
+        addedSugarsG: 0.1,
+        proteinG: 8.4,
+        totalFatG: 6.6,
+        saturatedFatG: 2.4,
+        transFatG: 0,
+        fiberG: 1.1,
+        sodiumMg: 535,
+      },
+    },
+  ] as const;
+
+  const nutritionUpdatedAt = Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
+
+  for (const [index, fixture] of mawiProducts.entries()) {
+    const productId = stableId("product", fixture.name);
+
+    await db.orm.public.Product.upsert({
+      create: {
+        id: productId,
+        tenantId: mawifoodsId,
+        name: fixture.name,
+        description: fixture.description,
+        imageUrl: "/products/mawifoods/" + fixture.slug + ".png",
+        subcategoryId: carnesSubcategory.id,
+        available: true,
+        sortOrder: index + 5,
+      },
+      update: {
+        description: fixture.description,
+        imageUrl: "/products/mawifoods/" + fixture.slug + ".png",
+        subcategoryId: carnesSubcategory.id,
+        sortOrder: index + 5,
+      },
+      conflictOn: { id: productId },
+    });
+
+    await db.orm.public.Variation.upsert({
+      create: {
+        id: stableId("variation", fixture.name + ":300 g"),
+        tenantId: mawifoodsId,
+        productId,
+        name: "300 g",
+        priceCents: fixture.priceCents,
+        stockMode: "unlimited",
+        stockQty: null,
+      },
+      update: { priceCents: fixture.priceCents },
+      conflictOn: { productId, name: "300 g" },
+    });
+
+    for (const tagName of fixture.tags) {
+      const tagId = tagIdByName.get(tagName);
+
+      if (!tagId) throw new Error("[db:seed] missing tag " + tagName);
+
+      await db.orm.public.ProductTag.upsert({
+        create: { productId, tagId },
+        update: {},
+        conflictOn: { productId, tagId },
+      });
+    }
+
+    const nutritionValues = {
+      basis: "solid",
+      labelFormat: "vertical",
+      source: "supplier_label",
+      referenceAt: Temporal.PlainDateTime.from("2026-10-24T00:00:00"),
+      energyKcal: fixture.nutrition.energyKcal,
+      carbsMg: Math.round(fixture.nutrition.carbsG * 1000),
+      totalSugarsMg: Math.round(fixture.nutrition.totalSugarsG * 1000),
+      addedSugarsMg: Math.round(fixture.nutrition.addedSugarsG * 1000),
+      proteinMg: Math.round(fixture.nutrition.proteinG * 1000),
+      totalFatMg: Math.round(fixture.nutrition.totalFatG * 1000),
+      saturatedFatMg: Math.round(fixture.nutrition.saturatedFatG * 1000),
+      transFatMg: Math.round(fixture.nutrition.transFatG * 1000),
+      fiberMg: Math.round(fixture.nutrition.fiberG * 1000),
+      sodiumMg: fixture.nutrition.sodiumMg,
+      portionMilli: 100_000,
+      householdMeasure: "1/3 unidade",
+      servingsPerPack: 3,
+      showHighAddedSugar: false,
+      showHighSatFat: false,
+      showHighSodium: false,
+      published: true,
+      notes: "Seed demo: rótulo publicado pela Mawi Foods, importado em 2026-10-24.",
+    } as const;
+
+    await db.orm.public.ProductNutrition.upsert({
+      create: {
+        id: stableId("nutrition", fixture.name),
+        tenantId: mawifoodsId,
+        productId,
+        ...nutritionValues,
+        updatedAt: nutritionUpdatedAt,
+      },
+      update: {
+        ...nutritionValues,
+        updatedAt: nutritionUpdatedAt,
+      },
+      conflictOn: { productId },
     });
   }
 
@@ -959,7 +1377,8 @@ if (mawifoodsId) {
 
   console.log(
     `[db:seed] mawifoods commerce: ${categoryFixtures.length} categories, ` +
-      `${productFixtures.length} products, 1 kit, ${customerFixtures.length} customers, ` +
+      `${productFixtures.length + mawiProducts.length} products, ` +
+      `${mawiProducts.length} nutrition labels, 1 kit, ${customerFixtures.length} customers, ` +
       `${orderFixtures.length} orders, ${couponFixtures.length} coupons, ` +
       `${auditFixtures.length} audit logs, 1 meal subscription`,
   );

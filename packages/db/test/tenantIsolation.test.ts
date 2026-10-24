@@ -190,6 +190,7 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Tenant Isolation (fail-closed)",
       "Coupon",
       "AuditLog",
       "MealSubscription",
+      "ProductNutrition",
     ]) {
       expect(TENANT_SCOPED_MODELS.has(model)).toBe(true);
     }
@@ -198,6 +199,18 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Tenant Isolation (fail-closed)",
   test("querying a commerce model without where.tenantId throws", async () => {
     try {
       await db.orm.public.Product.where({ name: "qualquer" }).first();
+      expect.unreachable("expected TenantIsolationError");
+    } catch (err: any) {
+      expect(err).toBeInstanceOf(TenantIsolationError);
+      expect(err.message).toContain("without where.tenantId equality filter");
+    }
+  });
+
+  // The 1:1 label is reached by `productId`, which is unique on its own; the
+  // guard must still refuse a query that forgets the tenant.
+  test("querying a product nutrition row without where.tenantId throws", async () => {
+    try {
+      await db.orm.public.ProductNutrition.where({ productId: randomUUID() }).first();
       expect.unreachable("expected TenantIsolationError");
     } catch (err: any) {
       expect(err).toBeInstanceOf(TenantIsolationError);

@@ -26,6 +26,7 @@ async function countAll(tenantId: string): Promise<Record<string, number>> {
       coupons,
       logs,
       subs,
+      nutrition,
     ] = await Promise.all([
       db.orm.public.Category.where({ tenantId }).all(),
       db.orm.public.Product.where({ tenantId }).all(),
@@ -37,6 +38,7 @@ async function countAll(tenantId: string): Promise<Record<string, number>> {
       db.orm.public.Coupon.where({ tenantId }).all(),
       db.orm.public.AuditLog.where({ tenantId }).all(),
       db.orm.public.MealSubscription.where({ tenantId }).all(),
+      db.orm.public.ProductNutrition.where({ tenantId }).all(),
     ]);
 
     return {
@@ -50,6 +52,7 @@ async function countAll(tenantId: string): Promise<Record<string, number>> {
       coupons: coupons.length,
       auditLogs: logs.length,
       mealSubscriptions: subs.length,
+      productNutritions: nutrition.length,
     };
   });
 }
@@ -74,8 +77,8 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Commerce seed fixtures", () => {
 
     expect(counts).toEqual({
       categories: 3,
-      products: 4,
-      variations: 4,
+      products: 18,
+      variations: 18,
       kits: 1,
       kitItems: 2,
       customers: 12,
@@ -83,6 +86,7 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Commerce seed fixtures", () => {
       coupons: 4,
       auditLogs: 5,
       mealSubscriptions: 1,
+      productNutritions: 14,
     });
   });
 

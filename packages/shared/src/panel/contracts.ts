@@ -407,10 +407,73 @@ export const PanelProductVariationSchema = v.object({
   stockQty: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
 });
 
+export const NutritionBasisSchema = v.picklist(
+  ["solid", "liquid"],
+  "Escolha a base da tabela nutricional.",
+);
+
+export const NutritionLabelFormatSchema = v.picklist(
+  ["vertical", "simplified"],
+  "Escolha o formato da tabela nutricional.",
+);
+
+export const NutritionSourceSchema = v.picklist([
+  "manual",
+  "lab",
+  "supplier_label",
+  "database",
+  "estimate",
+]);
+
+const nutritionNumber = v.pipe(
+  v.number("Informe um número válido."),
+  v.integer("Use um número inteiro."),
+  v.minValue(0, "O valor não pode ser negativo."),
+);
+
+const nutritionPositive = v.pipe(
+  v.number("Informe um número válido."),
+  v.integer("Use um número inteiro."),
+  v.minValue(1, "O valor deve ser maior que zero."),
+);
+
+/**
+ * The label the editor and the storefront render. Nutrients are stored per
+ * 100 g/mL as integers in the smallest unit the table declares: kcal for
+ * energy, mg for the rest. Portion is thousandths of a gram or millilitre.
+ * `%VD` and the "Alto em" recommendation are derived, never stored.
+ */
+export const PanelProductNutritionSchema = v.object({
+  basis: NutritionBasisSchema,
+  labelFormat: NutritionLabelFormatSchema,
+  source: NutritionSourceSchema,
+  referenceAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+  energyKcal: v.nullable(nutritionNumber),
+  carbsMg: v.nullable(nutritionNumber),
+  totalSugarsMg: v.nullable(nutritionNumber),
+  addedSugarsMg: v.nullable(nutritionNumber),
+  proteinMg: v.nullable(nutritionNumber),
+  totalFatMg: v.nullable(nutritionNumber),
+  saturatedFatMg: v.nullable(nutritionNumber),
+  transFatMg: v.nullable(nutritionNumber),
+  fiberMg: v.nullable(nutritionNumber),
+  sodiumMg: v.nullable(nutritionNumber),
+  portionMilli: v.nullable(nutritionPositive),
+  householdMeasure: v.nullable(v.string()),
+  servingsPerPack: v.nullable(nutritionPositive),
+  showHighAddedSugar: v.boolean(),
+  showHighSatFat: v.boolean(),
+  showHighSodium: v.boolean(),
+  published: v.boolean(),
+  notes: v.nullable(v.string()),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
+});
+
 export const PanelProductDetailSchema = v.object({
   ...PanelProductSchema.entries,
   description: v.nullable(v.string()),
   variations: v.array(PanelProductVariationSchema),
+  nutrition: v.nullable(PanelProductNutritionSchema),
 });
 
 export const PanelProductOutputSchema = v.object({
@@ -554,6 +617,61 @@ export const ProductIdInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   productId: catalogProductId,
 });
+
+const nutritionValuePatch = v.optional(v.nullable(nutritionNumber));
+
+/**
+ * A partial save, like `updateProduct`: an omitted field keeps the stored
+ * value, `null` clears it. Publishing is validated on the merged row by the
+ * server, because a patch may leave the required fields out on purpose.
+ */
+export const SaveProductNutritionInputSchema = v.pipe(
+  v.strictObject({
+    ...ProductIdInputSchema.entries,
+    basis: v.optional(NutritionBasisSchema),
+    labelFormat: v.optional(NutritionLabelFormatSchema),
+    source: v.optional(NutritionSourceSchema),
+    referenceAt: v.optional(v.nullable(v.pipe(v.string(), v.isoTimestamp()))),
+    energyKcal: nutritionValuePatch,
+    carbsMg: nutritionValuePatch,
+    totalSugarsMg: nutritionValuePatch,
+    addedSugarsMg: nutritionValuePatch,
+    proteinMg: nutritionValuePatch,
+    totalFatMg: nutritionValuePatch,
+    saturatedFatMg: nutritionValuePatch,
+    transFatMg: nutritionValuePatch,
+    fiberMg: nutritionValuePatch,
+    sodiumMg: nutritionValuePatch,
+    portionMilli: v.optional(v.nullable(nutritionPositive)),
+    householdMeasure: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(80)))),
+    servingsPerPack: v.optional(v.nullable(nutritionPositive)),
+    showHighAddedSugar: v.optional(v.boolean()),
+    showHighSatFat: v.optional(v.boolean()),
+    showHighSodium: v.optional(v.boolean()),
+    published: v.optional(v.boolean()),
+    notes: v.optional(v.nullable(v.pipe(v.string(), v.maxLength(500)))),
+  }),
+  v.check((input) => {
+    if (input.addedSugarsMg === undefined || input.addedSugarsMg === null) return true;
+
+    if (input.totalSugarsMg === undefined || input.totalSugarsMg === null) return true;
+
+    return input.addedSugarsMg <= input.totalSugarsMg;
+  }, "Açúcares adicionados não podem passar dos açúcares totais."),
+  v.check((input) => {
+    const saturated = input.saturatedFatMg;
+    const trans = input.transFatMg;
+    const total = input.totalFatMg;
+
+    if (saturated === undefined || saturated === null) return true;
+
+    if (trans === undefined || trans === null) return true;
+
+    if (total === undefined || total === null) return true;
+
+    return saturated + trans <= total;
+  }, "Saturadas e trans não podem passar das gorduras totais."),
+);
 
 export const DeleteProductInputSchema = ProductIdInputSchema;
 
@@ -1267,6 +1385,19 @@ export const updateProduct = sessionContract
     }),
   )
   .input(UpdateProductInputSchema)
+  .output(PanelProductOutputSchema);
+
+export const saveProductNutrition = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/products/{productId}/nutrition",
+      operationId: "savePanelProductNutrition",
+      summary: "Salva a tabela nutricional do produto e devolve o detalhe atualizado.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SaveProductNutritionInputSchema)
   .output(PanelProductOutputSchema);
 
 export const deleteProduct = sessionContract
@@ -2030,6 +2161,7 @@ export const panelContractObject = {
   getProduct,
   createProduct,
   updateProduct,
+  saveProductNutrition,
   deleteProduct,
   bulkUpdateProducts,
   bulkDeleteProducts,
@@ -2096,6 +2228,14 @@ export type PanelProductList = v.InferOutput<typeof PanelProductListSchema>;
 export type PanelProductVariation = v.InferOutput<typeof PanelProductVariationSchema>;
 
 export type PanelProductDetail = v.InferOutput<typeof PanelProductDetailSchema>;
+
+export type PanelProductNutrition = v.InferOutput<typeof PanelProductNutritionSchema>;
+
+export type NutritionBasis = v.InferOutput<typeof NutritionBasisSchema>;
+
+export type NutritionLabelFormat = v.InferOutput<typeof NutritionLabelFormatSchema>;
+
+export type NutritionSource = v.InferOutput<typeof NutritionSourceSchema>;
 
 /** The variation row the editor sends, after trimming and validation. */
 export type ProductVariationInput = v.InferOutput<typeof ProductVariationInputSchema>;

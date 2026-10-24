@@ -29,6 +29,7 @@ model Tenant {
   wallets           Wallet[]
   seoMeta           SeoMeta[]
   storeSettings     StoreSettings?
+  productNutritions ProductNutrition[]
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -299,6 +300,33 @@ enum meal_subscription_status {
   canceled
 }
 
+// How a nutrition label is measured and drawn. `simplified` is the IN 75
+// declaracao simplificada: non-significant constituents leave the grid and are
+// named in the legal sentence below it.
+enum nutrition_basis {
+  @@type("pg/text@1")
+
+  solid
+  liquid
+}
+
+enum nutrition_label_format {
+  @@type("pg/text@1")
+
+  vertical
+  simplified
+}
+
+enum nutrition_source {
+  @@type("pg/text@1")
+
+  manual
+  lab
+  supplier_label
+  database
+  estimate
+}
+
 // Named group of a tenant's catalog. `sortOrder` drives the panel's listing.
 // A category belongs to zero or more departments; products live one level
 // deeper, under a Subcategory.
@@ -392,6 +420,7 @@ model Product {
   tenantId      String
   name          String
   description   String?
+  imageUrl      String?
   subcategoryId String?
   available     Boolean       @default(true)
   archived      Boolean       @default(false)
@@ -404,6 +433,7 @@ model Product {
   variations    Variation[]
   tags          ProductTag[]
   orderItems    OrderItem[]
+  nutrition     ProductNutrition?
 
   @@index([tenantId], map: "Product_tenantId_idx")
   @@index([subcategoryId], map: "Product_subcategoryId_idx")
@@ -694,6 +724,63 @@ model SeoMeta {
   @@index([tenantId], map: "SeoMeta_tenantId_idx")
 
   @@map("SeoMeta")
+}
+
+// One nutrition label per product (1:1). Values are stored per 100 g
+// (`solid`) or 100 mL (`liquid`), in the smallest unit the label declares:
+// kcal for energy, milligrams for nutrients and thousandths of a gram/mL for
+// the portion. Portion, %VD and the front-of-pack alerts are always derived,
+// never stored. The three `showHigh*` flags are the store's explicit choice:
+// a threshold being met makes the alert recommended, not automatic.
+model ProductNutrition {
+  id                  String                 @id(map: "ProductNutrition_pkey")
+  tenantId            String
+  productId           String                 @unique(map: "ProductNutrition_productId_key")
+  basis               nutrition_basis        @default(solid)
+  labelFormat         nutrition_label_format @default(vertical)
+  source              nutrition_source       @default(manual)
+  referenceAt         Timestamp(3)?
+  energyKcal          Int?
+  carbsMg             Int?
+  totalSugarsMg       Int?
+  addedSugarsMg       Int?
+  proteinMg           Int?
+  totalFatMg          Int?
+  saturatedFatMg      Int?
+  transFatMg          Int?
+  fiberMg             Int?
+  sodiumMg            Int?
+  portionMilli        Int?
+  householdMeasure    String?
+  servingsPerPack     Int?
+  showHighAddedSugar  Boolean                @default(false)
+  showHighSatFat      Boolean                @default(false)
+  showHighSodium      Boolean                @default(false)
+  published           Boolean                @default(false)
+  notes               String?
+  createdAt           Timestamp(3)           @default(now())
+  updatedAt           Timestamp(3)           @default(now())
+  tenant              Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductNutrition_tenantId_fkey")
+  product             Product                @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductNutrition_productId_fkey")
+
+  @@index([tenantId], map: "ProductNutrition_tenantId_idx")
+
+  @@check(expression: "\"energyKcal\" IS NULL OR \"energyKcal\" >= 0", name: "product_nutrition_energy_non_negative")
+  @@check(expression: "\"carbsMg\" IS NULL OR \"carbsMg\" >= 0", name: "product_nutrition_carbs_non_negative")
+  @@check(expression: "\"totalSugarsMg\" IS NULL OR \"totalSugarsMg\" >= 0", name: "product_nutrition_total_sugars_non_negative")
+  @@check(expression: "\"addedSugarsMg\" IS NULL OR \"addedSugarsMg\" >= 0", name: "product_nutrition_added_sugars_non_negative")
+  @@check(expression: "\"proteinMg\" IS NULL OR \"proteinMg\" >= 0", name: "product_nutrition_protein_non_negative")
+  @@check(expression: "\"totalFatMg\" IS NULL OR \"totalFatMg\" >= 0", name: "product_nutrition_total_fat_non_negative")
+  @@check(expression: "\"saturatedFatMg\" IS NULL OR \"saturatedFatMg\" >= 0", name: "product_nutrition_saturated_fat_non_negative")
+  @@check(expression: "\"transFatMg\" IS NULL OR \"transFatMg\" >= 0", name: "product_nutrition_trans_fat_non_negative")
+  @@check(expression: "\"fiberMg\" IS NULL OR \"fiberMg\" >= 0", name: "product_nutrition_fiber_non_negative")
+  @@check(expression: "\"sodiumMg\" IS NULL OR \"sodiumMg\" >= 0", name: "product_nutrition_sodium_non_negative")
+  @@check(expression: "\"portionMilli\" IS NULL OR \"portionMilli\" > 0", name: "product_nutrition_portion_positive")
+  @@check(expression: "\"servingsPerPack\" IS NULL OR \"servingsPerPack\" > 0", name: "product_nutrition_servings_positive")
+  @@check(expression: "\"addedSugarsMg\" IS NULL OR \"totalSugarsMg\" IS NULL OR \"addedSugarsMg\" <= \"totalSugarsMg\"", name: "product_nutrition_added_sugars_lte_total")
+  @@check(expression: "\"saturatedFatMg\" IS NULL OR \"transFatMg\" IS NULL OR \"totalFatMg\" IS NULL OR \"saturatedFatMg\" + \"transFatMg\" <= \"totalFatMg\"", name: "product_nutrition_fat_sum")
+
+  @@map("ProductNutrition")
 }
 
 // Store-level settings that are one row per tenant (SEO templates today).

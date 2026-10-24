@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { buildNutritionLabel } from "@menuza/shared/nutrition";
+import { NutritionLabel } from "@/components/nutrition/nutrition-label.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import {
   Breadcrumb,
@@ -35,14 +38,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip.tsx";
-import { formatBrl } from "@/lib/format.ts";
+import { formatBrl, formatDateTime } from "@/lib/format.ts";
+import { NUTRITION_SOURCE_LABELS } from "@/lib/panel-labels.ts";
 import { absoluteUrl } from "@/lib/seo/base-url.ts";
 import { buildProductJsonLd, JsonLdScript } from "@/lib/seo/json-ld.ts";
 import { buildSeoMetadata } from "@/lib/seo/metadata.ts";
-import { loadProduct, loadStore, type StorefrontProduct } from "../../_lib/storefront-data.ts";
+import {
+  loadProduct,
+  loadStore,
+  type StorefrontProductDetail,
+} from "../../_lib/storefront-data.ts";
 
 /** O item do cardápio, ou `null` quando o id não existe ou saiu da vitrine. */
-async function findProduct(productId: string): Promise<StorefrontProduct | null> {
+async function findProduct(productId: string): Promise<StorefrontProductDetail | null> {
   return loadProduct(productId);
 }
 
@@ -84,6 +92,11 @@ export default async function ProductDetailPage({
   // An unknown id and a product withdrawn from the catalog are both 404.
   if (!product) notFound();
 
+  // O rótulo chega já publicado e filtrado pelo servidor; sem `view`, o
+  // construtor usa a porção oficial. Sem rótulo, nada é renderizado.
+  const nutrition = product.nutrition;
+  const nutritionLabel = nutrition ? buildNutritionLabel(nutrition) : null;
+
   const url = await absoluteUrl(`/menu/${product.id}`);
 
   // Sempre o construtor: o override de `SeoMeta` é o grafo da loja, e descrever
@@ -119,9 +132,22 @@ export default async function ProductDetailPage({
 
       <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
 
+      {product.imageUrl ? (
+        <div className="relative aspect-[4/3] w-full max-w-xl overflow-hidden rounded-xl border bg-muted">
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            sizes="(min-width: 768px) 36rem, 100vw"
+            className="object-cover"
+            priority
+          />
+        </div>
+      ) : null}
+
       <Card>
         <CardContent className="flex flex-col gap-3">
-          <p className="max-w-prose text-sm text-pretty text-muted-foreground">
+          <p className="max-w-prose text-sm text-pretty whitespace-pre-line text-muted-foreground">
             {product.description ?? "A loja ainda não descreveu este item."}
           </p>
           {product.tags.length > 0 ? (
@@ -144,6 +170,29 @@ export default async function ProductDetailPage({
           ) : null}
         </CardContent>
       </Card>
+
+      {nutrition && nutritionLabel ? (
+        <>
+          <Separator />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Informação nutricional</CardTitle>
+              <CardDescription>
+                {`Valores por 100 ${nutritionLabel.unit} e por porção, informados pela loja.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <NutritionLabel model={nutritionLabel} />
+              <p className="mt-3 text-xs text-pretty text-muted-foreground">
+                {`Fonte: ${NUTRITION_SOURCE_LABELS[nutrition.source]} · atualizado em ${formatDateTime(
+                  nutrition.referenceAt ?? nutrition.updatedAt,
+                )}.`}
+              </p>
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
 
       <Separator />
 

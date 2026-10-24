@@ -1,0 +1,36 @@
+[
+  {
+    "id": "column.public.Product.imageUrl",
+    "label": "Add column \"imageUrl\" to \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "imageUrl",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"imageUrl\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "imageUrl"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"imageUrl\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" ADD COLUMN \"imageUrl\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"imageUrl\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "imageUrl"]
+      }
+    ]
+  }
+]

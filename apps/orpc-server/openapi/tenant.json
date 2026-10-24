@@ -5417,6 +5417,246 @@
                               "stockQty"
                             ]
                           }
+                        },
+                        "nutrition": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "enum": [
+                                    "solid",
+                                    "liquid"
+                                  ],
+                                  "type": "string"
+                                },
+                                "labelFormat": {
+                                  "enum": [
+                                    "vertical",
+                                    "simplified"
+                                  ],
+                                  "type": "string"
+                                },
+                                "source": {
+                                  "enum": [
+                                    "manual",
+                                    "lab",
+                                    "supplier_label",
+                                    "database",
+                                    "estimate"
+                                  ],
+                                  "type": "string"
+                                },
+                                "referenceAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "energyKcal": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "carbsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "addedSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "proteinMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "saturatedFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "transFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "fiberMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "sodiumMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "portionMilli": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "householdMeasure": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "servingsPerPack": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "showHighAddedSugar": {
+                                  "type": "boolean"
+                                },
+                                "showHighSatFat": {
+                                  "type": "boolean"
+                                },
+                                "showHighSodium": {
+                                  "type": "boolean"
+                                },
+                                "published": {
+                                  "type": "boolean"
+                                },
+                                "notes": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "labelFormat",
+                                "source",
+                                "referenceAt",
+                                "energyKcal",
+                                "carbsMg",
+                                "totalSugarsMg",
+                                "addedSugarsMg",
+                                "proteinMg",
+                                "totalFatMg",
+                                "saturatedFatMg",
+                                "transFatMg",
+                                "fiberMg",
+                                "sodiumMg",
+                                "portionMilli",
+                                "householdMeasure",
+                                "servingsPerPack",
+                                "showHighAddedSugar",
+                                "showHighSatFat",
+                                "showHighSodium",
+                                "published",
+                                "notes",
+                                "updatedAt"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -5437,7 +5677,8 @@
                         "sortOrder",
                         "updatedAt",
                         "description",
-                        "variations"
+                        "variations",
+                        "nutrition"
                       ]
                     }
                   },
@@ -5744,6 +5985,246 @@
                               "stockQty"
                             ]
                           }
+                        },
+                        "nutrition": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "enum": [
+                                    "solid",
+                                    "liquid"
+                                  ],
+                                  "type": "string"
+                                },
+                                "labelFormat": {
+                                  "enum": [
+                                    "vertical",
+                                    "simplified"
+                                  ],
+                                  "type": "string"
+                                },
+                                "source": {
+                                  "enum": [
+                                    "manual",
+                                    "lab",
+                                    "supplier_label",
+                                    "database",
+                                    "estimate"
+                                  ],
+                                  "type": "string"
+                                },
+                                "referenceAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "energyKcal": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "carbsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "addedSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "proteinMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "saturatedFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "transFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "fiberMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "sodiumMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "portionMilli": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "householdMeasure": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "servingsPerPack": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "showHighAddedSugar": {
+                                  "type": "boolean"
+                                },
+                                "showHighSatFat": {
+                                  "type": "boolean"
+                                },
+                                "showHighSodium": {
+                                  "type": "boolean"
+                                },
+                                "published": {
+                                  "type": "boolean"
+                                },
+                                "notes": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "labelFormat",
+                                "source",
+                                "referenceAt",
+                                "energyKcal",
+                                "carbsMg",
+                                "totalSugarsMg",
+                                "addedSugarsMg",
+                                "proteinMg",
+                                "totalFatMg",
+                                "saturatedFatMg",
+                                "transFatMg",
+                                "fiberMg",
+                                "sodiumMg",
+                                "portionMilli",
+                                "householdMeasure",
+                                "servingsPerPack",
+                                "showHighAddedSugar",
+                                "showHighSatFat",
+                                "showHighSodium",
+                                "published",
+                                "notes",
+                                "updatedAt"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -5764,7 +6245,8 @@
                         "sortOrder",
                         "updatedAt",
                         "description",
-                        "variations"
+                        "variations",
+                        "nutrition"
                       ]
                     }
                   },
@@ -6181,6 +6663,246 @@
                               "stockQty"
                             ]
                           }
+                        },
+                        "nutrition": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "enum": [
+                                    "solid",
+                                    "liquid"
+                                  ],
+                                  "type": "string"
+                                },
+                                "labelFormat": {
+                                  "enum": [
+                                    "vertical",
+                                    "simplified"
+                                  ],
+                                  "type": "string"
+                                },
+                                "source": {
+                                  "enum": [
+                                    "manual",
+                                    "lab",
+                                    "supplier_label",
+                                    "database",
+                                    "estimate"
+                                  ],
+                                  "type": "string"
+                                },
+                                "referenceAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "energyKcal": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "carbsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "addedSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "proteinMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "saturatedFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "transFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "fiberMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "sodiumMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "portionMilli": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "householdMeasure": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "servingsPerPack": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "showHighAddedSugar": {
+                                  "type": "boolean"
+                                },
+                                "showHighSatFat": {
+                                  "type": "boolean"
+                                },
+                                "showHighSodium": {
+                                  "type": "boolean"
+                                },
+                                "published": {
+                                  "type": "boolean"
+                                },
+                                "notes": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "labelFormat",
+                                "source",
+                                "referenceAt",
+                                "energyKcal",
+                                "carbsMg",
+                                "totalSugarsMg",
+                                "addedSugarsMg",
+                                "proteinMg",
+                                "totalFatMg",
+                                "saturatedFatMg",
+                                "transFatMg",
+                                "fiberMg",
+                                "sodiumMg",
+                                "portionMilli",
+                                "householdMeasure",
+                                "servingsPerPack",
+                                "showHighAddedSugar",
+                                "showHighSatFat",
+                                "showHighSodium",
+                                "published",
+                                "notes",
+                                "updatedAt"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -6201,7 +6923,8 @@
                         "sortOrder",
                         "updatedAt",
                         "description",
-                        "variations"
+                        "variations",
+                        "nutrition"
                       ]
                     }
                   },
@@ -6360,6 +7083,786 @@
                   },
                   "required": [
                     "success"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/stores/{storeSlug}/products/{productId}/nutrition": {
+      "put": {
+        "operationId": "savePanelProductNutrition",
+        "summary": "Salva a tabela nutricional do produto e devolve o detalhe atualizado.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "in": "path",
+            "required": true,
+            "name": "productId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "basis": {
+                    "enum": [
+                      "solid",
+                      "liquid"
+                    ],
+                    "type": "string"
+                  },
+                  "labelFormat": {
+                    "enum": [
+                      "vertical",
+                      "simplified"
+                    ],
+                    "type": "string"
+                  },
+                  "source": {
+                    "enum": [
+                      "manual",
+                      "lab",
+                      "supplier_label",
+                      "database",
+                      "estimate"
+                    ],
+                    "type": "string"
+                  },
+                  "referenceAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "energyKcal": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "carbsMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "totalSugarsMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "addedSugarsMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "proteinMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "totalFatMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "saturatedFatMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "transFatMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fiberMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sodiumMg": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "portionMilli": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "householdMeasure": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 80
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "servingsPerPack": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "showHighAddedSugar": {
+                    "type": "boolean"
+                  },
+                  "showHighSatFat": {
+                    "type": "boolean"
+                  },
+                  "showHighSodium": {
+                    "type": "boolean"
+                  },
+                  "published": {
+                    "type": "boolean"
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "categoryId": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "categoryName": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "subcategoryId": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "subcategoryName": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "departmentIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "departmentNames": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        },
+                        "priceCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "available": {
+                          "type": "boolean"
+                        },
+                        "archived": {
+                          "type": "boolean"
+                        },
+                        "hidden": {
+                          "type": "boolean"
+                        },
+                        "private": {
+                          "type": "boolean"
+                        },
+                        "sortOrder": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "variations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "priceCents": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "stockMode": {
+                                "enum": [
+                                  "controlled",
+                                  "unlimited"
+                                ],
+                                "type": "string"
+                              },
+                              "stockQty": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "priceCents",
+                              "stockMode",
+                              "stockQty"
+                            ]
+                          }
+                        },
+                        "nutrition": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "basis": {
+                                  "enum": [
+                                    "solid",
+                                    "liquid"
+                                  ],
+                                  "type": "string"
+                                },
+                                "labelFormat": {
+                                  "enum": [
+                                    "vertical",
+                                    "simplified"
+                                  ],
+                                  "type": "string"
+                                },
+                                "source": {
+                                  "enum": [
+                                    "manual",
+                                    "lab",
+                                    "supplier_label",
+                                    "database",
+                                    "estimate"
+                                  ],
+                                  "type": "string"
+                                },
+                                "referenceAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "energyKcal": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "carbsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "addedSugarsMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "proteinMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "totalFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "saturatedFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "transFatMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "fiberMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "sodiumMg": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "portionMilli": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "householdMeasure": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "servingsPerPack": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "showHighAddedSugar": {
+                                  "type": "boolean"
+                                },
+                                "showHighSatFat": {
+                                  "type": "boolean"
+                                },
+                                "showHighSodium": {
+                                  "type": "boolean"
+                                },
+                                "published": {
+                                  "type": "boolean"
+                                },
+                                "notes": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "updatedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "basis",
+                                "labelFormat",
+                                "source",
+                                "referenceAt",
+                                "energyKcal",
+                                "carbsMg",
+                                "totalSugarsMg",
+                                "addedSugarsMg",
+                                "proteinMg",
+                                "totalFatMg",
+                                "saturatedFatMg",
+                                "transFatMg",
+                                "fiberMg",
+                                "sodiumMg",
+                                "portionMilli",
+                                "householdMeasure",
+                                "servingsPerPack",
+                                "showHighAddedSugar",
+                                "showHighSatFat",
+                                "showHighSodium",
+                                "published",
+                                "notes",
+                                "updatedAt"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "categoryId",
+                        "categoryName",
+                        "subcategoryId",
+                        "subcategoryName",
+                        "departmentIds",
+                        "departmentNames",
+                        "tags",
+                        "priceCents",
+                        "available",
+                        "archived",
+                        "hidden",
+                        "private",
+                        "sortOrder",
+                        "updatedAt",
+                        "description",
+                        "variations",
+                        "nutrition"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "product"
                   ]
                 }
               }

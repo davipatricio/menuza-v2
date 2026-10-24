@@ -13,7 +13,7 @@ import { implement } from "@orpc/server";
 import { commerceContractObject } from "@menuza/shared/commerce";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
 import { db, withTenant } from "@menuza/db";
-import { toPublicProduct } from "./support.ts";
+import { toPublicProductDetail } from "./support.ts";
 
 const os = implement(commerceContractObject);
 
@@ -34,12 +34,39 @@ export const getProductImpl = os.public.getProduct
         .include("tags", (productTag) =>
           productTag.include("tag", (tag) => tag.select("name", "isActive")),
         )
+        // The 1:1 label; `toPublicNutrition` is what decides whether it ships.
+        .include("nutrition", (nutrition) =>
+          nutrition.select(
+            "basis",
+            "labelFormat",
+            "source",
+            "referenceAt",
+            "energyKcal",
+            "carbsMg",
+            "totalSugarsMg",
+            "addedSugarsMg",
+            "proteinMg",
+            "totalFatMg",
+            "saturatedFatMg",
+            "transFatMg",
+            "fiberMg",
+            "sodiumMg",
+            "portionMilli",
+            "householdMeasure",
+            "servingsPerPack",
+            "showHighAddedSugar",
+            "showHighSatFat",
+            "showHighSodium",
+            "published",
+            "updatedAt",
+          ),
+        )
         .first(),
     );
 
     if (!product || !product.available || product.private) return { product: null };
 
-    return { product: toPublicProduct(product) };
+    return { product: toPublicProductDetail(product, product.nutrition) };
   });
 
 export type GetProductImpl = typeof getProductImpl;

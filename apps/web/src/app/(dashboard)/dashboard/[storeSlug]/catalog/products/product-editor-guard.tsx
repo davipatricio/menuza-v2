@@ -25,7 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge.tsx";
 import { cn } from "cn";
 
-type Section = "product" | "seo";
+type Section = "product" | "nutrition" | "seo";
 
 type DirtySections = Record<Section, boolean>;
 
@@ -38,6 +38,7 @@ const GuardActionsContext = createContext<GuardActions | null>(null);
 
 const DirtySectionsContext = createContext<DirtySections>({
   product: false,
+  nutrition: false,
   seo: false,
 });
 
@@ -59,13 +60,25 @@ export function useLeaveGuard() {
   return useContext(GuardActionsContext);
 }
 
+/**
+ * "Produto, Tabela nutricional e SEO": a list of three sections reads with a
+ * comma and a final "e", never as "A e B e C".
+ */
+function formatSectionList(labels: readonly string[]): string {
+  if (labels.length <= 1) return labels[0] ?? "";
+
+  return `${labels.slice(0, -1).join(", ")} e ${labels.at(-1) ?? ""}`;
+}
+
 export function PendingChangesStatus({ className }: { className?: string }) {
   const sections = useContext(DirtySectionsContext);
-  const dirty = sections.product || sections.seo;
+  const dirty = sections.product || sections.nutrition || sections.seo;
 
-  const labels = [sections.product ? "Produto" : null, sections.seo ? "SEO" : null].filter(
-    (label): label is string => label !== null,
-  );
+  const labels = [
+    sections.product ? "Produto" : null,
+    sections.nutrition ? "Tabela nutricional" : null,
+    sections.seo ? "SEO" : null,
+  ].filter((label): label is string => label !== null);
 
   return (
     <p
@@ -76,7 +89,7 @@ export function PendingChangesStatus({ className }: { className?: string }) {
       {dirty ? (
         <>
           <Badge variant="secondary">Alterações não salvas</Badge>
-          <span className="text-muted-foreground">{labels.join(" e ")}</span>
+          <span className="text-muted-foreground">{formatSectionList(labels)}</span>
         </>
       ) : (
         <>
@@ -99,6 +112,7 @@ export function ProductEditorGuard({ children }: { children: ReactNode }) {
 
   const [sections, setSections] = useState<DirtySections>({
     product: false,
+    nutrition: false,
     seo: false,
   });
 
@@ -117,7 +131,7 @@ export function ProductEditorGuard({ children }: { children: ReactNode }) {
 
   const requestLeave = useCallback(
     (href: string) => {
-      if (sectionsRef.current.product || sectionsRef.current.seo) {
+      if (Object.values(sectionsRef.current).some(Boolean)) {
         setPendingHref(href);
 
         return;
@@ -133,7 +147,7 @@ export function ProductEditorGuard({ children }: { children: ReactNode }) {
     [setSectionDirty, requestLeave],
   );
 
-  const anyDirty = sections.product || sections.seo;
+  const anyDirty = Object.values(sections).some(Boolean);
 
   useEffect(() => {
     if (!anyDirty) return;

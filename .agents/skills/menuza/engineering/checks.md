@@ -45,3 +45,6 @@ Each feature file carries its own checks; they all point back to the scenarios a
 - Wallet balance changes are never silent edits — they leave a financial history (`../features/payments/README.md`).
 - A permission change, a wallet adjustment and a support session each leave an audited record (`../features/stores-and-teams/audit.md`).
 - A logistics request is idempotent: a retry or duplicate webhook never issues it twice (`../features/integrations/README.md`).
+- A nutrition label is published only when all 10 constituents, a positive portion, servings and a household measure are present; %VD comes from the rounded portion and the lupa from per-100 g/mL (`../features/catalog/nutrition.md`).
+- An unpublished nutrition label never reaches the public payload; `listMenu` stays lean (`../features/catalog/nutrition.md`).
+- At 375 px the nutrition table fits its card without horizontal overflow and the product tab strip has no vertical scrollbar (`../features/catalog/nutrition.md` → Mobile).

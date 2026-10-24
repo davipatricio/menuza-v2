@@ -18,6 +18,7 @@ import { loginImpl } from "../src/domains/tenant/subdomains/session/login.impl.t
 import { getProductImpl } from "../src/domains/tenant/subdomains/panel/getProduct.impl.ts";
 import { createProductImpl } from "../src/domains/tenant/subdomains/panel/createProduct.impl.ts";
 import { updateProductImpl } from "../src/domains/tenant/subdomains/panel/updateProduct.impl.ts";
+import { saveProductNutritionImpl } from "../src/domains/tenant/subdomains/panel/saveProductNutrition.impl.ts";
 import { deleteProductImpl } from "../src/domains/tenant/subdomains/panel/deleteProduct.impl.ts";
 import { deleteCategoryImpl } from "../src/domains/tenant/subdomains/panel/deleteCategory.impl.ts";
 import { listTagsImpl } from "../src/domains/tenant/subdomains/panel/listTags.impl.ts";
@@ -66,6 +67,8 @@ const tags: Row[] = [];
 const orderItems: Row[] = [];
 
 const kitItems: Row[] = [];
+
+const productNutritions: Row[] = [];
 
 function matches(row: Row, filter: Row): boolean {
   return Object.entries(filter).every(([key, value]) => row[key] === value);
@@ -174,6 +177,8 @@ function joinProduct(product: Row): Row {
         : [],
     ),
     variations: variations.filter((variation) => variation.productId === product.id),
+    // 1:1: the label is either the product's one row or absent.
+    nutrition: productNutritions.find((row) => row.productId === product.id) ?? null,
   };
 
   // SAFETY: the fake's `Row` only models cells; the relation objects are read
@@ -195,6 +200,7 @@ const MODEL_NAMES = [
   "Tag",
   "OrderItem",
   "KitItem",
+  "ProductNutrition",
 ] as const;
 
 type ModelName = (typeof MODEL_NAMES)[number];
@@ -213,6 +219,7 @@ const MODELS: Record<ModelName, Model> = {
   Tag: model(tags),
   OrderItem: model(orderItems),
   KitItem: model(kitItems),
+  ProductNutrition: model(productNutritions),
 };
 
 /**
@@ -847,6 +854,289 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
         // SAFETY: an unknown product only throws the NOT_FOUND code.
         expect((error as { code: string }).code).toBe("NOT_FOUND");
       }
+    });
+
+    test("answers null nutrition for a product with no label and the row once saved", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      expect(created.product.nutrition).toBeNull();
+
+      await call(
+        saveProductNutritionImpl,
+        { storeSlug: "mawifoods", productId: created.product.id, energyKcal: 240, sodiumMg: 180 },
+        { context: { reqHeaders } },
+      );
+
+      const result = await call(
+        getProductImpl,
+        { storeSlug: "mawifoods", productId: created.product.id },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.product.nutrition?.energyKcal).toBe(240);
+      expect(result.product.nutrition?.sodiumMg).toBe(180);
+      expect(result.product.nutrition?.published).toBe(false);
+    });
+  });
+
+  describe("panel.saveProductNutrition", () => {
+    test("the first save creates the row with the contract's defaults", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      const result = await call(
+        saveProductNutritionImpl,
+        {
+          storeSlug: "mawifoods",
+          productId: created.product.id,
+          energyKcal: 210,
+          portionMilli: 30_000,
+          referenceAt: "2026-08-14T00:00:00.000Z",
+        },
+        { context: { reqHeaders } },
+      );
+
+      const nutrition = result.product.nutrition;
+
+      expect(nutrition?.basis).toBe("solid");
+      expect(nutrition?.labelFormat).toBe("vertical");
+      expect(nutrition?.source).toBe("manual");
+      expect(nutrition?.published).toBe(false);
+      expect(nutrition?.showHighAddedSugar).toBe(false);
+      expect(nutrition?.showHighSatFat).toBe(false);
+      expect(nutrition?.showHighSodium).toBe(false);
+      expect(nutrition?.energyKcal).toBe(210);
+      expect(nutrition?.portionMilli).toBe(30_000);
+      // The ISO timestamp lands in a UTC-naive column and comes back with the Z.
+      expect(nutrition?.referenceAt).toBe("2026-08-14T00:00:00Z");
+
+      expect(productNutritions.filter((row) => row.productId === created.product.id)).toHaveLength(
+        1,
+      );
+    });
+
+    test("a partial save keeps every field the patch leaves out", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      await call(
+        saveProductNutritionImpl,
+        {
+          storeSlug: "mawifoods",
+          productId: created.product.id,
+          energyKcal: 210,
+          sodiumMg: 120,
+          householdMeasure: "1 fatia",
+          notes: "Rótulo do fornecedor",
+          source: "supplier_label",
+        },
+        { context: { reqHeaders } },
+      );
+
+      const result = await call(
+        saveProductNutritionImpl,
+        { storeSlug: "mawifoods", productId: created.product.id, carbsMg: 5_000 },
+        { context: { reqHeaders } },
+      );
+
+      const nutrition = result.product.nutrition;
+
+      expect(nutrition?.carbsMg).toBe(5_000);
+      expect(nutrition?.energyKcal).toBe(210);
+      expect(nutrition?.sodiumMg).toBe(120);
+      expect(nutrition?.householdMeasure).toBe("1 fatia");
+      expect(nutrition?.notes).toBe("Rótulo do fornecedor");
+      expect(nutrition?.source).toBe("supplier_label");
+      expect(productNutritions.filter((row) => row.productId === created.product.id)).toHaveLength(
+        1,
+      );
+    });
+
+    test("null clears a stored value while a missing key keeps it", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      await call(
+        saveProductNutritionImpl,
+        {
+          storeSlug: "mawifoods",
+          productId: created.product.id,
+          householdMeasure: "1 fatia",
+          notes: "Anotação interna",
+          fiberMg: 3_000,
+        },
+        { context: { reqHeaders } },
+      );
+
+      const result = await call(
+        saveProductNutritionImpl,
+        {
+          storeSlug: "mawifoods",
+          productId: created.product.id,
+          householdMeasure: null,
+          notes: null,
+        },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.product.nutrition?.householdMeasure).toBeNull();
+      expect(result.product.nutrition?.notes).toBeNull();
+      expect(result.product.nutrition?.fiberMg).toBe(3_000);
+    });
+
+    test("the merged row is checked: added sugars above total sugars is VALIDATION_FAILED", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      await call(
+        saveProductNutritionImpl,
+        { storeSlug: "mawifoods", productId: created.product.id, totalSugarsMg: 5_000 },
+        { context: { reqHeaders } },
+      );
+
+      try {
+        // The patch alone passes the contract's schema; the merged row does not.
+        await call(
+          saveProductNutritionImpl,
+          { storeSlug: "mawifoods", productId: created.product.id, addedSugarsMg: 6_000 },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected saveProductNutrition to fail");
+      } catch (error) {
+        // SAFETY: the merged check only throws the VALIDATION_FAILED code.
+        expect((error as { code: string }).code).toBe("VALIDATION_FAILED");
+      }
+    });
+
+    test("publishing an incomplete label is VALIDATION_FAILED and names the gaps", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      try {
+        await call(
+          saveProductNutritionImpl,
+          {
+            storeSlug: "mawifoods",
+            productId: created.product.id,
+            energyKcal: 210,
+            published: true,
+          },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected saveProductNutrition to fail");
+      } catch (error) {
+        // SAFETY: the publish checklist only throws the VALIDATION_FAILED code.
+        expect((error as { code: string }).code).toBe("VALIDATION_FAILED");
+        // SAFETY: ORPCError always carries a message, and the checklist builds it.
+        const message = (error as { message: string }).message;
+
+        expect(message).toContain("Carboidratos");
+        expect(message).toContain("Porção");
+        expect(message).toContain("Porções por embalagem");
+        expect(message).toContain("Medida caseira");
+        expect(message).not.toContain("Valor energético");
+      }
+
+      expect(products.some((row) => row.id === created.product.id)).toBe(true);
+      expect(productNutritions.filter((row) => row.productId === created.product.id)).toHaveLength(
+        0,
+      );
+    });
+
+    test("a complete label publishes, and unpublishing clears only the flag", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(createProductImpl, productInput(), { context: { reqHeaders } });
+
+      const complete = {
+        storeSlug: "mawifoods",
+        productId: created.product.id,
+        energyKcal: 240,
+        carbsMg: 30_000,
+        totalSugarsMg: 5_000,
+        addedSugarsMg: 2_000,
+        proteinMg: 8_000,
+        totalFatMg: 6_000,
+        saturatedFatMg: 2_000,
+        transFatMg: 0,
+        fiberMg: 3_000,
+        sodiumMg: 180,
+        portionMilli: 30_000,
+        householdMeasure: "1 fatia",
+        servingsPerPack: 1,
+        published: true,
+      };
+
+      const published = await call(saveProductNutritionImpl, complete, { context: { reqHeaders } });
+
+      expect(published.product.nutrition?.published).toBe(true);
+      expect(published.product.nutrition?.showHighAddedSugar).toBe(false);
+
+      const draft = await call(
+        saveProductNutritionImpl,
+        { storeSlug: "mawifoods", productId: created.product.id, published: false },
+        { context: { reqHeaders } },
+      );
+
+      expect(draft.product.nutrition?.published).toBe(false);
+      expect(draft.product.nutrition?.sodiumMg).toBe(180);
+    });
+
+    test("an unknown productId is NOT_FOUND", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(
+          saveProductNutritionImpl,
+          { storeSlug: "mawifoods", productId: randomUUID(), energyKcal: 210 },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected saveProductNutrition to fail");
+      } catch (error) {
+        // SAFETY: an unknown product only throws the NOT_FOUND code.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
+    });
+
+    test("another tenant's product id is NOT_FOUND", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const foreignProductId = randomUUID();
+
+      products.push({
+        id: foreignProductId,
+        tenantId: OTHER_TENANT_ID,
+        name: "Marmita de outra loja",
+        description: null,
+        subcategoryId: null,
+        available: true,
+        archived: false,
+        hidden: false,
+        private: false,
+        sortOrder: 0,
+        updatedAt: at("2026-01-01 00:00"),
+      });
+
+      try {
+        await call(
+          saveProductNutritionImpl,
+          { storeSlug: "mawifoods", productId: foreignProductId, energyKcal: 210 },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected saveProductNutrition to fail");
+      } catch (error) {
+        // SAFETY: a product outside the tenant only throws the NOT_FOUND code.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
+
+      expect(productNutritions.filter((row) => row.productId === foreignProductId)).toHaveLength(0);
     });
   });
 

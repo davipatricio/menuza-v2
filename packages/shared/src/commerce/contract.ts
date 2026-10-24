@@ -59,6 +59,7 @@ export const PublicProductSchema = v.object({
   id: v.string(),
   name: v.string(),
   description: v.nullable(v.string()),
+  imageUrl: v.nullable(v.string()),
   available: v.boolean(),
   archived: v.boolean(),
   sortOrder: v.number(),
@@ -72,6 +73,42 @@ export const PublicProductSchema = v.object({
     }),
   ),
   tags: v.array(v.string()),
+});
+
+/**
+ * A published nutrition label. `published` itself never crosses the wire: the
+ * read filters and the mapper refuses again, so only a complete, intentionally
+ * published row can reach the browser. Measures follow the panel contract:
+ * kcal for energy, mg for the rest, thousandths of a gram/mL for the portion.
+ */
+export const PublicNutritionSchema = v.object({
+  basis: v.picklist(["solid", "liquid"]),
+  labelFormat: v.picklist(["vertical", "simplified"]),
+  source: v.picklist(["manual", "lab", "supplier_label", "database", "estimate"]),
+  referenceAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+  energyKcal: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  carbsMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  totalSugarsMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  addedSugarsMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  proteinMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  totalFatMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  saturatedFatMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  transFatMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  fiberMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  sodiumMg: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  portionMilli: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  householdMeasure: v.nullable(v.string()),
+  servingsPerPack: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  showHighAddedSugar: v.boolean(),
+  showHighSatFat: v.boolean(),
+  showHighSodium: v.boolean(),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
+});
+
+/** The direct-URL product adds the label; the menu listing stays lean. */
+export const PublicProductDetailSchema = v.object({
+  ...PublicProductSchema.entries,
+  nutrition: v.nullable(PublicNutritionSchema),
 });
 
 /**
@@ -175,7 +212,7 @@ export const getProduct = commerceContract
       productId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
     }),
   )
-  .output(v.object({ product: v.nullable(PublicProductSchema) }));
+  .output(v.object({ product: v.nullable(PublicProductDetailSchema) }));
 
 export const publicContractObject = {
   getStore,

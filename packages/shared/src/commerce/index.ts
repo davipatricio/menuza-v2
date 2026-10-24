@@ -14,6 +14,8 @@ export {
   publicMenuOutput,
   publicSitemapOutput,
   publicStoreOutput,
+  PublicNutritionSchema,
+  PublicProductDetailSchema,
   PublicProductSchema,
   walletContract,
   walletContractObject,

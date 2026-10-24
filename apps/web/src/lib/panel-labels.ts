@@ -11,6 +11,9 @@ import type {
   FinancialStatus,
   FulfilmentStatus,
   MemberKind,
+  NutritionBasis,
+  NutritionLabelFormat,
+  NutritionSource,
   PaymentMethod,
   StockMode,
   TenantRole,
@@ -101,6 +104,34 @@ export const MEMBER_KIND_LABELS: Record<MemberKind, string> = {
 export const STOCK_MODE_LABELS: Record<StockMode, string> = {
   controlled: "Controlado",
   unlimited: "Ilimitado",
+};
+
+/**
+ * Tabela nutricional (RDC 429/2020 e IN 75/2020). A base decide se a tabela
+ * vale por 100 g ou por 100 mL; o formato escolhe entre a tabela completa e a
+ * simplificada, que omite os constituintes sem quantidade significativa.
+ */
+export const NUTRITION_BASIS_LABELS: Record<NutritionBasis, string> = {
+  solid: "Sólido",
+  liquid: "Líquido",
+};
+
+export const NUTRITION_LABEL_FORMAT_LABELS: Record<NutritionLabelFormat, string> = {
+  vertical: "Vertical",
+  simplified: "Simplificado",
+};
+
+/**
+ * De onde vieram os valores da tabela. A norma aceita análise laboratorial,
+ * rótulo do fornecedor e base de dados; a estimativa é a última opção e o texto
+ * avisa que não é medida.
+ */
+export const NUTRITION_SOURCE_LABELS: Record<NutritionSource, string> = {
+  manual: "Informado pela loja",
+  lab: "Análise laboratorial",
+  supplier_label: "Rótulo do fornecedor",
+  database: "Base de dados",
+  estimate: "Estimativa",
 };
 
 /**

@@ -154,6 +154,11 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/products/{productId}",
   },
   {
+    procedure: tenantContractObject.panel.saveProductNutrition,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/products/{productId}/nutrition",
+  },
+  {
     procedure: tenantContractObject.panel.deleteProduct,
     method: "delete",
     path: "/panel/stores/{storeSlug}/products/{productId}",

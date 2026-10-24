@@ -1,0 +1,1688 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabela nutricional no Menuza — requisitos, decisões e UI</title>
+<style>
+  :root {
+    --bg: oklch(0.985 0 0);
+    --panel: oklch(1 0 0);
+    --ink: oklch(0.16 0 0);
+    --muted: oklch(0.44 0 0);
+    --line: oklch(0.845 0 0);
+    --soft: oklch(0.94 0 0);
+    --accent: oklch(0.93 0 0);
+    --primary: oklch(0.21 0 0);
+    --on-primary: oklch(0.985 0 0);
+    --ok: oklch(0.44 0.1 155);
+    --warn: oklch(0.48 0.11 70);
+    --danger: oklch(0.55 0.21 27);
+    --radius: 10px;
+    --shadow: 0 1px 2px oklch(0 0 0 / 0.05);
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  h1, h2, h3, h4 { margin: 0; letter-spacing: -0.015em; line-height: 1.25; }
+  h2 { font-size: 24px; font-weight: 650; }
+  h3 { font-size: 17px; font-weight: 650; }
+  h4 { font-size: 14px; font-weight: 650; }
+  p { margin: 0; }
+  ul, ol { margin: 0; padding-left: 20px; }
+  li + li { margin-top: 5px; }
+  code, pre { font-family: var(--mono); font-size: 12.5px; }
+  code { background: var(--soft); padding: 1px 5px; border-radius: 5px; }
+  pre {
+    margin: 0;
+    padding: 16px;
+    overflow: auto;
+    background: oklch(0.18 0 0);
+    color: oklch(0.93 0 0);
+    border-radius: var(--radius);
+    line-height: 1.55;
+    tab-size: 2;
+  }
+  pre .c { color: oklch(0.68 0 0); }
+  pre .k { color: oklch(0.82 0.1 250); }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .page { display: grid; grid-template-columns: 240px minmax(0, 1fr); max-width: 1320px; margin: 0 auto; }
+  .toc {
+    position: sticky; top: 0; align-self: start; height: 100vh; overflow: auto;
+    padding: 28px 20px 40px 28px; border-right: 1px solid var(--line);
+  }
+  .toc-brand { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+  .toc-title { margin-top: 6px; font-size: 14px; font-weight: 650; line-height: 1.4; }
+  .toc nav { margin-top: 22px; display: flex; flex-direction: column; gap: 1px; }
+  .toc a { display: block; padding: 6px 8px; border-radius: 6px; font-size: 13px; color: var(--muted); text-decoration: none; }
+  .toc a:hover { background: var(--soft); color: var(--ink); }
+  .toc .group { margin-top: 16px; padding: 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 650; }
+  .toc-note { margin-top: 24px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); font-size: 12px; color: var(--muted); background: var(--panel); }
+
+  main { min-width: 0; padding: 40px 40px 96px; }
+  .hero { padding-bottom: 32px; border-bottom: 1px solid var(--line); }
+  .kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 650; }
+  .hero h1 { margin-top: 10px; font-size: clamp(30px, 4vw, 44px); font-weight: 680; max-width: 820px; }
+  .hero .lede { margin-top: 14px; max-width: 760px; font-size: 17px; color: var(--muted); text-wrap: pretty; }
+  .hero-meta { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--muted); background: var(--panel); }
+  .chip strong { color: var(--ink); font-weight: 600; }
+
+  section { padding-top: 40px; scroll-margin-top: 24px; }
+  .section-head { display: flex; flex-direction: column; gap: 8px; max-width: 820px; }
+  .section-head p { color: var(--muted); text-wrap: pretty; }
+  .section-num { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); }
+  .card h3 + p, .card h4 + p { margin-top: 6px; color: var(--muted); font-size: 13.5px; }
+  .card p + p { margin-top: 10px; }
+  .card ul { margin-top: 10px; font-size: 14px; }
+  .card.tint { background: var(--soft); box-shadow: none; }
+  .card.tight { padding: 14px; }
+
+  .callout { display: flex; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--ink); border-radius: 8px; background: var(--panel); }
+  .callout .mark { flex: none; font-family: var(--mono); font-size: 12px; font-weight: 700; padding-top: 1px; }
+  .callout p { font-size: 14px; text-wrap: pretty; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.warn .mark { color: var(--warn); }
+  .callout.danger { border-left-color: var(--danger); }
+  .callout.danger .mark { color: var(--danger); }
+  .callout.ok { border-left-color: var(--ok); }
+  .callout.ok .mark { color: var(--ok); }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 11.5px; font-weight: 600; color: var(--muted); background: var(--panel); white-space: nowrap; }
+  .badge.solid { background: var(--ink); color: var(--on-primary); border-color: var(--ink); }
+  .badge.warn { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 40%, white); background: color-mix(in oklab, var(--warn) 8%, white); }
+  .badge.ok { color: var(--ok); border-color: color-mix(in oklab, var(--ok) 40%, white); background: color-mix(in oklab, var(--ok) 8%, white); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 650; background: var(--soft); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; background: var(--panel); }
+  .table-wrap table { min-width: 560px; }
+  .indent1 { padding-left: 26px !important; }
+  .indent2 { padding-left: 42px !important; }
+
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; font-size: 13.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .steps { counter-reset: step; display: flex; flex-direction: column; gap: 12px; }
+  .step { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
+  .step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--on-primary); font-size: 12px; font-weight: 650; }
+  .step h4 { padding-top: 1px; }
+  .step p { margin-top: 3px; font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- Simulator ---------- */
+  .sim { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 0.9fr); gap: 20px; align-items: start; }
+  .form-card { display: flex; flex-direction: column; gap: 18px; }
+  .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--soft); border-radius: 8px; }
+  .seg button { border: 0; background: transparent; padding: 5px 11px; border-radius: 6px; font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: var(--shadow); font-weight: 600; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+  .field.wide { grid-column: 1 / -1; }
+  .field > span:first-child { font-weight: 550; }
+  .input-wrap { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); padding: 0 9px; height: 34px; }
+  .input-wrap:focus-within { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .input-wrap input { min-width: 0; flex: 1; border: 0; background: transparent; font: inherit; font-size: 13.5px; color: var(--ink); height: 100%; padding: 0; }
+  .input-wrap input:focus { outline: none; }
+  .input-wrap .unit { font-size: 11.5px; color: var(--muted); }
+  .field-note { font-size: 11.5px; color: var(--muted); }
+  .subsection-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .subsection-title h4 { font-size: 13px; }
+  .divider { height: 1px; background: var(--line); }
+
+  .sticky { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .preview-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .preview-head h4 { font-size: 13px; }
+  .preview-head p { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ANVISA label */
+  .anvisa {
+    background: #fff; color: #000; border: 2px solid #000; padding: 10px 11px;
+    font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.32;
+  }
+  .anvisa .title { font-weight: 700; text-align: center; font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; }
+  .anvisa .sub { margin-top: 5px; font-size: 10.5px; }
+  .anvisa .sub + .sub { margin-top: 1px; }
+  .anvisa table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 10.5px; }
+  .anvisa th, .anvisa td { border: 0; padding: 2px 3px; font-size: 10.5px; }
+  .anvisa thead th { background: transparent; border-bottom: 1px solid #000; text-transform: none; letter-spacing: 0; color: #000; font-size: 10px; font-weight: 700; text-align: center; padding-bottom: 3px; }
+  .anvisa thead th:first-child { text-align: left; }
+  .anvisa tbody td { border-bottom: 1px solid #000; }
+  .anvisa tbody tr:last-child td { border-bottom: 1px solid #000; }
+  .anvisa td.num, .anvisa th.num { text-align: center; }
+  .anvisa .indent1 { padding-left: 12px !important; }
+  .anvisa .indent2 { padding-left: 24px !important; }
+  .anvisa .foot { margin-top: 4px; font-size: 9.5px; }
+  .anvisa .un { color: #333; }
+
+  .lupa-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lupa-badge { border: 2px solid #000; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-size: 10px; font-weight: 700; line-height: 1.15; padding: 4px 7px; text-transform: uppercase; letter-spacing: 0.01em; }
+  .lupa-badge span { display: block; font-size: 8.5px; font-weight: 400; letter-spacing: 0.06em; }
+
+  .warnings { display: flex; flex-direction: column; gap: 6px; }
+  .warning { display: flex; gap: 8px; padding: 8px 10px; border-radius: 7px; font-size: 12px; line-height: 1.45; }
+  .warning.error { background: color-mix(in oklab, var(--danger) 8%, white); border: 1px solid color-mix(in oklab, var(--danger) 30%, white); color: color-mix(in oklab, var(--danger) 80%, black); }
+  .warning.hint { background: color-mix(in oklab, var(--warn) 8%, white); border: 1px solid color-mix(in oklab, var(--warn) 28%, white); color: color-mix(in oklab, var(--warn) 82%, black); }
+  .warning.good { background: color-mix(in oklab, var(--ok) 8%, white); border: 1px solid color-mix(in oklab, var(--ok) 28%, white); color: color-mix(in oklab, var(--ok) 85%, black); }
+
+  /* ---------- Mockups ---------- */
+  .mock { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--bg); box-shadow: 0 8px 24px oklch(0 0 0 / 0.06); }
+  .mock-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 11px; color: var(--muted); }
+  .dots { display: flex; gap: 4px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); display: block; }
+  .mock-body { padding: 14px; }
+  .annotation { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--muted); }
+  .pin { flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: var(--on-primary); font-size: 10px; font-weight: 700; font-family: var(--mono); }
+
+  .dash-mock { background: var(--bg); }
+  .dash-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+  .dash-tab { padding: 6px 10px; font-size: 12px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .dash-tab.active { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+  .dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 12px; }
+  .panel + .panel { margin-top: 10px; }
+  .panel h4 { font-size: 12px; }
+  .panel .help { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .mock-field { display: flex; flex-direction: column; gap: 3px; font-size: 10.5px; color: var(--muted); }
+  .mock-input { height: 28px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 11px; color: var(--ink); }
+  .mock-input em { font-style: normal; color: var(--muted); font-size: 10px; }
+  .mock-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .mock-nutrients { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 8px; }
+  .switch { width: 30px; height: 17px; border-radius: 999px; background: var(--ink); position: relative; flex: none; }
+  .switch::after { content: ""; position: absolute; right: 2px; top: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; }
+  .switch.off { background: var(--line); }
+  .switch.off::after { right: auto; left: 2px; }
+  .mock-btn { height: 28px; padding: 0 10px; border-radius: 6px; background: var(--ink); color: var(--on-primary); display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; }
+  .mock-btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+  .mock-preview { position: sticky; top: 12px; }
+
+  .store-mock { background: #fff; }
+  .store-wrap { max-width: 640px; margin: 0 auto; }
+  .store-title { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; }
+  .store-desc { font-size: 12.5px; color: var(--muted); margin-top: 4px; max-width: 48ch; }
+  .store-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-top: 12px; }
+  .store-card h4 { font-size: 13px; }
+  .store-card .help { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .mobile { width: 100%; max-width: 330px; margin: 0 auto; }
+
+  /* ---------- misc ---------- */
+  .split-list { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { position: relative; padding-left: 24px; }
+  .checklist li::before { content: ""; position: absolute; left: 0; top: 7px; width: 12px; height: 12px; border: 1.5px solid var(--line); border-radius: 3px; background: var(--panel); }
+  .checklist li.done::before { background: var(--ink); border-color: var(--ink); }
+  .checklist li.done::after { content: ""; position: absolute; left: 4px; top: 8px; width: 5px; height: 8px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .tag { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border-radius: 4px; background: var(--soft); color: var(--muted); }
+  .small { font-size: 12.5px; color: var(--muted); }
+  .mt8 { margin-top: 8px; } .mt12 { margin-top: 12px; } .mt16 { margin-top: 16px; } .mt20 { margin-top: 20px; } .mt24 { margin-top: 24px; } .mt32 { margin-top: 32px; }
+  .mb8 { margin-bottom: 8px; } .mb12 { margin-bottom: 12px; }
+  .nowrap { white-space: nowrap; }
+  .source-list { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .source-list a { color: var(--ink); }
+  .footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 1080px) {
+    .page { grid-template-columns: 1fr; }
+    .toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 20px 24px; }
+    .toc nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; }
+    .toc .group { margin-top: 8px; }
+    .toc-note { display: none; }
+    main { padding: 28px 24px 80px; }
+  }
+  @media (max-width: 840px) {
+    .grid2, .grid3, .grid4, .sim, .dash-grid, .split-list { grid-template-columns: 1fr; }
+    .sticky, .mock-preview { position: static; }
+    .fields { grid-template-columns: 1fr; }
+    .mock-nutrients { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 20px 16px 64px; }
+    .toc { padding: 16px; }
+    .toc nav { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 30px; }
+    .grid4 { grid-template-columns: 1fr 1fr; }
+  }
+  @media print {
+    .toc, .mock-bar { display: none; }
+    .page { grid-template-columns: 1fr; }
+    .sticky { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <aside class="toc">
+    <div class="toc-brand">Menuza · Pesquisa</div>
+    <div class="toc-title">Tabela nutricional no editor de produto</div>
+    <nav aria-label="Sumário">
+      <div class="group">Entender</div>
+      <a href="#resumo">Resumo executivo</a>
+      <a href="#campos">Campos obrigatórios</a>
+      <a href="#porcoes">Porção de referência</a>
+      <a href="#calculo">Arredondamento e %VD</a>
+      <a href="#lupa">Rotulagem frontal</a>
+      <a href="#formatos">Formatos da tabela</a>
+      <a href="#publicar">Publicar no site</a>
+      <div class="group">Desenhar</div>
+      <a href="#simulador">Simulador de rótulo</a>
+      <a href="#ui">Proposta de UI</a>
+      <a href="#dados">Modelo de dados</a>
+      <a href="#api">API e fluxo</a>
+      <a href="#escopo">Escopo e riscos</a>
+      <a href="#decisoes">Decisões em aberto</a>
+      <a href="#fontes">Fontes</a>
+    </nav>
+    <div class="toc-note">
+      Documento de apoio. A norma aplicável a alimento embalado é a RDC 429/2020 + IN 75/2020; o cardápio de restaurante tem outro enquadramento.
+    </div>
+  </aside>
+
+  <main>
+    <header class="hero">
+      <div class="kicker">Pesquisa regulatória + proposta de produto</div>
+      <h1>Tabela nutricional no produto: o que a norma exige, o que faz sentido no Menuza</h1>
+      <p class="lede">
+        Uma nova aba “Tabela nutricional” no editor de produto, com valores por 100 g como base,
+        porção de referência, %VD calculado e visualizações extras definidas pela loja. O documento
+        separa o que é obrigatório no rótulo de alimento embalado do que é uma escolha editorial do
+        cardápio — e mostra uma proposta de UI e de modelo de dados.
+      </p>
+      <div class="hero-meta">
+        <span class="chip"><strong>Base legal</strong> RDC 429/2020 · IN 75/2020</span>
+        <span class="chip"><strong>Campos</strong> 10 obrigatórios</span>
+        <span class="chip"><strong>Base</strong> porção + 100 g/mL</span>
+        <span class="chip"><strong>Data</strong> outubro de 2026</span>
+      </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <section id="resumo">
+      <div class="section-head">
+        <span class="section-num">01</span>
+        <h2>Resumo executivo</h2>
+        <p>O ponto mais importante antes de qualquer código: a tabela do Menuza não é automaticamente um rótulo ANVISA.</p>
+      </div>
+
+      <div class="grid2 mt24">
+        <div class="card">
+          <h3>O que a norma cobre</h3>
+          <p>
+            A RDC 429/2020 e a IN 75/2020 regulam a rotulagem nutricional de <strong>alimentos
+            embalados</strong>. Elas definem os 10 constituintes obrigatórios, a ordem, as unidades,
+            a porção de referência, o %VD, as regras de arredondamento e a rotulagem frontal (a “lupa”).
+          </p>
+          <p class="small">
+            Alimentos preparados e fracionados no estabelecimento estão entre as hipóteses em que a
+            tabela é <em>voluntária</em> (Anexo I da IN 75). Ou seja: um prato de restaurante não é,
+            por si só, obrigado a exibir tabela.
+          </p>
+        </div>
+        <div class="card">
+          <h3>O que isso significa para o Menuza</h3>
+          <p>
+            Exibir informação nutricional é uma configuração da loja (já previsto no PRODUCT.md §5).
+            Se a loja decidir publicar, o produto deve ser tratado com dois modos:
+          </p>
+          <ul>
+            <li><strong>Rótulo conforme:</strong> usa a porção de referência do Anexo V, os 10 campos e a formatação da IN 75. É o modo que pode ser chamado de “tabela nutricional” oficial.</li>
+            <li><strong>Informativo:</strong> valores aproximados, sem prometer conformidade. Serve para cardápio, não para embalagem.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout warn mt16">
+        <span class="mark">!</span>
+        <p>
+          <strong>Não deixe o lojista digitar %VD nem “300 g” como se fosse a porção oficial.</strong>
+          O %VD é derivado da porção declarada; 300 g é uma visão de simulação. Misturar os dois na
+          mesma tabela sem rótulo é o caminho mais curto para um número errado e uma reclamação.
+        </p>
+      </div>
+
+      <div class="grid3 mt16">
+        <div class="card tight">
+          <h4>Decisão 01</h4>
+          <p>Armazenar sempre por 100 g ou 100 mL. Porção, 300 g e %VD são cálculos de exibição.</p>
+        </div>
+        <div class="card tight">
+          <h4>Decisão 02</h4>
+          <p>Nunca persistir %VD. Calcular no servidor e no cliente com a mesma função pura.</p>
+        </div>
+        <div class="card tight">
+          <h4>Decisão 03</h4>
+          <p>Separar “tabela oficial” de “quantidade personalizada” com um selo visível na UI.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="campos">
+      <div class="section-head">
+        <span class="section-num">02</span>
+        <h2>Os 10 campos obrigatórios</h2>
+        <p>Ordem, unidade, VDR e %VD definidos pela RDC 429/2020 e pelo Anexo II da IN 75/2020.</p>
+      </div>
+
+      <div class="table-wrap mt20">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th>Constituinte</th>
+              <th>Unidade</th>
+              <th class="num">VDR (adulto)</th>
+              <th>%VD</th>
+              <th>Indentação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Valor energético</strong></td><td>kcal e kJ</td><td class="num">2.000 kcal</td><td>Sim</td><td>—</td></tr>
+            <tr><td>2</td><td><strong>Carboidratos</strong></td><td>g</td><td class="num">300 g</td><td>Sim</td><td>—</td></tr>
+            <tr><td>3</td><td class="indent1">Açúcares totais</td><td>g</td><td class="num">sem VDR</td><td>Não</td><td>1º nível</td></tr>
+            <tr><td>4</td><td class="indent2">Açúcares adicionados</td><td>g</td><td class="num">50 g</td><td>Sim</td><td>2º nível</td></tr>
+            <tr><td>5</td><td><strong>Proteínas</strong></td><td>g</td><td class="num">50 g</td><td>Sim</td><td>—</td></tr>
+            <tr><td>6</td><td><strong>Gorduras totais</strong></td><td>g</td><td class="num">65 g</td><td>Sim</td><td>—</td></tr>
+            <tr><td>7</td><td class="indent1">Gorduras saturadas</td><td>g</td><td class="num">20 g</td><td>Sim</td><td>1º nível</td></tr>
+            <tr><td>8</td><td class="indent1">Gorduras trans</td><td>g</td><td class="num">2 g</td><td>Sim</td><td>1º nível</td></tr>
+            <tr><td>9</td><td><strong>Fibras alimentares</strong></td><td>g</td><td class="num">25 g</td><td>Sim</td><td>—</td></tr>
+            <tr><td>10</td><td><strong>Sódio</strong></td><td>mg</td><td class="num">2.000 mg</td><td>Sim</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid2 mt16">
+        <div class="card">
+          <h4>Detalhes que costumam passar batido</h4>
+          <ul>
+            <li><strong>Açúcares totais não têm %VD.</strong> Declara-se o valor em gramas; a célula de %VD fica vazia ou com “—”.</li>
+            <li><strong>Gorduras trans têm VDR de 2 g</strong> — então o %VD existe, mesmo quando o valor é 0.</li>
+            <li><strong>Açúcares adicionados</strong> são um subconjunto dos totais e entram indentados no 2º nível.</li>
+            <li><strong>Energia em kcal e kJ.</strong> A conversão é 1 kcal = 4,184 kJ; ambos em inteiros.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>O que pode ser declarado além dos 10</h4>
+          <p>Opcionais, com VDR definido no Anexo II, quando a loja tiver o dado:</p>
+          <div class="grid2 mt8">
+            <ul class="small">
+              <li>Gorduras monoinsaturadas — 20 g</li>
+              <li>Gorduras poli-insaturadas — 20 g</li>
+              <li>Ômega 6 — 18 g</li>
+              <li>Ômega 3 — 4.000 mg</li>
+              <li>Colesterol — 300 mg</li>
+            </ul>
+            <ul class="small">
+              <li>Vitamina A — 800 µg RAE</li>
+              <li>Vitamina C — 100 mg</li>
+              <li>Cálcio — 1.000 mg</li>
+              <li>Ferro — 14 mg</li>
+              <li>Zinco — 11 mg</li>
+            </ul>
+          </div>
+          <p class="small mt8">Para o MVP, só os 10 obrigatórios já resolvem o caso de uso.</p>
+        </div>
+      </div>
+
+      <div class="callout mt16">
+        <span class="mark">i</span>
+        <p>
+          <strong>Quantidades não significativas</strong> são declaradas como 0 e têm limites próprios
+          (Anexo IV): energia ≤ 4 kcal; carboidratos, açúcares totais, proteínas, gorduras totais e
+          fibras ≤ 0,5 g; gorduras saturadas e trans ≤ 0,1 g; sódio ≤ 5 mg. A condição vale para
+          100 g/mL <em>e</em> para a porção.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="porcoes">
+      <div class="section-head">
+        <span class="section-num">03</span>
+        <h2>Porção de referência: o que o lojista escolhe</h2>
+        <p>A porção não é livre. O Anexo V da IN 75 define o tamanho por grupo de alimento; a medida caseira vem do Anexo VII.</p>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h3>Exemplos por grupo</h3>
+          <div class="table-wrap mt8">
+            <table style="min-width:0">
+              <thead><tr><th>Produto</th><th class="num">Porção</th><th>Medida caseira</th></tr></thead>
+              <tbody>
+                <tr><td>Pão de queijo / pão congelado sem recheio</td><td class="num">50 g</td><td>Unidade</td></tr>
+                <tr><td>Pão de forma fatiado</td><td class="num">50 g</td><td>Unidade ou fatia</td></tr>
+                <tr><td>Biscoito doce</td><td class="num">30 g</td><td>Unidades</td></tr>
+                <tr><td>Bolo sem recheio</td><td class="num">60 g</td><td>Fatia</td></tr>
+                <tr><td>Chocolate / bombom</td><td class="num">25 g</td><td>Unidade ou fração</td></tr>
+                <tr><td>Iogurte</td><td class="num">200 g</td><td>Copo</td></tr>
+                <tr><td>Queijo (exceto cottage/ricota/minas)</td><td class="num">30 g</td><td>Fatia ou colher</td></tr>
+                <tr><td>Suco / néctar / refrigerante</td><td class="num">200 mL</td><td>Copo</td></tr>
+                <tr><td>Óleo vegetal</td><td class="num">13 mL</td><td>Colher de sopa</td></tr>
+                <tr><td>Prato preparado pronto/semipronto</td><td class="num">100 g</td><td>Unidade ou fração</td></tr>
+                <tr><td>Marmita / refeição preparada no local</td><td class="num">100 g</td><td>Unidade ou fração</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small mt8">A lista completa tem dezenas de linhas; a UI não precisa reproduzi-la no MVP.</p>
+        </div>
+
+        <div class="card">
+          <h3>Como modelar sem virar uma tabela enorme</h3>
+          <ol class="mt8" style="font-size:14px">
+            <li><strong>Campo livre com sugestão.</strong> O lojista digita a porção em g/mL e a medida caseira. O sistema mostra uma dica do Anexo V a partir da subcategoria, mas não bloqueia.</li>
+            <li><strong>Validação suave.</strong> Se a porção divergir muito do valor de referência da categoria, um aviso explica o risco — sem impedir o salvamento.</li>
+            <li><strong>Base fixa em 100 g.</strong> Qualquer porção informada é convertida para a base; a tabela oficial sempre declara as duas colunas.</li>
+            <li><strong>Medida caseira é texto.</strong> “2 colheres de sopa”, “1 fatia”, “1 unidade”. O Anexo VII fixa capacidades (xícara 200 ml, colher de sopa 10 ml, colher de chá 5 ml).</li>
+          </ol>
+          <div class="callout mt16">
+            <span class="mark">↳</span>
+            <p class="small">
+              Se o produto tem variações de peso (300 g, 500 g), a porção de referência continua sendo
+              a do Anexo V. O peso da variação não substitui a porção.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="calculo">
+      <div class="section-head">
+        <span class="section-num">04</span>
+        <h2>Arredondamento, %VD e energia</h2>
+        <p>As regras do Anexo III são simples, mas têm faixas. Elas precisam existir em uma função pura, compartilhada entre painel e loja.</p>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h3>Faixas de arredondamento</h3>
+          <div class="table-wrap mt8">
+            <table style="min-width:0">
+              <thead><tr><th>Faixa</th><th>Regra</th><th>Exibição</th></tr></thead>
+              <tbody>
+                <tr><td>≥ 10</td><td>Inteiro: decimal &lt; 5 mantém; ≥ 5 sobe 1.</td><td>Inteiro</td></tr>
+                <tr><td>≥ 1 e &lt; 10</td><td>Uma casa decimal; segunda casa decide.</td><td>1 decimal, ou inteiro se o decimal for 0</td></tr>
+                <tr><td>&lt; 1 g</td><td>Uma casa decimal.</td><td>1 decimal</td></tr>
+                <tr><td>&lt; 1 mg/µg</td><td>Duas casas; terceira decide.</td><td>2 decimais, ou 1 se a segunda for 0</td></tr>
+                <tr><td>Energia e %VD</td><td>Inteiros.</td><td>Inteiro</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Cálculo do %VD</h3>
+          <p class="small">
+            O %VD é calculado sobre a quantidade <strong>já arredondada</strong> da porção, dividida
+            pelo VDR do constituinte:
+          </p>
+          <pre class="mt12"><span class="c">// valores por porção, já arredondados</span>
+percentual = Math.round(
+  (valorPorcao / vdr) * 100
+)
+
+<span class="c">// açúcares totais não têm VDR</span>
+<span class="c">// energia: vdr = 2000 kcal</span></pre>
+          <p class="small mt12">
+            Consequência prática: um valor muito pequeno pode arredondar para 0 g na porção e o %VD
+            ficar 0%. Isso é esperado e não é bug.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid3 mt16">
+        <div class="card tight">
+          <h4>Energia a partir dos macros</h4>
+          <p class="small">Anexo XXII: carboidratos 4 kcal/g, proteínas 4, gorduras 9, fibras solúveis 2.</p>
+          <pre class="mt12" style="font-size:11.5px">kcal = carbs*4 + prot*4
+     + fat*9 + fiber*2</pre>
+        </div>
+        <div class="card tight">
+          <h4>Conversão para kJ</h4>
+          <p class="small">Multiplique kcal por 4,184 e arredonde para inteiro.</p>
+          <pre class="mt12" style="font-size:11.5px">kJ = Math.round(kcal * 4.184)</pre>
+        </div>
+        <div class="card tight">
+          <h4>Nunca some %VD</h4>
+          <p class="small">%VD é por constituinte. A soma das colunas não representa nada e não deve aparecer na UI.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="lupa">
+      <div class="section-head">
+        <span class="section-num">05</span>
+        <h2>Rotulagem frontal (a “lupa”)</h2>
+        <p>Só três nutrientes geram alerta, com limites diferentes para sólidos e líquidos, sempre por 100 g ou 100 mL.</p>
+      </div>
+
+      <div class="table-wrap mt20">
+        <table>
+          <thead><tr><th>Nutriente</th><th class="num">Sólido / semissólido (por 100 g)</th><th class="num">Líquido (por 100 mL)</th></tr></thead>
+          <tbody>
+            <tr><td>Açúcares adicionados</td><td class="num">≥ 15 g</td><td class="num">≥ 7,5 g</td></tr>
+            <tr><td>Gorduras saturadas</td><td class="num">≥ 6 g</td><td class="num">≥ 3 g</td></tr>
+            <tr><td>Sódio</td><td class="num">≥ 600 mg</td><td class="num">≥ 300 mg</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid2 mt16">
+        <div class="card">
+          <h3>Como calcular no produto</h3>
+          <p class="small">
+            Use os valores por 100 g/mL, não os da porção. Se dois ou três limites forem atingidos,
+            os blocos aparecem combinados. O alerta é sempre “ALTO EM …”, nunca “contém”.
+          </p>
+          <div class="lupa-row mt12">
+            <div class="lupa-badge"><span>Alto em</span>Açúcar adicionado</div>
+            <div class="lupa-badge"><span>Alto em</span>Gordura saturada</div>
+            <div class="lupa-badge"><span>Alto em</span>Sódio</div>
+          </div>
+          <p class="small mt12">
+            No Menuza, a lupa é um <strong>indicador informativo</strong> derivado dos dados. Ela não
+            substitui a rotulagem obrigatória da embalagem.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Quando não se aplica</h3>
+          <p class="small">
+            O Anexo XVI veda a lupa para categorias como frutas, hortaliças, carnes e pescados sem
+            adição, leites, queijos, azeites, sal, suplementos e bebidas alcoólicas. Para um cardápio,
+            o mais seguro é exibir a lupa apenas quando o lojista marcar o produto como
+            “alimento embalado”.
+          </p>
+          <div class="callout warn mt12">
+            <span class="mark">!</span>
+            <p class="small">Não gere lupa para prato preparado no estabelecimento sem revisão. O enquadramento é outro.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="formatos">
+      <div class="section-head">
+        <span class="section-num">06</span>
+        <h2>Formatos possíveis da tabela</h2>
+        <p>A IN 75 prevê cinco modelos. No Menuza, o formato é uma decisão de renderização — o dado é o mesmo.</p>
+      </div>
+
+      <div class="grid3 mt20">
+        <div class="card tight">
+          <h4>Vertical</h4>
+          <p class="small">Padrão. Bom para painéis altos: colunas 100 g, porção e %VD.</p>
+          <div class="anvisa mt12" style="font-size:9px">
+            <div class="title" style="font-size:10px">Informação nutricional</div>
+            <div class="sub" style="font-size:8.5px">Porção: 30 g (2 colheres)</div>
+            <table style="font-size:9px"><thead><tr><th>Constituinte</th><th class="num">100 g</th><th class="num">30 g</th><th class="num">%VD</th></tr></thead>
+            <tbody><tr><td>Valor energético</td><td class="num">320</td><td class="num">96</td><td class="num">5</td></tr><tr><td>Carboidratos</td><td class="num">38</td><td class="num">11</td><td class="num">4</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="card tight">
+          <h4>Horizontal</h4>
+          <p class="small">Para painéis largos e baixos. Os constituintes viram colunas.</p>
+          <div class="anvisa mt12" style="font-size:9px">
+            <div class="title" style="font-size:10px">Informação nutricional</div>
+            <table style="font-size:8.5px"><thead><tr><th>Constituinte</th><th class="num">Valor energético</th><th class="num">Carboidratos</th></tr></thead><tbody><tr><td>100 g</td><td class="num">320</td><td class="num">38</td></tr><tr><td>30 g</td><td class="num">96</td><td class="num">11</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="card tight">
+          <h4>Quebrado</h4>
+          <p class="small">Vertical ou horizontal dividido em blocos, para economizar área.</p>
+          <div class="anvisa mt12" style="font-size:9px">
+            <div class="title" style="font-size:10px">Informação nutricional</div>
+            <table style="font-size:8.5px"><thead><tr><th>Constituinte</th><th class="num">100 g</th></tr></thead><tbody><tr><td>Valor energético</td><td class="num">320</td></tr><tr><td>Carboidratos</td><td class="num">38</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="card tight">
+          <h4>Linear</h4>
+          <p class="small">Texto corrido. Só para embalagens com área de rotulagem ≤ 100 cm².</p>
+          <div class="anvisa mt12" style="font-size:8.5px; line-height:1.5">
+            <div class="title" style="font-size:9px; text-align:left">Informação nutricional</div>
+            <p class="mt8" style="font-size:8.5px">Por 100 g (porção de 30 g, %VD*): Valor energético 320 kcal (96 kcal, 5%); Carboidratos 38 g (11 g, 4%); Proteínas 8,5 g (2,6 g, 5%); Gorduras totais 12 g (3,6 g, 6%); Sódio 420 mg (126 mg, 6%).</p>
+          </div>
+        </div>
+        <div class="card tight">
+          <h4>Agregado</h4>
+          <p class="small">Para embalagens múltiplas com valores diferentes por unidade.</p>
+          <div class="anvisa mt12" style="font-size:8.5px">
+            <div class="title" style="font-size:9px">Informação nutricional</div>
+            <p class="mt8">Unidade 1 / Unidade 2 — declaração por unidade e por 100 g.</p>
+          </div>
+        </div>
+        <div class="card tight">
+          <h4>Simplificado</h4>
+          <p class="small">Quando não há quantidades significativas, a tabela pode ser substituída pela frase legal.</p>
+          <div class="anvisa mt12" style="font-size:8.5px">
+            <p>“Não contém quantidades significativas de carboidratos, proteínas, gorduras totais, gorduras saturadas, gorduras trans, fibras alimentares e sódio.”</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout mt16">
+        <span class="mark">↳</span>
+        <p>
+          <strong>Recomendação:</strong> no MVP, renderizar só o modelo vertical. É o que o cardápio
+          precisa e o que cabe na largura de um celular. Os outros formatos viram uma opção futura de
+          exportação/impressão.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="publicar">
+      <div class="section-head">
+        <span class="section-num">07</span>
+        <h2>O que é necessário para publicar no site</h2>
+        <p>Além dos 10 nutrientes, uma tabela exibida ao consumidor precisa de contexto. A lista abaixo separa o que é da tabela do que é rotulagem geral.</p>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h3>Dentro da tabela</h3>
+          <ul class="checklist mt8">
+            <li class="done">Os 10 constituintes obrigatórios, na ordem</li>
+            <li class="done">Valores por 100 g/mL e por porção</li>
+            <li class="done">Porção com medida caseira</li>
+            <li class="done">Número de porções por embalagem</li>
+            <li class="done">%VD por porção, com a nota de rodapé</li>
+            <li class="done">Título “INFORMAÇÃO NUTRICIONAL”</li>
+            <li class="done">Fonte e data da última atualização (recomendado, não exigido pela tabela)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Fora da tabela, mas relevante ao consumidor</h3>
+          <ul class="checklist mt8">
+            <li>Lista de ingredientes</li>
+            <li>Alergênicos (RDC 727/2022)</li>
+            <li>“Contém glúten” / “Não contém glúten” (Lei 10.674/2003)</li>
+            <li>Lactose, quando aplicável</li>
+            <li>Validade, conservação e modo de preparo</li>
+            <li>Origem / fabricante, para embalados</li>
+          </ul>
+          <p class="small mt12">No Menuza, esses itens pedem uma aba própria (“Alergênicos e restrições”), não uma linha extra na tabela.</p>
+        </div>
+      </div>
+
+      <div class="callout danger mt16">
+        <span class="mark">!</span>
+        <p>
+          <strong>Não prometa conformidade automática.</strong> O sistema pode validar campos, faixas e
+          arredondamento; não pode validar a análise laboratorial nem a responsabilidade técnica. A UI
+          deve dizer quem responde pelo dado e registrar a fonte.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="simulador">
+      <div class="section-head">
+        <span class="section-num">08</span>
+        <h2>Simulador de rótulo</h2>
+        <p>Edite os valores por 100 g, a porção e a visualização. O rótulo e a lupa são recalculados na hora, com as regras da IN 75.</p>
+      </div>
+
+      <div class="sim mt20">
+        <div class="card form-card">
+          <div class="subsection-title">
+            <h4>Base da informação</h4>
+            <div class="seg" role="group" aria-label="Base da informação">
+              <button type="button" data-basis="solid" aria-pressed="true">Sólido · 100 g</button>
+              <button type="button" data-basis="liquid" aria-pressed="false">Líquido · 100 mL</button>
+            </div>
+          </div>
+          <p class="field-note">Os valores abaixo são sempre por 100 g ou 100 mL. A porção é derivada.</p>
+
+          <div class="divider"></div>
+
+          <div class="subsection-title"><h4>Porção de referência</h4><span class="badge">Anexo V</span></div>
+          <div class="fields">
+            <label class="field">
+              <span>Porção</span>
+              <span class="input-wrap"><input id="portion" type="number" min="1" step="1" value="30"><span class="unit" id="portion-unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Porções por embalagem</span>
+              <span class="input-wrap"><input id="servings" type="number" min="1" step="1" value="4"><span class="unit">un.</span></span>
+            </label>
+            <label class="field wide">
+              <span>Medida caseira</span>
+              <span class="input-wrap"><input id="measure" type="text" value="2 colheres de sopa"></span>
+            </label>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="subsection-title"><h4>Nutrientes por 100 g</h4><span class="badge">10 obrigatórios</span></div>
+          <div class="fields">
+            <label class="field">
+              <span>Valor energético</span>
+              <span class="input-wrap"><input data-nutrient="energy" type="number" min="0" step="1" value="320"><span class="unit">kcal</span></span>
+            </label>
+            <label class="field">
+              <span>Carboidratos</span>
+              <span class="input-wrap"><input data-nutrient="carbs" type="number" min="0" step="0.1" value="38"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Açúcares totais</span>
+              <span class="input-wrap"><input data-nutrient="totalSugars" type="number" min="0" step="0.1" value="2.4"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Açúcares adicionados</span>
+              <span class="input-wrap"><input data-nutrient="addedSugars" type="number" min="0" step="0.1" value="1.2"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Proteínas</span>
+              <span class="input-wrap"><input data-nutrient="protein" type="number" min="0" step="0.1" value="8.5"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Gorduras totais</span>
+              <span class="input-wrap"><input data-nutrient="totalFat" type="number" min="0" step="0.1" value="12"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Gorduras saturadas</span>
+              <span class="input-wrap"><input data-nutrient="satFat" type="number" min="0" step="0.1" value="4.1"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Gorduras trans</span>
+              <span class="input-wrap"><input data-nutrient="transFat" type="number" min="0" step="0.1" value="0"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Fibras alimentares</span>
+              <span class="input-wrap"><input data-nutrient="fiber" type="number" min="0" step="0.1" value="2.1"><span class="unit">g</span></span>
+            </label>
+            <label class="field">
+              <span>Sódio</span>
+              <span class="input-wrap"><input data-nutrient="sodium" type="number" min="0" step="1" value="420"><span class="unit">mg</span></span>
+            </label>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="subsection-title"><h4>Visualização</h4><span class="badge" id="view-badge">porção</span></div>
+          <div class="fields">
+            <div class="field wide">
+              <span id="view-label">Coluna de comparação</span>
+              <span class="seg" role="group" aria-labelledby="view-label">
+                <button type="button" data-view="portion" aria-pressed="true">Porção</button>
+                <button type="button" data-view="per100" aria-pressed="false">100 g</button>
+                <button type="button" data-view="custom" aria-pressed="false">Personalizada</button>
+              </span>
+            </div>
+            <label class="field" id="custom-field" style="display:none">
+              <span>Quantidade personalizada</span>
+              <span class="input-wrap"><input id="custom" type="number" min="1" step="1" value="300"><span class="unit" id="custom-unit">g</span></span>
+            </label>
+          </div>
+          <p class="field-note" id="view-note">A tabela oficial usa a porção de referência e 100 g.</p>
+        </div>
+
+        <div class="sticky">
+          <div class="card">
+            <div class="preview-head">
+              <div>
+                <h4>Prévia do rótulo</h4>
+                <p>Atualiza enquanto você digita</p>
+              </div>
+              <span class="badge" id="preview-mode">Oficial</span>
+            </div>
+
+            <div class="anvisa mt12" id="label">
+              <div class="title">Informação nutricional</div>
+              <div class="sub" id="label-servings">Porções por embalagem: cerca de 4</div>
+              <div class="sub" id="label-portion">Porção: 30 g (2 colheres de sopa)</div>
+              <table>
+                <thead id="label-head"></thead>
+                <tbody id="label-body"></tbody>
+              </table>
+              <div class="foot" id="label-foot">*Percentual de valores diários fornecidos pela porção.</div>
+            </div>
+
+            <div class="mt12">
+              <h4 style="font-size:12px">Rotulagem frontal</h4>
+              <div class="lupa-row mt8" id="lupa-row"></div>
+            </div>
+          </div>
+
+          <div class="warnings" id="warnings"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="ui">
+      <div class="section-head">
+        <span class="section-num">09</span>
+        <h2>Proposta de UI</h2>
+        <p>A aba “Tabela nutricional” entra entre Produto e SEO. O formulário fica à esquerda e a prévia fica fixa à direita — o lojista vê o efeito de cada número.</p>
+      </div>
+
+      <div class="mock mt20">
+        <div class="mock-bar"><span class="dots"><i></i><i></i><i></i></span> dashboard / catálogo / produtos / pão de queijo</div>
+        <div class="mock-body dash-mock">
+          <div class="dash-tabs">
+            <span class="dash-tab">Produto</span>
+            <span class="dash-tab active">Tabela nutricional</span>
+            <span class="dash-tab">SEO</span>
+            <span class="dash-tab">Desempenho</span>
+          </div>
+
+          <div class="dash-grid">
+            <div>
+              <div class="panel">
+                <div class="subsection-title">
+                  <div><h4>Base da informação</h4><div class="help">Sempre por 100 g ou 100 mL.</div></div>
+                  <div class="seg" style="font-size:10px"><button type="button" aria-pressed="true">Sólido</button><button type="button" aria-pressed="false">Líquido</button></div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="subsection-title"><div><h4>Porção de referência</h4><div class="help">Anexo V da IN 75. Sugestão: 50 g para pão congelado.</div></div><span class="badge">sugerido 50 g</span></div>
+                <div class="mock-row">
+                  <div class="mock-field"><span>Porção</span><div class="mock-input">50 <em>g</em></div></div>
+                  <div class="mock-field"><span>Porções por embalagem</span><div class="mock-input">4 <em>un.</em></div></div>
+                </div>
+                <div class="mock-row">
+                  <div class="mock-field" style="grid-column:1/-1"><span>Medida caseira</span><div class="mock-input">1 unidade <em></em></div></div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="subsection-title"><div><h4>Nutrientes por 100 g</h4><div class="help">O %VD ao lado é calculado sobre a porção.</div></div><span class="badge">10/10</span></div>
+                <div class="mock-nutrients">
+                  <div class="mock-field"><span>Valor energético</span><div class="mock-input">320 <em>kcal · 5%</em></div></div>
+                  <div class="mock-field"><span>Carboidratos</span><div class="mock-input">38 <em>g · 6%</em></div></div>
+                  <div class="mock-field"><span>Açúcares totais</span><div class="mock-input">2,4 <em>g · —</em></div></div>
+                  <div class="mock-field"><span>Açúcares adicionados</span><div class="mock-input">1,2 <em>g · 1%</em></div></div>
+                  <div class="mock-field"><span>Proteínas</span><div class="mock-input">8,5 <em>g · 9%</em></div></div>
+                  <div class="mock-field"><span>Gorduras totais</span><div class="mock-input">12 <em>g · 9%</em></div></div>
+                  <div class="mock-field"><span>Gorduras saturadas</span><div class="mock-input">4,1 <em>g · 10%</em></div></div>
+                  <div class="mock-field"><span>Sódio</span><div class="mock-input">420 <em>mg · 11%</em></div></div>
+                </div>
+                <div class="mt12"><span class="mock-btn ghost">Adicionar nutriente opcional</span></div>
+              </div>
+
+              <div class="panel">
+                <div class="subsection-title"><div><h4>Publicação</h4><div class="help">Exibir a tabela na página do produto.</div></div><span class="switch"></span></div>
+                <div class="mock-row">
+                  <div class="mock-field"><span>Fonte dos dados</span><div class="mock-input">Análise laboratorial <em>▾</em></div></div>
+                  <div class="mock-field"><span>Tipo</span><div class="mock-input">Rótulo conforme <em>▾</em></div></div>
+                </div>
+              </div>
+
+              <div class="mt12" style="display:flex; gap:8px; justify-content:flex-end">
+                <span class="mock-btn ghost">Descartar</span>
+                <span class="mock-btn">Salvar alterações</span>
+              </div>
+            </div>
+
+            <div class="mock-preview">
+              <div class="panel">
+                <div class="preview-head">
+                  <div><h4>Prévia do rótulo</h4><div class="help">Porção · 100 g · personalizada</div></div>
+                  <span class="badge ok">válido</span>
+                </div>
+                <div class="anvisa mt12">
+                  <div class="title">Informação nutricional</div>
+                  <div class="sub">Porções por embalagem: cerca de 4</div>
+                  <div class="sub">Porção: 50 g (1 unidade)</div>
+                  <table>
+                    <thead><tr><th>Constituinte</th><th class="num">100 g</th><th class="num">50 g</th><th class="num">%VD*</th></tr></thead>
+                    <tbody>
+                      <tr><td>Valor energético</td><td class="num">320 kcal<br>= 1.339 kJ</td><td class="num">160 kcal<br>= 669 kJ</td><td class="num">8</td></tr>
+                      <tr><td>Carboidratos</td><td class="num">38 g</td><td class="num">19 g</td><td class="num">6</td></tr>
+                      <tr><td class="indent1">Açúcares totais</td><td class="num">2,4 g</td><td class="num">1,2 g</td><td class="num">—</td></tr>
+                      <tr><td class="indent2">Açúcares adicionados</td><td class="num">1,2 g</td><td class="num">0,6 g</td><td class="num">1</td></tr>
+                      <tr><td>Proteínas</td><td class="num">8,5 g</td><td class="num">4,3 g</td><td class="num">9</td></tr>
+                      <tr><td>Gorduras totais</td><td class="num">12 g</td><td class="num">6 g</td><td class="num">9</td></tr>
+                      <tr><td class="indent1">Gorduras saturadas</td><td class="num">4,1 g</td><td class="num">2,1 g</td><td class="num">10</td></tr>
+                      <tr><td class="indent1">Gorduras trans</td><td class="num">0 g</td><td class="num">0 g</td><td class="num">0</td></tr>
+                      <tr><td>Fibras alimentares</td><td class="num">2,1 g</td><td class="num">1,1 g</td><td class="num">4</td></tr>
+                      <tr><td>Sódio</td><td class="num">420 mg</td><td class="num">210 mg</td><td class="num">11</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="foot">*Percentual de valores diários fornecidos pela porção.</div>
+                </div>
+                <div class="mt12 lupa-row">
+                  <div class="lupa-badge"><span>Alto em</span>Sódio</div>
+                </div>
+              </div>
+              <div class="panel">
+                <div class="help">A prévia é a mesma função de renderização usada na loja. Nada de duas implementações.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid3 mt20">
+        <div class="card tight">
+          <div class="annotation"><span class="pin">1</span><p><strong>Base primeiro.</strong> A escolha sólido/líquido muda a unidade de 100 g para 100 mL e os limites da lupa.</p></div>
+        </div>
+        <div class="card tight">
+          <div class="annotation"><span class="pin">2</span><p><strong>Porção sugerida.</strong> A subcategoria alimenta a dica do Anexo V; o lojista pode ajustar.</p></div>
+        </div>
+        <div class="card tight">
+          <div class="annotation"><span class="pin">3</span><p><strong>%VD ao vivo.</strong> Cada campo mostra o efeito na porção — sem o lojista fazer conta.</p></div>
+        </div>
+      </div>
+
+      <h3 class="mt32">Na loja</h3>
+      <p class="small mt8" style="max-width:70ch">A tabela aparece só quando publicada e completa. A visão padrão é a porção; “100 g” é uma segunda opção. A lupa fica ao lado do título, como selo informativo.</p>
+
+      <div class="mock mt16">
+        <div class="mock-bar"><span class="dots"><i></i><i></i><i></i></span> loja.menuza.com/menu/pao-de-queijo</div>
+        <div class="mock-body store-mock">
+          <div class="store-wrap">
+            <div class="store-title">Pão de queijo</div>
+            <p class="store-desc">Pão de queijo artesanal, assado na hora. Pacote com 4 unidades.</p>
+            <div class="store-card">
+              <div class="preview-head">
+                <div><h4>Informação nutricional</h4><div class="help">Porção de 50 g (1 unidade)</div></div>
+                <div class="seg" style="font-size:10px"><button type="button" aria-pressed="true">Porção</button><button type="button" aria-pressed="false">100 g</button></div>
+              </div>
+              <table class="mt12" style="font-size:12px">
+                <thead><tr><th>Constituinte</th><th class="num">50 g</th><th class="num">%VD*</th></tr></thead>
+                <tbody>
+                  <tr><td>Valor energético</td><td class="num">160 kcal = 669 kJ</td><td class="num">8%</td></tr>
+                  <tr><td>Carboidratos</td><td class="num">19 g</td><td class="num">6%</td></tr>
+                  <tr><td class="indent1">Açúcares totais</td><td class="num">1,2 g</td><td class="num">—</td></tr>
+                  <tr><td class="indent2">Açúcares adicionados</td><td class="num">0,6 g</td><td class="num">1%</td></tr>
+                  <tr><td>Proteínas</td><td class="num">4,3 g</td><td class="num">9%</td></tr>
+                  <tr><td>Gorduras totais</td><td class="num">6 g</td><td class="num">9%</td></tr>
+                  <tr><td class="indent1">Gorduras saturadas</td><td class="num">2,1 g</td><td class="num">10%</td></tr>
+                  <tr><td class="indent1">Gorduras trans</td><td class="num">0 g</td><td class="num">0%</td></tr>
+                  <tr><td>Fibras alimentares</td><td class="num">1,1 g</td><td class="num">4%</td></tr>
+                  <tr><td>Sódio</td><td class="num">210 mg</td><td class="num">11%</td></tr>
+                </tbody>
+              </table>
+              <p class="help mt8">*Percentual de valores diários fornecidos pela porção. Valores por 100 g disponíveis acima.</p>
+              <div class="mt12 lupa-row"><div class="lupa-badge"><span>Alto em</span>Sódio</div></div>
+            </div>
+            <p class="help mt12">Fonte: análise laboratorial do fornecedor · atualizado em 12/10/2026.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h4>Regras de exibição</h4>
+          <ul class="small mt8">
+            <li>Publicar exige os 10 constituintes, porção &gt; 0, porções por embalagem e medida caseira.</li>
+            <li>O servidor valida a linha mesclada; salvar uma tabela publicada e incompleta é recusado.</li>
+            <li>Não publicado = nada aparece na loja, nem um placeholder.</li>
+            <li>“Personalizada” é só prévia; a loja mostra a porção oficial + 100 g/mL.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Acessibilidade e mobile</h4>
+          <ul class="small mt8">
+            <li>Tabela semântica com <code>&lt;caption&gt;</code> e <code>scope</code>.</li>
+            <li>Indentação visual + <code>aria-level</code> não se aplicam; use uma coluna “nível” apenas no texto alternativo.</li>
+            <li><strong>375 px:</strong> a tabela tem layout fixo com larguras explícitas; as quatro colunas cabem no card sem rolagem horizontal. A energia empilha <code>kcal</code> sobre <code>kJ</code>.</li>
+            <li>A barra de abas rola dentro de um wrapper com <code>overflow-y-hidden</code>; o <code>overflow-x-auto</code> não fica no <code>TabsList</code>, senão o indicador de 5 px cria uma barra vertical.</li>
+            <li>A prévia fica abaixo do formulário no celular e só é sticky a partir de <code>lg</code>.</li>
+            <li>Não depender só de cor para a lupa: o texto “Alto em” já carrega o significado.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="dados">
+      <div class="section-head">
+        <span class="section-num">10</span>
+        <h2>Modelo de dados: brainstorm de opções</h2>
+        <p>Três desenhos possíveis. A recomendação é a opção B, com nutrientes inteiros em miligramas para evitar <code>Decimal</code> no caminho de leitura.</p>
+      </div>
+
+      <div class="grid3 mt20">
+        <div class="card">
+          <h4>A · Colunas no Product</h4>
+          <p class="small">Dez colunas novas na tabela <code>Product</code>.</p>
+          <p class="small mt8"><strong>Prós:</strong> zero join, migration simples.</p>
+          <p class="small"><strong>Contras:</strong> incha o produto, mistura responsabilidades e dificulta versionar/auditar a fonte. Fica ruim quando entram vitaminas e minerais.</p>
+        </div>
+        <div class="card" style="border-color:var(--ink)">
+          <h4>B · ProductNutrition 1:1</h4>
+          <p class="small">Tabela própria com <code>productId</code> único e os campos nutricionais.</p>
+          <p class="small mt8"><strong>Prós:</strong> separação limpa, leitura opcional, fácil de evoluir (opcionais, versões, fonte).</p>
+          <p class="small"><strong>Contras:</strong> um join a mais; exige decidir o escopo (produto x variação).</p>
+        </div>
+        <div class="card">
+          <h4>C · Perfil reutilizável</h4>
+          <p class="small">Um <code>NutritionProfile</code> compartilhado por vários produtos.</p>
+          <p class="small mt8"><strong>Prós:</strong> ótimo para franquias/receitas repetidas.</p>
+          <p class="small"><strong>Contras:</strong> complexidade cedo demais. O MVP não tem catálogo compartilhado entre lojas.</p>
+        </div>
+      </div>
+
+      <div class="callout ok mt16">
+        <span class="mark">✓</span>
+        <p><strong>Recomendação:</strong> opção B. Nutrientes por 100 g/mL; porção e %VD derivados. Guardar a fonte e a data de referência.</p>
+      </div>
+
+      <h3 class="mt32">Rascunho do contrato Prisma</h3>
+      <p class="small mt8" style="max-width:70ch">
+        Seguindo o padrão do repositório: enums ASCII, texto + CHECK, e nenhum <code>Decimal</code> no caminho de leitura. Gramas viram miligramas inteiras; energia fica em kcal inteira.
+      </p>
+
+      <pre class="mt12"><span class="c">// enum nutrition_basis { solid, liquid }</span>
+<span class="c">// enum nutrition_source { lab, supplier_label, database, estimate }</span>
+
+model ProductNutrition {
+  productId        String   @id
+  tenantId         String
+  basis            nutrition_basis
+  source           nutrition_source
+  referenceAt      Timestamp(3)?
+
+  <span class="c">// por 100 g (sólido) ou 100 mL (líquido)</span>
+  energyKcal       Int
+  carbsMg          Int
+  totalSugarsMg    Int
+  addedSugarsMg    Int
+  proteinMg        Int
+  totalFatMg       Int
+  saturatedFatMg   Int
+  transFatMg       Int
+  fiberMg          Int
+  sodiumMg         Int
+
+  <span class="c">// porção declarada</span>
+  portionMg        Int      <span class="c">// g ou mL conforme basis</span>
+  householdMeasure String?
+  servingsPerPack  Int?
+
+  <span class="c">// exibição</span>
+  published        Boolean  @default(false)
+  displayAmounts   Int[]    <span class="c">// opcional: 100, 300, 500…</span>
+  notes            String?
+
+  tenant   Tenant  @relation(...)
+  product  Product @relation(...)
+
+  @@index([tenantId])
+  @@check(expression: "\"energyKcal\" &gt;= 0", name: "nutrition_energy_non_negative")
+  @@check(expression: "\"portionMg\" &gt; 0", name: "nutrition_portion_positive")
+  @@check(expression: "\"addedSugarsMg\" &lt;= \"totalSugarsMg\"", name: "nutrition_added_lte_total")
+  @@check(expression: "\"saturatedFatMg\" + \"transFatMg\" &lt;= \"totalFatMg\"", name: "nutrition_fat_sum")
+}</pre>
+
+      <div class="grid2 mt16">
+        <div class="card">
+          <h4>Por que inteiros em mg</h4>
+          <ul class="small mt8">
+            <li>Evita <code>Decimal</code> em toda leitura e no wire (mesma lógica do dinheiro em centavos, ADR-0006).</li>
+            <li>Precisão de 0,001 g — mais do que a rotulagem exige.</li>
+            <li>Conversão para gramas só na borda de exibição.</li>
+            <li>CHECKs de coerência ficam triviais no banco.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>O que fica de fora do MVP</h4>
+          <ul class="small mt8">
+            <li>Vitaminas e minerais (tabela filha ou JSON validado).</li>
+            <li>Nutrição por variação (300 g x 500 g).</li>
+            <li>Histórico de versões da tabela.</li>
+            <li>Importação por foto/OCR e base TACO/TBCA.</li>
+            <li>Alergênicos e glúten (aba própria).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="api">
+      <div class="section-head">
+        <span class="section-num">11</span>
+        <h2>API e fluxo de salvamento</h2>
+        <p>Duas decisões de integração: a leitura entra no detalhe do produto; a escrita fica separada para não contaminar o patch do formulário principal.</p>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h3>Contrato</h3>
+          <pre class="mt12"><span class="c">// leitura: junto do produto</span>
+getProduct → {
+  product: {
+    ...,
+    nutrition: PanelProductNutrition | null
+  }
+}
+
+<span class="c">// escrita: parcial, como updateProduct</span>
+saveProductNutrition({
+  storeSlug,
+  productId,
+  basis?, energyKcal?, ...,
+  portionMg?, householdMeasure?,
+  published?, displayAmounts?
+}) → { nutrition }</pre>
+          <p class="small mt12">
+            Campos omitidos ficam como estão. <code>null</code> limpa o opcional. O servidor
+            recalcula a validação de publicação e devolve o registro.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Validação no servidor</h3>
+          <ul class="small mt8">
+            <li>Todos os 10 nutrientes ≥ 0.</li>
+            <li><code>addedSugars ≤ totalSugars</code>.</li>
+            <li><code>satFat + transFat ≤ totalFat</code>.</li>
+            <li><code>portionMg &gt; 0</code>; <code>servingsPerPack ≥ 1</code> quando informado.</li>
+            <li><code>published</code> só é aceito com os 10 campos e a porção preenchidos.</li>
+            <li>Energia divergente dos macros: aviso, não erro (a análise pode usar método diferente).</li>
+          </ul>
+          <p class="small mt12">A mesma função de arredondamento/%VD usada na prévia roda no servidor para o payload público.</p>
+        </div>
+      </div>
+
+      <div class="steps mt24">
+        <div class="step">
+          <div><h4>Lojista abre a aba</h4><p>O detalhe do produto já traz <code>nutrition</code> (ou <code>null</code>). Sem request extra.</p></div>
+        </div>
+        <div class="step">
+          <div><h4>Preenche a base</h4><p>Sólido/líquido, porção, medida caseira. A UI mostra a dica do Anexo V pela subcategoria.</p></div>
+        </div>
+        <div class="step">
+          <div><h4>Digita os nutrientes</h4><p>Cada linha mostra o %VD da porção em tempo real. O formulário marca a origem do dado.</p></div>
+        </div>
+        <div class="step">
+          <div><h4>Confere a prévia</h4><p>A tabela e a lupa renderizam com as mesmas funções da loja. Avisos de coerência aparecem abaixo.</p></div>
+        </div>
+        <div class="step">
+          <div><h4>Publica</h4><p>O switch só habilita quando a validação passa. O storefront lê o payload público e renderiza a tabela.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="escopo">
+      <div class="section-head">
+        <span class="section-num">12</span>
+        <h2>Escopo recomendado e riscos</h2>
+        <p>Uma entrega pequena, com o dado certo e a UI honesta, vale mais do que todos os formatos da IN 75 no primeiro momento.</p>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h3>MVP</h3>
+          <ul class="checklist mt8">
+            <li class="done">Aba “Tabela nutricional” no produto</li>
+            <li class="done">Base sólido/líquido + porção + medida caseira</li>
+            <li class="done">10 nutrientes obrigatórios por 100 g/mL</li>
+            <li class="done">%VD calculado, arredondamento do Anexo III</li>
+            <li class="done">Prévia vertical com rodapé</li>
+            <li class="done">Lupa calculada por 100 g/mL</li>
+            <li class="done">Switch “Mostrar no cardápio” + fonte</li>
+            <li class="done">Exibição na página do produto</li>
+            <li class="done">Validação no servidor + CHECKs</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Depois</h3>
+          <ul class="checklist mt8">
+            <li>Nutrição por variação (peso/tamanho)</li>
+            <li>Vitaminas, minerais e gorduras detalhadas</li>
+            <li>Importar de planilha/CSV e foto do rótulo</li>
+            <li>Base TACO/TBCA e sugestão por ingrediente</li>
+            <li>Formatos horizontal/quebrado/linear para impressão</li>
+            <li>Histórico de versões e auditoria</li>
+            <li>Alergênicos, glúten e lactose em aba própria</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-wrap mt20">
+        <table>
+          <thead><tr><th>Risco</th><th>Impacto</th><th>Mitigação</th></tr></thead>
+          <tbody>
+            <tr><td>Lojista trata a tabela como “rótulo oficial” sem análise</td><td>Multa, propaganda enganosa, dano à marca</td><td>Dois modos explícitos, campo de fonte, aviso no primeiro uso e nos termos</td></tr>
+            <tr><td>Porção fora do Anexo V</td><td>Tabela não conforme</td><td>Sugestão por categoria + aviso, sem bloquear; registrar a escolha</td></tr>
+            <tr><td>%VD divergente entre painel e loja</td><td>Números diferentes na mesma tela</td><td>Uma função pura compartilhada em <code>@menuza/shared</code></td></tr>
+            <tr><td>“300 g” confundido com porção</td><td>%VD errado</td><td>Selo “simulação” e coluna extra nunca padrão</td></tr>
+            <tr><td>Produto com variações de peso</td><td>Dado nutricional ambíguo</td><td>MVP: produto; depois variação com fallback para o produto</td></tr>
+            <tr><td>Lupa em prato preparado</td><td>Alerta indevido</td><td>Só exibir lupa para “alimento embalado”</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="decisoes">
+      <div class="section-head">
+        <span class="section-num">13</span>
+        <h2>Decisões em aberto</h2>
+        <p>Perguntas que mudam o modelo. Minha recomendação está marcada, mas a escolha é do produto.</p>
+      </div>
+
+      <div class="grid2 mt20">
+        <div class="card">
+          <h4>1. Produto ou variação?</h4>
+          <p class="small"><strong>Recomendo:</strong> produto no MVP. A variação herda a tabela; só no futuro ela pode sobrescrever. Isso cobre o caso comum e evita 10 campos × N variações.</p>
+        </div>
+        <div class="card">
+          <h4>2. A loja pode publicar “informativo”?</h4>
+          <p class="small"><strong>Recomendo:</strong> sim, mas com rótulo visual diferente de “Rótulo conforme”. O modo informativo não promete conformidade e não exibe a lupa.</p>
+        </div>
+        <div class="card">
+          <h4>3. Personalizada aparece na loja?</h4>
+          <p class="small"><strong>Recomendo:</strong> por padrão, não. Só porção e 100 g. Se a loja quiser 300 g/500 g, são “quantidades de exibição” com selo e limite de 3.</p>
+        </div>
+        <div class="card">
+          <h4>4. Quem responde pela exatidão?</h4>
+          <p class="small"><strong>Recomendo:</strong> a loja. O Menuza valida formato e coerência, não a análise. Registrar fonte, data e responsável no produto.</p>
+        </div>
+        <div class="card">
+          <h4>5. Alergênicos entram na mesma aba?</h4>
+          <p class="small"><strong>Recomendo:</strong> não. São outra obrigação (RDC 727/2022) e outra UX. Aba própria, com “contém / pode conter / não contém”.</p>
+        </div>
+        <div class="card">
+          <h4>6. Qual o default de exibição?</h4>
+          <p class="small"><strong>Recomendo:</strong> porção. É o número que o consumidor usa para decidir; 100 g serve para comparar produtos.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <section id="fontes">
+      <div class="section-head">
+        <span class="section-num">14</span>
+        <h2>Fontes consultadas</h2>
+        <p>Normas e material de apoio usados neste documento.</p>
+      </div>
+      <div class="source-list mt20">
+        <a href="https://in75.tabelanutricional.com.br/" target="_blank" rel="noreferrer">IN 75/2020 — texto integral, Anexos I a XXIII (VDR, arredondamento, porções, modelos, lupa)</a>
+        <a href="https://anvisalegis.datalegis.net/action/ActionDatalegis.php?acao=abrirTextoAto&amp;link=S&amp;tipo=RDC&amp;numeroAto=00000429&amp;seqAto=000&amp;valorAno=2020&amp;orgao=RDC/DC/ANVISA/MS&amp;cod_modulo=310&amp;cod_menu=9431" target="_blank" rel="noreferrer">RDC 429/2020 — rotulagem nutricional de alimentos embalados</a>
+        <a href="https://www.gov.br/anvisa/pt-br/assuntos/alimentos/rotulagem/rotulagem-nutricional" target="_blank" rel="noreferrer">ANVISA — Rotulagem nutricional (visão geral e perguntas frequentes)</a>
+        <a href="https://www.gov.br/anvisa/pt-br/centraisdeconteudo/publicacoes/alimentos/perguntas-e-respostas-arquivos/rotulagem-nutricional_2a-edicao.pdf/@@download/file" target="_blank" rel="noreferrer">ANVISA — Perguntas e respostas sobre rotulagem nutricional (PDF)</a>
+        <a href="https://rotuloconforme.com.br/informacao-nutricional-obrigatoria" target="_blank" rel="noreferrer">RótuloConforme — resumo aplicado dos 10 campos, VDR e lupa (material de apoio)</a>
+      </div>
+
+      <div class="footer">
+        Documento de pesquisa produzido para o projeto Menuza. Não substitui parecer regulatório nem
+        responsabilidade técnica. Valores e exemplos são ilustrativos.
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var VDR = {
+    energy: 2000,
+    carbs: 300,
+    totalSugars: null,
+    addedSugars: 50,
+    protein: 50,
+    totalFat: 65,
+    satFat: 20,
+    transFat: 2,
+    fiber: 25,
+    sodium: 2000
+  };
+
+  var ROWS = [
+    { key: "energy", label: "Valor energético", unit: "kcal", indent: 0, nonsig: 4, energy: true },
+    { key: "carbs", label: "Carboidratos", unit: "g", indent: 0, nonsig: 0.5 },
+    { key: "totalSugars", label: "Açúcares totais", unit: "g", indent: 1, nonsig: 0.5 },
+    { key: "addedSugars", label: "Açúcares adicionados", unit: "g", indent: 2, nonsig: null },
+    { key: "protein", label: "Proteínas", unit: "g", indent: 0, nonsig: 0.5 },
+    { key: "totalFat", label: "Gorduras totais", unit: "g", indent: 0, nonsig: 0.5 },
+    { key: "satFat", label: "Gorduras saturadas", unit: "g", indent: 1, nonsig: 0.1 },
+    { key: "transFat", label: "Gorduras trans", unit: "g", indent: 1, nonsig: 0.1 },
+    { key: "fiber", label: "Fibras alimentares", unit: "g", indent: 0, nonsig: 0.5 },
+    { key: "sodium", label: "Sódio", unit: "mg", indent: 0, nonsig: 5 }
+  ];
+
+  var state = {
+    basis: "solid",
+    portion: 30,
+    servings: 4,
+    measure: "2 colheres de sopa",
+    view: "portion",
+    custom: 300,
+    energy: 320,
+    carbs: 38,
+    totalSugars: 2.4,
+    addedSugars: 1.2,
+    protein: 8.5,
+    totalFat: 12,
+    satFat: 4.1,
+    transFat: 0,
+    fiber: 2.1,
+    sodium: 420
+  };
+
+  var nutrientInputs = Array.prototype.slice.call(document.querySelectorAll("[data-nutrient]"));
+  var portionInput = document.getElementById("portion");
+  var servingsInput = document.getElementById("servings");
+  var measureInput = document.getElementById("measure");
+  var customInput = document.getElementById("custom");
+  var customField = document.getElementById("custom-field");
+  var labelHead = document.getElementById("label-head");
+  var labelBody = document.getElementById("label-body");
+  var labelServings = document.getElementById("label-servings");
+  var labelPortion = document.getElementById("label-portion");
+  var labelFoot = document.getElementById("label-foot");
+  var lupaRow = document.getElementById("lupa-row");
+  var warningsBox = document.getElementById("warnings");
+  var previewMode = document.getElementById("preview-mode");
+  var viewBadge = document.getElementById("view-badge");
+  var viewNote = document.getElementById("view-note");
+  var portionUnit = document.getElementById("portion-unit");
+  var customUnit = document.getElementById("custom-unit");
+
+  function readState() {
+    nutrientInputs.forEach(function (input) {
+      var value = Number(input.value);
+      state[input.getAttribute("data-nutrient")] = isFinite(value) && value >= 0 ? value : 0;
+    });
+    state.portion = Math.max(0, Number(portionInput.value) || 0);
+    state.servings = Math.max(0, Math.round(Number(servingsInput.value) || 0));
+    state.measure = measureInput.value.trim();
+    state.custom = Math.max(0, Number(customInput.value) || 0);
+  }
+
+  /** Anexo III: faixas de arredondamento. */
+  function roundRule(value, unit) {
+    if (!isFinite(value) || value <= 0) return 0;
+
+    if (unit === "kcal") return Math.round(value);
+    if (value >= 10) return Math.round(value);
+
+    if (value >= 1) {
+      var one = Math.round(value * 10) / 10;
+      return one;
+    }
+
+    if (unit === "g") return Math.round(value * 10) / 10;
+
+    // mg < 1: duas casas; se a segunda for 0, uma casa.
+    var two = Math.round(value * 100) / 100;
+    if (Math.abs(two * 10 - Math.round(two * 10)) < 1e-9) {
+      return Math.round(two * 10) / 10;
+    }
+    return two;
+  }
+
+  function formatNumber(value, unit) {
+    if (!isFinite(value)) return "0";
+    if (value === 0) return "0";
+    if (Number.isInteger(value)) return String(value);
+
+    if (unit === "mg" && value < 1) {
+      var s = value.toFixed(2).replace(".", ",");
+      return s.replace(/,0$/, "");
+    }
+
+    return value.toFixed(1).replace(".", ",");
+  }
+
+  function declared(row, amount) {
+    var per100 = state[row.key] || 0;
+
+    if (row.energy) {
+      if (per100 <= row.nonsig) return { rounded: 0, per100: 0 };
+      return { rounded: Math.round(per100 * amount / 100), per100: Math.round(per100) };
+    }
+
+    var shown = per100;
+    if (row.nonsig !== null && per100 <= row.nonsig) shown = 0;
+
+    var raw = shown * amount / 100;
+    var rounded = roundRule(raw, row.unit);
+
+    return { rounded: rounded, per100: roundRule(shown, row.unit) };
+  }
+
+  function energyText(kcal) {
+    return kcal + " kcal = " + Math.round(kcal * 4.184).toLocaleString("pt-BR") + " kJ";
+  }
+
+  function cellText(row, value) {
+    if (row.energy) return energyText(value);
+    return formatNumber(value, row.unit) + " " + row.unit;
+  }
+
+  function viewAmount() {
+    if (state.view === "per100") return 100;
+    if (state.view === "custom") return state.custom;
+    return state.portion;
+  }
+
+  function updateUnits() {
+    var unit = state.basis === "liquid" ? "mL" : "g";
+    portionUnit.textContent = unit;
+    customUnit.textContent = unit;
+  }
+
+  function renderHead() {
+    var amount = viewAmount();
+    var columns = [];
+    var baseLabel = state.basis === "liquid" ? "100 mL" : "100 g";
+    var modeLabel = state.basis === "liquid" ? "100 mL" : "100 g";
+
+    if (state.view === "per100") {
+      columns.push(baseLabel);
+      columns.push("%VD*");
+    } else if (state.view === "custom") {
+      columns.push(baseLabel);
+      columns.push(formatNumber(amount, "g") + " " + modeLabel.replace("100 ", ""));
+      columns.push("%VD*");
+    } else {
+      columns.push(baseLabel);
+      columns.push(formatNumber(amount, "g") + " " + (state.basis === "liquid" ? "mL" : "g"));
+      columns.push("%VD*");
+    }
+
+    var head = "<tr><th>Constituinte</th>";
+    columns.forEach(function (column) {
+      head += '<th class="num">' + column + "</th>";
+    });
+    head += "</tr>";
+    labelHead.innerHTML = head;
+  }
+
+  function renderBody() {
+    var amount = viewAmount();
+    var body = "";
+
+    ROWS.forEach(function (row) {
+      var d = declared(row, amount);
+      var base = declared(row, 100);
+      var pct = VDR[row.key] === null || VDR[row.key] === undefined
+        ? "—"
+        : Math.round((d.rounded / VDR[row.key]) * 100) + "%";
+
+      var indentClass = row.indent === 1 ? "indent1" : row.indent === 2 ? "indent2" : "";
+      var cells = '<td class="' + indentClass + '">' + row.label + "</td>";
+
+      if (state.view === "per100") {
+        cells += '<td class="num">' + cellText(row, base.rounded) + "</td>";
+        cells += '<td class="num">' + pct + "</td>";
+      } else if (state.view === "custom") {
+        cells += '<td class="num">' + cellText(row, base.rounded) + "</td>";
+        cells += '<td class="num">' + cellText(row, d.rounded) + "</td>";
+        cells += '<td class="num">' + pct + "</td>";
+      } else {
+        cells += '<td class="num">' + cellText(row, base.rounded) + "</td>";
+        cells += '<td class="num">' + cellText(row, d.rounded) + "</td>";
+        cells += '<td class="num">' + pct + "</td>";
+      }
+
+      body += "<tr>" + cells + "</tr>";
+    });
+
+    labelBody.innerHTML = body;
+  }
+
+  function renderMeta() {
+    var unit = state.basis === "liquid" ? "mL" : "g";
+    var servings = state.servings;
+    var servingsText;
+
+    if (servings >= 3) {
+      servingsText = "Porções por embalagem: " + servings;
+    } else if (servings > 0) {
+      servingsText = "Porções por embalagem: cerca de " + servings;
+    } else {
+      servingsText = "Porções por embalagem: não informado";
+    }
+
+    labelServings.textContent = servingsText;
+
+    var measure = state.measure ? " (" + state.measure + ")" : "";
+    labelPortion.textContent = "Porção: " + formatNumber(state.portion, "g") + " " + unit + measure;
+
+    if (state.view === "custom") {
+      labelFoot.textContent = "*Percentual de valores diários calculado sobre " +
+        formatNumber(state.custom, "g") + " " + unit + ". Simulação, não é a porção de referência.";
+      previewMode.textContent = "Simulação";
+      previewMode.className = "badge warn";
+    } else if (state.view === "per100") {
+      labelFoot.textContent = "*Percentual de valores diários calculado sobre 100 " + unit + ".";
+      previewMode.textContent = "Comparação";
+      previewMode.className = "badge";
+    } else {
+      labelFoot.textContent = "*Percentual de valores diários fornecidos pela porção.";
+      previewMode.textContent = "Oficial";
+      previewMode.className = "badge ok";
+    }
+
+    viewBadge.textContent = state.view === "portion" ? "porção" : state.view === "per100" ? "100 g" : "personalizada";
+    viewNote.textContent = state.view === "portion"
+      ? "A tabela oficial usa a porção de referência e 100 g."
+      : state.view === "per100"
+        ? "Visão de comparação: o %VD é calculado sobre 100 g."
+        : "Visão de simulação: a coluna extra não substitui a porção oficial.";
+  }
+
+  function renderLupa() {
+    var limits = state.basis === "liquid"
+      ? { addedSugars: 7.5, satFat: 3, sodium: 300 }
+      : { addedSugars: 15, satFat: 6, sodium: 600 };
+
+    var alerts = [];
+    if (state.addedSugars >= limits.addedSugars) alerts.push("Açúcar adicionado");
+    if (state.satFat >= limits.satFat) alerts.push("Gordura saturada");
+    if (state.sodium >= limits.sodium) alerts.push("Sódio");
+
+    if (alerts.length === 0) {
+      lupaRow.innerHTML = '<span class="badge">Nenhum alerta frontal</span>';
+      return;
+    }
+
+    lupaRow.innerHTML = alerts.map(function (label) {
+      return '<div class="lupa-badge"><span>Alto em</span>' + label + "</div>";
+    }).join("");
+  }
+
+  function renderWarnings() {
+    var messages = [];
+
+    if (state.portion <= 0) {
+      messages.push({ type: "error", text: "Informe uma porção maior que zero." });
+    }
+
+    if (state.addedSugars > state.totalSugars + 1e-9) {
+      messages.push({ type: "error", text: "Açúcares adicionados não podem ser maiores que açúcares totais." });
+    }
+
+    if (state.satFat + state.transFat > state.totalFat + 1e-9) {
+      messages.push({ type: "error", text: "Saturadas + trans não podem passar das gorduras totais." });
+    }
+
+    var macroEnergy = state.carbs * 4 + state.protein * 4 + state.totalFat * 9 + state.fiber * 2;
+    if (state.energy > 0 && macroEnergy > 0) {
+      var diff = Math.abs(state.energy - macroEnergy) / state.energy;
+      if (diff > 0.2) {
+        messages.push({
+          type: "hint",
+          text: "A energia declarada (" + Math.round(state.energy) + " kcal) difere " +
+            Math.round(diff * 100) + "% do cálculo 4/4/9/2 (" + Math.round(macroEnergy) +
+            " kcal). Confira se os carboidratos incluem fibras."
+        });
+      }
+    }
+
+    if (messages.length === 0) {
+      messages.push({ type: "good", text: "Dados coerentes. O %VD e a lupa são calculados automaticamente." });
+    }
+
+    warningsBox.innerHTML = messages.map(function (message) {
+      return '<div class="warning ' + message.type + '">' + message.text + "</div>";
+    }).join("");
+  }
+
+  function render() {
+    readState();
+    updateUnits();
+    renderHead();
+    renderBody();
+    renderMeta();
+    renderLupa();
+    renderWarnings();
+  }
+
+  nutrientInputs.forEach(function (input) {
+    input.addEventListener("input", render);
+  });
+  portionInput.addEventListener("input", render);
+  servingsInput.addEventListener("input", render);
+  measureInput.addEventListener("input", render);
+  customInput.addEventListener("input", render);
+
+  document.querySelectorAll("[data-basis]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      state.basis = button.getAttribute("data-basis");
+      document.querySelectorAll("[data-basis]").forEach(function (other) {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-view]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      state.view = button.getAttribute("data-view");
+      document.querySelectorAll("[data-view]").forEach(function (other) {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+      customField.style.display = state.view === "custom" ? "flex" : "none";
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

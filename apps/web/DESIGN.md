@@ -110,6 +110,17 @@ Tables: `DataTable` + `dashboardTableFeatures` only. Status cells are `Badge` wi
 
 Control heights move together. In this repo the 32px default lives in `button.tsx` (`h-8`), `input.tsx` (`h-8`), `input-group.tsx` (`h-8`), `select.tsx` (`data-[size=default]:h-8`), `combobox.tsx` (`min-h-8` chips) and `tabs.tsx` (`group-data-horizontal/tabs:h-8`). Re-grep (`\bh-8\b|size-8\b|min-h-8\b` in `src/components/ui/`) before editing; never change one without the rest. Installed and usable: `alert`, `alert-dialog`, `empty`, `spinner`, `toggle`, `toggle-group`. Still not installed — `shadcn add` them when first needed instead of hand-rolling: `menubar`, `input-otp`, `command`, `native-select`.
 
+## Nutrition label (product editor)
+
+- **Short numeric inputs never stretch.** Use `InputGroup className="w-36 max-w-full"` for kcal, grams, milligrams and portion; `max-w-64` for a short text field such as "Medida caseira"; textareas stay full width. A three-to-six-character value owning a whole column is the bug this rule prevents.
+- The 10 nutrients sit in `grid gap-4 sm:grid-cols-2`; each `Field` is label + compact input + `FieldDescription` with the portion value and `%VD`.
+- Editor layout is form-left / preview-right at `lg`. The preview is `lg:sticky lg:top-20 lg:self-start`; on mobile it falls below the form. Do not make it sticky on small screens.
+- The preview and the storefront share `components/nutrition/nutrition-label.tsx`. Its table is `table-fixed` with explicit `colgroup` widths; energy stacks `kcal` over `kJ`; do not add another `overflow-x` to the table container.
+- The product tab strip scrolls in a wrapper with `overflow-x-auto overflow-y-hidden pt-1 pb-2`. Never put `overflow-x-auto` on `TabsList`: the 5px active indicator creates a vertical scrollbar.
+- "Alto em" is a bordered block, not a destructive `Badge`; the switch label carries the claim, the `?` explains the threshold and the packaged-food caveat, and **Sugerido** is only a hint.
+- Publishing is a gate: the switch is disabled while the 10 constituents, portion, servings and household measure are incomplete; the server revalidates the merged row and refuses an incomplete published label.
+- Every numeric control references its description and, when invalid, its error id in `aria-describedby`.
+
 ## Responsive
 
 Mobile-first. `p-4` → `md:p-8`. Member chip hides below `sm`. Sidebar collapses to icon rail, Sheet on mobile. `DataTable` scrolls internally; the page itself must never overflow: `document.documentElement.scrollWidth <= innerWidth` at 375px and 1280px. Display type clamps; tracking in `em`, never `px`.
@@ -125,7 +136,7 @@ Mobile-first. `p-4` → `md:p-8`. Member chip hides below `sm`. Sidebar collapse
 
 ## Do's and Don'ts
 
-Do: semantic tokens, built-in variants, `flex gap-*`, `size-*`, `truncate`, `cn()`, `Title` on overlays, `Fallback` on avatars, `Badge` for status, `Skeleton` for loading, `Separator` for rules, tabular numbers for money.
+Do: semantic tokens, built-in variants, `flex gap-*`, `size-*`, `truncate`, `cn()`, `Title` on overlays, `Fallback` on avatars, `Badge` for status, `Skeleton` for loading, `Separator` for rules, tabular numbers for money, compact widths (`w-36 max-w-full`) for short numeric inputs.
 
 Don't: raw Tailwind colors (`bg-blue-500`, `text-red-600`, `text-emerald-600`, `text-neutral-700`); `space-x/y-*`; `w-10 h-10` pairs; `overflow-hidden text-ellipsis whitespace-nowrap` longhand; `dark:` raw overrides; manual `z-50` on overlays; `isPending`/`isLoading` props on `Button` (render `Spinner` instead); `window.confirm`/`window.alert` (use `AlertDialog`); `h1` inside a dashboard page (the shell owns the only `h1`; pages open with `h2 text-xl`); `htmlFor` without a matching `id` on the control; `Select` for a 2–7 option set (use `ToggleGroup`); gradients (`bg-gradient-to-*` / `bg-linear-to-*`, `bg-clip-text` sweeps); custom `@keyframes`; `<hr>`; `animate-pulse` placeholders; icon sizing classes inside components; `Field` without `FieldLabel`/`FieldTitle` or validation states; `centavos` in UI copy; raw centavos integers in inputs; `<input type="date">` in a dashboard form (use the `DatePicker`); a `<label>` wrapped around a `Checkbox` outside `src/components/ui/**` — Base UI renders a `<button>`, which `jsx-a11y/label-has-associated-control` does not count as a control, so use `Field` + `FieldLabel htmlFor={id}` + `<Checkbox id={id} />`; a `Button render={<Link />}` whose label sits on the `Button` instead of the `Link` — `jsx-a11y/control-has-associated-label` reads the `Link` element, so give it its own `aria-label` (the visible text must be contained in it, e.g. `aria-label="Entrar no painel"` for a visible `Entrar`).
 

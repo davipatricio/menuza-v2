@@ -19,32 +19,33 @@ Two sources of truth: `PRODUCT.md` (product, numbered sections) and Linear (team
 
 Load only the file the task needs. Every folder has an `INDEX.md` with a keyword table; `INDEX.md` at this root is the flat keyword map when you only know a word, not a topic.
 
-| Topic | Open |
-| --- | --- |
-| Vision, who pays, plans, commission | `product/meaning.md` |
-| Tenants, users, isolation | `product/tenancy.md` |
-| What is in and out of the MVP | `product/scope.md` |
-| Unresolved decisions | `product/open-decisions.md` |
-| Term ↔ code entity | `product/glossary.md` |
-| Store, team, roles, auth, audit | `features/stores-and-teams/README.md` |
-| Buyer experience, theming, PWA | `features/storefronts/README.md` |
-| Products, variations, complements, kits, stock | `features/catalog/README.md` |
-| Checkout, gateways, wallet, cashback | `features/payments/README.md` |
-| Coverage, freight, dispatch, scheduling | `features/delivery/README.md` |
-| Order lifecycle, coupons | `features/orders/README.md` |
-| Customers, exports, KPIs, marketing | `features/customers/README.md` |
-| Panel, email, push notifications | `features/notifications/README.md` |
-| Internal admin, support, SaaS billing | `features/admin/README.md` |
-| Partner integrations | `features/integrations/README.md` |
-| Stack and architecture decisions | `engineering/stack.md` |
-| Schema migrations and contract changes | `engineering/schema-migrations.md` |
-| Dashboard visual system (tokens, recipes, money entry) | `apps/web/DESIGN.md` |
-| Monorepo workspaces, placement | `engineering/monorepo.md` |
-| Backend request path, middleware, worker | `engineering/backend.md` |
-| Route rendering stages in apps/web | `engineering/route-stages.md` |
-| The checks a change must pass | `engineering/checks.md` |
-| Open technical follow-ups | `engineering/followups.md` |
-| Linear: querying, roadmap epics, module map | `tickets/README.md` |
+| Topic                                                  | Open                                  |
+| ------------------------------------------------------ | ------------------------------------- |
+| Vision, who pays, plans, commission                    | `product/meaning.md`                  |
+| Tenants, users, isolation                              | `product/tenancy.md`                  |
+| What is in and out of the MVP                          | `product/scope.md`                    |
+| Unresolved decisions                                   | `product/open-decisions.md`           |
+| Term ↔ code entity                                     | `product/glossary.md`                 |
+| Store, team, roles, auth, audit                        | `features/stores-and-teams/README.md` |
+| Buyer experience, theming, PWA                         | `features/storefronts/README.md`      |
+| Products, variations, complements, kits, stock         | `features/catalog/README.md`          |
+| Nutrition label, %VD, lupa, packaged-food labelling    | `features/catalog/nutrition.md`       |
+| Checkout, gateways, wallet, cashback                   | `features/payments/README.md`         |
+| Coverage, freight, dispatch, scheduling                | `features/delivery/README.md`         |
+| Order lifecycle, coupons                               | `features/orders/README.md`           |
+| Customers, exports, KPIs, marketing                    | `features/customers/README.md`        |
+| Panel, email, push notifications                       | `features/notifications/README.md`    |
+| Internal admin, support, SaaS billing                  | `features/admin/README.md`            |
+| Partner integrations                                   | `features/integrations/README.md`     |
+| Stack and architecture decisions                       | `engineering/stack.md`                |
+| Schema migrations and contract changes                 | `engineering/schema-migrations.md`    |
+| Dashboard visual system (tokens, recipes, money entry) | `apps/web/DESIGN.md`                  |
+| Monorepo workspaces, placement                         | `engineering/monorepo.md`             |
+| Backend request path, middleware, worker               | `engineering/backend.md`              |
+| Route rendering stages in apps/web                     | `engineering/route-stages.md`         |
+| The checks a change must pass                          | `engineering/checks.md`               |
+| Open technical follow-ups                              | `engineering/followups.md`            |
+| Linear: querying, roadmap epics, module map            | `tickets/README.md`                   |
 
 ## Invariants
 

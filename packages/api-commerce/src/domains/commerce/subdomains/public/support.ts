@@ -13,6 +13,8 @@
  * rather than a second auth scheme invented here.
  */
 import { db } from "@menuza/db";
+import type * as v from "valibot";
+import type { PublicNutritionSchema, PublicProductDetailSchema } from "@menuza/shared/commerce";
 
 /**
  * `Timestamp(3)` decodes as `Temporal.PlainDateTime` (UTC-naive, no offset), and
@@ -32,6 +34,7 @@ type PublicProductRow = {
   id: string;
   name: string;
   description: string | null;
+  imageUrl: string | null;
   available: boolean;
   archived: boolean;
   sortOrder: number;
@@ -51,6 +54,7 @@ export function toPublicProduct(product: PublicProductRow) {
     id: product.id,
     name: product.name,
     description: product.description,
+    imageUrl: product.imageUrl,
     available: product.available,
     archived: product.archived,
     sortOrder: product.sortOrder,
@@ -63,4 +67,77 @@ export function toPublicProduct(product: PublicProductRow) {
     })),
     tags: product.tags.flatMap((entry) => (entry.tag?.isActive ? [entry.tag.name] : [])),
   };
+}
+
+/** The label row as the `nutrition` include hands it over. */
+type PublicNutritionRow = {
+  basis: "solid" | "liquid";
+  labelFormat: "vertical" | "simplified";
+  source: "manual" | "lab" | "supplier_label" | "database" | "estimate";
+  referenceAt: Temporal.PlainDateTime | null;
+  energyKcal: number | null;
+  carbsMg: number | null;
+  totalSugarsMg: number | null;
+  addedSugarsMg: number | null;
+  proteinMg: number | null;
+  totalFatMg: number | null;
+  saturatedFatMg: number | null;
+  transFatMg: number | null;
+  fiberMg: number | null;
+  sodiumMg: number | null;
+  portionMilli: number | null;
+  householdMeasure: string | null;
+  servingsPerPack: number | null;
+  showHighAddedSugar: boolean;
+  showHighSatFat: boolean;
+  showHighSodium: boolean;
+  published: boolean;
+  updatedAt: Temporal.PlainDateTime;
+};
+
+/**
+ * The label a buyer may see. An unpublished row maps to `null`: the read filters
+ * on `published` too, and the mapper refuses a draft again, so a caller that
+ * forgets the predicate cannot publish half a table by accident.
+ *
+ * `published` itself, the tenant/product keys and the internal `notes` stay on
+ * the server; the %VD and the "Alto em" recommendation are derived by the shared
+ * label model, never stored or sent.
+ */
+export function toPublicNutrition(
+  row: PublicNutritionRow | null,
+): v.InferOutput<typeof PublicNutritionSchema> | null {
+  if (row === null || !row.published) return null;
+
+  return {
+    basis: row.basis,
+    labelFormat: row.labelFormat,
+    source: row.source,
+    referenceAt: row.referenceAt === null ? null : toIsoTimestamp(row.referenceAt),
+    energyKcal: row.energyKcal,
+    carbsMg: row.carbsMg,
+    totalSugarsMg: row.totalSugarsMg,
+    addedSugarsMg: row.addedSugarsMg,
+    proteinMg: row.proteinMg,
+    totalFatMg: row.totalFatMg,
+    saturatedFatMg: row.saturatedFatMg,
+    transFatMg: row.transFatMg,
+    fiberMg: row.fiberMg,
+    sodiumMg: row.sodiumMg,
+    portionMilli: row.portionMilli,
+    householdMeasure: row.householdMeasure,
+    servingsPerPack: row.servingsPerPack,
+    showHighAddedSugar: row.showHighAddedSugar,
+    showHighSatFat: row.showHighSatFat,
+    showHighSodium: row.showHighSodium,
+    updatedAt: toIsoTimestamp(row.updatedAt),
+  };
+}
+
+/** The direct URL's product: the menu row plus the label, if it is published. */
+export function toPublicProductDetail(
+  product: PublicProductRow,
+  nutrition: PublicNutritionRow | null,
+): v.InferOutput<typeof PublicProductDetailSchema> {
+  return { ...toPublicProduct(product), nutrition: toPublicNutrition(nutrition) };
 }

@@ -24,6 +24,7 @@
 | audit, event catalog, retention, actor                                                       | `features/stores-and-teams/audit.md`                 |
 | storefront, vitrine, PWA, subdomain, custom domain, theming                                  | `features/storefronts/README.md`                     |
 | product, variation, complement, nutrition, favorite, review                                  | `features/catalog/README.md`                         |
+| nutrition label, tabela nutricional, %VD, lupa, rotulagem, ANVISA, RDC 429, IN 75            | `features/catalog/nutrition.md`                      |
 | kit, pre-selected, build-your-own, monte seu kit                                             | `features/catalog/README.md`                         |
 | stock, inventory, reservation, oversell, unlimited                                           | `features/catalog/README.md`                         |
 | checkout, cart, guest, minimum order, recipient                                              | `features/payments/README.md`                        |

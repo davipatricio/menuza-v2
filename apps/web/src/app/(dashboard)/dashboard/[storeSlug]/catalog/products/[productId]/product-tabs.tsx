@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Produto / SEO tabs of the product editor. The tab lives in the URL as shallow
- * state, and both panels stay mounted, so switching tabs keeps unsaved input and
- * never hits the server. The guard wraps both forms so a dirty section blocks
- * leaving the page.
+ * Produto / Tabela nutricional / SEO tabs of the product editor. The tab lives
+ * in the URL as shallow state, and the editing panels stay mounted, so switching
+ * tabs keeps unsaved input and never hits the server. The guard wraps every form
+ * so a dirty section blocks leaving the page.
  */
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import type { PanelProductDetail, PanelSeo } from "@menuza/shared/tenant";
@@ -13,9 +13,10 @@ import { SeoForm } from "../../../_components/seo-form.tsx";
 import { ProductEditorGuard, PendingChangesStatus } from "../product-editor-guard.tsx";
 import { ProductForm } from "../product-form.tsx";
 import type { SubcategoryOption } from "../product-taxonomy-select.tsx";
+import { ProductNutrition } from "./product-nutrition.tsx";
 import { ProductPerformance } from "./product-performance.tsx";
 
-const TABS = ["produto", "seo", "desempenho"] as const;
+const TABS = ["produto", "nutricao", "seo", "desempenho"] as const;
 
 export function ProductTabs({
   storeSlug,
@@ -45,14 +46,30 @@ export function ProductTabs({
         <Tabs
           value={tab}
           onValueChange={(next) => {
-            if (next === "produto" || next === "seo" || next === "desempenho") setTab(next);
+            if (
+              next === "produto" ||
+              next === "nutricao" ||
+              next === "seo" ||
+              next === "desempenho"
+            ) {
+              setTab(next);
+            }
           }}
         >
-          <TabsList aria-label="Seções do produto">
-            <TabsTrigger value="produto">Produto</TabsTrigger>
-            <TabsTrigger value="seo">SEO</TabsTrigger>
-            <TabsTrigger value="desempenho">Desempenho</TabsTrigger>
-          </TabsList>
+          {/*
+            Quatro seções com rótulos longos: a barra rola em vez de empurrar a
+            página. O scroll fica no wrapper, com espaço para o indicador; no
+            próprio TabsList o `overflow-x-auto` também ligava um scroll vertical
+            por causa dos 5px do indicador.
+          */}
+          <div className="-mt-1 -mb-2 w-full [scrollbar-width:none] overflow-x-auto overflow-y-hidden pt-1 pb-2 [&::-webkit-scrollbar]:hidden">
+            <TabsList aria-label="Seções do produto">
+              <TabsTrigger value="produto">Produto</TabsTrigger>
+              <TabsTrigger value="nutricao">Tabela nutricional</TabsTrigger>
+              <TabsTrigger value="seo">SEO</TabsTrigger>
+              <TabsTrigger value="desempenho">Desempenho</TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="produto" keepMounted>
             <ProductForm
@@ -60,6 +77,14 @@ export function ProductTabs({
               product={product}
               subcategories={subcategories}
               tags={tags}
+            />
+          </TabsContent>
+
+          <TabsContent value="nutricao" keepMounted>
+            <ProductNutrition
+              storeSlug={storeSlug}
+              productId={product.id}
+              nutrition={product.nutrition}
             />
           </TabsContent>
 
