@@ -101,7 +101,7 @@ export default async function StoreLayout({
               <HeaderActions />
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
+          <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
         </CrumbLabelsProvider>
       </SidebarInset>
       <KomiAssistant />

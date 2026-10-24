@@ -2,9 +2,9 @@ import { cacheLife, cacheTag } from "next/cache";
 import { panelClient } from "@/lib/server-tenant.ts";
 
 /**
- * Product-form taxonomy options (categories, departments, tags) shared by the
- * new-product page and the editor. Private cache: browser-scoped, never a
- * shared server cache. 30s is the documented per-link prefetch floor.
+ * Product-form taxonomy options (subcategories, tags) shared by the new-product
+ * page and the editor. Private cache: browser-scoped, never a shared server
+ * cache. 30s is the documented per-link prefetch floor.
  */
 export async function getProductTaxonomy(storeSlug: string) {
   "use cache: private";
@@ -15,11 +15,21 @@ export async function getProductTaxonomy(storeSlug: string) {
 
   if (!client) return null;
 
-  const [{ categories }, { departments }, { tags }] = await Promise.all([
+  const [{ categories }, { subcategories }, { tags }] = await Promise.all([
     client.panel.listCategories({ storeSlug }),
-    client.panel.listDepartments({ storeSlug }),
+    client.panel.listSubcategories({ storeSlug }),
     client.panel.listTags({ storeSlug }),
   ]);
 
-  return { categories, departments, tags };
+  const departmentByCategory = new Map(
+    categories.map((category) => [category.id, category.departmentNames[0] ?? "Sem departamento"]),
+  );
+
+  return {
+    subcategories: subcategories.map((subcategory) => ({
+      ...subcategory,
+      departmentName: departmentByCategory.get(subcategory.categoryId) ?? "Sem departamento",
+    })),
+    tags,
+  };
 }

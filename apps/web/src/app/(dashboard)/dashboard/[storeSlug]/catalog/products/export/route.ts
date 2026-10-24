@@ -1,11 +1,11 @@
 /**
- * Server-side CSV export of the current products view. Uses the same filter and
- * sort helpers as the page, so the file matches what the table shows.
+ * Server-side CSV export of the current products view. Uses the same filters
+ * as the page and the server-ordered rows, so the file matches the table.
  */
 import { ORPCError } from "@orpc/client";
 import { panelClient } from "@/lib/server-tenant.ts";
 import { serializeProductsCsv } from "../product-csv.ts";
-import { filterProducts, sortProducts } from "../product-filter.ts";
+import { filterProducts } from "../product-filter.ts";
 import { loadProductSearchParams } from "../product-search-params.ts";
 
 export async function GET(
@@ -21,8 +21,13 @@ export async function GET(
   }
 
   try {
-    const { products } = await client.panel.listProducts({ storeSlug });
-    const rows = filterProducts(sortProducts(products), filters);
+    const { products } = await client.panel.listProducts({
+      storeSlug,
+      sortBy: filters.sort,
+      order: filters.order,
+    });
+
+    const rows = filterProducts(products, filters);
 
     return new Response(serializeProductsCsv(rows), {
       headers: {

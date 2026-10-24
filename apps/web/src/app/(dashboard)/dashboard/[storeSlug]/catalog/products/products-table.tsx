@@ -76,7 +76,7 @@ import {
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
-import { formatBrl } from "@/lib/format";
+import { formatBrl, formatDateTime } from "@/lib/format";
 import { HoverPrefetchLink } from "./hover-prefetch-link.tsx";
 import { type ProductTaxonomy, countActiveProductFilters } from "./product-filter.ts";
 import { productSearchParams } from "./product-search-params.ts";
@@ -92,13 +92,12 @@ function client() {
   return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
 }
 
-type BulkDialog = "tags" | "category" | "department" | "delete" | null;
+type BulkDialog = "tags" | "subcategory" | "delete" | null;
 
 type BulkUpdateInput = {
   available?: boolean;
   addTagIds?: string[];
-  categoryId?: string | null;
-  departmentId?: string | null;
+  subcategoryId?: string | null;
 };
 
 function bulkMessage(error: Error): string {
@@ -142,25 +141,34 @@ function stockLabel(product: PanelProductList): string | null {
 
 type ProductView = "table" | "grid" | "tree";
 
-/** Departments > categories > products, for the tree view. */
+/** Departments > categories > subcategories > products, for the tree view. */
 function buildProductTree(products: PanelProductList[]): FileTreeItem[] {
   const departments = new Map<
     string,
     {
       id: string;
       name: string;
-      categories: Map<string, { id: string; name: string; products: PanelProductList[] }>;
+      categories: Map<
+        string,
+        {
+          id: string;
+          name: string;
+          subcategories: Map<string, { id: string; name: string; products: PanelProductList[] }>;
+        }
+      >;
     }
   >();
 
   for (const product of products) {
-    const departmentKey = product.departmentId ?? "none";
+    // A product belongs to every department of its category; the tree shows the
+    // first one so a row is not duplicated across branches.
+    const departmentKey = product.departmentIds[0] ?? "none";
     let department = departments.get(departmentKey);
 
     if (!department) {
       department = {
         id: `department:${departmentKey}`,
-        name: product.departmentName ?? "Sem departamento",
+        name: product.departmentNames[0] ?? "Sem departamento",
         categories: new Map(),
       };
       departments.set(departmentKey, department);
@@ -173,12 +181,24 @@ function buildProductTree(products: PanelProductList[]): FileTreeItem[] {
       category = {
         id: `category:${departmentKey}:${categoryKey}`,
         name: product.categoryName ?? "Sem categoria",
-        products: [],
+        subcategories: new Map(),
       };
       department.categories.set(categoryKey, category);
     }
 
-    category.products.push(product);
+    const subcategoryKey = product.subcategoryId ?? "none";
+    let subcategory = category.subcategories.get(subcategoryKey);
+
+    if (!subcategory) {
+      subcategory = {
+        id: `subcategory:${departmentKey}:${categoryKey}:${subcategoryKey}`,
+        name: product.subcategoryName ?? "Sem subcategoria",
+        products: [],
+      };
+      category.subcategories.set(subcategoryKey, subcategory);
+    }
+
+    subcategory.products.push(product);
   }
 
   return [...departments.values()]
@@ -190,18 +210,35 @@ function buildProductTree(products: PanelProductList[]): FileTreeItem[] {
       for (const category of [...department.categories.values()].sort((a, b) =>
         a.name.localeCompare(b.name, "pt-BR"),
       )) {
-        productCount += category.products.length;
+        const subcategories: FileTreeItem[] = [];
+
+        for (const subcategory of [...category.subcategories.values()].sort((a, b) =>
+          a.name.localeCompare(b.name, "pt-BR"),
+        )) {
+          productCount += subcategory.products.length;
+          subcategories.push({
+            id: subcategory.id,
+            name: subcategory.name,
+            type: "folder",
+            badge: subcategory.products.length,
+            children: subcategory.products.map((product) => ({
+              id: `product:${product.id}`,
+              name: product.name,
+              type: "file",
+              badge: product.available ? undefined : "Inativo",
+            })),
+          });
+        }
+
         categories.push({
           id: category.id,
           name: category.name,
           type: "folder",
-          badge: category.products.length,
-          children: category.products.map((product) => ({
-            id: `product:${product.id}`,
-            name: product.name,
-            type: "file",
-            badge: product.available ? undefined : "Inativo",
-          })),
+          badge: [...category.subcategories.values()].reduce(
+            (total, subcategory) => total + subcategory.products.length,
+            0,
+          ),
+          children: subcategories,
         });
       }
 
@@ -241,14 +278,17 @@ export function ProductsTable({
     status,
     visibility,
     category,
+    subcategory,
     department,
     tags: selectedTags,
     view,
     priced,
     untagged,
+    sort,
+    order,
   } = filters;
 
-  const { categories, departments, tags } = taxonomy;
+  const { categories, subcategories, departments, tags } = taxonomy;
 
   const setView = (next: ProductView) => {
     void setFilters({ view: next }, { shallow: true, history: "replace", scroll: false });
@@ -380,7 +420,7 @@ export function ProductsTable({
 
     if (next === "tags") setTagSelection([]);
 
-    if (next === "category" || next === "department") setTaxonomySelection(null);
+    if (next === "subcategory") setTaxonomySelection(null);
 
     setBulkDialog(next);
   };
@@ -392,6 +432,14 @@ export function ProductsTable({
   const categoryOptions = [
     { label: "Todas", value: NO_SELECTION },
     ...categories.map((option) => ({ label: option.name, value: option.id })),
+  ];
+
+  const subcategoryOptions = [
+    { label: "Todas", value: NO_SELECTION },
+    ...subcategories.map((option) => ({
+      label: `${option.name} · ${option.categoryName}`,
+      value: option.id,
+    })),
   ];
 
   const departmentOptions = [
@@ -416,6 +464,7 @@ export function ProductsTable({
       status: null,
       visibility: null,
       category: null,
+      subcategory: null,
       department: null,
       tags: null,
       priced: null,
@@ -433,6 +482,8 @@ export function ProductsTable({
 
   if (category) exportParams.set("category", category);
 
+  if (subcategory) exportParams.set("subcategory", subcategory);
+
   if (department) exportParams.set("department", department);
 
   if (selectedTags.length > 0) exportParams.set("tags", selectedTags.join(","));
@@ -441,11 +492,36 @@ export function ProductsTable({
 
   if (untagged) exportParams.set("untagged", "true");
 
+  if (sort !== "sortOrder") exportParams.set("sort", sort);
+
+  if (order !== "asc") exportParams.set("order", order);
+
   const exportQuery = exportParams.toString();
 
   const exportHref = `/dashboard/${storeSlug}/catalog/products/export${
     exportQuery ? `?${exportQuery}` : ""
   }`;
+
+  const serverSort = {
+    sort,
+    order,
+    columns: {
+      name: "name",
+      priceMinCents: "price",
+      categoryName: "category",
+      updatedAt: "updatedAt",
+      stockQty: "stock",
+    },
+    onSort: (key: string) => {
+      // SAFETY: DataTable only calls this with keys declared in `columns`.
+      const sortKey = key as typeof sort;
+
+      void setFilters({
+        sort: sortKey,
+        order: sort === sortKey && order === "asc" ? "desc" : "asc",
+      });
+    },
+  };
 
   const columns: ColumnDef<typeof dashboardTableFeatures, PanelProductList, unknown>[] = [
     {
@@ -503,6 +579,16 @@ export function ProductsTable({
       header: "Categoria",
       cell: ({ row }) =>
         row.original.categoryName ?? <span className="text-muted-foreground">—</span>,
+    },
+    {
+      id: "updatedAt",
+      meta: { width: 160 },
+      header: "Última edição",
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap tabular-nums">
+          {formatDateTime(row.original.updatedAt)}
+        </span>
+      ),
     },
     {
       id: "tags",
@@ -635,6 +721,32 @@ export function ProductsTable({
                     <SelectContent>
                       <SelectGroup>
                         {categoryOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="products-subcategory">Subcategoria</FieldLabel>
+                  <Select
+                    items={subcategoryOptions}
+                    value={subcategory || NO_SELECTION}
+                    onValueChange={(next) =>
+                      void setFilters({
+                        subcategory: next === null || next === NO_SELECTION ? null : next,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="products-subcategory" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {subcategoryOptions.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
@@ -877,20 +989,10 @@ export function ProductsTable({
               size="sm"
               variant="outline"
               disabled={bulkUpdateMutation.isPending}
-              onClick={() => openBulkDialog("category")}
+              onClick={() => openBulkDialog("subcategory")}
             >
               <FolderInput data-icon="inline-start" aria-hidden="true" />
-              Categoria
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={bulkUpdateMutation.isPending}
-              onClick={() => openBulkDialog("department")}
-            >
-              <FolderTree data-icon="inline-start" aria-hidden="true" />
-              Departamento
+              Subcategoria
             </Button>
             <Button
               type="button"
@@ -947,8 +1049,10 @@ export function ProductsTable({
                         </HoverPrefetchLink>
                       </CardTitle>
                       <CardDescription className="truncate">
-                        {product.categoryName ?? "Sem categoria"} ·{" "}
-                        {product.departmentName ?? "Sem departamento"}
+                        {product.subcategoryName ?? "Sem subcategoria"}
+                        {product.departmentNames.length > 0
+                          ? ` · ${product.departmentNames.join(", ")}`
+                          : ""}
                       </CardDescription>
                     </div>
                     {availabilitySwitch(product)}
@@ -980,7 +1084,9 @@ export function ProductsTable({
         <Card>
           <CardHeader>
             <CardTitle>Catálogo por departamento</CardTitle>
-            <CardDescription>Departamentos → categorias → produtos.</CardDescription>
+            <CardDescription>
+              Departamentos → categorias → subcategorias → produtos.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <FileTree
@@ -1004,14 +1110,18 @@ export function ProductsTable({
             status,
             visibility,
             category,
+            subcategory,
             department,
             selectedTags,
+            sort,
+            order,
             priced,
             untagged,
           ])}
           columns={columns}
           data={products}
           hideToolbar
+          serverSort={serverSort}
           tableLabel="Produtos"
           rowHref={(product) => `/dashboard/${storeSlug}/catalog/products/${product.id}`}
           exportHref={exportHref}
@@ -1062,30 +1172,28 @@ export function ProductsTable({
       </Dialog>
 
       <Dialog
-        open={bulkDialog === "category" || bulkDialog === "department"}
+        open={bulkDialog === "subcategory"}
         onOpenChange={(open) => {
           if (!open) setBulkDialog(null);
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {bulkDialog === "category" ? "Mover para categoria" : "Mover para departamento"}
-            </DialogTitle>
+            <DialogTitle>Mover para subcategoria</DialogTitle>
             <DialogDescription>
-              Escolha o destino dos produtos selecionados. A opção vazia remove a categoria ou o
-              departamento.
+              Escolha o destino dos produtos selecionados. A opção vazia remove a subcategoria.
             </DialogDescription>
           </DialogHeader>
           <TaxonomyCombobox
-            id="bulk-taxonomy"
-            ariaLabel={
-              bulkDialog === "category" ? "Categoria de destino" : "Departamento de destino"
-            }
-            items={bulkDialog === "category" ? categories : departments}
+            id="bulk-subcategory"
+            ariaLabel="Subcategoria de destino"
+            items={subcategories.map((option) => ({
+              id: option.id,
+              name: `${option.name} · ${option.categoryName}`,
+            }))}
             value={taxonomySelection}
             onChange={setTaxonomySelection}
-            emptyLabel={bulkDialog === "category" ? "Sem categoria" : "Sem departamento"}
+            emptyLabel="Sem subcategoria"
             placeholder="Buscar…"
             className="w-full"
           />
@@ -1096,13 +1204,7 @@ export function ProductsTable({
             <Button
               type="button"
               disabled={bulkUpdateMutation.isPending}
-              onClick={() =>
-                bulkUpdateMutation.mutate(
-                  bulkDialog === "category"
-                    ? { categoryId: taxonomySelection }
-                    : { departmentId: taxonomySelection },
-                )
-              }
+              onClick={() => bulkUpdateMutation.mutate({ subcategoryId: taxonomySelection })}
             >
               {bulkUpdateMutation.isPending ? <Spinner data-icon="inline-start" /> : null}
               Mover

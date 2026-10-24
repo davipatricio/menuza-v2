@@ -66,9 +66,23 @@ export interface DataTableFilterOption {
   label: string;
 }
 
+/**
+ * Server-side sorting. Header clicks call `onSort` with the column's server
+ * sort key; the state itself lives in the URL (nuqs) and the rows arrive
+ * already ordered by the API.
+ */
+export interface DataTableServerSort {
+  sort: string;
+  order: "asc" | "desc";
+  /** Column id → server sort key. Columns absent here are not sortable. */
+  columns: Record<string, string>;
+  onSort: (sortKey: string) => void;
+}
+
 export interface DataTableProps<TData extends object> {
   columns: ColumnDef<typeof dashboardTableFeatures, TData, unknown>[];
   data: TData[];
+  serverSort?: DataTableServerSort;
   searchPlaceholder?: string;
   searchLabel?: string;
   searchColumn?: string;
@@ -93,6 +107,11 @@ export interface DataTableProps<TData extends object> {
    * pointer convenience on top of it.
    */
   rowHref?: (row: TData) => string;
+  /**
+   * Row click handler for tables that open an editor instead of navigating.
+   * Ignored when `rowHref` is set.
+   */
+  onRowClick?: (row: TData) => void;
 }
 
 /** Interactivity that owns its own navigation; a row click must not steal it. */
@@ -306,6 +325,7 @@ function DataTablePagination({
 export function DataTable<TData extends object>({
   columns,
   data,
+  serverSort,
   searchPlaceholder = "Filtrar resultados…",
   searchLabel = "Buscar na tabela",
   searchColumn,
@@ -319,6 +339,7 @@ export function DataTable<TData extends object>({
   hideToolbar = false,
   tableLabel,
   rowHref,
+  onRowClick,
 }: DataTableProps<TData>) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -400,8 +421,22 @@ export function DataTable<TData extends object>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const canSort = header.column.getCanSort();
-                  const isSorted = header.column.getIsSorted();
+                  const serverKey = serverSort?.columns[header.column.id];
+
+                  const canSort = serverKey !== undefined || header.column.getCanSort();
+
+                  const isSorted =
+                    serverKey === undefined
+                      ? header.column.getIsSorted()
+                      : serverSort?.sort === serverKey
+                        ? serverSort.order
+                        : false;
+
+                  const onSort =
+                    serverKey === undefined
+                      ? header.column.getToggleSortingHandler()
+                      : () => serverSort?.onSort(serverKey);
+
                   const definition = header.column.columnDef.header;
                   const sortLabel = typeof definition === "string" ? definition : header.column.id;
 
@@ -416,7 +451,7 @@ export function DataTable<TData extends object>({
                           type="button"
                           aria-label={`Ordenar por ${sortLabel}`}
                           className="flex items-center gap-1 font-medium hover:text-foreground"
-                          onClick={header.column.getToggleSortingHandler()}
+                          onClick={onSort}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           <SortIndicator state={isSorted} />
@@ -435,19 +470,29 @@ export function DataTable<TData extends object>({
               rows.map((row) => {
                 const href = rowHref?.(row.original);
 
+                const handleClick = href
+                  ? (event: React.MouseEvent) => {
+                      if (shouldNavigateFromRowClick(event, href)) {
+                        router.push(href);
+                      }
+                    }
+                  : onRowClick
+                    ? (event: React.MouseEvent) => {
+                        if (shouldNavigateFromRowClick(event, "row-click")) {
+                          onRowClick(row.original);
+                        }
+                      }
+                    : undefined;
+
                 return (
                   <TableRow
                     key={row.id}
-                    className={href ? "cursor-pointer hover:bg-muted" : undefined}
-                    onClick={
-                      href
-                        ? (event) => {
-                            if (shouldNavigateFromRowClick(event, href)) {
-                              router.push(href);
-                            }
-                          }
+                    className={
+                      href !== undefined || onRowClick !== undefined
+                        ? "cursor-pointer hover:bg-muted"
                         : undefined
                     }
+                    onClick={handleClick}
                   >
                     {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} style={columnWidth(cell.column.columnDef.meta)}>

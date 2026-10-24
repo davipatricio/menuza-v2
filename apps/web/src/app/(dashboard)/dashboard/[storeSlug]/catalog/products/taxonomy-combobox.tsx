@@ -10,7 +10,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox.tsx";
 
-export type TaxonomyOption = { id: string; name: string };
+export type TaxonomyOption = { id: string; name: string; group?: string };
 
 const EMPTY_VALUE = "";
 
@@ -54,7 +54,9 @@ export function TaxonomyCombobox({
       items={options}
       value={selected}
       onValueChange={(next) => onChange(next && next.id !== EMPTY_VALUE ? next.id : null)}
-      itemToStringLabel={(option) => option.name}
+      itemToStringLabel={(option) =>
+        option.group ? `${option.group} · ${option.name}` : option.name
+      }
       itemToStringValue={(option) => option.id}
       isItemEqualToValue={(item, value) => item.id === value.id}
     >
@@ -72,7 +74,12 @@ export function TaxonomyCombobox({
         <ComboboxList>
           {(option) => (
             <ComboboxItem key={option.id || "empty"} value={option}>
-              {option.name}
+              <span className="flex min-w-0 flex-col">
+                {option.group ? (
+                  <span className="truncate text-xs text-muted-foreground">{option.group}</span>
+                ) : null}
+                <span className="truncate">{option.name}</span>
+              </span>
             </ComboboxItem>
           )}
         </ComboboxList>

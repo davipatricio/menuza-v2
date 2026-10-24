@@ -3,7 +3,6 @@ import {
   buildProductTaxonomy,
   countActiveProductFilters,
   filterProducts,
-  sortProducts,
   type SearchableProduct,
 } from "../src/app/(dashboard)/dashboard/[storeSlug]/catalog/products/product-filter.ts";
 import type { ProductSearchParams } from "../src/app/(dashboard)/dashboard/[storeSlug]/catalog/products/product-search-params.ts";
@@ -14,8 +13,10 @@ function product(overrides: Partial<SearchableProduct> = {}): SearchableProduct 
     name: "Café",
     categoryId: "cat-1",
     categoryName: "Bebidas",
-    departmentId: "dep-1",
-    departmentName: "Cozinha",
+    subcategoryId: "sub-1",
+    subcategoryName: "Quentes",
+    departmentIds: ["dep-1"],
+    departmentNames: ["Cozinha"],
     tags: [],
     priceCents: 500,
     available: true,
@@ -23,6 +24,7 @@ function product(overrides: Partial<SearchableProduct> = {}): SearchableProduct 
     hidden: false,
     private: false,
     sortOrder: 0,
+    updatedAt: "2026-01-01T00:00:00Z",
     ...overrides,
   };
 }
@@ -33,11 +35,14 @@ function filters(overrides: Partial<ProductSearchParams> = {}): ProductSearchPar
     status: "all",
     visibility: "all",
     category: "",
+    subcategory: "",
     department: "",
     tags: [],
     view: "table",
     priced: false,
     untagged: false,
+    sort: "sortOrder",
+    order: "asc",
     ...overrides,
   };
 }
@@ -49,8 +54,10 @@ const catalog = [
     name: "Pão",
     categoryId: "cat-2",
     categoryName: "Padaria",
-    departmentId: "dep-2",
-    departmentName: "Balcão",
+    subcategoryId: "sub-2",
+    subcategoryName: "Pães",
+    departmentIds: ["dep-2"],
+    departmentNames: ["Balcão"],
     tags: [{ id: "t2", name: "Fresco" }],
     priceCents: null,
     available: false,
@@ -68,9 +75,10 @@ const catalog = [
 const ids = (rows: SearchableProduct[]) => rows.map((row) => row.id);
 
 describe("filterProducts", () => {
-  test("matches the query against name, category, department and tags", () => {
+  test("matches the query against name, category, subcategory, department and tags", () => {
     expect(ids(filterProducts(catalog, filters({ q: "café" })))).toEqual(["p1"]);
     expect(ids(filterProducts(catalog, filters({ q: "  PADARIA " })))).toEqual(["p2"]);
+    expect(ids(filterProducts(catalog, filters({ q: "pães" })))).toEqual(["p2"]);
     expect(ids(filterProducts(catalog, filters({ q: "balcão" })))).toEqual(["p2"]);
     expect(ids(filterProducts(catalog, filters({ q: "fresco" })))).toEqual(["p2", "p3"]);
   });
@@ -106,8 +114,9 @@ describe("filterProducts", () => {
     expect(ids(filterProducts(rows, filters({ visibility: "private" })))).toEqual(["d"]);
   });
 
-  test("filters by category and department", () => {
+  test("filters by category, subcategory and department", () => {
     expect(ids(filterProducts(catalog, filters({ category: "cat-2" })))).toEqual(["p2"]);
+    expect(ids(filterProducts(catalog, filters({ subcategory: "sub-2" })))).toEqual(["p2"]);
     expect(ids(filterProducts(catalog, filters({ department: "dep-1" })))).toEqual(["p1", "p3"]);
   });
 
@@ -126,28 +135,6 @@ describe("filterProducts", () => {
   });
 });
 
-describe("sortProducts", () => {
-  test("orders by sortOrder, then name (pt-BR), then id", () => {
-    const rows = [
-      product({ id: "z", name: "Banana" }),
-      product({ id: "y", name: "Abacate" }),
-      product({ id: "b", name: "Abacate" }),
-      product({ id: "a", name: "Abacate" }),
-      product({ id: "first", name: "Zucchini", sortOrder: -1 }),
-    ];
-
-    expect(ids(sortProducts(rows))).toEqual(["first", "a", "b", "y", "z"]);
-  });
-
-  test("is deterministic regardless of input order", () => {
-    const forward = sortProducts(catalog);
-    const backward = sortProducts([...catalog].reverse());
-
-    expect(ids(forward)).toEqual(ids(backward));
-    expect(ids(forward)).toEqual(["p1", "p2", "p3"]);
-  });
-});
-
 describe("countActiveProductFilters", () => {
   test("counts the advanced filters shown on the badge", () => {
     expect(countActiveProductFilters(filters())).toBe(0);
@@ -155,6 +142,7 @@ describe("countActiveProductFilters", () => {
       countActiveProductFilters(
         filters({
           category: "cat-1",
+          subcategory: "sub-1",
           department: "dep-1",
           visibility: "archived",
           tags: ["t1"],
@@ -162,7 +150,7 @@ describe("countActiveProductFilters", () => {
           untagged: true,
         }),
       ),
-    ).toBe(6);
+    ).toBe(7);
   });
 });
 
@@ -172,6 +160,10 @@ describe("buildProductTaxonomy", () => {
       categories: [
         { id: "cat-1", name: "Bebidas" },
         { id: "cat-2", name: "Padaria" },
+      ],
+      subcategories: [
+        { id: "sub-1", name: "Quentes", categoryId: "cat-1", categoryName: "Bebidas" },
+        { id: "sub-2", name: "Pães", categoryId: "cat-2", categoryName: "Padaria" },
       ],
       departments: [
         { id: "dep-1", name: "Cozinha" },

@@ -3,13 +3,14 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Search, X } from "lucide-react";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterContractClient } from "@orpc/contract";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
+import { useQueryStates } from "nuqs";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -20,6 +21,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import { TaxonomyRowActions } from "../_components/taxonomy-dialog.tsx";
+import { tagSearchParams } from "./tags-search-params.ts";
 
 type TagRow = { id: string; name: string; itemsCount: number; isActive: boolean };
 
@@ -51,6 +53,15 @@ function matchesFilters(tag: TagRow, term: string, status: StatusFilter, usedOnl
 
 export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: string }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const [{ sort, order }, setSort] = useQueryStates(tagSearchParams, {
+    shallow: false,
+    history: "replace",
+    scroll: false,
+    startTransition,
+  });
+
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [usedOnly, setUsedOnly] = useState(false);
@@ -64,6 +75,24 @@ export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: stri
   }, [tags, query, status, usedOnly]);
 
   const hasFilters = query !== "" || status !== "all" || usedOnly;
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const allSelected = filtered.length > 0 && filtered.every((row) => selectedSet.has(row.id));
+
+  const someSelected = selectedIds.length > 0;
+
+  const toggleAll = () => {
+    setSelectedIds(allSelected ? [] : filtered.map((row) => row.id));
+  };
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked ? [...current, id] : current.filter((item) => item !== id),
+    );
+  };
 
   const activeMutation = useMutation({
     mutationFn: ({ tagId, name, isActive }: { tagId: string; name: string; isActive: boolean }) =>
@@ -104,7 +133,48 @@ export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: stri
     );
   };
 
+  const serverSort = {
+    sort,
+    order,
+    columns: { name: "name", itemsCount: "itemsCount" },
+    onSort: (key: string) => {
+      // SAFETY: DataTable only calls this with keys declared in `columns`.
+      const sortKey = key as typeof sort;
+
+      void setSort({
+        sort: sortKey,
+        order: sort === sortKey && order === "asc" ? "desc" : "asc",
+      });
+    },
+  };
+
   const columns: ColumnDef<typeof dashboardTableFeatures, TagRow, unknown>[] = [
+    {
+      id: "select",
+      meta: { width: 32 },
+      enableSorting: false,
+      header: () => (
+        <Checkbox
+          aria-label={allSelected ? "Desmarcar todas as tags" : "Selecionar todas as tags"}
+          checked={allSelected}
+          indeterminate={someSelected && !allSelected}
+          onCheckedChange={toggleAll}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          aria-label={`Selecionar ${row.original.name}`}
+          checked={selectedSet.has(row.original.id)}
+          onCheckedChange={(checked) => toggleRow(row.original.id, checked)}
+        />
+      ),
+    },
+    {
+      id: "active",
+      enableSorting: false,
+      header: () => <span className="sr-only">Ativa</span>,
+      cell: ({ row }) => activeSwitch(row.original),
+    },
     {
       accessorKey: "name",
       header: "Nome",
@@ -129,7 +199,6 @@ export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: stri
         );
       },
     },
-    { id: "active", header: "Ativa", cell: ({ row }) => activeSwitch(row.original) },
     {
       id: "actions",
       header: "Ações",
@@ -146,7 +215,7 @@ export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: stri
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" aria-busy={isPending}>
           <InputGroup className="max-w-sm min-w-[16rem] flex-1">
             <InputGroupAddon align="inline-start">
               <Search aria-hidden="true" />
@@ -213,7 +282,13 @@ export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: stri
         </Alert>
       ) : null}
 
-      <DataTable<TagRow> columns={columns} data={filtered} hideToolbar tableLabel="Tags" />
+      <DataTable<TagRow>
+        columns={columns}
+        data={filtered}
+        hideToolbar
+        serverSort={serverSort}
+        tableLabel="Tags"
+      />
     </div>
   );
 }

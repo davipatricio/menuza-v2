@@ -12,22 +12,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.t
 import { SeoForm } from "../../../_components/seo-form.tsx";
 import { ProductEditorGuard, PendingChangesStatus } from "../product-editor-guard.tsx";
 import { ProductForm } from "../product-form.tsx";
+import type { SubcategoryOption } from "../product-taxonomy-select.tsx";
+import { ProductPerformance } from "./product-performance.tsx";
 
-const TABS = ["produto", "seo"] as const;
+const TABS = ["produto", "seo", "desempenho"] as const;
 
 export function ProductTabs({
   storeSlug,
   product,
   seo,
-  categories,
-  departments,
+  subcategories,
   tags,
 }: {
   storeSlug: string;
   product: PanelProductDetail;
   seo: PanelSeo;
-  categories: Array<{ id: string; name: string }>;
-  departments: Array<{ id: string; name: string }>;
+  subcategories: SubcategoryOption[];
   tags: Array<{ id: string; name: string }>;
 }) {
   const [tab, setTab] = useQueryState(
@@ -42,18 +42,23 @@ export function ProductTabs({
       <div className="flex w-full flex-col gap-6">
         <PendingChangesStatus />
 
-        <Tabs value={tab} onValueChange={(next) => setTab(next === "seo" ? "seo" : "produto")}>
+        <Tabs
+          value={tab}
+          onValueChange={(next) => {
+            if (next === "produto" || next === "seo" || next === "desempenho") setTab(next);
+          }}
+        >
           <TabsList aria-label="Seções do produto">
             <TabsTrigger value="produto">Produto</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
+            <TabsTrigger value="desempenho">Desempenho</TabsTrigger>
           </TabsList>
 
           <TabsContent value="produto" keepMounted>
             <ProductForm
               storeSlug={storeSlug}
               product={product}
-              categories={categories}
-              departments={departments}
+              subcategories={subcategories}
               tags={tags}
             />
           </TabsContent>
@@ -66,6 +71,10 @@ export function ProductTabs({
               entityName={product.name}
               initialData={seo}
             />
+          </TabsContent>
+
+          <TabsContent value="desempenho">
+            <ProductPerformance productName={product.name} />
           </TabsContent>
         </Tabs>
       </div>

@@ -13,9 +13,14 @@ export const productCsvColumns: Array<CsvColumn<PanelProduct>> = [
     accessor: (product) => product.categoryName ?? "",
   },
   {
-    key: "departmentName",
-    label: "Departamento",
-    accessor: (product) => product.departmentName ?? "",
+    key: "subcategoryName",
+    label: "Subcategoria",
+    accessor: (product) => product.subcategoryName ?? "",
+  },
+  {
+    key: "departmentNames",
+    label: "Departamentos",
+    accessor: (product) => product.departmentNames.join(", "),
   },
   {
     key: "tags",

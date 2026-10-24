@@ -29,8 +29,7 @@ type ModelContext = {
 const FillInputSchema = v.object({
   name: v.optional(v.string()),
   description: v.optional(v.string()),
-  categoryId: v.optional(v.nullable(v.string())),
-  departmentId: v.optional(v.nullable(v.string())),
+  subcategoryId: v.optional(v.nullable(v.string())),
   tagIds: v.optional(v.array(v.string())),
   available: v.optional(v.boolean()),
   sortOrder: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
@@ -54,8 +53,7 @@ const FILL_INPUT = {
   properties: {
     name: { type: "string" },
     description: { type: "string" },
-    categoryId: { type: ["string", "null"] },
-    departmentId: { type: ["string", "null"] },
+    subcategoryId: { type: ["string", "null"] },
     tagIds: { type: "array", items: { type: "string" } },
     available: { type: "boolean" },
     sortOrder: { type: "integer", minimum: 0 },
@@ -106,7 +104,7 @@ export function useProductWebMcp(form: any) {
     context.registerTool({
       name: "product.fill",
       description:
-        "Preenche campos do produto. Aceita name, description, categoryId, departmentId, tagIds, available e sortOrder.",
+        "Preenche campos do produto. Aceita name, description, subcategoryId, tagIds, available e sortOrder.",
       inputSchema: FILL_INPUT,
       execute: (input) => {
         const parsed = v.safeParse(FillInputSchema, input);
@@ -123,12 +121,8 @@ export function useProductWebMcp(form: any) {
           form.setFieldValue("description", values.description);
         }
 
-        if (values.categoryId !== undefined) {
-          form.setFieldValue("categoryId", values.categoryId);
-        }
-
-        if (values.departmentId !== undefined) {
-          form.setFieldValue("departmentId", values.departmentId);
+        if (values.subcategoryId !== undefined) {
+          form.setFieldValue("subcategoryId", values.subcategoryId);
         }
 
         if (values.tagIds !== undefined) {

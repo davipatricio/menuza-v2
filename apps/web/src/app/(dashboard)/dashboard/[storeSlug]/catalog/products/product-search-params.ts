@@ -18,11 +18,21 @@ export const productSearchParams = {
     "all",
   ),
   category: parseAsString.withDefault(""),
+  subcategory: parseAsString.withDefault(""),
   department: parseAsString.withDefault(""),
   tags: parseAsArrayOf(parseAsString).withDefault([]),
   view: parseAsStringLiteral(["table", "grid", "tree"] as const).withDefault("table"),
   priced: parseAsBoolean.withDefault(false),
   untagged: parseAsBoolean.withDefault(false),
+  sort: parseAsStringLiteral([
+    "sortOrder",
+    "name",
+    "updatedAt",
+    "price",
+    "category",
+    "stock",
+  ] as const).withDefault("sortOrder"),
+  order: parseAsStringLiteral(["asc", "desc"] as const).withDefault("asc"),
 };
 
 export const loadProductSearchParams = createLoader(productSearchParams);

@@ -66,7 +66,7 @@ import { STOCK_MODE_LABELS } from "@/lib/panel-labels.ts";
 import { useDirtySection, useLeaveGuard } from "./product-editor-guard.tsx";
 import { useProductWebMcp } from "./product-webmcp.ts";
 import { TagCombobox } from "./tag-combobox.tsx";
-import { TaxonomyCombobox } from "./taxonomy-combobox.tsx";
+import { ProductTaxonomySelect, type SubcategoryOption } from "./product-taxonomy-select.tsx";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
 
@@ -106,8 +106,7 @@ type ProductValues = {
   storeSlug: string;
   name: string;
   description: string;
-  categoryId: string | null;
-  departmentId: string | null;
+  subcategoryId: string | null;
   tagIds: string[];
   available: boolean;
   archived: boolean;
@@ -124,8 +123,7 @@ type ProductValues = {
 type ProductPatch = {
   name?: string;
   description?: string | null;
-  categoryId?: string | null;
-  departmentId?: string | null;
+  subcategoryId?: string | null;
   tagIds?: string[];
   available?: boolean;
   archived?: boolean;
@@ -173,9 +171,9 @@ function productPatch(baseline: ProductValues, values: ProductValues): ProductPa
 
   if (description !== savedDescription) patch.description = description;
 
-  if (values.categoryId !== baseline.categoryId) patch.categoryId = values.categoryId;
-
-  if (values.departmentId !== baseline.departmentId) patch.departmentId = values.departmentId;
+  if (values.subcategoryId !== baseline.subcategoryId) {
+    patch.subcategoryId = values.subcategoryId;
+  }
 
   if (!sameIds(values.tagIds, baseline.tagIds)) patch.tagIds = values.tagIds;
 
@@ -200,8 +198,7 @@ function snapshotOf(values: ProductValues): ProductValues {
     storeSlug: values.storeSlug,
     name: values.name,
     description: values.description,
-    categoryId: values.categoryId,
-    departmentId: values.departmentId,
+    subcategoryId: values.subcategoryId,
     tagIds: [...values.tagIds],
     available: values.available,
     archived: values.archived,
@@ -212,8 +209,11 @@ function snapshotOf(values: ProductValues): ProductValues {
   };
 }
 
-/** Categories, departments and tags share the id/name shape the selects need. */
+/** Tags use the id/name shape the combobox needs. */
 type TaxonomyItem = { id: string; name: string };
+
+/** Subcategories also carry the category label the option shows. */
+type SubcategoryItem = SubcategoryOption;
 
 /**
  * Maps the API's error codes to pt-BR. The contract never sends user copy, so
@@ -582,14 +582,12 @@ function VisibilityField({
 function ProductFields({
   form,
   submitted,
-  categories,
-  departments,
+  subcategories,
   tags,
 }: {
   form: any;
   submitted: boolean;
-  categories: TaxonomyItem[];
-  departments: TaxonomyItem[];
+  subcategories: SubcategoryItem[];
   tags: TaxonomyItem[];
 }) {
   return (
@@ -667,55 +665,25 @@ function ProductFields({
             )}
           </form.Field>
 
-          <div className="grid gap-3 md:grid-cols-2 lg:contents">
-            <form.Field name="categoryId">
-              {(field: any) => (
-                <Field data-invalid={fieldInvalid(field, submitted)}>
-                  <FieldLabel htmlFor={field.name}>Categoria</FieldLabel>
-                  <TaxonomyCombobox
-                    id={field.name}
-                    items={categories}
-                    value={field.state.value}
-                    onChange={field.handleChange}
-                    emptyLabel="Sem categoria"
-                    placeholder="Buscar categoria…"
-                    invalid={fieldInvalid(field, submitted)}
-                    describedBy={fieldDescribedBy(field, field.name, submitted)}
-                    className="w-full"
-                  />
-                  <FieldDescription id={`${field.name}-description`}>
-                    Um produto pode ficar sem categoria.
-                  </FieldDescription>
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="departmentId">
-              {(field: any) => (
-                <Field data-invalid={fieldInvalid(field, submitted)}>
-                  <FieldLabel htmlFor={field.name}>Departamento</FieldLabel>
-                  <TaxonomyCombobox
-                    id={field.name}
-                    items={departments}
-                    value={field.state.value}
-                    onChange={field.handleChange}
-                    emptyLabel="Sem departamento"
-                    placeholder="Buscar departamento…"
-                    invalid={fieldInvalid(field, submitted)}
-                    describedBy={fieldDescribedBy(field, field.name, submitted)}
-                    className="w-full"
-                  />
-                  <FieldDescription id={`${field.name}-description`}>
-                    Um produto pode ficar sem departamento.
-                  </FieldDescription>
-                </Field>
-              )}
-            </form.Field>
-          </div>
+          <form.Field name="subcategoryId">
+            {(field: any) => (
+              <div className="flex flex-col gap-2">
+                <ProductTaxonomySelect
+                  id={field.name}
+                  value={field.state.value}
+                  onChange={field.handleChange}
+                  subcategories={subcategories}
+                  invalid={fieldInvalid(field, submitted)}
+                  describedBy={fieldDescribedBy(field, field.name, submitted, false)}
+                />
+                {fieldError(field, field.name, submitted)}
+              </div>
+            )}
+          </form.Field>
 
           <form.Field name="tagIds">
             {(field: any) => (
-              <Field className="lg:col-span-2">
+              <Field>
                 <FieldLabel htmlFor={field.name}>Tags</FieldLabel>
                 {tags.length === 0 ? (
                   <Empty className="border">
@@ -735,13 +703,9 @@ function ProductFields({
                     tags={tags}
                     value={field.state.value}
                     onChange={field.handleChange}
-                    describedBy={`${field.name}-description`}
                     className="w-full"
                   />
                 )}
-                <FieldDescription id={`${field.name}-description`}>
-                  Busque e selecione uma ou mais tags.
-                </FieldDescription>
               </Field>
             )}
           </form.Field>
@@ -922,14 +886,12 @@ export function DeleteProductButton({
 export function ProductForm({
   storeSlug,
   product,
-  categories,
-  departments,
+  subcategories,
   tags,
 }: {
   storeSlug: string;
   product?: PanelProductDetail;
-  categories: TaxonomyItem[];
-  departments: TaxonomyItem[];
+  subcategories: SubcategoryItem[];
   tags: TaxonomyItem[];
 }) {
   const router = useRouter();
@@ -950,8 +912,7 @@ export function ProductForm({
     storeSlug,
     name: product?.name ?? "",
     description: product?.description ?? "",
-    categoryId: product?.categoryId ?? null,
-    departmentId: product?.departmentId ?? null,
+    subcategoryId: product?.subcategoryId ?? null,
     tagIds: product?.tags.map((tag) => tag.id) ?? [],
     available: product?.available ?? true,
     archived: product?.archived ?? false,
@@ -1031,8 +992,7 @@ export function ProductForm({
     storeSlug,
     name: formValues.name,
     description: formValues.description ?? "",
-    categoryId: formValues.categoryId ?? null,
-    departmentId: formValues.departmentId ?? null,
+    subcategoryId: formValues.subcategoryId ?? null,
     tagIds: formValues.tagIds ?? [],
     available: formValues.available,
     archived: formValues.archived,
@@ -1059,8 +1019,7 @@ export function ProductForm({
               <ProductFields
                 form={form}
                 submitted={submitted}
-                categories={categories}
-                departments={departments}
+                subcategories={subcategories}
                 tags={tags}
               />
             )}

@@ -32,8 +32,7 @@ async function NewProduct({ params }: { params: Promise<{ storeSlug: string }> }
       </div>
       <ProductForm
         storeSlug={storeSlug}
-        categories={taxonomy.categories}
-        departments={taxonomy.departments}
+        subcategories={taxonomy.subcategories}
         tags={taxonomy.tags}
       />
     </section>

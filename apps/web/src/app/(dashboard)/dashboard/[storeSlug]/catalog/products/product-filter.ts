@@ -8,11 +8,14 @@ import type { ProductSearchParams } from "./product-search-params.ts";
 
 export type TaxonomyEntry = { id: string; name: string };
 
+export type SubcategoryEntry = TaxonomyEntry & { categoryId: string; categoryName: string };
+
 /** Tags also carry usage across the unfiltered catalog, to rank the filter list. */
 export type TagEntry = TaxonomyEntry & { count: number };
 
 export type ProductTaxonomy = {
   categories: TaxonomyEntry[];
+  subcategories: SubcategoryEntry[];
   departments: TaxonomyEntry[];
   tags: TagEntry[];
 };
@@ -34,7 +37,8 @@ export function productHaystack(product: SearchableProduct): string {
     product.seoDescription,
     ...(product.variationNames ?? []),
     product.categoryName,
-    product.departmentName,
+    product.subcategoryName,
+    ...product.departmentNames,
     ...product.tags.map((tag) => tag.name),
   ]
     .filter(Boolean)
@@ -76,26 +80,19 @@ export function filterProducts<T extends PanelProduct>(
 
     if (filters.category && product.categoryId !== filters.category) return false;
 
-    if (filters.department && product.departmentId !== filters.department) return false;
+    if (filters.subcategory && product.subcategoryId !== filters.subcategory) return false;
+
+    if (filters.department && !product.departmentIds.includes(filters.department)) return false;
 
     return matchesTags(product, filters.tags);
   });
-}
-
-/** `sortOrder` asc, then name (pt-BR), then id — total order, no ties. */
-export function sortProducts<T extends PanelProduct>(products: T[]): T[] {
-  return [...products].sort(
-    (a, b) =>
-      a.sortOrder - b.sortOrder ||
-      a.name.localeCompare(b.name, "pt-BR") ||
-      a.id.localeCompare(b.id),
-  );
 }
 
 /** Same semantics as the badge next to "Filtros". */
 export function countActiveProductFilters(filters: ProductSearchParams): number {
   return [
     filters.category !== "",
+    filters.subcategory !== "",
     filters.department !== "",
     filters.visibility !== "all",
     filters.tags.length > 0,
@@ -107,6 +104,7 @@ export function countActiveProductFilters(filters: ProductSearchParams): number 
 /** Built from the unfiltered rows, so the options never collapse to the result set. */
 export function buildProductTaxonomy(products: PanelProduct[]): ProductTaxonomy {
   const categories = new Map<string, string>();
+  const subcategories = new Map<string, SubcategoryEntry>();
   const departments = new Map<string, string>();
   const tags = new Map<string, TagEntry>();
 
@@ -115,9 +113,26 @@ export function buildProductTaxonomy(products: PanelProduct[]): ProductTaxonomy 
       categories.set(product.categoryId, product.categoryName);
     }
 
-    if (product.departmentId && product.departmentName && !departments.has(product.departmentId)) {
-      departments.set(product.departmentId, product.departmentName);
+    if (
+      product.subcategoryId &&
+      product.subcategoryName &&
+      product.categoryId &&
+      product.categoryName &&
+      !subcategories.has(product.subcategoryId)
+    ) {
+      subcategories.set(product.subcategoryId, {
+        id: product.subcategoryId,
+        name: product.subcategoryName,
+        categoryId: product.categoryId,
+        categoryName: product.categoryName,
+      });
     }
+
+    product.departmentIds.forEach((departmentId, index) => {
+      if (departments.has(departmentId)) return;
+
+      departments.set(departmentId, product.departmentNames[index] ?? departmentId);
+    });
 
     for (const tag of product.tags) {
       const entry = tags.get(tag.id);
@@ -132,6 +147,7 @@ export function buildProductTaxonomy(products: PanelProduct[]): ProductTaxonomy 
 
   return {
     categories: toEntries(categories),
+    subcategories: [...subcategories.values()],
     departments: toEntries(departments),
     tags: [...tags.values()].sort(
       (a, b) => b.count - a.count || a.name.localeCompare(b.name, "pt-BR"),

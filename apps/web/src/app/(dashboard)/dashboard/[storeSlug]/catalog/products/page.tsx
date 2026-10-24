@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/empty.tsx";
 import { panelClient } from "@/lib/server-tenant.ts";
 import { TableLoading } from "../../_components/table-loading.tsx";
-import { buildProductTaxonomy, filterProducts, sortProducts } from "./product-filter.ts";
+import { buildProductTaxonomy, filterProducts } from "./product-filter.ts";
 import { loadProductSearchParams } from "./product-search-params.ts";
 import { ProductsTable } from "./products-table";
 
@@ -51,9 +51,13 @@ async function CatalogProducts({
 
   if (!client) notFound();
 
-  const { products } = await client.panel.listProducts({ storeSlug });
+  const { products } = await client.panel.listProducts({
+    storeSlug,
+    sortBy: filters.sort,
+    order: filters.order,
+  });
 
-  const filtered = filterProducts(sortProducts(products), filters);
+  const filtered = filterProducts(products, filters);
   const taxonomy = buildProductTaxonomy(products);
 
   return (

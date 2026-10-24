@@ -14,8 +14,13 @@ import { panelClient } from "@/lib/server-tenant.ts";
 import { TableLoading } from "../../_components/table-loading.tsx";
 import { TaxonomyCreateDialog } from "../_components/taxonomy-dialog.tsx";
 import { TagsTable } from "./tags-table";
+import { loadTagSearchParams, type TagSearchParams } from "./tags-search-params.ts";
 
-async function getTags(storeSlug: string) {
+async function getTags(
+  storeSlug: string,
+  sortBy: TagSearchParams["sort"],
+  order: TagSearchParams["order"],
+) {
   "use cache: private";
   cacheTag(`dashboard:tags:${storeSlug}`);
   cacheLife({ stale: 300 });
@@ -23,24 +28,40 @@ async function getTags(storeSlug: string) {
 
   if (!client) return null;
 
-  const { tags } = await client.panel.listTags({ storeSlug });
+  const { tags } = await client.panel.listTags({ storeSlug, sortBy, order });
 
   return tags;
 }
 
 export const instant = true;
 
-export default function CatalogTagsPage({ params }: { params: Promise<{ storeSlug: string }> }) {
+export default function CatalogTagsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ storeSlug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense fallback={<TableLoading label="Carregando tags" />}>
-      <CatalogTags params={params} />
+      <CatalogTags params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function CatalogTags({ params }: { params: Promise<{ storeSlug: string }> }) {
-  const { storeSlug } = await params;
-  const tags = await getTags(storeSlug);
+async function CatalogTags({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ storeSlug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ storeSlug }, { sort, order }] = await Promise.all([
+    params,
+    loadTagSearchParams(searchParams),
+  ]);
+
+  const tags = await getTags(storeSlug, sort, order);
 
   if (!tags) notFound();
 
