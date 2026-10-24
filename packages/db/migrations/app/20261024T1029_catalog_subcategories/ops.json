@@ -1,0 +1,964 @@
+[
+  {
+    "id": "dropConstraint.Product.Product_categoryId_fkey",
+    "label": "Drop constraint \"Product_categoryId_fkey\" on \"Product\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Product_categoryId_fkey",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Product_categoryId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Product_categoryId_fkey", "public", "\"public\".\"Product\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"Product_categoryId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" DROP CONSTRAINT \"Product_categoryId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Product_categoryId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Product_categoryId_fkey", "public", "\"public\".\"Product\""]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.Product.Product_departmentId_fkey",
+    "label": "Drop constraint \"Product_departmentId_fkey\" on \"Product\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Product_departmentId_fkey",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Product_departmentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Product_departmentId_fkey", "public", "\"public\".\"Product\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"Product_departmentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" DROP CONSTRAINT \"Product_departmentId_fkey\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Product_departmentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Product_departmentId_fkey", "public", "\"public\".\"Product\""]
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.Product.Product_categoryId_idx",
+    "label": "Drop index \"Product_categoryId_idx\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Product_categoryId_idx",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Product_categoryId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"Product_categoryId_idx\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"Product_categoryId_idx\"",
+        "sql": "DROP INDEX \"public\".\"Product_categoryId_idx\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Product_categoryId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Product_categoryId_idx\""]
+      }
+    ]
+  },
+  {
+    "id": "table.CategoryDepartment",
+    "label": "Create table \"CategoryDepartment\"",
+    "summary": "Creates table \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"CategoryDepartment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"CategoryDepartment\"",
+        "sql": "CREATE TABLE \"public\".\"CategoryDepartment\" (\n  \"categoryId\" text NOT NULL,\n  \"departmentId\" text NOT NULL,\n  CONSTRAINT \"CategoryDepartment_pkey\" PRIMARY KEY (\"categoryId\", \"departmentId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"CategoryDepartment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment\""]
+      }
+    ]
+  },
+  {
+    "id": "table.Subcategory",
+    "label": "Create table \"Subcategory\"",
+    "summary": "Creates table \"Subcategory\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Subcategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Subcategory\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Subcategory\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Subcategory\"",
+        "sql": "CREATE TABLE \"public\".\"Subcategory\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"categoryId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"sortOrder\" int4 DEFAULT 0 NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  CONSTRAINT \"Subcategory_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Subcategory\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"Subcategory\""]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Category.active",
+    "label": "Add column \"active\" to \"Category\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "active",
+        "table": "Category"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"active\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Category", "active"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"active\"",
+        "sql": "ALTER TABLE \"public\".\"Category\" ADD COLUMN \"active\" bool DEFAULT true NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"active\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Category", "active"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Category.updatedAt",
+    "label": "Add column \"updatedAt\" to \"Category\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updatedAt",
+        "table": "Category"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Category", "updatedAt"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Category\" ADD COLUMN \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Category", "updatedAt"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Department.updatedAt",
+    "label": "Add column \"updatedAt\" to \"Department\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updatedAt",
+        "table": "Department"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Department", "updatedAt"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Department\" ADD COLUMN \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Department", "updatedAt"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Product.subcategoryId",
+    "label": "Add column \"subcategoryId\" to \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "subcategoryId",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"subcategoryId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "subcategoryId"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"subcategoryId\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" ADD COLUMN \"subcategoryId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"subcategoryId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "subcategoryId"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Product.updatedAt",
+    "label": "Add column \"updatedAt\" to \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updatedAt",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "updatedAt"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" ADD COLUMN \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "updatedAt"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.Tag.updatedAt",
+    "label": "Add column \"updatedAt\" to \"Tag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updatedAt",
+        "table": "Tag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Tag", "updatedAt"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Tag\" ADD COLUMN \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Tag", "updatedAt"]
+      }
+    ]
+  },
+  {
+    "id": "unique.Subcategory.Subcategory_categoryId_name_key",
+    "label": "Add unique constraint on \"Subcategory\" (categoryId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "Subcategory_categoryId_name_key",
+        "table": "Subcategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Subcategory_categoryId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Subcategory_categoryId_name_key", "public", "\"public\".\"Subcategory\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"Subcategory_categoryId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"Subcategory\" ADD CONSTRAINT \"Subcategory_categoryId_name_key\" UNIQUE (\"categoryId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Subcategory_categoryId_name_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Subcategory_categoryId_name_key", "public", "\"public\".\"Subcategory\""]
+      }
+    ]
+  },
+  {
+    "id": "index.CategoryDepartment.CategoryDepartment_categoryId_idx_15c304f2",
+    "label": "Create index \"CategoryDepartment_categoryId_idx_15c304f2\" on \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "CategoryDepartment_categoryId_idx_15c304f2",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"CategoryDepartment_categoryId_idx_15c304f2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment_categoryId_idx_15c304f2\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"CategoryDepartment_categoryId_idx_15c304f2\"",
+        "sql": "CREATE INDEX \"CategoryDepartment_categoryId_idx_15c304f2\" ON \"public\".\"CategoryDepartment\" (\"categoryId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"CategoryDepartment_categoryId_idx_15c304f2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment_categoryId_idx_15c304f2\""]
+      }
+    ]
+  },
+  {
+    "id": "index.CategoryDepartment.CategoryDepartment_departmentId_idx",
+    "label": "Create index \"CategoryDepartment_departmentId_idx\" on \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "CategoryDepartment_departmentId_idx",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"CategoryDepartment_departmentId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment_departmentId_idx\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"CategoryDepartment_departmentId_idx\"",
+        "sql": "CREATE INDEX \"CategoryDepartment_departmentId_idx\" ON \"public\".\"CategoryDepartment\" (\"departmentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"CategoryDepartment_departmentId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment_departmentId_idx\""]
+      }
+    ]
+  },
+  {
+    "id": "index.Product.Product_subcategoryId_idx",
+    "label": "Create index \"Product_subcategoryId_idx\" on \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Product_subcategoryId_idx",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Product_subcategoryId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Product_subcategoryId_idx\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Product_subcategoryId_idx\"",
+        "sql": "CREATE INDEX \"Product_subcategoryId_idx\" ON \"public\".\"Product\" (\"subcategoryId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Product_subcategoryId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"Product_subcategoryId_idx\""]
+      }
+    ]
+  },
+  {
+    "id": "index.Subcategory.Subcategory_categoryId_idx",
+    "label": "Create index \"Subcategory_categoryId_idx\" on \"Subcategory\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Subcategory_categoryId_idx",
+        "table": "Subcategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Subcategory_categoryId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Subcategory_categoryId_idx\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Subcategory_categoryId_idx\"",
+        "sql": "CREATE INDEX \"Subcategory_categoryId_idx\" ON \"public\".\"Subcategory\" (\"categoryId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Subcategory_categoryId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"Subcategory_categoryId_idx\""]
+      }
+    ]
+  },
+  {
+    "id": "index.Subcategory.Subcategory_tenantId_idx",
+    "label": "Create index \"Subcategory_tenantId_idx\" on \"Subcategory\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Subcategory_tenantId_idx",
+        "table": "Subcategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Subcategory_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Subcategory_tenantId_idx\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Subcategory_tenantId_idx\"",
+        "sql": "CREATE INDEX \"Subcategory_tenantId_idx\" ON \"public\".\"Subcategory\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Subcategory_tenantId_idx\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"Subcategory_tenantId_idx\""]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.CategoryDepartment.CategoryDepartment_categoryId_fkey",
+    "label": "Add foreign key \"CategoryDepartment_categoryId_fkey\" on \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "CategoryDepartment_categoryId_fkey",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"CategoryDepartment_categoryId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CategoryDepartment_categoryId_fkey",
+          "public",
+          "\"public\".\"CategoryDepartment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"CategoryDepartment_categoryId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"CategoryDepartment\"\nADD CONSTRAINT \"CategoryDepartment_categoryId_fkey\"\nFOREIGN KEY (\"categoryId\")\nREFERENCES \"public\".\"Category\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"CategoryDepartment_categoryId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CategoryDepartment_categoryId_fkey",
+          "public",
+          "\"public\".\"CategoryDepartment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.CategoryDepartment.CategoryDepartment_departmentId_fkey",
+    "label": "Add foreign key \"CategoryDepartment_departmentId_fkey\" on \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "CategoryDepartment_departmentId_fkey",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"CategoryDepartment_departmentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CategoryDepartment_departmentId_fkey",
+          "public",
+          "\"public\".\"CategoryDepartment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"CategoryDepartment_departmentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"CategoryDepartment\"\nADD CONSTRAINT \"CategoryDepartment_departmentId_fkey\"\nFOREIGN KEY (\"departmentId\")\nREFERENCES \"public\".\"Department\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"CategoryDepartment_departmentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CategoryDepartment_departmentId_fkey",
+          "public",
+          "\"public\".\"CategoryDepartment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Subcategory.Subcategory_tenantId_fkey",
+    "label": "Add foreign key \"Subcategory_tenantId_fkey\" on \"Subcategory\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Subcategory_tenantId_fkey",
+        "table": "Subcategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Subcategory_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Subcategory_tenantId_fkey", "public", "\"public\".\"Subcategory\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Subcategory_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Subcategory\"\nADD CONSTRAINT \"Subcategory_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Subcategory_tenantId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Subcategory_tenantId_fkey", "public", "\"public\".\"Subcategory\""]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Subcategory.Subcategory_categoryId_fkey",
+    "label": "Add foreign key \"Subcategory_categoryId_fkey\" on \"Subcategory\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Subcategory_categoryId_fkey",
+        "table": "Subcategory"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Subcategory_categoryId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Subcategory_categoryId_fkey", "public", "\"public\".\"Subcategory\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Subcategory_categoryId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Subcategory\"\nADD CONSTRAINT \"Subcategory_categoryId_fkey\"\nFOREIGN KEY (\"categoryId\")\nREFERENCES \"public\".\"Category\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Subcategory_categoryId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Subcategory_categoryId_fkey", "public", "\"public\".\"Subcategory\""]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Product.Product_subcategoryId_fkey",
+    "label": "Add foreign key \"Product_subcategoryId_fkey\" on \"Product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Product_subcategoryId_fkey",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Product_subcategoryId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Product_subcategoryId_fkey", "public", "\"public\".\"Product\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Product_subcategoryId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Product\"\nADD CONSTRAINT \"Product_subcategoryId_fkey\"\nFOREIGN KEY (\"subcategoryId\")\nREFERENCES \"public\".\"Subcategory\" (\"id\")\nON DELETE SET NULL\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Product_subcategoryId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Product_subcategoryId_fkey", "public", "\"public\".\"Product\""]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.create-general-subcategories",
+    "label": "Create one \"Geral\" subcategory per category",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the Subcategory table exists",
+        "sql": "SELECT to_regclass('\"public\".\"Subcategory\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Insert the \"Geral\" subcategory of every category",
+        "sql": "INSERT INTO \"public\".\"Subcategory\" (\"id\", \"tenantId\", \"categoryId\", \"name\", \"sortOrder\", \"active\")\nSELECT md5('geral:' || \"Category\".\"id\"), \"Category\".\"tenantId\", \"Category\".\"id\", 'Geral', 0, true\nFROM \"public\".\"Category\"\nON CONFLICT (\"id\") DO NOTHING",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify every category has exactly one \"Geral\" subcategory",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1\n  FROM \"public\".\"Category\" AS c\n  WHERE (\n    SELECT count(*)\n    FROM \"public\".\"Subcategory\" AS s\n    WHERE s.\"categoryId\" = c.\"id\" AND s.\"name\" = 'Geral'\n  ) <> 1\n) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "data_migration.backfill-product-subcategories",
+    "label": "Backfill \"Product\".\"subcategoryId\" from \"Product\".\"categoryId\"",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the Subcategory table exists",
+        "sql": "SELECT to_regclass('\"public\".\"Subcategory\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Point every product at its category's \"Geral\" subcategory",
+        "sql": "UPDATE \"public\".\"Product\" AS p\nSET \"subcategoryId\" = s.\"id\"\nFROM \"public\".\"Subcategory\" AS s\nWHERE s.\"categoryId\" = p.\"categoryId\" AND s.\"name\" = 'Geral'",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify no categorized product is left without a subcategory",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1\n  FROM \"public\".\"Product\"\n  WHERE \"categoryId\" IS NOT NULL AND \"subcategoryId\" IS NULL\n) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "data_migration.infer-category-departments",
+    "label": "Infer \"CategoryDepartment\" links from products",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the CategoryDepartment table exists",
+        "sql": "SELECT to_regclass('\"public\".\"CategoryDepartment\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Insert the category/department pairs the products imply",
+        "sql": "INSERT INTO \"public\".\"CategoryDepartment\" (\"categoryId\", \"departmentId\")\nSELECT DISTINCT p.\"categoryId\", p.\"departmentId\"\nFROM \"public\".\"Product\" AS p\nWHERE p.\"categoryId\" IS NOT NULL AND p.\"departmentId\" IS NOT NULL\nON CONFLICT (\"categoryId\", \"departmentId\") DO NOTHING",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify every paired product has its category/department link",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1\n  FROM \"public\".\"Product\" AS p\n  WHERE p.\"categoryId\" IS NOT NULL\n    AND p.\"departmentId\" IS NOT NULL\n    AND NOT EXISTS (\n      SELECT 1\n      FROM \"public\".\"CategoryDepartment\" AS cd\n      WHERE cd.\"categoryId\" = p.\"categoryId\" AND cd.\"departmentId\" = p.\"departmentId\"\n    )\n) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "dropIndex.Product.Product_departmentId_idx_8e261ed8",
+    "label": "Drop index \"Product_departmentId_idx_8e261ed8\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Product_departmentId_idx_8e261ed8",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Product_departmentId_idx_8e261ed8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": ["\"public\".\"Product_departmentId_idx_8e261ed8\""]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop index \"Product_departmentId_idx_8e261ed8\"",
+        "sql": "DROP INDEX \"public\".\"Product_departmentId_idx_8e261ed8\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Product_departmentId_idx_8e261ed8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Product_departmentId_idx_8e261ed8\""]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.Product.categoryId",
+    "label": "Drop column \"categoryId\" from \"Product\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "categoryId",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"categoryId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "categoryId"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"categoryId\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" DROP COLUMN \"categoryId\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"categoryId\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "categoryId"]
+      }
+    ]
+  },
+  {
+    "id": "dropColumn.Product.departmentId",
+    "label": "Drop column \"departmentId\" from \"Product\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "departmentId",
+        "table": "Product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"departmentId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "departmentId"]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop column \"departmentId\"",
+        "sql": "ALTER TABLE \"public\".\"Product\" DROP COLUMN \"departmentId\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"departmentId\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Product", "departmentId"]
+      }
+    ]
+  }
+]

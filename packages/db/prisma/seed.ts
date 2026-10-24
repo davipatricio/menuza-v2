@@ -227,13 +227,37 @@ function stableId(scope: string, key: string): string {
 const mawifoodsId = demoTenantIds.get("mawifoods");
 
 if (mawifoodsId) {
-  const categoryFixtures = [
-    { name: "Marmitas", sortOrder: 1 },
-    { name: "Bebidas", sortOrder: 2 },
-    { name: "Sobremesas", sortOrder: 3 },
+  const departmentFixtures = [
+    { name: "Cozinha", categories: ["Marmitas", "Bebidas"] },
+    { name: "Doces", categories: ["Sobremesas"] },
   ] as const;
 
-  const categoryIdByName = new Map<string, string>();
+  const categoryFixtures = [
+    { name: "Marmitas", sortOrder: 1, department: "Cozinha" },
+    { name: "Bebidas", sortOrder: 2, department: "Cozinha" },
+    { name: "Sobremesas", sortOrder: 3, department: "Doces" },
+  ] as const;
+
+  const departmentIdByName = new Map<string, string>();
+
+  for (const fixture of departmentFixtures) {
+    const department = await db.orm.public.Department.upsert({
+      create: {
+        id: stableId("department", fixture.name),
+        tenantId: mawifoodsId,
+        name: fixture.name,
+        active: true,
+      },
+      update: {},
+      conflictOn: { tenantId: mawifoodsId, name: fixture.name },
+    });
+
+    departmentIdByName.set(fixture.name, department.id);
+  }
+
+  // Each fixture product sits under its category's "Geral" subcategory, which is
+  // the level a product actually attaches to.
+  const generalSubcategoryIdByCategory = new Map<string, string>();
 
   for (const fixture of categoryFixtures) {
     const category = await db.orm.public.Category.upsert({
@@ -242,12 +266,35 @@ if (mawifoodsId) {
         tenantId: mawifoodsId,
         name: fixture.name,
         sortOrder: fixture.sortOrder,
+        active: true,
       },
       update: {},
       conflictOn: { tenantId: mawifoodsId, name: fixture.name },
     });
 
-    categoryIdByName.set(fixture.name, category.id);
+    // SAFETY: every fixture department is one of the two seeded above.
+    const departmentId = departmentIdByName.get(fixture.department)!;
+
+    await db.orm.public.CategoryDepartment.upsert({
+      create: { categoryId: category.id, departmentId },
+      update: {},
+      conflictOn: { categoryId: category.id, departmentId },
+    });
+
+    const subcategory = await db.orm.public.Subcategory.upsert({
+      create: {
+        id: stableId("subcategory", `${fixture.name}:Geral`),
+        tenantId: mawifoodsId,
+        categoryId: category.id,
+        name: "Geral",
+        sortOrder: 0,
+        active: true,
+      },
+      update: {},
+      conflictOn: { categoryId: category.id, name: "Geral" },
+    });
+
+    generalSubcategoryIdByCategory.set(fixture.name, subcategory.id);
   }
 
   // priceCents is Int cents (ADR-0006); stockQty is null exactly when the
@@ -268,7 +315,7 @@ if (mawifoodsId) {
         tenantId: mawifoodsId,
         name: fixture.name,
         // SAFETY: every fixture category is one of the three seeded above.
-        categoryId: categoryIdByName.get(fixture.category)!,
+        subcategoryId: generalSubcategoryIdByCategory.get(fixture.category)!,
         available: fixture.available,
         sortOrder: index + 1,
       },

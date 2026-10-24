@@ -12,6 +12,7 @@ model Tenant {
   pushSubscriptions PushSubscription[]
   pushPreferences   PushPreference[]
   categories        Category[]
+  subcategories     Subcategory[]
   departments       Department[]
   products          Product[]
   tags              Tag[]
@@ -299,13 +300,18 @@ enum meal_subscription_status {
 }
 
 // Named group of a tenant's catalog. `sortOrder` drives the panel's listing.
+// A category belongs to zero or more departments; products live one level
+// deeper, under a Subcategory.
 model Category {
-  id        String   @id(map: "Category_pkey")
-  tenantId  String
-  name      String
-  sortOrder Int      @default(0)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Category_tenantId_fkey")
-  products  Product[]
+  id            String               @id(map: "Category_pkey")
+  tenantId      String
+  name          String
+  sortOrder     Int                  @default(0)
+  active        Boolean              @default(true)
+  updatedAt     Timestamp(3)         @default(now())
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Category_tenantId_fkey")
+  subcategories Subcategory[]
+  departments   CategoryDepartment[]
 
   @@unique([tenantId, name], map: "Category_tenantId_name_key")
   @@index([tenantId], map: "Category_tenantId_idx")
@@ -313,17 +319,38 @@ model Category {
   @@map("Category")
 }
 
+// A category inside a category: the level products actually attach to.
+model Subcategory {
+  id         String       @id(map: "Subcategory_pkey")
+  tenantId   String
+  categoryId String
+  name       String
+  sortOrder  Int          @default(0)
+  active     Boolean      @default(true)
+  updatedAt  Timestamp(3) @default(now())
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Subcategory_tenantId_fkey")
+  category   Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Subcategory_categoryId_fkey")
+  products   Product[]
+
+  @@unique([categoryId, name], map: "Subcategory_categoryId_name_key")
+  @@index([tenantId], map: "Subcategory_tenantId_idx")
+  @@index([categoryId], map: "Subcategory_categoryId_idx")
+
+  @@map("Subcategory")
+}
+
 // A sellable item. It carries no price: the money lives on the Variation, so a
 // product with a single default variation and a product with a real variant
 // matrix share one table.
 model Department {
-  id        String     @id(map: "Department_pkey")
-  tenantId  String
-  name      String
+  id         String               @id(map: "Department_pkey")
+  tenantId   String
+  name       String
   // `active` is panel state; no query filters on it yet.
-  active    Boolean    @default(true)
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Department_tenantId_fkey")
-  products  Product[]
+  active     Boolean              @default(true)
+  updatedAt  Timestamp(3)         @default(now())
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Department_tenantId_fkey")
+  categories CategoryDepartment[]
 
   @@unique([tenantId, name], map: "Department_tenantId_name_key")
   @@index([tenantId], map: "Department_tenantId_idx")
@@ -331,11 +358,26 @@ model Department {
   @@map("Department")
 }
 
+// Which departments a category appears under. A plain join row, exactly like
+// ProductTag: composite primary key, one extra index on the second column.
+model CategoryDepartment {
+  categoryId   String
+  departmentId String
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CategoryDepartment_categoryId_fkey")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CategoryDepartment_departmentId_fkey")
+
+  @@id([categoryId, departmentId], map: "CategoryDepartment_pkey")
+  @@index([departmentId], map: "CategoryDepartment_departmentId_idx")
+
+  @@map("CategoryDepartment")
+}
+
 model Tag {
   id        String       @id(map: "Tag_pkey")
   tenantId  String
   name      String
   isActive  Boolean      @default(true)
+  updatedAt Timestamp(3) @default(now())
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Tag_tenantId_fkey")
   products  ProductTag[]
 
@@ -346,26 +388,25 @@ model Tag {
 }
 
 model Product {
-  id           String        @id(map: "Product_pkey")
-  tenantId     String
-  name         String
-  description  String?
-  categoryId   String?
-  departmentId String?
-  available    Boolean       @default(true)
-  archived     Boolean       @default(false)
-  hidden       Boolean       @default(false)
-  private      Boolean       @default(false)
-  sortOrder    Int           @default(0)
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Product_tenantId_fkey")
-  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_categoryId_fkey")
-  department   Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_departmentId_fkey")
-  variations   Variation[]
-  tags         ProductTag[]
-  orderItems   OrderItem[]
+  id            String        @id(map: "Product_pkey")
+  tenantId      String
+  name          String
+  description   String?
+  subcategoryId String?
+  available     Boolean       @default(true)
+  archived      Boolean       @default(false)
+  hidden        Boolean       @default(false)
+  private       Boolean       @default(false)
+  sortOrder     Int           @default(0)
+  updatedAt     Timestamp(3)  @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Product_tenantId_fkey")
+  subcategory   Subcategory?  @relation(fields: [subcategoryId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_subcategoryId_fkey")
+  variations    Variation[]
+  tags          ProductTag[]
+  orderItems    OrderItem[]
 
   @@index([tenantId], map: "Product_tenantId_idx")
-  @@index([categoryId], map: "Product_categoryId_idx")
+  @@index([subcategoryId], map: "Product_subcategoryId_idx")
 
   @@map("Product")
 }
