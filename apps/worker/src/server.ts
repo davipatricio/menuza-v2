@@ -22,6 +22,11 @@ import {
   shutdownOtel,
 } from "@menuza/orpc-server";
 import { disconnectDb } from "@menuza/db";
+import {
+  PAYMENT_EVENTS_QUEUE,
+  type PaymentJobPayload,
+  parsePaymentJobPayload,
+} from "@menuza/shared/commerce";
 import { type PushJobPayload, parsePushJobPayload } from "@menuza/shared/push";
 import {
   createPushEventPayload,
@@ -33,6 +38,7 @@ import {
   type OrderExpiryJobPayload,
   dispatchOrderExpiry,
 } from "./orders-expiry.ts";
+import { dispatchPaymentEvent } from "./payment-events.ts";
 
 initSentry({ service: "worker" });
 
@@ -151,8 +157,56 @@ const expiryWorker = new Worker<OrderExpiryJobPayload>(
 
 await events.waitUntilReady();
 
+// Payment gateway events. The commerce API is the producer; the job only asks
+// the API to apply an event it already recorded, so a failure here is a
+// transport failure and belongs back on the queue.
+const paymentQueue = new Queue<PaymentJobPayload>(PAYMENT_EVENTS_QUEUE, {
+  connection,
+  telemetry,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: { type: "exponential", delay: 1000 },
+    removeOnComplete: true,
+    removeOnFail: false,
+  },
+});
+
+const paymentWorker = new Worker<PaymentJobPayload>(
+  PAYMENT_EVENTS_QUEUE,
+  async (job) => {
+    const requestId = newRequestId();
+
+    const payload = parsePaymentJobPayload(job.data);
+
+    const span = getTracer("worker").startSpan(
+      `payments.applyGatewayEvent ${payload.gatewayEventId}`,
+    );
+
+    try {
+      await dispatchPaymentEvent(payload);
+
+      log({ requestId, msg: "payment event dispatched", gatewayEventId: payload.gatewayEventId });
+    } catch (err) {
+      Sentry.captureException(err, { tags: { job: PAYMENT_EVENTS_QUEUE } });
+
+      log({
+        requestId,
+        level: "error",
+        msg: "payment event failed",
+        gatewayEventId: payload.gatewayEventId,
+        err: String(err),
+      });
+
+      throw err;
+    } finally {
+      span.end();
+    }
+  },
+  { connection, telemetry },
+);
+
 console.log(
-  `[worker] queues ready (disposable ${smokeName}, durable ${PUSH_NOTIFICATIONS_QUEUE}, ${ORDERS_EXPIRY_QUEUE})`,
+  `[worker] queues ready (disposable ${smokeName}, durable ${PUSH_NOTIFICATIONS_QUEUE}, ${ORDERS_EXPIRY_QUEUE}, ${PAYMENT_EVENTS_QUEUE})`,
 );
 
 let shuttingDown = false;
@@ -171,6 +225,8 @@ const shutdown = async (signal: string) => {
     await pushQueue.close();
     await expiryWorker.close();
     await expiryQueue.close();
+    await paymentWorker.close();
+    await paymentQueue.close();
     await disconnectDb();
     // Flush buffered spans before the OTLP transport goes away.
     await shutdownOtel();

@@ -38,6 +38,9 @@ const config: NextConfig = {
     return [
       { source: "/commerce/:path*", destination: `${commerceInternal}/:path*` },
       { source: "/tenant/:path*", destination: `${tenantInternal}/:path*` },
+      // Provider callbacks (Pagar.me) land on the commerce service, which owns
+      // the integration token → tenant resolution.
+      { source: "/webhooks/:path*", destination: `${commerceInternal}/:path*` },
     ];
   },
   transpilePackages: [],

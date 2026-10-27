@@ -22,7 +22,9 @@
   "dependencies": {
     "@menuza/api-commerce": "workspace:*",
     "@menuza/db": "workspace:*",
-    "@menuza/orpc-server": "workspace:*"
+    "@menuza/orpc-server": "workspace:*",
+    "@menuza/shared": "workspace:*",
+    "bullmq": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

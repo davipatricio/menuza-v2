@@ -18,7 +18,7 @@
     "@menuza/db": "workspace:*",
     "@menuza/orpc-server": "workspace:*",
     "@menuza/shared": "workspace:*",
-    "bullmq": "6.3.14",
+    "bullmq": "catalog:",
     "bullmq-otel": "2.0.1",
     "web-push": "3.6.7"
   },

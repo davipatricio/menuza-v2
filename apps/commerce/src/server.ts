@@ -1,7 +1,14 @@
 /**
  * Commerce API process. Bun.serve on loopback.
  * Imports the router from `@menuza/api-commerce` and owns the process lifecycle.
+ *
+ * It also owns the payment webhook producer: the route receives a provider
+ * callback, records it, and enqueues the job the worker drains. Redis is not
+ * part of the readiness probe — a Redis outage must not take the storefront
+ * down; webhooks then answer 500 and the provider retries.
  */
+import { RedisClient } from "bun";
+import { Queue, createBunRedisClient } from "bullmq";
 import {
   buildOpenApiFetch,
   buildRpcFetch,
@@ -14,6 +21,8 @@ import {
 } from "@menuza/orpc-server";
 import { disconnectDb, pingDb } from "@menuza/db";
 import { commerceDomainRouter } from "@menuza/api-commerce";
+import { PAYMENT_EVENTS_QUEUE, type PaymentJobPayload } from "@menuza/shared/commerce";
+import { createPaymentWebhookHandler } from "./payment-webhook.ts";
 
 initSentry({ service: "commerce" });
 
@@ -28,6 +37,24 @@ const rpcFetch = buildRpcFetch(commerceDomainRouter, { service: "commerce" });
 
 // Same router, RESTful protocol, dedicated prefix. See apps/orpc-server/AGENTS.md.
 const openApiFetch = buildOpenApiFetch(commerceDomainRouter, { service: "commerce" });
+
+// Bun's built-in Redis client via BullMQ's adapter, same as the worker.
+// Shutdown MUST go through the wrapper — never close the raw client.
+const connection = createBunRedisClient(
+  new RedisClient(process.env.REDIS_URL ?? "redis://127.0.0.1:6379"),
+);
+
+const paymentEventsQueue = new Queue<PaymentJobPayload>(PAYMENT_EVENTS_QUEUE, {
+  connection,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: { type: "exponential", delay: 1000 },
+    removeOnComplete: true,
+    removeOnFail: false,
+  },
+});
+
+const handlePaymentWebhook = createPaymentWebhookHandler(paymentEventsQueue);
 
 const server = Bun.serve({
   port,
@@ -48,6 +75,9 @@ const server = Bun.serve({
       }
     }
 
+    // Provider callbacks: raw JSON body, token in the path, own redacted log.
+    if (url.pathname.startsWith("/webhooks/")) return handlePaymentWebhook(req);
+
     if (url.pathname.startsWith("/openapi")) return openApiFetch(req, "/openapi");
 
     return rpcFetch(req, "/rpc");
@@ -60,7 +90,9 @@ registerShutdown({
   service: "commerce",
   server,
   onShutdown: async () => {
+    await paymentEventsQueue.close();
     await shutdownOtel();
     await disconnectDb();
+    await connection.quit();
   },
 });

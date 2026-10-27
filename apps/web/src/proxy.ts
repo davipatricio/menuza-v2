@@ -91,7 +91,9 @@ const PREFIXES = {
 // Browser code calls these directly (`/tenant` for the dashboard, `/commerce`
 // for the buyer flow), so they must pass for every *resolved* host — the host
 // allowlist has already rejected unknown hosts before `isAllowed` runs.
-const API_PREFIXES = ["/commerce", "/tenant"] as const;
+// `/webhooks` carries provider callbacks: the integration token in the path is
+// what authenticates them, so no tenant or session applies.
+const API_PREFIXES = ["/commerce", "/tenant", "/webhooks"] as const;
 
 /**
  * Host -> tenantId lookup cache. The set of hosts is small and changes rarely,

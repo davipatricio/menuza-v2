@@ -16,6 +16,7 @@
       "@orpc/contract": "2.0.0-beta.35",
       "@orpc/openapi": "2.0.0-beta.35",
       "@opentelemetry/api": "1.9.1",
+      "bullmq": "6.3.14",
       "oxlint": "1.88.0",
       "oxfmt": "0.73.0",
       "@oxlint/plugins": "1.88.0"
