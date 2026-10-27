@@ -1,0 +1,837 @@
+[
+  {
+    "id": "dropCheckConstraint.Order.Order_paymentMethod_check_8e20e6eb",
+    "label": "Drop check constraint \"Order_paymentMethod_check_8e20e6eb\" on \"Order\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "Order_paymentMethod_check_8e20e6eb",
+        "table": "Order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Order_paymentMethod_check_8e20e6eb\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Order_paymentMethod_check_8e20e6eb", "public", "\"public\".\"Order\""],
+        "expectation": {
+          "expects": "present",
+          "object": "constraint \"Order_paymentMethod_check_8e20e6eb\" on \"Order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"Order_paymentMethod_check_8e20e6eb\"",
+        "sql": "ALTER TABLE \"public\".\"Order\" DROP CONSTRAINT \"Order_paymentMethod_check_8e20e6eb\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Order_paymentMethod_check_8e20e6eb\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Order_paymentMethod_check_8e20e6eb", "public", "\"public\".\"Order\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"Order_paymentMethod_check_8e20e6eb\" on \"Order\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.GatewayEvent",
+    "label": "Create table \"GatewayEvent\"",
+    "summary": "Creates table \"GatewayEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "GatewayEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"GatewayEvent\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"GatewayEvent\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"GatewayEvent\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"GatewayEvent\"",
+        "sql": "CREATE TABLE \"public\".\"GatewayEvent\" (\n  \"amountCents\" int4,\n  \"detail\" text,\n  \"externalId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"integrationId\" text NOT NULL,\n  \"orderCode\" text,\n  \"processedAt\" timestamp(3),\n  \"provider\" text NOT NULL,\n  \"receivedAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"status\" text DEFAULT 'received' NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"type\" text NOT NULL,\n  CONSTRAINT \"GatewayEvent_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"GatewayEvent_provider_check_59ce43d4\" CHECK (\"provider\" IN ('pagarme', 'offline')),\n  CONSTRAINT \"GatewayEvent_status_check_11ff3856\" CHECK (\"status\" IN ('received', 'processed', 'ignored', 'rejected', 'failed'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"GatewayEvent\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"GatewayEvent\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"GatewayEvent\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.PaymentIntegration",
+    "label": "Create table \"PaymentIntegration\"",
+    "summary": "Creates table \"PaymentIntegration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "PaymentIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"PaymentIntegration\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"PaymentIntegration\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"PaymentIntegration\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"PaymentIntegration\"",
+        "sql": "CREATE TABLE \"public\".\"PaymentIntegration\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"credentials\" text,\n  \"id\" text NOT NULL,\n  \"label\" text NOT NULL,\n  \"provider\" text NOT NULL,\n  \"status\" text DEFAULT 'active' NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  \"webhookToken\" text NOT NULL,\n  CONSTRAINT \"PaymentIntegration_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"PaymentIntegration_provider_check_59ce43d4\" CHECK (\"provider\" IN ('pagarme', 'offline')),\n  CONSTRAINT \"PaymentIntegration_status_check_39370351\" CHECK (\"status\" IN ('active', 'disabled'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"PaymentIntegration\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"PaymentIntegration\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"PaymentIntegration\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.PaymentMethodAssignment",
+    "label": "Create table \"PaymentMethodAssignment\"",
+    "summary": "Creates table \"PaymentMethodAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "PaymentMethodAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"PaymentMethodAssignment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"PaymentMethodAssignment\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"PaymentMethodAssignment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"PaymentMethodAssignment\"",
+        "sql": "CREATE TABLE \"public\".\"PaymentMethodAssignment\" (\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"integrationId\" text NOT NULL,\n  \"method\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  CONSTRAINT \"PaymentMethodAssignment_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"PaymentMethodAssignment_method_check_e4b3b3b0\" CHECK (\"method\" IN ('pix', 'credit', 'debit', 'meal_voucher', 'food_voucher', 'boleto', 'cash_on_delivery', 'card_on_delivery'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"PaymentMethodAssignment\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"PaymentMethodAssignment\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"PaymentMethodAssignment\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "unique.GatewayEvent.GatewayEvent_tenantId_provider_externalId_key",
+    "label": "Add unique constraint on \"GatewayEvent\" (tenantId, provider, externalId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "GatewayEvent_tenantId_provider_externalId_key",
+        "table": "GatewayEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"GatewayEvent_tenantId_provider_externalId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "GatewayEvent_tenantId_provider_externalId_key",
+          "public",
+          "\"public\".\"GatewayEvent\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"GatewayEvent_tenantId_provider_externalId_key\" on \"GatewayEvent\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"GatewayEvent_tenantId_provider_externalId_key\"",
+        "sql": "ALTER TABLE \"public\".\"GatewayEvent\" ADD CONSTRAINT \"GatewayEvent_tenantId_provider_externalId_key\" UNIQUE (\"tenantId\", \"provider\", \"externalId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"GatewayEvent_tenantId_provider_externalId_key\" exists on (tenantId, provider, externalId)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "GatewayEvent_tenantId_provider_externalId_key",
+          "public",
+          "\"public\".\"GatewayEvent\"",
+          "u",
+          "[\"tenantId\",\"provider\",\"externalId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Order.Order_paymentMethod_check_f6d9452e",
+    "label": "Add check constraint \"Order_paymentMethod_check_f6d9452e\" on \"Order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "Order_paymentMethod_check_f6d9452e",
+        "table": "Order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Order_paymentMethod_check_f6d9452e\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Order_paymentMethod_check_f6d9452e", "public", "\"public\".\"Order\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"Order_paymentMethod_check_f6d9452e\" on \"Order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"Order_paymentMethod_check_f6d9452e\"",
+        "sql": "ALTER TABLE \"public\".\"Order\" ADD CONSTRAINT \"Order_paymentMethod_check_f6d9452e\" CHECK (\"paymentMethod\" IN ('pix', 'credit', 'debit', 'meal_voucher', 'food_voucher', 'boleto', 'cash_on_delivery', 'card_on_delivery'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"Order_paymentMethod_check_f6d9452e\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": ["Order_paymentMethod_check_f6d9452e", "public", "\"public\".\"Order\"", "c"]
+      }
+    ]
+  },
+  {
+    "id": "unique.PaymentIntegration.PaymentIntegration_webhookToken_key",
+    "label": "Add unique constraint on \"PaymentIntegration\" (webhookToken)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "PaymentIntegration_webhookToken_key",
+        "table": "PaymentIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"PaymentIntegration_webhookToken_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PaymentIntegration_webhookToken_key",
+          "public",
+          "\"public\".\"PaymentIntegration\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"PaymentIntegration_webhookToken_key\" on \"PaymentIntegration\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"PaymentIntegration_webhookToken_key\"",
+        "sql": "ALTER TABLE \"public\".\"PaymentIntegration\" ADD CONSTRAINT \"PaymentIntegration_webhookToken_key\" UNIQUE (\"webhookToken\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"PaymentIntegration_webhookToken_key\" exists on (webhookToken)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "PaymentIntegration_webhookToken_key",
+          "public",
+          "\"public\".\"PaymentIntegration\"",
+          "u",
+          "[\"webhookToken\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.PaymentMethodAssignment.PaymentMethodAssignment_tenantId_method_key",
+    "label": "Add unique constraint on \"PaymentMethodAssignment\" (tenantId, method)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "PaymentMethodAssignment_tenantId_method_key",
+        "table": "PaymentMethodAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"PaymentMethodAssignment_tenantId_method_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PaymentMethodAssignment_tenantId_method_key",
+          "public",
+          "\"public\".\"PaymentMethodAssignment\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"PaymentMethodAssignment_tenantId_method_key\" on \"PaymentMethodAssignment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"PaymentMethodAssignment_tenantId_method_key\"",
+        "sql": "ALTER TABLE \"public\".\"PaymentMethodAssignment\" ADD CONSTRAINT \"PaymentMethodAssignment_tenantId_method_key\" UNIQUE (\"tenantId\", \"method\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"PaymentMethodAssignment_tenantId_method_key\" exists on (tenantId, method)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "PaymentMethodAssignment_tenantId_method_key",
+          "public",
+          "\"public\".\"PaymentMethodAssignment\"",
+          "u",
+          "[\"tenantId\",\"method\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.GatewayEvent.GatewayEvent_integrationId_idx",
+    "label": "Create index \"GatewayEvent_integrationId_idx\" on \"GatewayEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "GatewayEvent_integrationId_idx",
+        "table": "GatewayEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"GatewayEvent_integrationId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"GatewayEvent_integrationId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"GatewayEvent_integrationId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"GatewayEvent_integrationId_idx\"",
+        "sql": "CREATE INDEX \"GatewayEvent_integrationId_idx\" ON \"public\".\"GatewayEvent\" (\"integrationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"GatewayEvent_integrationId_idx\" exists on \"GatewayEvent\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"GatewayEvent_integrationId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"GatewayEvent\"",
+          "btree",
+          "[\"integrationId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.GatewayEvent.GatewayEvent_tenantId_idx",
+    "label": "Create index \"GatewayEvent_tenantId_idx\" on \"GatewayEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "GatewayEvent_tenantId_idx",
+        "table": "GatewayEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"GatewayEvent_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"GatewayEvent_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"GatewayEvent_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"GatewayEvent_tenantId_idx\"",
+        "sql": "CREATE INDEX \"GatewayEvent_tenantId_idx\" ON \"public\".\"GatewayEvent\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"GatewayEvent_tenantId_idx\" exists on \"GatewayEvent\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"GatewayEvent_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"GatewayEvent\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PaymentIntegration.PaymentIntegration_tenantId_idx",
+    "label": "Create index \"PaymentIntegration_tenantId_idx\" on \"PaymentIntegration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PaymentIntegration_tenantId_idx",
+        "table": "PaymentIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PaymentIntegration_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"PaymentIntegration_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"PaymentIntegration_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PaymentIntegration_tenantId_idx\"",
+        "sql": "CREATE INDEX \"PaymentIntegration_tenantId_idx\" ON \"public\".\"PaymentIntegration\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PaymentIntegration_tenantId_idx\" exists on \"PaymentIntegration\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"PaymentIntegration_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"PaymentIntegration\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PaymentMethodAssignment.PaymentMethodAssignment_integrationId_idx",
+    "label": "Create index \"PaymentMethodAssignment_integrationId_idx\" on \"PaymentMethodAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PaymentMethodAssignment_integrationId_idx",
+        "table": "PaymentMethodAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PaymentMethodAssignment_integrationId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"PaymentMethodAssignment_integrationId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"PaymentMethodAssignment_integrationId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PaymentMethodAssignment_integrationId_idx\"",
+        "sql": "CREATE INDEX \"PaymentMethodAssignment_integrationId_idx\" ON \"public\".\"PaymentMethodAssignment\" (\"integrationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PaymentMethodAssignment_integrationId_idx\" exists on \"PaymentMethodAssignment\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"PaymentMethodAssignment_integrationId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"PaymentMethodAssignment\"",
+          "btree",
+          "[\"integrationId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.PaymentMethodAssignment.PaymentMethodAssignment_tenantId_idx",
+    "label": "Create index \"PaymentMethodAssignment_tenantId_idx\" on \"PaymentMethodAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "PaymentMethodAssignment_tenantId_idx",
+        "table": "PaymentMethodAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"PaymentMethodAssignment_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"PaymentMethodAssignment_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"PaymentMethodAssignment_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"PaymentMethodAssignment_tenantId_idx\"",
+        "sql": "CREATE INDEX \"PaymentMethodAssignment_tenantId_idx\" ON \"public\".\"PaymentMethodAssignment\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"PaymentMethodAssignment_tenantId_idx\" exists on \"PaymentMethodAssignment\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"PaymentMethodAssignment_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"PaymentMethodAssignment\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.GatewayEvent.GatewayEvent_tenantId_fkey",
+    "label": "Add foreign key \"GatewayEvent_tenantId_fkey\" on \"GatewayEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "GatewayEvent_tenantId_fkey",
+        "table": "GatewayEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"GatewayEvent_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["GatewayEvent_tenantId_fkey", "public", "\"public\".\"GatewayEvent\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"GatewayEvent_tenantId_fkey\" on \"GatewayEvent\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"GatewayEvent_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"GatewayEvent\"\nADD CONSTRAINT \"GatewayEvent_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"GatewayEvent_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "GatewayEvent_tenantId_fkey",
+          "public",
+          "\"public\".\"GatewayEvent\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.GatewayEvent.GatewayEvent_integrationId_fkey",
+    "label": "Add foreign key \"GatewayEvent_integrationId_fkey\" on \"GatewayEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "GatewayEvent_integrationId_fkey",
+        "table": "GatewayEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"GatewayEvent_integrationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["GatewayEvent_integrationId_fkey", "public", "\"public\".\"GatewayEvent\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"GatewayEvent_integrationId_fkey\" on \"GatewayEvent\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"GatewayEvent_integrationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"GatewayEvent\"\nADD CONSTRAINT \"GatewayEvent_integrationId_fkey\"\nFOREIGN KEY (\"integrationId\")\nREFERENCES \"public\".\"PaymentIntegration\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"GatewayEvent_integrationId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "GatewayEvent_integrationId_fkey",
+          "public",
+          "\"public\".\"GatewayEvent\"",
+          "f",
+          "[\"integrationId\"]",
+          "\"public\".\"PaymentIntegration\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PaymentIntegration.PaymentIntegration_tenantId_fkey",
+    "label": "Add foreign key \"PaymentIntegration_tenantId_fkey\" on \"PaymentIntegration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PaymentIntegration_tenantId_fkey",
+        "table": "PaymentIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PaymentIntegration_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PaymentIntegration_tenantId_fkey",
+          "public",
+          "\"public\".\"PaymentIntegration\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"PaymentIntegration_tenantId_fkey\" on \"PaymentIntegration\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PaymentIntegration_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PaymentIntegration\"\nADD CONSTRAINT \"PaymentIntegration_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PaymentIntegration_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "PaymentIntegration_tenantId_fkey",
+          "public",
+          "\"public\".\"PaymentIntegration\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PaymentMethodAssignment.PaymentMethodAssignment_tenantId_fkey",
+    "label": "Add foreign key \"PaymentMethodAssignment_tenantId_fkey\" on \"PaymentMethodAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PaymentMethodAssignment_tenantId_fkey",
+        "table": "PaymentMethodAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PaymentMethodAssignment_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PaymentMethodAssignment_tenantId_fkey",
+          "public",
+          "\"public\".\"PaymentMethodAssignment\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"PaymentMethodAssignment_tenantId_fkey\" on \"PaymentMethodAssignment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PaymentMethodAssignment_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PaymentMethodAssignment\"\nADD CONSTRAINT \"PaymentMethodAssignment_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PaymentMethodAssignment_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "PaymentMethodAssignment_tenantId_fkey",
+          "public",
+          "\"public\".\"PaymentMethodAssignment\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.PaymentMethodAssignment.PaymentMethodAssignment_integrationId_fkey",
+    "label": "Add foreign key \"PaymentMethodAssignment_integrationId_fkey\" on \"PaymentMethodAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "PaymentMethodAssignment_integrationId_fkey",
+        "table": "PaymentMethodAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"PaymentMethodAssignment_integrationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PaymentMethodAssignment_integrationId_fkey",
+          "public",
+          "\"public\".\"PaymentMethodAssignment\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"PaymentMethodAssignment_integrationId_fkey\" on \"PaymentMethodAssignment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"PaymentMethodAssignment_integrationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"PaymentMethodAssignment\"\nADD CONSTRAINT \"PaymentMethodAssignment_integrationId_fkey\"\nFOREIGN KEY (\"integrationId\")\nREFERENCES \"public\".\"PaymentIntegration\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"PaymentMethodAssignment_integrationId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "PaymentMethodAssignment_integrationId_fkey",
+          "public",
+          "\"public\".\"PaymentMethodAssignment\"",
+          "f",
+          "[\"integrationId\"]",
+          "\"public\".\"PaymentIntegration\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

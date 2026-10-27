@@ -32,6 +32,9 @@ model Tenant {
   productNutritions ProductNutrition[]
   productTags       ProductTag[]
   categoryDepartments CategoryDepartment[]
+  paymentIntegrations PaymentIntegration[]
+  paymentMethodAssignments PaymentMethodAssignment[]
+  gatewayEvents     GatewayEvent[]
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -230,8 +233,37 @@ enum payment_method {
   debit
   meal_voucher
   food_voucher
+  boleto
   cash_on_delivery
   card_on_delivery
+}
+
+// Which adapter handles a gateway connection. `offline` is the manual one: the
+// store reconciles the payment itself, no API and no credentials are involved.
+enum payment_provider {
+  @@type("pg/text@1")
+
+  pagarme
+  offline
+}
+
+enum payment_integration_status {
+  @@type("pg/text@1")
+
+  active
+  disabled
+}
+
+// A received provider callback. `received` means it is persisted but the order
+// has not been touched yet; the worker moves it to one of the rest.
+enum gateway_event_status {
+  @@type("pg/text@1")
+
+  received
+  processed
+  ignored
+  rejected
+  failed
 }
 
 enum order_event_type {
@@ -824,6 +856,80 @@ model StoreSettings {
   @@unique([tenantId], map: "StoreSettings_tenantId_key")
 
   @@map("StoreSettings")
+}
+
+// A gateway connection a store owns. `provider` picks the adapter that speaks
+// to it; `offline` is the manual one: no credentials, no API, no webhook — the
+// store reconciles the payment itself. `credentials` is AES-256-GCM ciphertext
+// of a provider-shaped JSON blob: it is written by the panel and read by the
+// adapter, and no read path, log or export may ever return it.
+model PaymentIntegration {
+  id           String                     @id(map: "PaymentIntegration_pkey")
+  tenantId     String
+  provider     payment_provider
+  label        String
+  status       payment_integration_status @default(active)
+  credentials  String?
+  // Opaque random secret that identifies this integration in the callback URL.
+  // Unique across the whole table so the receiver can resolve it without
+  // knowing the tenant yet.
+  webhookToken String
+  createdAt    Timestamp(3)               @default(now())
+  updatedAt    Timestamp(3)
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PaymentIntegration_tenantId_fkey")
+  assignments  PaymentMethodAssignment[]
+  events       GatewayEvent[]
+
+  @@unique([webhookToken], map: "PaymentIntegration_webhookToken_key")
+  @@index([tenantId], map: "PaymentIntegration_tenantId_idx")
+
+  @@map("PaymentIntegration")
+}
+
+// Which provider handles which payment method for one store. One row per
+// (tenant, method): providers are per method, and there is no automatic
+// routing between two providers of the same method.
+model PaymentMethodAssignment {
+  id            String             @id(map: "PaymentMethodAssignment_pkey")
+  tenantId      String
+  method        payment_method
+  integrationId String
+  createdAt     Timestamp(3)       @default(now())
+  updatedAt     Timestamp(3)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PaymentMethodAssignment_tenantId_fkey")
+  integration   PaymentIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "PaymentMethodAssignment_integrationId_fkey")
+
+  @@unique([tenantId, method], map: "PaymentMethodAssignment_tenantId_method_key")
+  @@index([tenantId], map: "PaymentMethodAssignment_tenantId_idx")
+  @@index([integrationId], map: "PaymentMethodAssignment_integrationId_idx")
+
+  @@map("PaymentMethodAssignment")
+}
+
+// One received provider callback. The unique on (tenant, provider, externalId)
+// is what turns a provider replay into a no-op; the worker then applies the
+// event to the order exactly once.
+model GatewayEvent {
+  id            String              @id(map: "GatewayEvent_pkey")
+  tenantId      String
+  integrationId String
+  provider      payment_provider
+  externalId    String
+  type          String
+  orderCode     String?
+  amountCents   Int?
+  status        gateway_event_status @default(received)
+  detail        String?
+  receivedAt    Timestamp(3)        @default(now())
+  processedAt   Timestamp(3)?
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "GatewayEvent_tenantId_fkey")
+  integration   PaymentIntegration  @relation(fields: [integrationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "GatewayEvent_integrationId_fkey")
+
+  @@unique([tenantId, provider, externalId], map: "GatewayEvent_tenantId_provider_externalId_key")
+  @@index([tenantId], map: "GatewayEvent_tenantId_idx")
+  @@index([integrationId], map: "GatewayEvent_integrationId_idx")
+
+  @@map("GatewayEvent")
 }
 
 // A store-configured discount. `value` is cents when `discountType` is `fixed`
