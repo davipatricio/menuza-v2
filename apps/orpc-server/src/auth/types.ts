@@ -37,6 +37,8 @@ export const TENANT_CAPABILITIES = [
   "team:write",
   "seo:write",
   "catalog:write",
+  "payments:read",
+  "payments:write",
 ] as const;
 
 export type TenantCapability = (typeof TENANT_CAPABILITIES)[number];
@@ -49,7 +51,12 @@ const ROLE_CAPABILITIES: Readonly<Record<TenantRole, ReadonlySet<TenantCapabilit
   admin: new Set<TenantCapability>(
     TENANT_CAPABILITIES.filter((capability) => capability !== "team:write"),
   ),
-  staff: new Set<TenantCapability>(["dashboard:read", "orders:read", "orders:write"]),
+  staff: new Set<TenantCapability>([
+    "dashboard:read",
+    "orders:read",
+    "orders:write",
+    "payments:read",
+  ]),
 };
 
 export function can(role: TenantRole, capability: TenantCapability): boolean {
