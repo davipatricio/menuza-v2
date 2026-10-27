@@ -42,6 +42,10 @@ import { listSeoEntitiesImpl } from "./listSeoEntities.impl.ts";
 import { getSeoImpl } from "./getSeo.impl.ts";
 import { saveSeoImpl } from "./saveSeo.impl.ts";
 import { revertSeoImpl } from "./revertSeo.impl.ts";
+import { getPaymentSettingsImpl } from "./getPaymentSettings.impl.ts";
+import { savePaymentIntegrationImpl } from "./savePaymentIntegration.impl.ts";
+import { deletePaymentIntegrationImpl } from "./deletePaymentIntegration.impl.ts";
+import { savePaymentMethodAssignmentImpl } from "./savePaymentMethodAssignment.impl.ts";
 import { listAuditLogsImpl } from "./listAuditLogs.impl.ts";
 import { listTeamMembersImpl } from "./listTeamMembers.impl.ts";
 
@@ -90,6 +94,10 @@ export const panelSubdomainRouter = {
   getSeo: getSeoImpl,
   saveSeo: saveSeoImpl,
   revertSeo: revertSeoImpl,
+  getPaymentSettings: getPaymentSettingsImpl,
+  savePaymentIntegration: savePaymentIntegrationImpl,
+  deletePaymentIntegration: deletePaymentIntegrationImpl,
+  savePaymentMethodAssignment: savePaymentMethodAssignmentImpl,
   listAuditLogs: listAuditLogsImpl,
   listTeamMembers: listTeamMembersImpl,
 };
