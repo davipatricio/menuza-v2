@@ -12,7 +12,12 @@
 import { randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import { commerceContractObject, createOrder, type CouponInput } from "@menuza/shared/commerce";
+import {
+  commerceContractObject,
+  createOrder,
+  type CouponInput,
+  type PaymentMethod,
+} from "@menuza/shared/commerce";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
 import { db, reserveVariationStock, stockLinesFor } from "@menuza/db";
 import {
@@ -133,6 +138,10 @@ export const createOrderImpl = os
       walletAvailableCents: wallet?.balanceCents ?? 0,
       coupons,
       paymentMethod: input.paymentMethod,
+      paymentMode:
+        input.paymentMethod === null
+          ? "gateway"
+          : await paymentModeFor(tenantId, input.paymentMethod),
       now,
     });
 
@@ -242,6 +251,31 @@ export const createOrderImpl = os
       })),
     };
   });
+
+/**
+ * Which side closes the payment. A method bound to an `offline` integration is
+ * reconciled by the store itself, so `createOrder` gives it no expiry window;
+ * a method nobody configured yet keeps the gateway window, because nothing has
+ * said the platform should not expect an online confirmation.
+ */
+async function paymentModeFor(
+  tenantId: string,
+  method: PaymentMethod,
+): Promise<"gateway" | "manual"> {
+  const assignment = await db.orm.public.PaymentMethodAssignment.where({
+    tenantId,
+    method,
+  }).first();
+
+  if (!assignment) return "gateway";
+
+  const integration = await db.orm.public.PaymentIntegration.where({
+    tenantId,
+    id: assignment.integrationId,
+  }).first();
+
+  return integration?.provider === "offline" ? "manual" : "gateway";
+}
 
 /**
  * Inserts under `requested`, or under a fresh generated code retrying a clash.

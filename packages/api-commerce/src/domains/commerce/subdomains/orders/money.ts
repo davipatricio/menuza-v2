@@ -120,6 +120,11 @@ export interface MarkOrderPaidOptions {
  * writes it. A retried member action and a replayed gateway webhook therefore
  * both land here and neither can mint cashback twice.
  *
+ * The order row is held first: a receipt read before the lock would let two
+ * concurrent confirmations (a provider replay landing while the first is still
+ * committing) both see "not credited" and both credit. `PRODUCT.md` §10 makes
+ * that a money bug, not a duplicate event.
+ *
  * Money already taken leaves only through `refunded` (PRODUCT.md §10), which is
  * a different transition and not this helper's business.
  */
@@ -128,13 +133,25 @@ export async function markOrderPaid(
   order: PaidOrder,
   options: MarkOrderPaidOptions,
 ): Promise<void> {
-  const credit = await creditOrderCashback(tx, order, options.actorMemberId);
+  // The row stays locked for the rest of the transaction, so the receipt read
+  // below cannot race a confirmation that is still committing.
+  const locked = await tx.orm.public.Order.where({ tenantId: order.tenantId, id: order.id })
+    .forUpdate()
+    .first();
+
+  const current = locked ?? order;
+
+  // Already paid is a no-op even when no cashback was due (and so no receipt
+  // was written): the event and the timestamp must not be appended twice.
+  if (current.financialStatus === "paid") return;
+
+  const credit = await creditOrderCashback(tx, current, options.actorMemberId);
 
   if (credit === "already_credited") return;
 
   const at = Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
 
-  await tx.orm.public.Order.where({ tenantId: order.tenantId, id: order.id }).updateAll({
+  await tx.orm.public.Order.where({ tenantId: current.tenantId, id: current.id }).updateAll({
     financialStatus: "paid",
     paidAt: at,
     updatedAt: at,
@@ -142,10 +159,10 @@ export async function markOrderPaid(
 
   await tx.orm.public.OrderEvent.create({
     id: randomUUID(),
-    tenantId: order.tenantId,
-    orderId: order.id,
+    tenantId: current.tenantId,
+    orderId: current.id,
     type: "payment_recorded",
-    fromValue: order.financialStatus,
+    fromValue: current.financialStatus,
     toValue: "paid",
     actorMemberId: options.actorMemberId,
     reason: options.reason,

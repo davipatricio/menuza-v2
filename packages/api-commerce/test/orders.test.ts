@@ -58,6 +58,10 @@ const sessions: Row[] = [];
 
 const memberships: Row[] = [];
 
+const paymentIntegrations: Row[] = [];
+
+const paymentAssignments: Row[] = [];
+
 function matches(row: Row, filter: Row): boolean {
   return Object.entries(filter).every(([key, value]) => row[key] === value);
 }
@@ -119,6 +123,8 @@ const MODEL_NAMES = [
   "OrderEvent",
   "Session",
   "TenantMembership",
+  "PaymentIntegration",
+  "PaymentMethodAssignment",
 ] as const;
 
 type ModelName = (typeof MODEL_NAMES)[number];
@@ -134,6 +140,8 @@ const SOURCES: Record<ModelName, Row[]> = {
   OrderEvent: orderEvents,
   Session: sessions,
   TenantMembership: memberships,
+  PaymentIntegration: paymentIntegrations,
+  PaymentMethodAssignment: paymentAssignments,
 };
 
 /**
@@ -259,6 +267,32 @@ function seedOrder(overrides: Row = {}) {
   orders.push(row);
 
   return row;
+}
+
+/** Binds one payment method to an integration of the given provider. */
+function seedAssignment(method: string, provider: "pagarme" | "offline") {
+  const integrationId = randomUUID();
+
+  paymentIntegrations.push({
+    id: integrationId,
+    tenantId: TENANT_ID,
+    provider,
+    label: provider === "offline" ? "Conciliação manual" : "Pagar.me",
+    status: "active",
+    credentials: null,
+    webhookToken: randomUUID().replace(/-/g, ""),
+    createdAt: at("2026-10-01 00:00"),
+    updatedAt: at("2026-10-01 00:00"),
+  });
+
+  paymentAssignments.push({
+    id: randomUUID(),
+    tenantId: TENANT_ID,
+    method,
+    integrationId,
+    createdAt: at("2026-10-01 00:00"),
+    updatedAt: at("2026-10-01 00:00"),
+  });
 }
 
 function clearAll() {
@@ -396,6 +430,72 @@ describe("orders.create", () => {
     expect(result.discountCents).toBe(0);
     expect(result.rejectedCoupons).toEqual([{ code: "MINIMO50", reason: "below_minimum" }]);
     expect(redemptions).toHaveLength(0);
+  });
+
+  test("a method bound to an offline integration gets no payment window", async () => {
+    seedWallet(0);
+
+    seedAssignment("pix", "offline");
+
+    const result = await call(
+      createOrderImpl,
+      {
+        customerId: CUSTOMER_ID,
+        paymentMethod: "pix",
+        shippingCents: 0,
+        walletRequestedCents: 0,
+        lines: [{ name: "Marmita", unitPriceCents: 2000, quantity: 1 }],
+        couponCodes: [],
+      },
+      { context: { reqHeaders: reqHeaders() } },
+    );
+
+    // Still waiting for money, but nothing online will time out: the store
+    // reconciles it, so the order has no instrument to expire.
+    expect(result.financialStatus).toBe("awaiting_payment");
+    expect(result.expiresAt).toBeNull();
+    expect(orders[0]?.expiresAt).toBeNull();
+  });
+
+  test("a method bound to a gateway keeps the 24 h window", async () => {
+    seedWallet(0);
+
+    seedAssignment("pix", "pagarme");
+
+    const result = await call(
+      createOrderImpl,
+      {
+        customerId: CUSTOMER_ID,
+        paymentMethod: "pix",
+        shippingCents: 0,
+        walletRequestedCents: 0,
+        lines: [{ name: "Marmita", unitPriceCents: 2000, quantity: 1 }],
+        couponCodes: [],
+      },
+      { context: { reqHeaders: reqHeaders() } },
+    );
+
+    expect(result.financialStatus).toBe("awaiting_payment");
+    expect(result.expiresAt).not.toBeNull();
+  });
+
+  test("a method nobody configured keeps the gateway window", async () => {
+    seedWallet(0);
+
+    const result = await call(
+      createOrderImpl,
+      {
+        customerId: CUSTOMER_ID,
+        paymentMethod: "boleto",
+        shippingCents: 0,
+        walletRequestedCents: 0,
+        lines: [{ name: "Marmita", unitPriceCents: 2000, quantity: 1 }],
+        couponCodes: [],
+      },
+      { context: { reqHeaders: reqHeaders() } },
+    );
+
+    expect(result.expiresAt).not.toBeNull();
   });
 });
 
