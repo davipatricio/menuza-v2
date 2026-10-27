@@ -124,6 +124,22 @@ The repo is indexed in codebase-memory-mcp (project `C-Users-davip-Documents-Pro
 
 Session rule: at start or after compaction, confirm project + generation with `index_status`, then pick a tier: Scout (quick lookup, provisional) → Verify (default: traces + snippets for material claims) → Auditor (bounded full verification, disclose limits).
 
+## Claude Code harness
+
+Committed under `.claude/` so every maintainer gets the same setup. `.opencode/` is the parallel OpenCode setup and is untouched by this one.
+
+- `settings.json` — shared project settings. No generic `experimental` object exists in Claude Code; features are gated per key or by env var.
+  - `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"` — agent teams, the only way to enable them (there is no `agentTeams` key).
+  - `teammateMode: in-process` — teammates run in-process. Split panes need tmux or iTerm2 and are unsupported on Windows Terminal.
+  - `enableWorkflows: true`; `disableWorkflows` from any source wins over it.
+  - `plansDirectory: .claude/plans` — where `architect` and `orchestrator` write.
+- `agents/` — nine subagents: `orchestrator`, `architect`, `critic`, `reviewer`, `implementer`, `batch`, `scout`, `researcher`, `verifier`. All `bypassPermissions`; models are `opus-top-coding` for reasoning roles and `sonnet-utility` for mechanical ones.
+  - Scoped edit allowlists are not expressible in Claude agent frontmatter; each agent's write scope is stated in its prompt instead.
+  - Nested subagents are not supported. `orchestrator` scouts before calling `architect` so the planner rarely needs to spawn; `architect` and `critic` degrade to reading files directly.
+- `skills` — symlink to `../.agents/skills`. Edit skills there, not through the link path.
+- `.mcp.json` (repo root) — `context-mode` MCP server, shared with maintainers. MCP-only: it resolves through `bunx -y context-mode`. The full context-mode Claude plugin (`/plugin marketplace add mksglu/context-mode`) is per-user and cannot be committed; without it the sandboxed tool-output routing is not installed, only the `ctx_*` MCP tools.
+  - Trust gate: a committed `.mcp.json` server is only approved once each maintainer trusts the folder, or lists it in `enabledMcpjsonServers` (as `settings.json` does).
+
 ## Security
 
 - No secrets in `.env`/tracked files. Only `.env.example`.
