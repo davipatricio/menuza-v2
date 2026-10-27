@@ -12,14 +12,9 @@
 import { randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import {
-  commerceContractObject,
-  createOrder,
-  type CouponInput,
-  reserve,
-} from "@menuza/shared/commerce";
+import { commerceContractObject, createOrder, type CouponInput } from "@menuza/shared/commerce";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db } from "@menuza/db";
+import { db, reserveVariationStock, stockLinesFor } from "@menuza/db";
 import {
   conflict,
   notFound,
@@ -29,6 +24,8 @@ import {
   toPlainDateTime,
   validationFailed,
 } from "../../support.ts";
+import { assertOwnedCatalogIds } from "./catalog.ts";
+import { applyCoupons, reserveWallet } from "./money.ts";
 
 const os = implement(
   commerceContractObject.orders.create,
@@ -149,6 +146,19 @@ export const createOrderImpl = os
 
     const code = await insertWithCode(input.code ?? null, async (candidate) => {
       await db.transaction(async (tx) => {
+        // The catalog ids are checked before anything is written: a line that
+        // names another store's variation would take another store's stock.
+        await assertOwnedCatalogIds(tx, tenantId, input.lines);
+
+        // The stock is taken before the order is written, under a row lock, so
+        // two checkouts cannot take the same last unit. A variation that ran
+        // out is a conflict: the buyer sees the fresh availability.
+        const stockLines = await stockLinesFor(tx, tenantId, input.lines);
+
+        const reserved = await reserveVariationStock(tx, tenantId, stockLines);
+
+        if (!reserved.ok) throw conflict();
+
         await tx.orm.public.Order.create({
           id: orderId,
           tenantId,
@@ -197,59 +207,19 @@ export const createOrderImpl = os
           });
         }
 
-        for (const discount of appliedCoupons) {
-          const couponId = discount.couponId;
-          const couponCode = discount.couponCode;
-
-          if (couponId === undefined || couponCode === undefined) continue;
-
-          await tx.orm.public.CouponRedemption.create({
-            id: randomUUID(),
-            tenantId,
-            couponId,
-            orderId,
-            customerId: customer.id,
-            discountCents: discount.amountCents,
-          });
-
-          const usageCount = coupons.find((coupon) => coupon.id === couponId)?.usageCount ?? 0;
-
-          await tx.orm.public.Coupon.where({ tenantId, id: couponId }).update({
-            usageCount: usageCount + 1,
-          });
-        }
+        await applyCoupons(tx, tenantId, orderId, customer.id, appliedCoupons);
 
         if (priced.walletAppliedCents > 0 && wallet) {
-          // The wallet is the only balance that can refuse: `priceOrder` already
-          // clamped the request to what is available, so a refusal here is a
-          // concurrent spend and the order cannot be created.
-          const applied = reserve(
-            { balanceCents: wallet.balanceCents, transactions: [] },
-            {
-              orderId,
-              amountCents: priced.walletAppliedCents,
-              reason: `Reserva aplicada no pedido ${candidate}`,
-            },
-          );
-
-          if (!applied.ok) throw conflict();
-
-          await tx.orm.public.WalletTransaction.create({
-            id: randomUUID(),
+          await reserveWallet(
+            tx,
             tenantId,
-            walletId: wallet.id,
             orderId,
-            kind: applied.entry.kind,
-            amountCents: applied.entry.amountCents,
-            actorMemberId: member.memberId,
-            reason: applied.entry.reason,
+            wallet.id,
+            priced.walletAppliedCents,
+            `Reserva aplicada no pedido ${candidate}`,
+            member.memberId,
             createdAt,
-          });
-
-          await tx.orm.public.Wallet.where({ tenantId, id: wallet.id }).update({
-            balanceCents: applied.balanceCents,
-            updatedAt: createdAt,
-          });
+          );
         }
       });
     });

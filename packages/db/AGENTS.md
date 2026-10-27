@@ -37,10 +37,14 @@
   only when a span is already active. Statement text is truncated; bound parameters are
   never recorded.
 - Tenant-scoped queries MUST include an explicit `where` on `tenantId`. The runtime
-  `tenantIsolationMiddleware()` is fail-closed: querying or mutating a tenant-scoped
-  model without `tenantId` (or with a cross-tenant ID under an active tenant scope)
+  `tenantIsolationMiddleware()` is fail-closed: querying or mutating a tenant-scoped model
+  without `tenantId` (or with a cross-tenant ID under an active tenant scope)
   throws `TenantIsolationError`. Intentionally global lookups (e.g. storefront host
   resolution in the tenant API) must use `unscoped()`.
+- The guard hooks `beforeCompile`, the pre-lowering hook of the Prisma 8 middleware: it reads
+  the query AST and throws to block the statement. `beforeQuery`/`beforeExecute` are gone in
+  rc.20; a span is opened by `activityStarted` and closed by `activityEnded`, keyed by the
+  activity id.
 - AsyncLocalStorage tenant scoping (`withTenant`, `unscoped`, `getActiveTenantId`,
   `isUnscoped`) is owned here and exported from `@menuza/db/scope` (and re-exported on `@menuza/db`).
   Worker and server APIs import it directly. Do NOT create separate packages for tenant scoping.
@@ -56,11 +60,13 @@
 - Terminals: `updateAll` returns the updated **rows**; `updateAndCount` returns
   the **number** of affected rows. Use `updateAndCount` when the caller reports a
   count — `updateAll` would make you fetch every row just to measure it.
-- RC.17 planner pitfall: `update`/`delete` compiled from `where({ tenantId, id })`
-  keep only the unique `id` in SQL (the `tenantId` predicate is dropped), so the
-  isolation guard rejects them. Use `updateAll`/`deleteAll` (they keep the full
-  filter) for tenant-scoped writes by id; `upsert` is safe because its conflict
-  target carries `tenantId`.
+- RC.17 planner pitfall (still true in rc.20): `update`/`delete` compiled from
+  `where({ tenantId, id })` keep only the unique `id` in SQL (the `tenantId` predicate
+  is dropped), so the isolation guard rejects them. Use `updateAll`/`deleteAll` (they
+  keep the full filter) for tenant-scoped writes by id; `upsert` is safe because its
+  conflict target carries `tenantId`. In rc.20 `updateAll`/`deleteAll` also require a
+  filter that is not a bare unique key, and `updateAll` hands back the updated rows,
+  so `const [row] = await ....updateAll({...})` replaces `update({...})`.
 - `DATABASE_URL` comes from the repo-root `.env` in both places that need it:
   `prisma.config.ts` self-loads it via `process.loadEnvFile`, and runtime callers
   must export it before importing the client (`bun --env-file-if-exists=...` wrappers).
@@ -81,9 +87,27 @@
   `@@type("pg/text@1")` with generated CHECKs over stable lowercase ASCII
   slugs; the pt-BR labels live only in the UI. `@@check` expressions must
   quote camelCase identifiers (`"priceCents" >= 0`) — Postgres folds unquoted
-  identifiers to lowercase and the migration fails. `AuditLog.action` is free
+  identifiers to lowercase and the migration fails — and since rc.27 they must
+  be a `sql` literal (`@@check(expression: sql`"priceCents" >= 0`, name: ...)`);
+  a quoted string is refused. `AuditLog.action` is free
   text until MEN-74 closes the event catalog. `MealSubscription` is a
   structural stub: cadence and status only, no charging (MEN-150).
+- The money identity of an order is a CHECK, not code:
+  `totalCents = subtotalCents - discountCents + shippingCents - walletAppliedCents`.
+  `cashbackCents` is earned and never subtracted. The seed computes the same
+  identity, so a seeded wallet order satisfies it too.
+- A controlled variation carries a quantity and an unlimited one carries none:
+  `variation_stock_mode_consistent` says so, and the seed and the panel write
+  the two halves that agree with it.
+- The join tables (`ProductTag`, `CategoryDepartment`) carry their own
+  `tenantId`, so the isolation guard checks them, and a trigger
+  (`menuza_join_tenant_guard`) rejects a row whose two parents do not share
+  that tenant — a foreign key cannot say that.
+- `src/stock.ts` owns the stock a variation carries: `stockLinesFor` expands
+  the order lines (a kit takes the variations it names), `reserveVariationStock`
+  takes them under a `forUpdate` lock, and `releaseVariationStock` gives them
+  back. The schema says which variations are controlled; this says how much
+  they hold.
 - `prisma/seed.ts` is idempotent: it upserts on each model's declared unique, or
   uses a `stableId(scope, key)` SHA-256-derived UUID for the models whose only
   unique is `id`. A second run is a no-op. It seeds commerce fixtures for

@@ -14,7 +14,7 @@ export const listTagsImpl = os.handler(async ({ input, context }) => {
   const { rows: tags, productTags } = await inTenantScope(store.tenantId, async () => {
     const rows = await db.orm.public.Tag.where({ tenantId: store.tenantId }).all();
 
-    const productTags = await db.orm.public.ProductTag.all();
+    const productTags = await db.orm.public.ProductTag.where({ tenantId: store.tenantId }).all();
 
     return { rows, productTags };
   });

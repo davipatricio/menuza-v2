@@ -32,7 +32,7 @@ export const listMenuImpl = os.public.listMenu
           .orderBy((department) => department.name.asc())
           .orderBy((department) => department.id.asc())
           .all(),
-        links: await db.orm.public.CategoryDepartment.all(),
+        links: await db.orm.public.CategoryDepartment.where({ tenantId }).all(),
         categories: await db.orm.public.Category.where({ tenantId, active: true })
           .orderBy((category) => category.sortOrder.asc())
           .orderBy((category) => category.name.asc())

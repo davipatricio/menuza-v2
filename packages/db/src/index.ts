@@ -2,7 +2,7 @@
  * Public surface: types + the singleton client.
  * Server-only: do NOT import from browser code.
  */
-export { db, pingDb, disconnectDb, type Db } from "./client.ts";
+export { db, pingDb, disconnectDb, type Db, type DbTransaction } from "./client.ts";
 
 export {
   TenantIsolationError,
@@ -13,6 +13,17 @@ export {
 export { withTenant, unscoped, getActiveTenantId, isUnscoped } from "./scope/scope.ts";
 
 export type { TenantContext, OptionalTenantContext } from "./scope/types.ts";
+
+// The stock a variation carries. The schema says a controlled variation has a
+// quantity and an unlimited one has none; this is where that quantity moves.
+export {
+  releaseVariationStock,
+  reserveVariationStock,
+  stockLinesFor,
+  type StockLine,
+  type StockOrderLine,
+  type StockReservation,
+} from "./stock.ts";
 
 // ORM predicate combinators. Re-exported so consumers compose `where` callbacks
 // without taking a direct dependency on the Prisma package: `@menuza/db` owns

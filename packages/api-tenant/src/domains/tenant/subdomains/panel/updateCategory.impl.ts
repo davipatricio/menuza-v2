@@ -54,7 +54,7 @@ export const updateCategoryImpl = os.handler(async ({ input, context }) => {
         updatedAt: now(),
       });
 
-      await replaceCategoryDepartments(tx, input.categoryId, input.departmentIds);
+      await replaceCategoryDepartments(tx, store.tenantId, input.categoryId, input.departmentIds);
     }),
   );
 

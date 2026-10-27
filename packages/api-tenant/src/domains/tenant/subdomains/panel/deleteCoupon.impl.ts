@@ -17,8 +17,12 @@ export const deleteCouponImpl = os.handler(async ({ input, context }) => {
   );
 
   if (!existing) throw notFound();
+
+  // `deleteAll`, not `delete`: the planner compiles `delete` from
+  // `where({ tenantId, id })` down to `id` only, and the isolation guard then
+  // rejects the write.
   await inTenantScope(store.tenantId, () =>
-    db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).delete(),
+    db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).deleteAll(),
   );
 
   return { success: true };

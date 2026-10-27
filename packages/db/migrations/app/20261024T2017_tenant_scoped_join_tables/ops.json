@@ -1,0 +1,481 @@
+[
+  {
+    "id": "column.public.CategoryDepartment.tenantId",
+    "label": "Add column \"tenantId\" to \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "tenantId",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"tenantId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "CategoryDepartment", "tenantId"],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"tenantId\" on \"CategoryDepartment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"tenantId\"",
+        "sql": "ALTER TABLE \"public\".\"CategoryDepartment\" ADD COLUMN \"tenantId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"tenantId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "CategoryDepartment", "tenantId"],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"tenantId\" on \"CategoryDepartment\""
+        }
+      },
+      {
+        "description": "verify column \"tenantId\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": ["public", "CategoryDepartment", "tenantId", "text"]
+      }
+    ]
+  },
+  {
+    "id": "column.public.ProductTag.tenantId",
+    "label": "Add column \"tenantId\" to \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "tenantId",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"tenantId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "ProductTag", "tenantId"],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"tenantId\" on \"ProductTag\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"tenantId\"",
+        "sql": "ALTER TABLE \"public\".\"ProductTag\" ADD COLUMN \"tenantId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"tenantId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "ProductTag", "tenantId"],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"tenantId\" on \"ProductTag\""
+        }
+      },
+      {
+        "description": "verify column \"tenantId\" has type \"text\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": ["public", "ProductTag", "tenantId", "text"]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.backfill-join-tenants",
+    "label": "Fill the tenant of every join row from its parent",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the join tables exist",
+        "sql": "SELECT to_regclass('\"public\".\"ProductTag\"') IS NOT NULL\n   AND to_regclass('\"public\".\"CategoryDepartment\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Drop the product tags whose product and tag disagree about the tenant",
+        "sql": "DELETE FROM \"public\".\"ProductTag\" AS pt\nUSING \"public\".\"Product\" AS p, \"public\".\"Tag\" AS t\nWHERE pt.\"productId\" = p.\"id\" AND pt.\"tagId\" = t.\"id\" AND p.\"tenantId\" <> t.\"tenantId\"",
+        "params": []
+      },
+      {
+        "description": "Drop the category links whose category and department disagree about the tenant",
+        "sql": "DELETE FROM \"public\".\"CategoryDepartment\" AS cd\nUSING \"public\".\"Category\" AS c, \"public\".\"Department\" AS d\nWHERE cd.\"categoryId\" = c.\"id\" AND cd.\"departmentId\" = d.\"id\" AND c.\"tenantId\" <> d.\"tenantId\"",
+        "params": []
+      },
+      {
+        "description": "Fill the tenant of every product tag from its product",
+        "sql": "UPDATE \"public\".\"ProductTag\" AS pt\nSET \"tenantId\" = p.\"tenantId\"\nFROM \"public\".\"Product\" AS p\nWHERE pt.\"productId\" = p.\"id\" AND pt.\"tenantId\" IS NULL",
+        "params": []
+      },
+      {
+        "description": "Fill the tenant of every category link from its category",
+        "sql": "UPDATE \"public\".\"CategoryDepartment\" AS cd\nSET \"tenantId\" = c.\"tenantId\"\nFROM \"public\".\"Category\" AS c\nWHERE cd.\"categoryId\" = c.\"id\" AND cd.\"tenantId\" IS NULL",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify every join row carries the tenant of its parent",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1 FROM \"public\".\"ProductTag\" AS pt\n  JOIN \"public\".\"Product\" AS p ON p.\"id\" = pt.\"productId\"\n  WHERE pt.\"tenantId\" IS DISTINCT FROM p.\"tenantId\"\n) AND NOT EXISTS (\n  SELECT 1 FROM \"public\".\"CategoryDepartment\" AS cd\n  JOIN \"public\".\"Category\" AS c ON c.\"id\" = cd.\"categoryId\"\n  WHERE cd.\"tenantId\" IS DISTINCT FROM c.\"tenantId\"\n) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.CategoryDepartment.tenantId",
+    "label": "Set NOT NULL on \"CategoryDepartment\".\"tenantId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "tenantId",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"tenantId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "CategoryDepartment", "tenantId"],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"tenantId\" on \"CategoryDepartment\""
+        }
+      },
+      {
+        "description": "ensure no NULL values in \"tenantId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"CategoryDepartment\" WHERE \"tenantId\" IS NULL) AS \"result\"",
+        "params": [],
+        "meta": {
+          "requiredColumn": {
+            "table": "CategoryDepartment",
+            "column": "tenantId",
+            "reason": "nullValues"
+          }
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"tenantId\"",
+        "sql": "ALTER TABLE \"public\".\"CategoryDepartment\" ALTER COLUMN \"tenantId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"tenantId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": ["public", "CategoryDepartment", "tenantId", "NO"]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.ProductTag.tenantId",
+    "label": "Set NOT NULL on \"ProductTag\".\"tenantId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "tenantId",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"tenantId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "ProductTag", "tenantId"],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"tenantId\" on \"ProductTag\""
+        }
+      },
+      {
+        "description": "ensure no NULL values in \"tenantId\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"ProductTag\" WHERE \"tenantId\" IS NULL) AS \"result\"",
+        "params": [],
+        "meta": {
+          "requiredColumn": {
+            "table": "ProductTag",
+            "column": "tenantId",
+            "reason": "nullValues"
+          }
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"tenantId\"",
+        "sql": "ALTER TABLE \"public\".\"ProductTag\" ALTER COLUMN \"tenantId\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"tenantId\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": ["public", "ProductTag", "tenantId", "NO"]
+      }
+    ]
+  },
+  {
+    "id": "index.CategoryDepartment.CategoryDepartment_tenantId_idx",
+    "label": "Create index \"CategoryDepartment_tenantId_idx\" on \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "CategoryDepartment_tenantId_idx",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"CategoryDepartment_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"CategoryDepartment_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"CategoryDepartment_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"CategoryDepartment_tenantId_idx\"",
+        "sql": "CREATE INDEX \"CategoryDepartment_tenantId_idx\" ON \"public\".\"CategoryDepartment\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"CategoryDepartment_tenantId_idx\" exists on \"CategoryDepartment\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"CategoryDepartment_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"CategoryDepartment\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductTag.ProductTag_tenantId_idx",
+    "label": "Create index \"ProductTag_tenantId_idx\" on \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductTag_tenantId_idx",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductTag_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductTag_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ProductTag_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductTag_tenantId_idx\"",
+        "sql": "CREATE INDEX \"ProductTag_tenantId_idx\" ON \"public\".\"ProductTag\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductTag_tenantId_idx\" exists on \"ProductTag\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ProductTag_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"ProductTag\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.CategoryDepartment.CategoryDepartment_tenantId_fkey",
+    "label": "Add foreign key \"CategoryDepartment_tenantId_fkey\" on \"CategoryDepartment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "CategoryDepartment_tenantId_fkey",
+        "table": "CategoryDepartment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"CategoryDepartment_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CategoryDepartment_tenantId_fkey",
+          "public",
+          "\"public\".\"CategoryDepartment\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"CategoryDepartment_tenantId_fkey\" on \"CategoryDepartment\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"CategoryDepartment_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"CategoryDepartment\"\nADD CONSTRAINT \"CategoryDepartment_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"CategoryDepartment_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "CategoryDepartment_tenantId_fkey",
+          "public",
+          "\"public\".\"CategoryDepartment\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductTag.ProductTag_tenantId_fkey",
+    "label": "Add foreign key \"ProductTag_tenantId_fkey\" on \"ProductTag\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductTag_tenantId_fkey",
+        "table": "ProductTag"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductTag_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductTag_tenantId_fkey", "public", "\"public\".\"ProductTag\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"ProductTag_tenantId_fkey\" on \"ProductTag\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductTag_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductTag\"\nADD CONSTRAINT \"ProductTag_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductTag_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "ProductTag_tenantId_fkey",
+          "public",
+          "\"public\".\"ProductTag\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.guard-join-tenants",
+    "label": "Reject a join row whose parents do not share its tenant",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the join tables exist",
+        "sql": "SELECT to_regclass('\"public\".\"ProductTag\"') IS NOT NULL\n   AND to_regclass('\"public\".\"CategoryDepartment\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Create the guard the join triggers call",
+        "sql": "CREATE OR REPLACE FUNCTION \"public\".\"menuza_join_tenant_guard\"() RETURNS trigger AS $$\nDECLARE\n  first_tenant text;\n  second_tenant text;\nBEGIN\n  IF TG_TABLE_NAME = 'ProductTag' THEN\n    SELECT \"tenantId\" INTO first_tenant FROM \"public\".\"Product\" WHERE \"id\" = NEW.\"productId\";\n    SELECT \"tenantId\" INTO second_tenant FROM \"public\".\"Tag\" WHERE \"id\" = NEW.\"tagId\";\n  ELSE\n    SELECT \"tenantId\" INTO first_tenant FROM \"public\".\"Category\" WHERE \"id\" = NEW.\"categoryId\";\n    SELECT \"tenantId\" INTO second_tenant FROM \"public\".\"Department\" WHERE \"id\" = NEW.\"departmentId\";\n  END IF;\n\n  IF first_tenant IS NULL\n     OR second_tenant IS NULL\n     OR first_tenant <> NEW.\"tenantId\"\n     OR second_tenant <> NEW.\"tenantId\" THEN\n    RAISE EXCEPTION '% row tenant % does not match its parents (%) and (%)',\n      TG_TABLE_NAME, NEW.\"tenantId\", first_tenant, second_tenant;\n  END IF;\n\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql",
+        "params": []
+      },
+      {
+        "description": "Drop the product tag guard if it is already there",
+        "sql": "DROP TRIGGER IF EXISTS \"ProductTag_tenant_matches_parents\" ON \"public\".\"ProductTag\"",
+        "params": []
+      },
+      {
+        "description": "Guard the product tags",
+        "sql": "CREATE TRIGGER \"ProductTag_tenant_matches_parents\"\nBEFORE INSERT OR UPDATE ON \"public\".\"ProductTag\"\nFOR EACH ROW EXECUTE FUNCTION \"public\".\"menuza_join_tenant_guard\"()",
+        "params": []
+      },
+      {
+        "description": "Drop the category link guard if it is already there",
+        "sql": "DROP TRIGGER IF EXISTS \"CategoryDepartment_tenant_matches_parents\" ON \"public\".\"CategoryDepartment\"",
+        "params": []
+      },
+      {
+        "description": "Guard the category links",
+        "sql": "CREATE TRIGGER \"CategoryDepartment_tenant_matches_parents\"\nBEFORE INSERT OR UPDATE ON \"public\".\"CategoryDepartment\"\nFOR EACH ROW EXECUTE FUNCTION \"public\".\"menuza_join_tenant_guard\"()",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify both join tables carry the guard",
+        "sql": "SELECT (\n  SELECT count(*) FROM pg_trigger\n  WHERE tgname IN ('ProductTag_tenant_matches_parents', 'CategoryDepartment_tenant_matches_parents')\n    AND NOT tgisinternal\n) = 2 AS ok",
+        "params": []
+      }
+    ]
+  }
+]

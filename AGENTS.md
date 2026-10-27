@@ -32,8 +32,9 @@
 - oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`,
   `@orpc/openapi`). v2 wire
   format is incompatible with v1 — server and client deploy together.
-- Prisma CLI `8.0.0-rc.22`, `@prisma/orm-postgres` `8.0.0-rc.17` (RC pin; bump CLI and
-  ORM package together — wire/marker formats are versioned together).
+- Prisma CLI `8.0.0-rc.27`, `@prisma/orm-postgres` `8.0.0-rc.20` (RC pin; bump CLI and
+  ORM package together — wire/marker formats are versioned together). rc.27 requires
+  `@@check(expression: sql`...`)` — a quoted string is refused.
 - BullMQ 6.3.14 over Bun's built-in `RedisClient` (adapter; ioredis removed).
 - Turborepo 2.11.9 (task DAG + local cache; no remote cache).
 - OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.12.0 / 0.223.0) and

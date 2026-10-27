@@ -1,0 +1,111 @@
+[
+  {
+    "id": "dropCheckConstraint.Order.order_total_matches_lines_fb0005a4",
+    "label": "Drop check constraint \"order_total_matches_lines_fb0005a4\" on \"Order\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_total_matches_lines_fb0005a4",
+        "table": "Order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_total_matches_lines_fb0005a4\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["order_total_matches_lines_fb0005a4", "public", "\"public\".\"Order\""],
+        "expectation": {
+          "expects": "present",
+          "object": "constraint \"order_total_matches_lines_fb0005a4\" on \"Order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"order_total_matches_lines_fb0005a4\"",
+        "sql": "ALTER TABLE \"public\".\"Order\" DROP CONSTRAINT \"order_total_matches_lines_fb0005a4\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_total_matches_lines_fb0005a4\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["order_total_matches_lines_fb0005a4", "public", "\"public\".\"Order\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"order_total_matches_lines_fb0005a4\" on \"Order\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "data_migration.recompute-order-totals",
+    "label": "Recompute the order totals that left the wallet out",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the Order table exists",
+        "sql": "SELECT to_regclass('\"public\".\"Order\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Recompute every order total that breaks the money identity",
+        "sql": "UPDATE \"public\".\"Order\"\nSET \"totalCents\" = \"subtotalCents\" - \"discountCents\" + \"shippingCents\" - \"walletAppliedCents\"\nWHERE \"totalCents\" <> \"subtotalCents\" - \"discountCents\" + \"shippingCents\" - \"walletAppliedCents\"",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify every order total matches the money identity",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1\n  FROM \"public\".\"Order\"\n  WHERE \"totalCents\" <> \"subtotalCents\" - \"discountCents\" + \"shippingCents\" - \"walletAppliedCents\"\n) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Order.order_total_matches_lines_570dca53",
+    "label": "Add check constraint \"order_total_matches_lines_570dca53\" on \"Order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_total_matches_lines_570dca53",
+        "table": "Order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_total_matches_lines_570dca53\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["order_total_matches_lines_570dca53", "public", "\"public\".\"Order\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"order_total_matches_lines_570dca53\" on \"Order\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_total_matches_lines_570dca53\"",
+        "sql": "ALTER TABLE \"public\".\"Order\" ADD CONSTRAINT \"order_total_matches_lines_570dca53\" CHECK (\"totalCents\" = \"subtotalCents\" - \"discountCents\" + \"shippingCents\" - \"walletAppliedCents\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"order_total_matches_lines_570dca53\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": ["order_total_matches_lines_570dca53", "public", "\"public\".\"Order\"", "c"]
+      }
+    ]
+  }
+]

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { TRANSITIONS, applyTransition, nextTransitions } from "./transitions.ts";
+import { TRANSITIONS, applyTransition, nextTransitions, releasesStock } from "./transitions.ts";
 import type {
   FinancialStatus,
   FulfilmentStatus,
@@ -231,5 +231,26 @@ describe("nextTransitions", () => {
   test("terminal states offer nothing", () => {
     expect(nextTransitions("fulfilment", "completed", MANAGER)).toEqual([]);
     expect(nextTransitions("financial", "expired", MANAGER)).toEqual([]);
+  });
+});
+
+describe("releasesStock", () => {
+  test("an order that never reaches the buyer gives its stock back", () => {
+    expect(releasesStock("canceled", "pending")).toBe(true);
+    expect(releasesStock("canceled", "awaiting_payment")).toBe(true);
+    expect(releasesStock("pending", "expired")).toBe(true);
+    expect(releasesStock("pending", "canceled")).toBe(true);
+  });
+
+  test("an order that was delivered keeps its stock spent", () => {
+    expect(releasesStock("completed", "paid")).toBe(false);
+    expect(releasesStock("out_for_delivery", "refunded")).toBe(false);
+    expect(releasesStock("completed", "refunded")).toBe(false);
+  });
+
+  test("an order still on its way keeps its stock spent", () => {
+    expect(releasesStock("pending", "awaiting_payment")).toBe(false);
+    expect(releasesStock("preparing", "paid")).toBe(false);
+    expect(releasesStock("ready", "pending_on_delivery")).toBe(false);
   });
 });

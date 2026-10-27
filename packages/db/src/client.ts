@@ -4,6 +4,7 @@
  * Call disconnectDb() on shutdown.
  */
 import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
 import type { Contract } from "../prisma/generated/client/contract.ts";
 import contractJson from "../prisma/generated/client/contract.json" with { type: "json" };
 import { otelQueryMiddleware } from "./otel-middleware.ts";
@@ -17,6 +18,9 @@ if (!url) {
 
 export type Db = ReturnType<typeof postgres<Contract>>;
 
+/** The context a transaction hands to its callback. */
+export type DbTransaction = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 declare global {
   // eslint-disable-next-line no-var
   var __menuzaPrisma: Db | undefined;
@@ -25,7 +29,7 @@ declare global {
 export const db: Db =
   globalThis.__menuzaPrisma ??
   postgres<Contract>({
-    contractJson,
+    contract: contractFromJson<Contract>(contractJson),
     url,
     middleware: [otelQueryMiddleware(), tenantIsolationMiddleware()],
   });

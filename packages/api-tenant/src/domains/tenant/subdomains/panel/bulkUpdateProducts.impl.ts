@@ -1,7 +1,7 @@
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { db } from "@menuza/db";
+import { db, and } from "@menuza/db";
 import { notFound } from "../session/support.ts";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { assertOwnedIds } from "./catalog.ts";
@@ -58,7 +58,7 @@ export const bulkUpdateProductsImpl = os.handler(async ({ input, context }) => {
         const tagIds = [...new Set(input.addTagIds)];
 
         const existing = await tx.orm.public.ProductTag.where((link) =>
-          link.productId.in(productIds),
+          and(link.tenantId.eq(store.tenantId), link.productId.in(productIds)),
         )
           .select("productId", "tagId")
           .all();
@@ -66,11 +66,11 @@ export const bulkUpdateProductsImpl = os.handler(async ({ input, context }) => {
         const present = new Set(existing.map((link) => `${link.productId}:${link.tagId}`));
 
         const rows = productIds.flatMap((productId) => {
-          const links: Array<{ productId: string; tagId: string }> = [];
+          const links: Array<{ tenantId: string; productId: string; tagId: string }> = [];
 
           for (const tagId of tagIds) {
             if (!present.has(`${productId}:${tagId}`)) {
-              links.push({ productId, tagId });
+              links.push({ tenantId: store.tenantId, productId, tagId });
             }
           }
 

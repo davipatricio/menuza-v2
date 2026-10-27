@@ -3,16 +3,16 @@
  *
  * A span is only created when one is already active, so startup probes,
  * scripts, and migrations stay out of the traces. Queries correlate to their
- * `beforeQuery`/`beforeExecute` span through `ctx.planExecutionId`, the
- * runtime's own per-operation identity — not through async context, which is
- * not guaranteed across the row-consumption boundary.
+ * span through the activity id — the runtime's own per-statement identity —
+ * not through async context, which is not guaranteed across the
+ * row-consumption boundary.
  *
  * Statement text is truncated and bound parameters are never recorded. Treat
  * `db.statement` as potentially identifying: a literal-only query (raw SQL)
  * can carry values that parameterized plans keep out.
  */
 import { SpanKind, SpanStatusCode, trace, type Span, type Tracer } from "@opentelemetry/api";
-import type { SqlMiddleware } from "@prisma/orm-postgres/family-runtime";
+import type { SqlMiddleware, StatementActivity } from "@prisma/orm-postgres/family-runtime";
 
 /** Longest statement prefix kept as a span attribute. */
 const MAX_STATEMENT = 512;
@@ -26,8 +26,23 @@ interface LiveSpan {
   readonly onAbort: () => void;
 }
 
+/** A statement activity narrowed to the plan the SQL lane executes. */
+type SqlStatementActivity = StatementActivity & {
+  readonly plan: { readonly sql: string };
+};
+
+/** The statement text of a statement activity's plan. */
+function statementOf(activity: StatementActivity): string {
+  // SAFETY: a statement activity carries the `SqlExecutionPlan` the caller
+  // sent; the activity union widens `plan` to `QueryPlan`, which has no
+  // `sql` field, so the concrete plan is read back here.
+  const statement = activity as SqlStatementActivity;
+
+  return statement.plan.sql;
+}
+
 export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db")): SqlMiddleware {
-  /** Live spans keyed by `ctx.planExecutionId`. */
+  /** Live spans keyed by the activity id. */
   const spans = new Map<string, LiveSpan>();
 
   const end = (id: string, apply?: (span: Span) => void): void => {
@@ -44,33 +59,31 @@ export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db
     live.span.end();
   };
 
-  const start = (
-    plan: { readonly sql: string },
-    ctx: { readonly planExecutionId: string; readonly signal?: AbortSignal },
-  ): void => {
+  const start = (activity: StatementActivity, ctx: { readonly signal?: AbortSignal }): void => {
     // No active span means no trace to extend.
     if (!trace.getActiveSpan()) return;
 
-    const operation = operationOf(plan.sql);
+    const sql = statementOf(activity);
+    const operation = operationOf(sql);
 
     const span = tracer.startSpan(`db ${operation}`, {
       kind: SpanKind.CLIENT,
       attributes: {
         "db.system": DB_SYSTEM,
         "db.operation.name": operation,
-        "db.statement": truncate(plan.sql),
+        "db.statement": truncate(sql),
       },
     });
 
-    // The runtime may abort between the before and after hooks; end the span
+    // The runtime may abort between the start and end hooks; end the span
     // here so an aborted operation cannot leak one.
     const onAbort = (): void => {
-      end(ctx.planExecutionId, (aborted) => {
+      end(activity.id, (aborted) => {
         aborted.setStatus({ code: SpanStatusCode.ERROR, message: "aborted" });
       });
     };
 
-    spans.set(ctx.planExecutionId, { span, signal: ctx.signal, onAbort });
+    spans.set(activity.id, { span, signal: ctx.signal, onAbort });
 
     ctx.signal?.addEventListener("abort", onAbort, { once: true });
   };
@@ -78,26 +91,25 @@ export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db
   return {
     name: "otel-query",
     familyId: "sql",
-    beforeQuery: start,
-    async afterQuery(_plan, result, ctx) {
-      end(ctx.planExecutionId, (span) => {
-        span.setAttribute("db.response.returned_rows", result.rowCount);
-        span.setAttribute("db.query.source", result.source);
+    async activityStarted(activity, ctx) {
+      if (activity.kind !== "statement") return;
 
-        if (!result.completed) {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: "incomplete" });
-        }
-      });
+      start(activity, ctx);
     },
-    beforeExecute: start,
-    async afterExecute(_plan, result, ctx) {
-      end(ctx.planExecutionId, (span) => {
+    async activityEnded(activity, result) {
+      if (activity.kind !== "statement" || result.kind !== "statement") return;
+
+      end(activity.id, (span) => {
         span.setAttribute("db.query.source", result.source);
 
-        if (result.completed) {
+        if (result.outcome !== "succeeded") {
+          span.setStatus({ code: SpanStatusCode.ERROR, message: result.outcome });
+        }
+
+        if (result.returns === "rows") {
+          span.setAttribute("db.response.returned_rows", result.rowCount);
+        } else if (result.stats) {
           span.setAttribute("db.response.affected_rows", result.stats.affectedRows);
-        } else {
-          span.setStatus({ code: SpanStatusCode.ERROR, message: "incomplete" });
         }
       });
     },

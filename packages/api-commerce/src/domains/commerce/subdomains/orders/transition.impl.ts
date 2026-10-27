@@ -9,10 +9,10 @@
 import { randomUUID } from "node:crypto";
 import { ORPCError, implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import { applyTransition, commerceContractObject } from "@menuza/shared/commerce";
+import { applyTransition, commerceContractObject, releasesStock } from "@menuza/shared/commerce";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db } from "@menuza/db";
+import { db, releaseVariationStock, stockLinesFor } from "@menuza/db";
 import { actorOf, notFound, requireCapability, requireMember } from "../../support.ts";
 
 const os = implement(
@@ -64,7 +64,10 @@ export const transitionOrderImpl = os
     const next = input.to as typeof order.financialStatus & typeof order.fulfilmentStatus;
 
     await db.transaction(async (tx) => {
-      await tx.orm.public.Order.where({ tenantId, id: order.id }).update(
+      // `updateAll`, not `update`: the planner compiles `update` from
+      // `where({ tenantId, id })` down to `id` only, and the isolation guard
+      // then rejects the write.
+      await tx.orm.public.Order.where({ tenantId, id: order.id }).updateAll(
         input.axis === "financial"
           ? { financialStatus: next, updatedAt: now }
           : { fulfilmentStatus: next, updatedAt: now },
@@ -81,6 +84,23 @@ export const transitionOrderImpl = os
         reason: input.reason ?? null,
         createdAt: now,
       });
+
+      // The stock goes back on the edge into a state the order never leaves:
+      // a cancelled order never reaches the buyer. Comparing the pair before
+      // and after is what makes the release happen once, even when the order
+      // is later expired as well.
+      const wasReleased = releasesStock(order.fulfilmentStatus, order.financialStatus);
+
+      const isReleased = releasesStock(
+        input.axis === "fulfilment" ? next : order.fulfilmentStatus,
+        input.axis === "financial" ? next : order.financialStatus,
+      );
+
+      if (wasReleased || !isReleased) return;
+
+      const items = await tx.orm.public.OrderItem.where({ tenantId, orderId: order.id }).all();
+
+      await releaseVariationStock(tx, tenantId, await stockLinesFor(tx, tenantId, items));
     });
 
     return {

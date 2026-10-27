@@ -12,6 +12,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import postgres from "@prisma/orm-postgres/runtime";
+import { contractFromJson } from "@prisma/orm-postgres/static";
 import type { Contract } from "./generated/client/contract.ts";
 import contractJson from "./generated/client/contract.json" with { type: "json" };
 
@@ -22,7 +23,7 @@ if (!url) {
   process.exit(1);
 }
 
-const db = postgres<Contract>({ contractJson, url });
+const db = postgres<Contract>({ contract: contractFromJson<Contract>(contractJson), url });
 
 const map = (process.env.WEB_HOST_MAP ?? "")
   .split(",")
@@ -279,7 +280,7 @@ if (mawifoodsId) {
     const departmentId = departmentIdByName.get(fixture.department)!;
 
     await db.orm.public.CategoryDepartment.upsert({
-      create: { categoryId: category.id, departmentId },
+      create: { tenantId: mawifoodsId, categoryId: category.id, departmentId },
       update: {},
       conflictOn: { categoryId: category.id, departmentId },
     });
@@ -711,7 +712,7 @@ if (mawifoodsId) {
       if (!tagId) throw new Error("[db:seed] missing tag " + tagName);
 
       await db.orm.public.ProductTag.upsert({
-        create: { productId, tagId },
+        create: { tenantId: mawifoodsId, productId, tagId },
         update: {},
         conflictOn: { productId, tagId },
       });
@@ -1104,7 +1105,8 @@ if (mawifoodsId) {
 
     const subtotalCents = items.reduce((sum, item) => sum + item.lineTotalCents, 0);
 
-    const totalCents = subtotalCents - fixture.discountCents + fixture.shippingCents;
+    const totalCents =
+      subtotalCents - fixture.discountCents + fixture.shippingCents - fixture.walletAppliedCents;
 
     const couponCode = "couponCode" in fixture ? fixture.couponCode : null;
 

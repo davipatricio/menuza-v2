@@ -30,6 +30,8 @@ model Tenant {
   seoMeta           SeoMeta[]
   storeSettings     StoreSettings?
   productNutritions ProductNutrition[]
+  productTags       ProductTag[]
+  categoryDepartments CategoryDepartment[]
 
   @@index([slug], map: "Tenant_slug_key", unique: true)
 
@@ -388,14 +390,23 @@ model Department {
 
 // Which departments a category appears under. A plain join row, exactly like
 // ProductTag: composite primary key, one extra index on the second column.
+//
+// The join carries the tenant it belongs to, so the isolation guard checks it
+// like any other tenant-scoped model. The composite key stays on the two
+// parents — a category reaches a department once — and a trigger rejects a row
+// whose parents do not share the tenant, because a foreign key cannot say
+// "these two columns belong to the same tenant" on its own.
 model CategoryDepartment {
+  tenantId     String
   categoryId   String
   departmentId String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CategoryDepartment_tenantId_fkey")
   category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CategoryDepartment_categoryId_fkey")
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CategoryDepartment_departmentId_fkey")
 
   @@id([categoryId, departmentId], map: "CategoryDepartment_pkey")
   @@index([departmentId], map: "CategoryDepartment_departmentId_idx")
+  @@index([tenantId], map: "CategoryDepartment_tenantId_idx")
 
   @@map("CategoryDepartment")
 }
@@ -460,23 +471,36 @@ model Variation {
   @@unique([productId, name], map: "Variation_productId_name_key")
   @@index([tenantId], map: "Variation_tenantId_idx")
 
-  @@check(expression: "\"priceCents\" >= 0", name: "variation_price_non_negative")
+  @@check(expression: sql`"priceCents" >= 0`, name: "variation_price_non_negative")
   @@check(
-    expression: "\"stockQty\" IS NULL OR \"stockQty\" >= 0",
+    expression: sql`"stockQty" IS NULL OR "stockQty" >= 0`,
     name: "variation_stock_non_negative"
+  )
+  // `stockQty` is the controlled stock and `null` means unlimited, so the
+  // column and the mode have to agree: an unlimited variation carries no
+  // quantity and a controlled one always carries one.
+  @@check(
+    expression: sql`("stockMode" = 'unlimited' AND "stockQty" IS NULL) OR ("stockMode" = 'controlled' AND "stockQty" IS NOT NULL)`,
+    name: "variation_stock_mode_consistent"
   )
 
   @@map("Variation")
 }
 
+// A product's tags. Like CategoryDepartment, the join carries its tenant so
+// the isolation guard checks it; a trigger rejects a row whose product and
+// tag do not share that tenant.
 model ProductTag {
+  tenantId  String
   productId String
   tagId     String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductTag_tenantId_fkey")
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductTag_productId_fkey")
   tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductTag_tagId_fkey")
 
   @@id([productId, tagId], map: "ProductTag_pkey")
   @@index([tagId], map: "ProductTag_tagId_idx")
+  @@index([tenantId], map: "ProductTag_tenantId_idx")
 
   @@map("ProductTag")
 }
@@ -513,7 +537,7 @@ model KitItem {
   @@index([tenantId], map: "KitItem_tenantId_idx")
   @@index([variationId], map: "KitItem_variationId_idx")
 
-  @@check(expression: "\"quantity\" > 0", name: "kit_item_quantity_positive")
+  @@check(expression: sql`"quantity" > 0`, name: "kit_item_quantity_positive")
 
   @@map("KitItem")
 }
@@ -574,14 +598,17 @@ model Order {
   @@index([tenantId], map: "Order_tenantId_idx")
   @@index([customerId], map: "Order_customerId_idx")
 
-  @@check(expression: "\"subtotalCents\" >= 0", name: "order_subtotal_non_negative")
-  @@check(expression: "\"discountCents\" >= 0", name: "order_discount_non_negative")
-  @@check(expression: "\"shippingCents\" >= 0", name: "order_shipping_non_negative")
-  @@check(expression: "\"walletAppliedCents\" >= 0", name: "order_wallet_applied_non_negative")
-  @@check(expression: "\"cashbackCents\" >= 0", name: "order_cashback_non_negative")
-  @@check(expression: "\"totalCents\" >= 0", name: "order_total_non_negative")
+  @@check(expression: sql`"subtotalCents" >= 0`, name: "order_subtotal_non_negative")
+  @@check(expression: sql`"discountCents" >= 0`, name: "order_discount_non_negative")
+  @@check(expression: sql`"shippingCents" >= 0`, name: "order_shipping_non_negative")
+  @@check(expression: sql`"walletAppliedCents" >= 0`, name: "order_wallet_applied_non_negative")
+  @@check(expression: sql`"cashbackCents" >= 0`, name: "order_cashback_non_negative")
+  @@check(expression: sql`"totalCents" >= 0`, name: "order_total_non_negative")
+  // The money identity of an order: what the buyer pays is the merchandise,
+  // minus the discounts, plus the freight, minus what the wallet covered.
+  // `cashbackCents` is earned, never subtracted, so it stays out of it.
   @@check(
-    expression: "\"totalCents\" = \"subtotalCents\" - \"discountCents\" + \"shippingCents\"",
+    expression: sql`"totalCents" = "subtotalCents" - "discountCents" + "shippingCents" - "walletAppliedCents"`,
     name: "order_total_matches_lines"
   )
 
@@ -612,8 +639,8 @@ model OrderItem {
   @@index([tenantId], map: "OrderItem_tenantId_idx")
   @@index([orderId], map: "OrderItem_orderId_idx")
 
-  @@check(expression: "\"quantity\" > 0", name: "order_item_quantity_positive")
-  @@check(expression: "\"lineTotalCents\" >= 0", name: "order_item_line_total_non_negative")
+  @@check(expression: sql`"quantity" > 0`, name: "order_item_quantity_positive")
+  @@check(expression: sql`"lineTotalCents" >= 0`, name: "order_item_line_total_non_negative")
 
   @@map("OrderItem")
 }
@@ -679,7 +706,7 @@ model Wallet {
   @@unique([tenantId, customerId], map: "Wallet_tenantId_customerId_key")
   @@index([tenantId], map: "Wallet_tenantId_idx")
 
-  @@check(expression: "\"balanceCents\" >= 0", name: "wallet_balance_non_negative")
+  @@check(expression: sql`"balanceCents" >= 0`, name: "wallet_balance_non_negative")
 
   @@map("Wallet")
 }
@@ -765,20 +792,20 @@ model ProductNutrition {
 
   @@index([tenantId], map: "ProductNutrition_tenantId_idx")
 
-  @@check(expression: "\"energyKcal\" IS NULL OR \"energyKcal\" >= 0", name: "product_nutrition_energy_non_negative")
-  @@check(expression: "\"carbsMg\" IS NULL OR \"carbsMg\" >= 0", name: "product_nutrition_carbs_non_negative")
-  @@check(expression: "\"totalSugarsMg\" IS NULL OR \"totalSugarsMg\" >= 0", name: "product_nutrition_total_sugars_non_negative")
-  @@check(expression: "\"addedSugarsMg\" IS NULL OR \"addedSugarsMg\" >= 0", name: "product_nutrition_added_sugars_non_negative")
-  @@check(expression: "\"proteinMg\" IS NULL OR \"proteinMg\" >= 0", name: "product_nutrition_protein_non_negative")
-  @@check(expression: "\"totalFatMg\" IS NULL OR \"totalFatMg\" >= 0", name: "product_nutrition_total_fat_non_negative")
-  @@check(expression: "\"saturatedFatMg\" IS NULL OR \"saturatedFatMg\" >= 0", name: "product_nutrition_saturated_fat_non_negative")
-  @@check(expression: "\"transFatMg\" IS NULL OR \"transFatMg\" >= 0", name: "product_nutrition_trans_fat_non_negative")
-  @@check(expression: "\"fiberMg\" IS NULL OR \"fiberMg\" >= 0", name: "product_nutrition_fiber_non_negative")
-  @@check(expression: "\"sodiumMg\" IS NULL OR \"sodiumMg\" >= 0", name: "product_nutrition_sodium_non_negative")
-  @@check(expression: "\"portionMilli\" IS NULL OR \"portionMilli\" > 0", name: "product_nutrition_portion_positive")
-  @@check(expression: "\"servingsPerPack\" IS NULL OR \"servingsPerPack\" > 0", name: "product_nutrition_servings_positive")
-  @@check(expression: "\"addedSugarsMg\" IS NULL OR \"totalSugarsMg\" IS NULL OR \"addedSugarsMg\" <= \"totalSugarsMg\"", name: "product_nutrition_added_sugars_lte_total")
-  @@check(expression: "\"saturatedFatMg\" IS NULL OR \"transFatMg\" IS NULL OR \"totalFatMg\" IS NULL OR \"saturatedFatMg\" + \"transFatMg\" <= \"totalFatMg\"", name: "product_nutrition_fat_sum")
+  @@check(expression: sql`"energyKcal" IS NULL OR "energyKcal" >= 0`, name: "product_nutrition_energy_non_negative")
+  @@check(expression: sql`"carbsMg" IS NULL OR "carbsMg" >= 0`, name: "product_nutrition_carbs_non_negative")
+  @@check(expression: sql`"totalSugarsMg" IS NULL OR "totalSugarsMg" >= 0`, name: "product_nutrition_total_sugars_non_negative")
+  @@check(expression: sql`"addedSugarsMg" IS NULL OR "addedSugarsMg" >= 0`, name: "product_nutrition_added_sugars_non_negative")
+  @@check(expression: sql`"proteinMg" IS NULL OR "proteinMg" >= 0`, name: "product_nutrition_protein_non_negative")
+  @@check(expression: sql`"totalFatMg" IS NULL OR "totalFatMg" >= 0`, name: "product_nutrition_total_fat_non_negative")
+  @@check(expression: sql`"saturatedFatMg" IS NULL OR "saturatedFatMg" >= 0`, name: "product_nutrition_saturated_fat_non_negative")
+  @@check(expression: sql`"transFatMg" IS NULL OR "transFatMg" >= 0`, name: "product_nutrition_trans_fat_non_negative")
+  @@check(expression: sql`"fiberMg" IS NULL OR "fiberMg" >= 0`, name: "product_nutrition_fiber_non_negative")
+  @@check(expression: sql`"sodiumMg" IS NULL OR "sodiumMg" >= 0`, name: "product_nutrition_sodium_non_negative")
+  @@check(expression: sql`"portionMilli" IS NULL OR "portionMilli" > 0`, name: "product_nutrition_portion_positive")
+  @@check(expression: sql`"servingsPerPack" IS NULL OR "servingsPerPack" > 0`, name: "product_nutrition_servings_positive")
+  @@check(expression: sql`"addedSugarsMg" IS NULL OR "totalSugarsMg" IS NULL OR "addedSugarsMg" <= "totalSugarsMg"`, name: "product_nutrition_added_sugars_lte_total")
+  @@check(expression: sql`"saturatedFatMg" IS NULL OR "transFatMg" IS NULL OR "totalFatMg" IS NULL OR "saturatedFatMg" + "transFatMg" <= "totalFatMg"`, name: "product_nutrition_fat_sum")
 
   @@map("ProductNutrition")
 }
@@ -826,6 +853,36 @@ model Coupon {
 
   @@unique([tenantId, code], map: "Coupon_tenantId_code_key")
   @@index([tenantId], map: "Coupon_tenantId_idx")
+
+  // `value` carries cents for a fixed discount and a whole percent for a
+  // percentage one, so a percentage can never exceed 100 and neither form can
+  // be negative. Every limit is a count of uses or an amount of money, never
+  // zero — zero would mean "never applies".
+  @@check(expression: sql`"value" >= 0`, name: "coupon_value_non_negative")
+  @@check(
+    expression: sql`"discountType" <> 'percentage' OR "value" <= 100`,
+    name: "coupon_percentage_within_hundred"
+  )
+  @@check(
+    expression: sql`"usageLimit" IS NULL OR "usageLimit" > 0`,
+    name: "coupon_usage_limit_positive"
+  )
+  @@check(
+    expression: sql`"perCustomerLimit" IS NULL OR "perCustomerLimit" > 0`,
+    name: "coupon_per_customer_limit_positive"
+  )
+  @@check(
+    expression: sql`"minimumOrderCents" IS NULL OR "minimumOrderCents" >= 0`,
+    name: "coupon_minimum_order_non_negative"
+  )
+  @@check(
+    expression: sql`"maximumDiscountCents" IS NULL OR "maximumDiscountCents" >= 0`,
+    name: "coupon_maximum_discount_non_negative"
+  )
+  @@check(
+    expression: sql`"shippingDiscountPercent" IS NULL OR ("shippingDiscountPercent" >= 0 AND "shippingDiscountPercent" <= 100)`,
+    name: "coupon_shipping_discount_within_hundred"
+  )
 
   @@map("Coupon")
 }

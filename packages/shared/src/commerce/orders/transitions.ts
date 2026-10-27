@@ -97,6 +97,20 @@ export function nextTransitions(
   );
 }
 
+/**
+ * Whether the order stops being fulfilled at this pair of axis values.
+ *
+ * The stock an order took goes back when it does: a cancelled order and an
+ * expired one never reach the buyer. A completed or refunded one was
+ * delivered, so its stock stays spent.
+ *
+ * The caller compares the pair before and after the transition and releases
+ * the stock on the edge, which is what makes the release happen once.
+ */
+export function releasesStock(fulfilment: string, financial: string): boolean {
+  return fulfilment === "canceled" || financial === "expired" || financial === "canceled";
+}
+
 function rule(
   axis: OrderAxis,
   from: string,

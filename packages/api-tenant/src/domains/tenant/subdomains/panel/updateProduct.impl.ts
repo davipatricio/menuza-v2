@@ -150,10 +150,17 @@ export const updateProductImpl = os.handler(async ({ input, context }) => {
         }
 
         if (input.tagIds !== undefined) {
-          await tx.orm.public.ProductTag.where({ productId: input.productId }).delete();
+          await tx.orm.public.ProductTag.where({
+            tenantId: store.tenantId,
+            productId: input.productId,
+          }).deleteAll();
 
           for (const tagId of new Set(input.tagIds)) {
-            await tx.orm.public.ProductTag.create({ productId: input.productId, tagId });
+            await tx.orm.public.ProductTag.create({
+              tenantId: store.tenantId,
+              productId: input.productId,
+              tagId,
+            });
           }
         }
       }),

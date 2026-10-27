@@ -53,7 +53,7 @@ export const recordOrderPaymentImpl = os.handler(async ({ input, context }) => {
 
       if (credited) return;
 
-      await tx.orm.public.Order.where({ tenantId: store.tenantId, id: order.id }).update({
+      await tx.orm.public.Order.where({ tenantId: store.tenantId, id: order.id }).updateAll({
         financialStatus: "paid",
         paidAt: now,
         updatedAt: now,
@@ -72,10 +72,14 @@ export const recordOrderPaymentImpl = os.handler(async ({ input, context }) => {
 
       if (order.cashbackCents === 0) return;
 
+      // The wallet row is locked, so a cashback credited here cannot race
+      // another credit into the same balance.
       const wallet = await tx.orm.public.Wallet.where({
         tenantId: store.tenantId,
         customerId: order.customerId,
-      }).first();
+      })
+        .forUpdate()
+        .first();
 
       if (!wallet) return;
 
@@ -102,7 +106,7 @@ export const recordOrderPaymentImpl = os.handler(async ({ input, context }) => {
         createdAt: now,
       });
 
-      await tx.orm.public.Wallet.where({ tenantId: store.tenantId, id: wallet.id }).update({
+      await tx.orm.public.Wallet.where({ tenantId: store.tenantId, id: wallet.id }).updateAll({
         balanceCents: credit.balanceCents,
         updatedAt: now,
       });

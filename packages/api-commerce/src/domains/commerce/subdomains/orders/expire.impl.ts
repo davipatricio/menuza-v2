@@ -13,10 +13,10 @@
 import { randomUUID } from "node:crypto";
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import { commerceContractObject, release } from "@menuza/shared/commerce";
+import { commerceContractObject, release, releasesStock } from "@menuza/shared/commerce";
 import { internalTokenMiddleware } from "@menuza/orpc-server/internal";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db } from "@menuza/db";
+import { db, releaseVariationStock, stockLinesFor } from "@menuza/db";
 import { notFound } from "../../support.ts";
 
 const os = implement(
@@ -39,14 +39,17 @@ export const expireOrderImpl = os
 
     const now = Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
 
-    // No `expiresAt` means no window was ever opened for this order, which only
-    // happens when the payment method never asked for money up front.
-    if (order.expiresAt !== null && Temporal.PlainDateTime.compare(order.expiresAt, now) > 0) {
+    // No `expiresAt` means no window was ever opened for this order — a method
+    // bound to an `offline` integration, reconciled by the store itself. There
+    // is nothing to close, so only an explicit window can expire.
+    if (order.expiresAt === null) return { financialStatus: order.financialStatus };
+
+    if (Temporal.PlainDateTime.compare(order.expiresAt, now) > 0) {
       return { financialStatus: order.financialStatus };
     }
 
     await db.transaction(async (tx) => {
-      await tx.orm.public.Order.where({ tenantId, id: order.id }).update({
+      await tx.orm.public.Order.where({ tenantId, id: order.id }).updateAll({
         financialStatus: "expired",
         updatedAt: now,
       });
@@ -61,12 +64,25 @@ export const expireOrderImpl = os
         createdAt: now,
       });
 
+      // The stock goes back when the order dies unpaid: it never reaches the
+      // buyer. An order that was already cancelled released its stock then, so
+      // it does not release it twice.
+      if (!releasesStock(order.fulfilmentStatus, order.financialStatus)) {
+        const items = await tx.orm.public.OrderItem.where({ tenantId, orderId: order.id }).all();
+
+        await releaseVariationStock(tx, tenantId, await stockLinesFor(tx, tenantId, items));
+      }
+
       if (order.walletAppliedCents === 0) return;
 
+      // The wallet row is locked, so the release reads the balance the other
+      // movement left behind and not the one it raced with.
       const wallet = await tx.orm.public.Wallet.where({
         tenantId,
         customerId: order.customerId,
-      }).first();
+      })
+        .forUpdate()
+        .first();
 
       if (!wallet) return;
 
@@ -108,7 +124,7 @@ export const expireOrderImpl = os
         createdAt: now,
       });
 
-      await tx.orm.public.Wallet.where({ tenantId, id: wallet.id }).update({
+      await tx.orm.public.Wallet.where({ tenantId, id: wallet.id }).updateAll({
         balanceCents: released.balanceCents,
         updatedAt: now,
       });

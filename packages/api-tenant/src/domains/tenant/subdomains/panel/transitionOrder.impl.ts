@@ -10,10 +10,10 @@
 import { randomUUID } from "node:crypto";
 import { ORPCError, implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import { applyTransition, reversal } from "@menuza/shared/commerce";
+import { applyTransition, releasesStock, reversal } from "@menuza/shared/commerce";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { db } from "@menuza/db";
+import { db, releaseVariationStock, stockLinesFor } from "@menuza/db";
 import { notFound } from "../session/support.ts";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { actorOf, transitionsOf } from "./orderOps.ts";
@@ -54,7 +54,7 @@ export const transitionOrderImpl = os.handler(async ({ input, context }) => {
 
   await inTenantScope(store.tenantId, () =>
     db.transaction(async (tx) => {
-      await tx.orm.public.Order.where({ tenantId: store.tenantId, id: order.id }).update({
+      await tx.orm.public.Order.where({ tenantId: store.tenantId, id: order.id }).updateAll({
         financialStatus,
         fulfilmentStatus,
         // Paying is the money landing: `paidAt` is written once and never moves.
@@ -74,12 +74,37 @@ export const transitionOrderImpl = os.handler(async ({ input, context }) => {
         createdAt: now,
       });
 
+      // The stock goes back on the edge into a state the order never leaves:
+      // a cancelled order never reaches the buyer. Comparing the pair before
+      // and after is what makes the release happen once, even when the order
+      // is later expired as well.
+      const wasReleased = releasesStock(order.fulfilmentStatus, order.financialStatus);
+
+      const isReleased = releasesStock(fulfilmentStatus, financialStatus);
+
+      if (!wasReleased && isReleased) {
+        const items = await tx.orm.public.OrderItem.where({
+          tenantId: store.tenantId,
+          orderId: order.id,
+        }).all();
+
+        await releaseVariationStock(
+          tx,
+          store.tenantId,
+          await stockLinesFor(tx, store.tenantId, items),
+        );
+      }
+
       if (input.to !== "refunded" || order.cashbackCents === 0) return;
 
+      // The wallet row is locked, so the clawback reads the balance the other
+      // movement left behind and not the one it raced with.
       const wallet = await tx.orm.public.Wallet.where({
         tenantId: store.tenantId,
         customerId: order.customerId,
-      }).first();
+      })
+        .forUpdate()
+        .first();
 
       if (!wallet) return;
 
@@ -110,7 +135,7 @@ export const transitionOrderImpl = os.handler(async ({ input, context }) => {
         createdAt: now,
       });
 
-      await tx.orm.public.Wallet.where({ tenantId: store.tenantId, id: wallet.id }).update({
+      await tx.orm.public.Wallet.where({ tenantId: store.tenantId, id: wallet.id }).updateAll({
         balanceCents: clawback.balanceCents,
         updatedAt: now,
       });

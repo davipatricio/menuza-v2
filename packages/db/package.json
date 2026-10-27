@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@opentelemetry/api": "catalog:",
-    "@prisma/orm-postgres": "8.0.0-rc.17",
+    "@prisma/orm-postgres": "8.0.0-rc.20",
     "pg": "8.23.1"
   },
   "devDependencies": {
@@ -34,7 +34,7 @@
     "@types/pg": "8.23.1",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "prisma": "8.0.0-rc.22",
+    "prisma": "8.0.0-rc.27",
     "typescript": "catalog:"
   }
 }

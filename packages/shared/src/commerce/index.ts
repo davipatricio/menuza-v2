@@ -36,7 +36,12 @@ export type {
 
 export { createOrder } from "./orders/create-order.ts";
 
-export { TRANSITIONS, applyTransition, nextTransitions } from "./orders/transitions.ts";
+export {
+  TRANSITIONS,
+  applyTransition,
+  nextTransitions,
+  releasesStock,
+} from "./orders/transitions.ts";
 
 export type {
   CreateOrderInput,

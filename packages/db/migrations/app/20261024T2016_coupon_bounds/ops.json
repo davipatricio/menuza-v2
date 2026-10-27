@@ -1,0 +1,305 @@
+[
+  {
+    "id": "checkConstraint.Coupon.coupon_maximum_discount_non_negative_7254daa1",
+    "label": "Add check constraint \"coupon_maximum_discount_non_negative_7254daa1\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_maximum_discount_non_negative_7254daa1",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_maximum_discount_non_negative_7254daa1\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "coupon_maximum_discount_non_negative_7254daa1",
+          "public",
+          "\"public\".\"Coupon\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_maximum_discount_non_negative_7254daa1\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_maximum_discount_non_negative_7254daa1\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_maximum_discount_non_negative_7254daa1\" CHECK (\"maximumDiscountCents\" IS NULL OR \"maximumDiscountCents\" >= 0)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_maximum_discount_non_negative_7254daa1\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "coupon_maximum_discount_non_negative_7254daa1",
+          "public",
+          "\"public\".\"Coupon\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Coupon.coupon_minimum_order_non_negative_6ec4ce93",
+    "label": "Add check constraint \"coupon_minimum_order_non_negative_6ec4ce93\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_minimum_order_non_negative_6ec4ce93",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_minimum_order_non_negative_6ec4ce93\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["coupon_minimum_order_non_negative_6ec4ce93", "public", "\"public\".\"Coupon\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_minimum_order_non_negative_6ec4ce93\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_minimum_order_non_negative_6ec4ce93\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_minimum_order_non_negative_6ec4ce93\" CHECK (\"minimumOrderCents\" IS NULL OR \"minimumOrderCents\" >= 0)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_minimum_order_non_negative_6ec4ce93\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "coupon_minimum_order_non_negative_6ec4ce93",
+          "public",
+          "\"public\".\"Coupon\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Coupon.coupon_per_customer_limit_positive_4fd252ba",
+    "label": "Add check constraint \"coupon_per_customer_limit_positive_4fd252ba\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_per_customer_limit_positive_4fd252ba",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_per_customer_limit_positive_4fd252ba\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "coupon_per_customer_limit_positive_4fd252ba",
+          "public",
+          "\"public\".\"Coupon\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_per_customer_limit_positive_4fd252ba\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_per_customer_limit_positive_4fd252ba\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_per_customer_limit_positive_4fd252ba\" CHECK (\"perCustomerLimit\" IS NULL OR \"perCustomerLimit\" > 0)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_per_customer_limit_positive_4fd252ba\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "coupon_per_customer_limit_positive_4fd252ba",
+          "public",
+          "\"public\".\"Coupon\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Coupon.coupon_percentage_within_hundred_77f17b3a",
+    "label": "Add check constraint \"coupon_percentage_within_hundred_77f17b3a\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_percentage_within_hundred_77f17b3a",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_percentage_within_hundred_77f17b3a\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["coupon_percentage_within_hundred_77f17b3a", "public", "\"public\".\"Coupon\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_percentage_within_hundred_77f17b3a\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_percentage_within_hundred_77f17b3a\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_percentage_within_hundred_77f17b3a\" CHECK (\"discountType\" <> 'percentage' OR \"value\" <= 100)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_percentage_within_hundred_77f17b3a\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "coupon_percentage_within_hundred_77f17b3a",
+          "public",
+          "\"public\".\"Coupon\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Coupon.coupon_shipping_discount_within_hundred_9f202eae",
+    "label": "Add check constraint \"coupon_shipping_discount_within_hundred_9f202eae\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_shipping_discount_within_hundred_9f202eae",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_shipping_discount_within_hundred_9f202eae\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "coupon_shipping_discount_within_hundred_9f202eae",
+          "public",
+          "\"public\".\"Coupon\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_shipping_discount_within_hundred_9f202eae\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_shipping_discount_within_hundred_9f202eae\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_shipping_discount_within_hundred_9f202eae\" CHECK (\"shippingDiscountPercent\" IS NULL OR (\"shippingDiscountPercent\" >= 0 AND \"shippingDiscountPercent\" <= 100))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_shipping_discount_within_hundred_9f202eae\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "coupon_shipping_discount_within_hundred_9f202eae",
+          "public",
+          "\"public\".\"Coupon\"",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Coupon.coupon_usage_limit_positive_443593df",
+    "label": "Add check constraint \"coupon_usage_limit_positive_443593df\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_usage_limit_positive_443593df",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_usage_limit_positive_443593df\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["coupon_usage_limit_positive_443593df", "public", "\"public\".\"Coupon\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_usage_limit_positive_443593df\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_usage_limit_positive_443593df\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_usage_limit_positive_443593df\" CHECK (\"usageLimit\" IS NULL OR \"usageLimit\" > 0)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_usage_limit_positive_443593df\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": ["coupon_usage_limit_positive_443593df", "public", "\"public\".\"Coupon\"", "c"]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Coupon.coupon_value_non_negative_95f49512",
+    "label": "Add check constraint \"coupon_value_non_negative_95f49512\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "coupon_value_non_negative_95f49512",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"coupon_value_non_negative_95f49512\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["coupon_value_non_negative_95f49512", "public", "\"public\".\"Coupon\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"coupon_value_non_negative_95f49512\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"coupon_value_non_negative_95f49512\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD CONSTRAINT \"coupon_value_non_negative_95f49512\" CHECK (\"value\" >= 0)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"coupon_value_non_negative_95f49512\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": ["coupon_value_non_negative_95f49512", "public", "\"public\".\"Coupon\"", "c"]
+      }
+    ]
+  }
+]

@@ -61,11 +61,14 @@ export const updateCouponImpl = os.handler(async ({ input, context }) => {
   if (startsAt != null && endsAt != null && Temporal.PlainDateTime.compare(startsAt, endsAt) > 0)
     startsAt = endsAt;
 
-  let row;
+  let rows;
 
   try {
-    row = await inTenantScope(store.tenantId, () =>
-      db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).update({
+    // `updateAll`, not `update`: the planner compiles `update` from
+    // `where({ tenantId, id })` down to `id` only, and the isolation guard
+    // then rejects the write.
+    rows = await inTenantScope(store.tenantId, () =>
+      db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).updateAll({
         code,
         description: input.description ?? null,
         discountType: input.discountType,
@@ -87,6 +90,8 @@ export const updateCouponImpl = os.handler(async ({ input, context }) => {
       throw conflict();
     throw error;
   }
+
+  const row = rows[0];
 
   if (!row) throw notFound();
 

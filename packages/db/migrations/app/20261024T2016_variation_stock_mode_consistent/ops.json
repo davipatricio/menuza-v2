@@ -1,0 +1,83 @@
+[
+  {
+    "id": "data_migration.normalize-variation-stock",
+    "label": "Tie the variation stock mode to its quantity",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the Variation table exists",
+        "sql": "SELECT to_regclass('\"public\".\"Variation\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Drop the quantity of every unlimited variation",
+        "sql": "UPDATE \"public\".\"Variation\"\nSET \"stockQty\" = NULL\nWHERE \"stockMode\" = 'unlimited' AND \"stockQty\" IS NOT NULL",
+        "params": []
+      },
+      {
+        "description": "Give every controlled variation a quantity",
+        "sql": "UPDATE \"public\".\"Variation\"\nSET \"stockQty\" = 0\nWHERE \"stockMode\" = 'controlled' AND \"stockQty\" IS NULL",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify every variation agrees with its stock mode",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1\n  FROM \"public\".\"Variation\"\n  WHERE (\"stockMode\" = 'unlimited' AND \"stockQty\" IS NOT NULL)\n     OR (\"stockMode\" = 'controlled' AND \"stockQty\" IS NULL)\n) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.Variation.variation_stock_mode_consistent_e90ad844",
+    "label": "Add check constraint \"variation_stock_mode_consistent_e90ad844\" on \"Variation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "variation_stock_mode_consistent_e90ad844",
+        "table": "Variation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"variation_stock_mode_consistent_e90ad844\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "variation_stock_mode_consistent_e90ad844",
+          "public",
+          "\"public\".\"Variation\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"variation_stock_mode_consistent_e90ad844\" on \"Variation\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"variation_stock_mode_consistent_e90ad844\"",
+        "sql": "ALTER TABLE \"public\".\"Variation\" ADD CONSTRAINT \"variation_stock_mode_consistent_e90ad844\" CHECK ((\"stockMode\" = 'unlimited' AND \"stockQty\" IS NULL) OR (\"stockMode\" = 'controlled' AND \"stockQty\" IS NOT NULL))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify check constraint \"variation_stock_mode_consistent_e90ad844\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4)) AS \"result\"",
+        "params": [
+          "variation_stock_mode_consistent_e90ad844",
+          "public",
+          "\"public\".\"Variation\"",
+          "c"
+        ]
+      }
+    ]
+  }
+]

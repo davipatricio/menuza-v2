@@ -39,10 +39,14 @@ export const adjustWalletImpl = os
     const balanceCents = await db.transaction(async (tx) => {
       // A customer without a wallet is not an error: the balance is 0 and the
       // adjustment opens the wallet, which is what a first store credit is.
+      // The row is locked, so two adjustments cannot both read the same
+      // balance and the second one cannot silently overwrite the first.
       const wallet = await tx.orm.public.Wallet.where({
         tenantId,
         customerId: customer.id,
-      }).first();
+      })
+        .forUpdate()
+        .first();
 
       const walletId =
         wallet?.id ??
@@ -76,7 +80,7 @@ export const adjustWalletImpl = os
         createdAt: now,
       });
 
-      await tx.orm.public.Wallet.where({ tenantId, id: walletId }).update({
+      await tx.orm.public.Wallet.where({ tenantId, id: walletId }).updateAll({
         balanceCents: adjusted.balanceCents,
         updatedAt: now,
       });

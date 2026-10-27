@@ -67,7 +67,7 @@ export const createProductImpl = os.handler(async ({ input, context }) => {
       }
 
       for (const tagId of new Set(input.tagIds)) {
-        await tx.orm.public.ProductTag.create({ productId: id, tagId });
+        await tx.orm.public.ProductTag.create({ tenantId: store.tenantId, productId: id, tagId });
       }
 
       return id;

@@ -216,11 +216,11 @@ function assertWhereClause(ast: any, tableName: string, activeTenantId: string |
 }
 
 export function tenantIsolationMiddleware(): SqlMiddleware {
-  const checkPlan = (plan: any) => {
-    if (!plan?.ast) return;
+  const checkPlan = (ast: any): void => {
+    if (!ast) return;
 
     // Determine target table name
-    const tableName = plan.ast.table?.name || plan.ast.from?.name;
+    const tableName = ast.table?.name || ast.from?.name;
 
     if (!tableName || !TENANT_SCOPED_MODELS.has(tableName)) {
       return;
@@ -233,20 +233,24 @@ export function tenantIsolationMiddleware(): SqlMiddleware {
 
     const activeTenantId = getActiveTenantId();
 
-    if (plan.ast.kind === "insert") {
-      assertInsertRows(plan.ast, tableName, activeTenantId);
+    if (ast.kind === "insert") {
+      assertInsertRows(ast, tableName, activeTenantId);
 
       return;
     }
 
-    assertNoTenantReassignment(plan.ast, tableName, activeTenantId);
-    assertWhereClause(plan.ast, tableName, activeTenantId);
+    assertNoTenantReassignment(ast, tableName, activeTenantId);
+    assertWhereClause(ast, tableName, activeTenantId);
   };
 
   return {
     name: "tenant-isolation",
     familyId: "sql",
-    beforeQuery: checkPlan,
-    beforeExecute: checkPlan,
+    async beforeCompile(draft) {
+      checkPlan(draft.ast);
+
+      // `undefined` passes the plan through unchanged; the guard only reads.
+      return undefined;
+    },
   };
 }

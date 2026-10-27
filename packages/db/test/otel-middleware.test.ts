@@ -81,18 +81,35 @@ function withActiveSpan<T>(fn: () => T): T {
   return context.with(trace.setSpan(context.active(), parentSpan()), fn);
 }
 
-test("starts and ends one span per query", () => {
+/** A statement activity, as the runtime hands it to `activityStarted`. */
+function statementActivity(id: string, sql: string): any {
+  // SAFETY: the middleware reads `kind`, `id` and `plan.sql`; the activity
+  // carries exactly those.
+  return { kind: "statement", id, returns: "rows", plan: { sql } };
+}
+
+/** The end of a statement activity, as the runtime hands it to `activityEnded`. */
+function statementEnded(rowCount: number, outcome: "succeeded" | "failed" | "stopped"): any {
+  // SAFETY: the middleware reads `kind`, `outcome`, `source`, `returns` and
+  // `rowCount`; the result carries exactly those.
+  return { kind: "statement", outcome, source: "driver", returns: "rows", rowCount };
+}
+
+test("starts and ends one span per query", async () => {
   const recorded: Recorded[] = [];
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
   withActiveSpan(() => {
-    middleware.beforeQuery?.({ sql: "SELECT id FROM tenant" }, { planExecutionId: "p1" });
-    middleware.afterQuery?.(
-      { sql: "SELECT id FROM tenant" },
-      { rowCount: 3, completed: true, source: "driver" },
-      { planExecutionId: "p1" },
-    );
+    void middleware.activityStarted?.(statementActivity("p1", "SELECT id FROM tenant"), {
+      signal: undefined,
+    });
   });
+
+  await middleware.activityEnded?.(
+    statementActivity("p1", "SELECT id FROM tenant"),
+    statementEnded(3, "succeeded"),
+    { signal: undefined },
+  );
 
   expect(recorded).toHaveLength(1);
   expect(recorded[0]?.name).toBe("db SELECT");
@@ -100,37 +117,43 @@ test("starts and ends one span per query", () => {
   expect(recorded[0]?.ended).toBe(true);
 });
 
-test("does nothing without an active span", () => {
+test("does nothing without an active span", async () => {
   const recorded: Recorded[] = [];
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
-  middleware.beforeQuery?.({ sql: "SELECT 1" }, { planExecutionId: "p2" });
-  middleware.afterQuery?.(
-    { sql: "SELECT 1" },
-    { rowCount: 0, completed: true, source: "driver" },
-    { planExecutionId: "p2" },
+  await middleware.activityStarted?.(statementActivity("p2", "SELECT 1"), {
+    signal: undefined,
+  });
+
+  await middleware.activityEnded?.(
+    statementActivity("p2", "SELECT 1"),
+    statementEnded(0, "succeeded"),
+    { signal: undefined },
   );
 
   expect(recorded).toHaveLength(0);
 });
 
-test("marks an incomplete query as an error", () => {
+test("marks an incomplete query as an error", async () => {
   const recorded: Recorded[] = [];
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
   withActiveSpan(() => {
-    middleware.beforeQuery?.({ sql: "SELECT 1" }, { planExecutionId: "p3" });
-    middleware.afterQuery?.(
-      { sql: "SELECT 1" },
-      { rowCount: 0, completed: false, source: "middleware" },
-      { planExecutionId: "p3" },
-    );
+    void middleware.activityStarted?.(statementActivity("p3", "SELECT 1"), {
+      signal: undefined,
+    });
   });
+
+  await middleware.activityEnded?.(
+    statementActivity("p3", "SELECT 1"),
+    statementEnded(0, "stopped"),
+    { signal: undefined },
+  );
 
   expect(recorded[0]?.status?.code).toBe(SpanStatusCode.ERROR);
 });
 
-test("detaches the abort listener once the query completes", () => {
+test("detaches the abort listener once the query completes", async () => {
   const recorded: Recorded[] = [];
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
@@ -147,18 +170,21 @@ test("detaches the abort listener once the query completes", () => {
     },
   };
 
-  // SAFETY: the middleware only reads `planExecutionId` and calls the signal's
-  // listener methods; `signal` carries exactly those members.
-  const ctx = { planExecutionId: "p4", signal: signal as AbortSignal };
+  // SAFETY: the middleware only reads `signal` and calls the signal's listener
+  // methods; `signal` carries exactly those members.
+  const abortSignal = signal as AbortSignal;
 
   withActiveSpan(() => {
-    middleware.beforeQuery?.({ sql: "SELECT 1" }, ctx);
-    middleware.afterQuery?.(
-      { sql: "SELECT 1" },
-      { rowCount: 0, completed: true, source: "driver" },
-      ctx,
-    );
+    void middleware.activityStarted?.(statementActivity("p4", "SELECT 1"), {
+      signal: abortSignal,
+    });
   });
+
+  await middleware.activityEnded?.(
+    statementActivity("p4", "SELECT 1"),
+    statementEnded(0, "succeeded"),
+    { signal: abortSignal },
+  );
 
   expect(added).toBe(1);
   expect(removed).toBe(1);

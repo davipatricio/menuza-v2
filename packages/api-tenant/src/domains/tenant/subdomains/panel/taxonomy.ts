@@ -67,13 +67,14 @@ export async function assertOwnedDepartments(
 /** Replaces a category's department links with the given set. */
 export async function replaceCategoryDepartments(
   tx: CatalogTx,
+  tenantId: string,
   categoryId: string,
   departmentIds: readonly string[],
 ): Promise<void> {
-  await tx.orm.public.CategoryDepartment.where({ categoryId }).deleteAll();
+  await tx.orm.public.CategoryDepartment.where({ tenantId, categoryId }).deleteAll();
 
   for (const departmentId of new Set(departmentIds)) {
-    await tx.orm.public.CategoryDepartment.create({ categoryId, departmentId });
+    await tx.orm.public.CategoryDepartment.create({ tenantId, categoryId, departmentId });
   }
 }
 
@@ -83,7 +84,7 @@ export async function linkedCategoryIds(
   tenantId: string,
   departmentId: string,
 ): Promise<string[]> {
-  const links = await tx.orm.public.CategoryDepartment.where({ departmentId })
+  const links = await tx.orm.public.CategoryDepartment.where({ tenantId, departmentId })
     .select("categoryId")
     .all();
 
@@ -190,7 +191,7 @@ export async function departmentLinksByCategory(
   tx: CatalogTx,
   tenantId: string,
 ): Promise<{ ids: Map<string, string[]>; names: Map<string, string[]> }> {
-  const links = await tx.orm.public.CategoryDepartment.all();
+  const links = await tx.orm.public.CategoryDepartment.where({ tenantId }).all();
 
   const departments = await tx.orm.public.Department.where({ tenantId }).select("id", "name").all();
 

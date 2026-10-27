@@ -60,6 +60,7 @@ export const updateDepartmentImpl = os.handler(async ({ input, context }) => {
           if (!target) throw catalogConflict("Categoria de destino não encontrada.");
 
           const linked = await tx.orm.public.CategoryDepartment.where({
+            tenantId: store.tenantId,
             categoryId: targetId,
             departmentId: input.departmentId,
           }).first();

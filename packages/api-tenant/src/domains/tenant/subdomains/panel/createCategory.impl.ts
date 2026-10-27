@@ -49,7 +49,7 @@ export const createCategoryImpl = os.handler(async ({ input, context }) => {
         updatedAt: now(),
       });
 
-      await replaceCategoryDepartments(tx, id, input.departmentIds);
+      await replaceCategoryDepartments(tx, store.tenantId, id, input.departmentIds);
 
       await ensureGeneralSubcategory(tx, store.tenantId, id);
     }),
