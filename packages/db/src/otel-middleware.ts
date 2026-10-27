@@ -7,15 +7,13 @@
  * not through async context, which is not guaranteed across the
  * row-consumption boundary.
  *
- * Statement text is truncated and bound parameters are never recorded. Treat
- * `db.statement` as potentially identifying: a literal-only query (raw SQL)
- * can carry values that parameterized plans keep out.
+ * The plan this runtime hands over is an AST (`{ ast, params, meta }`), not
+ * rendered SQL, so the span carries the verb from `ast.kind` and never the
+ * statement text or the bound parameters. That is the stronger privacy
+ * position: no literal can reach a span, by construction.
  */
 import { SpanKind, SpanStatusCode, trace, type Span, type Tracer } from "@opentelemetry/api";
 import type { SqlMiddleware, StatementActivity } from "@prisma/orm-postgres/family-runtime";
-
-/** Longest statement prefix kept as a span attribute. */
-const MAX_STATEMENT = 512;
 
 const DB_SYSTEM = "postgresql";
 
@@ -27,18 +25,22 @@ interface LiveSpan {
 }
 
 /** A statement activity narrowed to the plan the SQL lane executes. */
-type SqlStatementActivity = StatementActivity & {
-  readonly plan: { readonly sql: string };
+type AstStatementActivity = StatementActivity & {
+  readonly plan: { readonly ast?: { readonly kind?: string } };
 };
 
-/** The statement text of a statement activity's plan. */
-function statementOf(activity: StatementActivity): string {
-  // SAFETY: a statement activity carries the `SqlExecutionPlan` the caller
-  // sent; the activity union widens `plan` to `QueryPlan`, which has no
-  // `sql` field, so the concrete plan is read back here.
-  const statement = activity as SqlStatementActivity;
+/**
+ * The SQL verb of a statement activity, or `QUERY` when the plan carries no
+ * AST. A statement the tracer cannot describe is still traced — it just does
+ * not claim a verb — because losing the span would hide the query entirely.
+ */
+function operationOf(activity: StatementActivity): string {
+  // SAFETY: the SQL lane's plan carries an `ast` node whose `kind` is the verb.
+  // The activity union widens `plan` to `QueryPlan`, which does not declare it,
+  // so the concrete plan is read back here.
+  const statement = activity as AstStatementActivity;
 
-  return statement.plan.sql;
+  return statement.plan.ast?.kind?.toUpperCase() ?? "QUERY";
 }
 
 export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db")): SqlMiddleware {
@@ -63,15 +65,13 @@ export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db
     // No active span means no trace to extend.
     if (!trace.getActiveSpan()) return;
 
-    const sql = statementOf(activity);
-    const operation = operationOf(sql);
+    const operation = operationOf(activity);
 
     const span = tracer.startSpan(`db ${operation}`, {
       kind: SpanKind.CLIENT,
       attributes: {
         "db.system": DB_SYSTEM,
         "db.operation.name": operation,
-        "db.statement": truncate(sql),
       },
     });
 
@@ -114,13 +114,4 @@ export function otelQueryMiddleware(tracer: Tracer = trace.getTracer("@menuza/db
       });
     },
   };
-}
-
-/** Leading SQL keyword (`SELECT`, `INSERT`, ...) or `QUERY` when unavailable. */
-function operationOf(sql: string): string {
-  return /^\s*(\w+)/.exec(sql)?.[1]?.toUpperCase() ?? "QUERY";
-}
-
-function truncate(sql: string): string {
-  return sql.length > MAX_STATEMENT ? `${sql.slice(0, MAX_STATEMENT)}...` : sql;
 }

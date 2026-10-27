@@ -82,10 +82,17 @@ function withActiveSpan<T>(fn: () => T): T {
 }
 
 /** A statement activity, as the runtime hands it to `activityStarted`. */
-function statementActivity(id: string, sql: string): any {
-  // SAFETY: the middleware reads `kind`, `id` and `plan.sql`; the activity
+function statementActivity(id: string, kind: string): any {
+  // SAFETY: the middleware reads `kind`, `id` and `plan.ast.kind`; the activity
   // carries exactly those.
-  return { kind: "statement", id, returns: "rows", plan: { sql } };
+  return { kind: "statement", id, returns: "rows", plan: { ast: { kind } } };
+}
+
+/** A statement activity whose plan carries no readable AST. */
+function opaqueStatementActivity(id: string): any {
+  // SAFETY: same shape as `statementActivity`, minus the AST the middleware
+  // reads; the middleware must survive it and fall back to `QUERY`.
+  return { kind: "statement", id, returns: "rows", plan: {} };
 }
 
 /** The end of a statement activity, as the runtime hands it to `activityEnded`. */
@@ -100,13 +107,13 @@ test("starts and ends one span per query", async () => {
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
   withActiveSpan(() => {
-    void middleware.activityStarted?.(statementActivity("p1", "SELECT id FROM tenant"), {
+    void middleware.activityStarted?.(statementActivity("p1", "select"), {
       signal: undefined,
     });
   });
 
   await middleware.activityEnded?.(
-    statementActivity("p1", "SELECT id FROM tenant"),
+    statementActivity("p1", "select"),
     statementEnded(3, "succeeded"),
     { signal: undefined },
   );
@@ -117,16 +124,35 @@ test("starts and ends one span per query", async () => {
   expect(recorded[0]?.ended).toBe(true);
 });
 
+test("a plan without an AST is traced as QUERY instead of crashing", async () => {
+  const recorded: Recorded[] = [];
+  const middleware = otelQueryMiddleware(fakeTracer(recorded));
+
+  withActiveSpan(() => {
+    void middleware.activityStarted?.(opaqueStatementActivity("p5"), {
+      signal: undefined,
+    });
+  });
+
+  await middleware.activityEnded?.(opaqueStatementActivity("p5"), statementEnded(0, "succeeded"), {
+    signal: undefined,
+  });
+
+  expect(recorded).toHaveLength(1);
+  expect(recorded[0]?.name).toBe("db QUERY");
+  expect(recorded[0]?.ended).toBe(true);
+});
+
 test("does nothing without an active span", async () => {
   const recorded: Recorded[] = [];
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
-  await middleware.activityStarted?.(statementActivity("p2", "SELECT 1"), {
+  await middleware.activityStarted?.(statementActivity("p2", "select"), {
     signal: undefined,
   });
 
   await middleware.activityEnded?.(
-    statementActivity("p2", "SELECT 1"),
+    statementActivity("p2", "select"),
     statementEnded(0, "succeeded"),
     { signal: undefined },
   );
@@ -139,13 +165,13 @@ test("marks an incomplete query as an error", async () => {
   const middleware = otelQueryMiddleware(fakeTracer(recorded));
 
   withActiveSpan(() => {
-    void middleware.activityStarted?.(statementActivity("p3", "SELECT 1"), {
+    void middleware.activityStarted?.(statementActivity("p3", "select"), {
       signal: undefined,
     });
   });
 
   await middleware.activityEnded?.(
-    statementActivity("p3", "SELECT 1"),
+    statementActivity("p3", "select"),
     statementEnded(0, "stopped"),
     { signal: undefined },
   );
@@ -175,13 +201,13 @@ test("detaches the abort listener once the query completes", async () => {
   const abortSignal = signal as AbortSignal;
 
   withActiveSpan(() => {
-    void middleware.activityStarted?.(statementActivity("p4", "SELECT 1"), {
+    void middleware.activityStarted?.(statementActivity("p4", "select"), {
       signal: abortSignal,
     });
   });
 
   await middleware.activityEnded?.(
-    statementActivity("p4", "SELECT 1"),
+    statementActivity("p4", "select"),
     statementEnded(0, "succeeded"),
     { signal: abortSignal },
   );
