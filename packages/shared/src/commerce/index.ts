@@ -12,6 +12,7 @@ export {
   ordersContractObject,
   publicContractObject,
   publicMenuOutput,
+  publicSeoOutput,
   publicSitemapOutput,
   publicStoreOutput,
   PublicNutritionSchema,

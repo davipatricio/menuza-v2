@@ -13,8 +13,13 @@
  * rather than a second auth scheme invented here.
  */
 import { db } from "@menuza/db";
+import { resolveSeo, type ResolvedSeo, type SeoEntityType } from "@menuza/shared/seo";
 import type * as v from "valibot";
-import type { PublicNutritionSchema, PublicProductDetailSchema } from "@menuza/shared/commerce";
+import type {
+  PublicNutritionSchema,
+  PublicProductDetailSchema,
+  publicSeoOutput,
+} from "@menuza/shared/commerce";
 
 /**
  * `Timestamp(3)` decodes as `Temporal.PlainDateTime` (UTC-naive, no offset), and
@@ -134,10 +139,80 @@ export function toPublicNutrition(
   };
 }
 
-/** The direct URL's product: the menu row plus the label, if it is published. */
+/**
+ * The SEO a page renders, resolved the same way the panel resolves it: the
+ * entity's own row first, then the store's row, then the store templates, then
+ * a static fallback. `canonicalUrl` and `jsonLd` never inherit — a canonical
+ * URL or a structured-data block belonging to another page would describe the
+ * wrong thing.
+ *
+ * Every query carries an explicit `tenantId`, so the tenant isolation
+ * middleware accepts them without an open scope.
+ */
+export async function loadResolvedSeo(input: {
+  tenantId: string;
+  storeName: string;
+  entityType: SeoEntityType;
+  entityId: string;
+  entityName: string;
+  fallbackTitle: string;
+  fallbackDescription?: string | null;
+}): Promise<ResolvedSeo> {
+  const storeRowQuery =
+    input.entityType === "store"
+      ? null
+      : db.orm.public.SeoMeta.where({
+          tenantId: input.tenantId,
+          entityType: "store",
+          entityId: input.tenantId,
+        }).first();
+
+  const [entityRow, storeRow, settings] = await Promise.all([
+    db.orm.public.SeoMeta.where({
+      tenantId: input.tenantId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+    }).first(),
+    storeRowQuery,
+    db.orm.public.StoreSettings.where({ tenantId: input.tenantId }).first(),
+  ]);
+
+  return resolveSeo({
+    entity: entityRow,
+    storeRow,
+    settings: settings
+      ? {
+          seoTitleTemplate: settings.seoTitleTemplate,
+          seoDescriptionTemplate: settings.seoDescriptionTemplate,
+          seoSocialImageUrl: settings.seoSocialImageUrl,
+        }
+      : null,
+    context: { storeName: input.storeName, entityName: input.entityName },
+    fallbackTitle: input.fallbackTitle,
+    fallbackDescription: input.fallbackDescription,
+  });
+}
+
+/** The five SEO fields, as the storefront reads them. */
+export function toPublicSeo(resolved: ResolvedSeo): v.InferOutput<typeof publicSeoOutput> {
+  return {
+    title: resolved.title,
+    description: resolved.description,
+    socialImageUrl: resolved.socialImageUrl,
+    canonicalUrl: resolved.canonicalUrl,
+    jsonLd: resolved.jsonLd,
+  };
+}
+
+/** The direct URL's product: the menu row, the label and its own SEO. */
 export function toPublicProductDetail(
   product: PublicProductRow,
   nutrition: PublicNutritionRow | null,
+  seo: ResolvedSeo,
 ): v.InferOutput<typeof PublicProductDetailSchema> {
-  return { ...toPublicProduct(product), nutrition: toPublicNutrition(nutrition) };
+  return {
+    ...toPublicProduct(product),
+    nutrition: toPublicNutrition(nutrition),
+    seo: toPublicSeo(seo),
+  };
 }

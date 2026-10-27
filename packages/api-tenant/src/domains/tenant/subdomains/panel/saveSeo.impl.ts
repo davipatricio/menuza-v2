@@ -62,7 +62,8 @@ export const saveSeoImpl = os.handler(async ({ input, context }) => {
     jsonLd: input.jsonLd === undefined ? (existing?.jsonLd ?? null) : seoText(input.jsonLd),
   });
 
-  // Parsed here, never in the browser: a broken block would otherwise ship to
+  // Parsed here, not only in the browser: the panel highlights the offending
+  // line while the merchant types, but a broken block would otherwise ship to
   // every crawler that reads the page.
   if (fields.jsonLd !== null) assertJsonLd(fields.jsonLd);
 

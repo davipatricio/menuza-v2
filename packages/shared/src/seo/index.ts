@@ -13,3 +13,33 @@ export type {
 export { applySeoTokens } from "./tokens.ts";
 
 export { resolveSeo } from "./resolve.ts";
+
+export {
+  buildProductJsonLd,
+  buildStoreJsonLd,
+  toJsonLdDocument,
+  JsonLdDocumentSchema,
+  JsonLdGraphSchema,
+  JsonLdNodeSchema,
+  JsonLdOfferSchema,
+} from "./json-ld.ts";
+
+export type {
+  JsonLdDocument,
+  JsonLdDocumentValue,
+  JsonLdGraph,
+  JsonLdNode,
+  JsonLdOffer,
+  ProductJsonLdInput,
+  StoreJsonLdInput,
+} from "./json-ld.ts";
+
+export { analyzeJsonLd, formatJsonLd, parseJsonLd } from "./json-ld-validation.ts";
+
+export type {
+  JsonLdAnalysis,
+  JsonLdIssue,
+  JsonLdIssueSeverity,
+  JsonLdParseError,
+  JsonLdParseResult,
+} from "./json-ld-validation.ts";

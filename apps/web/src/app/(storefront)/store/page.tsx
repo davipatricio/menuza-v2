@@ -10,8 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
+import { buildStoreJsonLd } from "@menuza/shared/seo";
 import { absoluteUrl } from "@/lib/seo/base-url.ts";
-import { buildStoreJsonLd, JsonLdScript } from "@/lib/seo/json-ld.ts";
+import { JsonLdScript } from "@/lib/seo/json-ld.ts";
 import { buildSeoMetadata } from "@/lib/seo/metadata.ts";
 import { loadStore } from "../_lib/storefront-data.ts";
 

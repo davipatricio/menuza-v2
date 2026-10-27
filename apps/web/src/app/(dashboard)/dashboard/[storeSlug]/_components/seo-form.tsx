@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { createORPCClient, ORPCError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { SaveSeoInputSchema } from "@menuza/shared/tenant";
 import type { PanelSeo, SeoEntityType, SeoFields, SeoSource } from "@menuza/shared/tenant";
+import { analyzeJsonLd, buildProductJsonLd } from "@menuza/shared/seo";
 
 import {
   AlertDialog,
@@ -42,6 +43,8 @@ import { Spinner } from "@/components/ui/spinner.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { fieldErrors } from "../../signup/_components/form-errors.ts";
 import { useDirtySection } from "../catalog/products/product-editor-guard.tsx";
+import { JsonLdField } from "./json-ld/json-ld-field.tsx";
+import type { JsonLdPreviewContext } from "./json-ld/json-ld-preview.tsx";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
 
@@ -125,12 +128,15 @@ export function SeoForm({
   entityId,
   entityName,
   initialData,
+  previewContext,
 }: {
   storeSlug: string;
   entityType: SeoEntityType;
   entityId: string;
   entityName: string;
   initialData: PanelSeo;
+  /** O que a prévia sabe da página; hoje só o produto tem. */
+  previewContext?: JsonLdPreviewContext | null;
 }) {
   const [data, setData] = useState(initialData);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -215,12 +221,40 @@ export function SeoForm({
     onSubmit: async ({ value }) => {
       setServerError(null);
       setStatus(null);
+
+      // O servidor revalida, mas um bloco quebrado não sai do navegador.
+      if (analyzeJsonLd(value.jsonLd).error) return;
+
       await saveMutation.mutateAsync(value);
     },
   });
 
   const formValues = useStore(form.store, (state: any) => state.values);
   const dirty = Object.keys(seoPatch(loaded, formValues)).length > 0;
+
+  /**
+   * A leitura do JSON-LD: a sintaxe quebrada trava o salvamento; os avisos de
+   * forma (falta de `@type`, de `offers`) só avisam.
+   */
+  const jsonLdAnalysis = useMemo(() => analyzeJsonLd(formValues.jsonLd), [formValues.jsonLd]);
+
+  /** O modelo do produto: o bloco que a página publica quando não há override. */
+  const suggestedJson = useMemo(() => {
+    if (entityType !== "product" || !previewContext) return null;
+
+    return JSON.stringify(
+      buildProductJsonLd({
+        name: previewContext.name,
+        description: previewContext.description,
+        url: previewContext.url,
+        imageUrl: null,
+        available: previewContext.available,
+        priceCents: previewContext.priceCents,
+      }),
+      null,
+      2,
+    );
+  }, [entityType, previewContext]);
 
   useDirtySection("seo", dirty);
 
@@ -264,7 +298,7 @@ export function SeoForm({
 
   return (
     <form
-      className="flex w-full max-w-3xl flex-col gap-6"
+      className="flex w-full max-w-5xl flex-col gap-6"
       onSubmit={(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         event.stopPropagation();
@@ -407,21 +441,22 @@ export function SeoForm({
                     <FieldLabel htmlFor={domId(field.name)}>JSON-LD</FieldLabel>
                     {revertButton("jsonLd")}
                   </div>
-                  <Textarea
+                  <JsonLdField
                     id={domId(field.name)}
-                    rows={8}
-                    className="font-mono text-xs"
-                    value={field.state.value ?? ""}
-                    placeholder='{ "@context": "https://schema.org", "@type": "Product" }'
-                    spellCheck={false}
-                    aria-invalid={invalid(field)}
-                    aria-describedby={describedBy(field, field.name)}
-                    onChange={(event) => field.handleChange(event.target.value || null)}
+                    value={field.state.value ?? null}
+                    onChange={field.handleChange}
                     onBlur={field.handleBlur}
+                    maxLength={4000}
+                    placeholder='{ "@context": "https://schema.org", "@type": "Product" }'
+                    invalid={invalid(field)}
+                    describedBy={describedBy(field, field.name)}
+                    analysis={jsonLdAnalysis}
+                    suggestedJson={suggestedJson}
+                    context={previewContext ?? null}
                   />
                   <FieldDescription>
-                    Opcional, sempre desta entidade. O JSON é validado no servidor ao salvar; aqui o
-                    texto não é interpretado.
+                    Opcional, sempre desta entidade. O JSON é validado enquanto você digita e de
+                    novo no servidor ao salvar.
                   </FieldDescription>
                   {error(field, field.name)}
                 </Field>
@@ -455,7 +490,10 @@ export function SeoForm({
         </Button>
         <form.Subscribe selector={(state: any) => state.isSubmitting}>
           {(isSubmitting: boolean) => (
-            <Button type="submit" disabled={isSubmitting || saveMutation.isPending}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || saveMutation.isPending || jsonLdAnalysis.error !== null}
+            >
               {isSubmitting || saveMutation.isPending ? <Spinner data-icon="inline-start" /> : null}
               Salvar SEO
             </Button>

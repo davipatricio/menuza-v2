@@ -7,18 +7,16 @@
  */
 import { implement } from "@orpc/server";
 import { commerceContractObject } from "@menuza/shared/commerce";
-import { resolveSeo } from "@menuza/shared/seo";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db } from "@menuza/db";
-import { loadTenant } from "./support.ts";
+import { loadResolvedSeo, loadTenant, toPublicSeo } from "./support.ts";
 
 const os = implement(commerceContractObject);
 
 /**
  * The store's SEO: the `entityType: "store"` `SeoMeta` row is the entity, the
  * tenant's `StoreSettings` row carries the templates, and the tenant's
- * `displayName` is the static fallback. `resolveSeo` reads fields per level, so
- * the rows are mapped into the shared shapes instead of passed through.
+ * `displayName` is the static fallback. `loadResolvedSeo` reads fields per
+ * level, so the panel and the storefront resolve them the same way.
  */
 export const getStoreImpl = os.public.getStore
   .use(tenantMiddleware({ require: "optional" }))
@@ -40,20 +38,12 @@ export const getStoreImpl = os.public.getStore
       };
     }
 
-    const [meta, settings] = await Promise.all([
-      db.orm.public.SeoMeta.where({
-        tenantId: tenant.id,
-        entityType: "store",
-        entityId: tenant.id,
-      }).first(),
-      db.orm.public.StoreSettings.where({ tenantId: tenant.id }).first(),
-    ]);
-
-    const seo = resolveSeo({
-      entity: meta,
-      storeRow: null,
-      settings,
-      context: { storeName: tenant.displayName, entityName: tenant.displayName },
+    const seo = await loadResolvedSeo({
+      tenantId: tenant.id,
+      storeName: tenant.displayName,
+      entityType: "store",
+      entityId: tenant.id,
+      entityName: tenant.displayName,
       fallbackTitle: tenant.displayName,
     });
 
@@ -61,13 +51,7 @@ export const getStoreImpl = os.public.getStore
       tenantId: tenant.id,
       slug: tenant.slug,
       displayName: tenant.displayName,
-      seo: {
-        title: seo.title,
-        description: seo.description,
-        socialImageUrl: seo.socialImageUrl,
-        canonicalUrl: seo.canonicalUrl,
-        jsonLd: seo.jsonLd,
-      },
+      seo: toPublicSeo(seo),
     };
   });
 

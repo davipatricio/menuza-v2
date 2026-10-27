@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildNutritionLabel } from "@menuza/shared/nutrition";
+import { buildProductJsonLd } from "@menuza/shared/seo";
 import { NutritionLabel } from "@/components/nutrition/nutrition-label.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
 import {
@@ -41,7 +42,7 @@ import {
 import { formatBrl, formatDateTime } from "@/lib/format.ts";
 import { NUTRITION_SOURCE_LABELS } from "@/lib/panel-labels.ts";
 import { absoluteUrl } from "@/lib/seo/base-url.ts";
-import { buildProductJsonLd, JsonLdScript } from "@/lib/seo/json-ld.ts";
+import { JsonLdScript } from "@/lib/seo/json-ld.ts";
 import { buildSeoMetadata } from "@/lib/seo/metadata.ts";
 import {
   loadProduct,
@@ -72,10 +73,12 @@ export async function generateMetadata({
   const price = `A partir de ${formatBrl(product.fromPriceCents)}.`;
 
   const metadata = await buildSeoMetadata({
-    title: product.name,
-    description: product.description ? `${product.description} ${price}` : price,
+    title: product.seo.title,
+    description:
+      product.seo.description ?? (product.description ? `${product.description} ${price}` : price),
     path: `/menu/${product.id}`,
-    socialImageUrl: store.seo.socialImageUrl,
+    canonicalUrl: product.seo.canonicalUrl,
+    socialImageUrl: product.seo.socialImageUrl ?? store.seo.socialImageUrl,
   });
 
   return product.archived ? { ...metadata, robots: { index: false, follow: false } } : metadata;
@@ -99,18 +102,21 @@ export default async function ProductDetailPage({
 
   const url = await absoluteUrl(`/menu/${product.id}`);
 
-  // Sempre o construtor: o override de `SeoMeta` é o grafo da loja, e descrever
-  // um produto com ele anunciaria a loja como se fosse o item.
-  const json = JSON.stringify(
-    buildProductJsonLd({
-      name: product.name,
-      description: product.description,
-      url,
-      imageUrl: null,
-      available: product.available && !product.archived,
-      priceCents: product.variations.map((variation) => variation.priceCents),
-    }),
-  );
+  // A loja pode substituir o grafo inteiro do produto em `SeoMeta.jsonLd`; o
+  // construtor é só o padrão. O texto do override é JSON de confiança do painel,
+  // ainda assim passa pelo mesmo escape de `<` na renderização.
+  const json =
+    product.seo.jsonLd ??
+    JSON.stringify(
+      buildProductJsonLd({
+        name: product.name,
+        description: product.description,
+        url,
+        imageUrl: null,
+        available: product.available && !product.archived,
+        priceCents: product.variations.map((variation) => variation.priceCents),
+      }),
+    );
 
   return (
     <div className="flex flex-col gap-6">

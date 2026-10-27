@@ -1384,6 +1384,61 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "seo": {
+                              "type": "object",
+                              "properties": {
+                                "title": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "socialImageUrl": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "canonicalUrl": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "jsonLd": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "title",
+                                "description",
+                                "socialImageUrl",
+                                "canonicalUrl",
+                                "jsonLd"
+                              ]
                             }
                           },
                           "required": [
@@ -1397,7 +1452,8 @@
                             "fromPriceCents",
                             "variations",
                             "tags",
-                            "nutrition"
+                            "nutrition",
+                            "seo"
                           ]
                         },
                         {

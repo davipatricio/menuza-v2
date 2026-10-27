@@ -6,6 +6,7 @@
  * tabs keeps unsaved input and never hits the server. The guard wraps every form
  * so a dirty section blocks leaving the page.
  */
+import { useMemo, useState } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import type { PanelProductDetail, PanelSeo } from "@menuza/shared/tenant";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
@@ -38,6 +39,21 @@ export function ProductTabs({
       .withOptions({ history: "replace", scroll: false }),
   );
 
+  /**
+   * A aba de SEO carrega o editor e a prévia por demanda, então o bloco só
+   * entra no DOM depois de a aba ser aberta uma vez. Depois disso fica
+   * montado, como as outras, para o rascunho não se perder ao trocar de aba.
+   *
+   * A aba atual entra na lista mesmo quando a URL muda sozinha (voltar e
+   * avançar), e o clique é o que marca as demais.
+   */
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<string>>(() => new Set());
+
+  const visited = useMemo(
+    () => (tab === "seo" ? new Set([...visitedTabs, "seo"]) : visitedTabs),
+    [tab, visitedTabs],
+  );
+
   return (
     <ProductEditorGuard>
       <div className="flex w-full flex-col gap-6">
@@ -52,6 +68,9 @@ export function ProductTabs({
               next === "seo" ||
               next === "desempenho"
             ) {
+              setVisitedTabs((current) =>
+                current.has(next) ? current : new Set([...current, next]),
+              );
               setTab(next);
             }
           }}
@@ -89,13 +108,22 @@ export function ProductTabs({
           </TabsContent>
 
           <TabsContent value="seo" keepMounted>
-            <SeoForm
-              storeSlug={storeSlug}
-              entityType="product"
-              entityId={product.id}
-              entityName={product.name}
-              initialData={seo}
-            />
+            {visited.has("seo") ? (
+              <SeoForm
+                storeSlug={storeSlug}
+                entityType="product"
+                entityId={product.id}
+                entityName={product.name}
+                initialData={seo}
+                previewContext={{
+                  name: product.name,
+                  description: product.description,
+                  url: seo.resolved.canonicalUrl ?? `/menu/${product.id}`,
+                  available: product.available && !product.archived,
+                  priceCents: product.variations.map((variation) => variation.priceCents),
+                }}
+              />
+            ) : null}
           </TabsContent>
 
           <TabsContent value="desempenho">

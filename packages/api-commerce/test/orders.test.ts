@@ -74,6 +74,7 @@ function builder(source: Row[], filter: Row) {
     select: () => builder(source, filter),
     include: () => builder(source, filter),
     orderBy: () => builder(source, filter),
+    forUpdate: () => builder(source, filter),
     all: async () => found(),
     first: async () => found()[0] ?? null,
     aggregate: async (spec: (aggregate: { count: () => number }) => Counts) =>

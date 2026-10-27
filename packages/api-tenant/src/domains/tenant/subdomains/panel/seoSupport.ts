@@ -9,6 +9,7 @@
 import { db } from "@menuza/db";
 import { ORPCError } from "@orpc/server";
 import {
+  parseJsonLd,
   resolveSeo,
   type ResolvedSeo,
   type SeoEntityType,
@@ -43,19 +44,19 @@ export function isEmptySeo(fields: SeoFields): boolean {
 }
 
 /**
- * Rejects a `jsonLd` that is not JSON. Deliberately server-only: the form ships
- * the textarea verbatim and the API is what refuses a broken block, so the
- * browser never parses or reformats what the admin typed.
+ * Rejects a `jsonLd` that is not JSON. The browser parses the block too, but
+ * only to point at the offending line while the merchant types; the API is what
+ * refuses to store a broken block, so nothing broken ever reaches a crawler.
  */
 export function assertJsonLd(value: string): void {
-  try {
-    JSON.parse(value);
-  } catch {
-    throw new ORPCError("VALIDATION_FAILED", {
-      message: "JSON-LD inválido: verifique a sintaxe do JSON.",
-      data: { code: "VALIDATION_FAILED" },
-    });
-  }
+  const parsed = parseJsonLd(value);
+
+  if (parsed.ok) return;
+
+  throw new ORPCError("VALIDATION_FAILED", {
+    message: `JSON-LD inválido na linha ${parsed.error.line}, coluna ${parsed.error.column}: ${parsed.error.message}`,
+    data: { code: "VALIDATION_FAILED" },
+  });
 }
 
 /**

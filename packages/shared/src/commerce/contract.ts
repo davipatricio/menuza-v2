@@ -41,17 +41,23 @@ export const health = commerceContract
  * never from the client: every input is an empty strict object.
  */
 
+/**
+ * The resolved SEO of one page. The same five fields the panel edits: an
+ * entity's own override, the store's row and the store templates behind it.
+ */
+export const publicSeoOutput = v.object({
+  title: v.string(),
+  description: v.nullable(v.string()),
+  socialImageUrl: v.nullable(v.string()),
+  canonicalUrl: v.nullable(v.string()),
+  jsonLd: v.nullable(v.string()),
+});
+
 export const publicStoreOutput = v.object({
   tenantId: v.nullable(v.string()),
   slug: v.string(),
   displayName: v.string(),
-  seo: v.object({
-    title: v.string(),
-    description: v.nullable(v.string()),
-    socialImageUrl: v.nullable(v.string()),
-    canonicalUrl: v.nullable(v.string()),
-    jsonLd: v.nullable(v.string()),
-  }),
+  seo: publicSeoOutput,
 });
 
 /** One sellable product as the menu renders it. No stock, no cost, no hidden rows. */
@@ -105,10 +111,14 @@ export const PublicNutritionSchema = v.object({
   updatedAt: v.pipe(v.string(), v.isoTimestamp()),
 });
 
-/** The direct-URL product adds the label; the menu listing stays lean. */
+/**
+ * The direct-URL product adds the label and its own SEO; the menu listing stays
+ * lean, because a card never renders the structured data of its item.
+ */
 export const PublicProductDetailSchema = v.object({
   ...PublicProductSchema.entries,
   nutrition: v.nullable(PublicNutritionSchema),
+  seo: publicSeoOutput,
 });
 
 /**
