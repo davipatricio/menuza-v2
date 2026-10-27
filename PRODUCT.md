@@ -240,6 +240,7 @@ O checkout deve apresentar itens e variações, composição dos kits, descontos
 
 Cada lojista configura provedores distintos para métodos diferentes. Exemplo: Pix no provedor A, cartão no provedor B. Não implica roteamento automático entre múltiplos provedores do mesmo método.
 
+- Cada lojista configura métodos de pagamento diferentes para provedores diferentes ou para múltiplos provedores, e pode criar novas integrações (com suporte "offline"): a integração confirma o pagamento por webhook ou o pedido é criado apenas como pendente.
 - Dinheiro recebido diretamente pela conta da loja.
 - Sem custódia central de pagamentos pelo Menuza como premissa.
 - Credenciais e contratos pertencem ao lojista.

@@ -32,7 +32,24 @@
 
 ## Code entry points
 
-- Gateway clients in `packages/api-commerce/src/domains/...`; webhook routes and async jobs in `apps/commerce` / `apps/worker`.
+- **Per-store configuration** — `PaymentIntegration` + `PaymentMethodAssignment` in
+  `packages/db/prisma/contract.prisma`; the panel procedures are
+  `packages/api-tenant/src/domains/tenant/subdomains/panel/paymentSupport.ts` and the four
+  `*Payment*` impls next to it. The provider secret is AES-256-GCM ciphertext written by
+  `@menuza/orpc-server/crypto` and never returned by any read.
+- **One provider per method** — the unique on `(tenantId, method)` is the routing rule; there
+  is no fallback between providers of the same method. A method bound to the `offline`
+  provider creates the order with no expiry window (the store reconciles it); anything else
+  keeps the 24 h window.
+- **Pagar.me adapter and callback** —
+  `packages/api-commerce/src/domains/commerce/subdomains/payments/`: `pagarme.ts` (payload
+  parsing, event → action, Basic-auth check, the outbound client), `receive.ts` (authenticate,
+  record, enqueue), `applyGatewayEvent.impl.ts` (apply to the order). The producer is
+  `apps/commerce/src/payment-webhook.ts` (plain route, own redacted log — the token is in the
+  URL); the drain is `apps/worker/src/payment-events.ts`.
+- **Only `paid` moves an order.** Declines are recorded and leave the order awaiting (retry is
+  allowed), and refunds, chargebacks and provider cancellations are recorded and ignored —
+  those touch stock and wallet money the store owns through the panel.
 - `formatBrl` takes **cents** (ADR-0006); all money columns are `Int` cents.
 
 ## Checks
