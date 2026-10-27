@@ -46,6 +46,11 @@ const COMMERCE_ROUTES = [
   },
   { procedure: commerceContractObject.wallet.get, method: "get", path: "/wallet" },
   { procedure: commerceContractObject.wallet.adjust, method: "post", path: "/wallet/adjust" },
+  {
+    procedure: commerceContractObject.payments.applyGatewayEvent,
+    method: "post",
+    path: "/payments/gateway-events/{gatewayEventId}/apply",
+  },
 ] as const;
 
 const TENANT_ROUTES = [
@@ -312,6 +317,26 @@ const TENANT_ROUTES = [
     procedure: tenantContractObject.panel.listAuditLogs,
     method: "get",
     path: "/panel/stores/{storeSlug}/audit-logs",
+  },
+  {
+    procedure: tenantContractObject.panel.getPaymentSettings,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/payments",
+  },
+  {
+    procedure: tenantContractObject.panel.savePaymentIntegration,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/payments/integrations",
+  },
+  {
+    procedure: tenantContractObject.panel.deletePaymentIntegration,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/payments/integrations/{integrationId}",
+  },
+  {
+    procedure: tenantContractObject.panel.savePaymentMethodAssignment,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/payments/methods/{method}",
   },
   {
     procedure: tenantContractObject.panel.listTeamMembers,

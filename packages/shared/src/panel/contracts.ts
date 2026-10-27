@@ -189,9 +189,19 @@ export const PaymentMethodSchema = v.picklist([
   "debit",
   "meal_voucher",
   "food_voucher",
+  "boleto",
   "cash_on_delivery",
   "card_on_delivery",
 ]);
+
+/** Mirrors the contract's `payment_provider` enum. */
+export const PaymentProviderSchema = v.picklist(
+  ["pagarme", "offline"],
+  "Escolha um provedor válido.",
+);
+
+/** Mirrors the contract's `payment_integration_status` enum. */
+export const PaymentIntegrationStatusSchema = v.picklist(["active", "disabled"]);
 
 /** Mirrors the contract's `stock_mode` enum (MEN-81). */
 export const StockModeSchema = v.picklist(["controlled", "unlimited"]);
@@ -2086,6 +2096,123 @@ export const revertSeo = sessionContract
   .input(PanelSeoInputSchema)
   .output(PanelSeoOutputSchema);
 
+// --- Payment gateways --------------------------------------------------------
+
+/**
+ * One gateway connection as the panel lists it. The provider secret is never
+ * part of any shape here: `hasCredentials` only says whether one is stored.
+ */
+export const PanelPaymentIntegrationSchema = v.object({
+  id: v.string(),
+  provider: PaymentProviderSchema,
+  label: v.string(),
+  status: PaymentIntegrationStatusSchema,
+  hasCredentials: v.boolean(),
+  webhookPath: v.string(),
+  createdAt: v.pipe(v.string(), v.isoTimestamp()),
+  updatedAt: v.pipe(v.string(), v.isoTimestamp()),
+});
+
+/** Which integration handles one payment method for the store. */
+export const PanelPaymentAssignmentSchema = v.object({
+  method: PaymentMethodSchema,
+  integrationId: v.string(),
+  provider: PaymentProviderSchema,
+  label: v.string(),
+});
+
+export const PanelPaymentSettingsOutputSchema = v.object({
+  integrations: v.array(PanelPaymentIntegrationSchema),
+  assignments: v.array(PanelPaymentAssignmentSchema),
+});
+
+export const SavePaymentIntegrationInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  /** Absent: create. Present: update that integration's label and/or secret. */
+  integrationId: v.optional(v.pipe(v.string(), v.nonEmpty(), v.maxLength(64))),
+  provider: PaymentProviderSchema,
+  label: v.pipe(
+    v.string("Informe um nome para a integração."),
+    v.nonEmpty("Informe um nome para a integração."),
+    v.maxLength(80, "Use no máximo 80 caracteres."),
+  ),
+  /**
+   * The provider secret. Required to create an online integration; absent on
+   * update keeps the stored one. It goes in and never comes back out.
+   */
+  secretKey: v.optional(
+    v.pipe(
+      v.string("Chave secreta inválida."),
+      v.nonEmpty("Informe a chave secreta."),
+      v.maxLength(200, "Chave secreta inválida."),
+    ),
+  ),
+});
+
+export const DeletePaymentIntegrationInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  integrationId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+});
+
+export const SavePaymentMethodAssignmentInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  method: PaymentMethodSchema,
+  /** `null` removes the assignment: the method is no longer offered. */
+  integrationId: v.nullable(v.pipe(v.string(), v.nonEmpty(), v.maxLength(64))),
+});
+
+export const getPaymentSettings = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/payments",
+      operationId: "getPanelPaymentSettings",
+      summary: "Lista as integrações de pagamento da loja e o provedor de cada método.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelPaymentSettingsOutputSchema);
+
+export const savePaymentIntegration = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/payments/integrations",
+      operationId: "savePanelPaymentIntegration",
+      summary: "Cria ou atualiza uma integração de pagamento; a chave secreta nunca é devolvida.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SavePaymentIntegrationInputSchema)
+  .output(v.object({ integration: PanelPaymentIntegrationSchema }));
+
+export const deletePaymentIntegration = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/payments/integrations/{integrationId}",
+      operationId: "deletePanelPaymentIntegration",
+      summary: "Remove uma integração de pagamento que não esteja atendendo nenhum método.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeletePaymentIntegrationInputSchema)
+  .output(v.object({ deleted: v.boolean() }));
+
+export const savePaymentMethodAssignment = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/payments/methods/{method}",
+      operationId: "savePanelPaymentMethodAssignment",
+      summary: "Define qual integração atende um método de pagamento.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SavePaymentMethodAssignmentInputSchema)
+  .output(v.object({ assignments: v.array(PanelPaymentAssignmentSchema) }));
+
 export const listAuditLogs = panelRead
   .meta(
     openapi({
@@ -2192,6 +2319,10 @@ export const panelContractObject = {
   getSeo,
   saveSeo,
   revertSeo,
+  getPaymentSettings,
+  savePaymentIntegration,
+  deletePaymentIntegration,
+  savePaymentMethodAssignment,
   listAuditLogs,
   listTeamMembers,
 };
@@ -2266,6 +2397,15 @@ export type PanelSeo = v.InferOutput<typeof PanelSeoOutputSchema>;
 export type PanelStoreSeo = v.InferOutput<typeof PanelStoreSeoOutputSchema>;
 
 export type PanelAuditLog = v.InferOutput<typeof PanelAuditLogSchema>;
+
+/** Payment gateway row shapes, derived from the contract outputs. */
+export type PanelPaymentIntegration = v.InferOutput<typeof PanelPaymentIntegrationSchema>;
+
+export type PanelPaymentAssignment = v.InferOutput<typeof PanelPaymentAssignmentSchema>;
+
+export type PaymentProvider = v.InferOutput<typeof PaymentProviderSchema>;
+
+export type PaymentIntegrationStatus = v.InferOutput<typeof PaymentIntegrationStatusSchema>;
 
 /** Account rows, derived from the contract outputs the settings page renders. */
 export type ActiveSession = v.InferOutput<typeof ActiveSessionSchema>;

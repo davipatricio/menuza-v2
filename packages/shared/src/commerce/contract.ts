@@ -269,6 +269,7 @@ export const PaymentMethodSchema = v.picklist([
   "debit",
   "meal_voucher",
   "food_voucher",
+  "boleto",
   "cash_on_delivery",
   "card_on_delivery",
 ]);
@@ -526,12 +527,45 @@ export const walletContractObject = {
   adjust: adjustWallet,
 };
 
+/**
+ * Payment gateway callbacks. A provider posts to the commerce service, which
+ * persists the event and enqueues it; this is the procedure the worker calls to
+ * apply it to the order. Replaying an applied event is a no-op.
+ */
+export const paymentsContract = oc.errors({
+  ...sharedErrorCodes,
+});
+
+export const GatewayEventOutcomeSchema = v.picklist(["applied", "ignored", "rejected", "missing"]);
+
+export const ApplyGatewayEventInputSchema = v.strictObject({
+  gatewayEventId: v.pipe(v.string(), v.nonEmpty()),
+});
+
+export const applyGatewayEvent = paymentsContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/payments/gateway-events/{gatewayEventId}/apply",
+      operationId: "applyGatewayEvent",
+      summary: "Aplica ao pedido um evento de gateway já recebido (uso interno).",
+      tags: ["payments"],
+    }),
+  )
+  .input(ApplyGatewayEventInputSchema)
+  .output(v.object({ status: GatewayEventOutcomeSchema }));
+
+export const paymentsContractObject = {
+  applyGatewayEvent,
+};
+
 // Object consumed by `createORPCClient<typeof contract>`.
 export const commerceContractObject = {
   health,
   public: publicContractObject,
   orders: ordersContractObject,
   wallet: walletContractObject,
+  payments: paymentsContractObject,
 };
 
 export type CommerceRouterContract = typeof commerceContractObject;

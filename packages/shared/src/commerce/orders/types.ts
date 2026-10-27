@@ -56,6 +56,7 @@ export type PaymentMethod =
   | "debit"
   | "meal_voucher"
   | "food_voucher"
+  | "boleto"
   | "cash_on_delivery"
   | "card_on_delivery";
 
@@ -100,6 +101,17 @@ export interface CreateOrderInput {
   cashbackPercent?: number;
   coupons: CouponInput[];
   paymentMethod: PaymentMethod | null;
+  /**
+   * How the money is expected to arrive. `gateway` (the default) means an
+   * online integration will create the charge, so the order gets a payment
+   * window. `manual` means the store reconciles the payment itself (an
+   * `offline` integration): there is no instrument to expire, so the order
+   * stays pending until the store records the receipt.
+   *
+   * Derived server-side from the store's method assignment — never from the
+   * checkout caller.
+   */
+  paymentMode?: "gateway" | "manual";
   /** Injected clock: the result is deterministic on this value. */
   now: Date;
 }

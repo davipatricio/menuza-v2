@@ -20,8 +20,10 @@ export function createOrder(input: CreateOrderInput): CreateOrderResult {
 
   const financialStatus = initialFinancialStatus(input.paymentMethod);
 
+  // A manual (offline) integration has no online instrument to expire: the
+  // order waits for the store to reconcile it, so it gets no payment window.
   const expiresAt =
-    financialStatus === "awaiting_payment"
+    financialStatus === "awaiting_payment" && input.paymentMode !== "manual"
       ? new Date(input.now.getTime() + PAYMENT_WINDOW_MS)
       : null;
 

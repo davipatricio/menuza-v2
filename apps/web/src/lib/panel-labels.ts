@@ -144,6 +144,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   debit: "Débito",
   meal_voucher: "Vale-refeição",
   food_voucher: "Vale-alimentação",
+  boleto: "Boleto",
   cash_on_delivery: "Dinheiro na entrega",
   card_on_delivery: "Cartão na entrega",
 };

@@ -10,6 +10,8 @@ export {
   listSitemap,
   orderContract,
   ordersContractObject,
+  paymentsContract,
+  paymentsContractObject,
   publicContractObject,
   publicMenuOutput,
   publicSeoOutput,
@@ -75,3 +77,14 @@ export {
 } from "./wallet/ledger.ts";
 
 export type { WalletOpInput } from "./wallet/ledger.ts";
+
+export {
+  PAYMENT_EVENTS_QUEUE,
+  PAYMENT_PROVIDERS,
+  PaymentJobPayloadSchema,
+  PaymentProviderSchema,
+  parsePaymentJobPayload,
+  paymentEventJobId,
+} from "./payments/types.ts";
+
+export type { PaymentJobPayload, PaymentProvider } from "./payments/types.ts";
