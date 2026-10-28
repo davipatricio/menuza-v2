@@ -45,6 +45,7 @@ import { fieldErrors } from "../../signup/_components/form-errors.ts";
 import { useDirtySection } from "../catalog/products/product-editor-guard.tsx";
 import { JsonLdField } from "./json-ld/json-ld-field.tsx";
 import type { JsonLdPreviewContext } from "./json-ld/json-ld-preview.tsx";
+import { SeoPreviewCard } from "./seo-preview-card.tsx";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
 
@@ -296,232 +297,273 @@ export function SeoForm({
   const sourceNote = (name: keyof SeoFields, source: SeoSource) =>
     loaded[name] === null ? SOURCE_LABELS[source] : "Definido aqui";
 
+  /**
+   * O que a página vai publicar. Campo limpo (`null`) volta a herdar, mas
+   * `resolved` ainda carrega o override salvo — ele só serve de fallback quando
+   * não havia nada gravado para limpar. Sem isso, apagar o título continuaria
+   * mostrando o título antigo na prévia.
+   */
+  const published = (name: keyof SeoFields): string | null => {
+    const value = formValues[name];
+
+    if (value !== null && value !== "") return value;
+
+    return loaded[name] === null ? resolved[name] : null;
+  };
+
+  const effectiveJson =
+    formValues.jsonLd && formValues.jsonLd.trim() !== "" ? formValues.jsonLd : suggestedJson;
+
+  const effectiveTitle = published("title");
+
+  const effectiveDescription = published("description");
+
+  const effectiveUrl = published("canonicalUrl") ?? previewContext?.url ?? `/menu/${entityId}`;
+
+  const effectiveSocialImageUrl = published("socialImageUrl");
+
   return (
-    <form
-      className="flex w-full max-w-5xl flex-col gap-6"
-      onSubmit={(event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const formEl = event.currentTarget;
+    <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <form
+        className="flex min-w-0 flex-col gap-6"
+        onSubmit={(event: FormEvent<HTMLFormElement>) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const formEl = event.currentTarget;
 
-        void form
-          .handleSubmit()
-          .catch(() => undefined)
-          .then(() => {
-            requestAnimationFrame(() => {
-              formEl.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+          void form
+            .handleSubmit()
+            .catch(() => undefined)
+            .then(() => {
+              requestAnimationFrame(() => {
+                formEl.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+              });
             });
-          });
-      }}
-    >
-      <Card>
-        <CardHeader>
-          <CardTitle>{entityName}</CardTitle>
-          <CardDescription>
-            O que ficar vazio herda a loja e, depois, o padrão. URL canônica e JSON-LD valem só
-            nesta entidade.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup className="gap-5">
-            <form.Field name="title">
-              {(field: any) => (
-                <Field data-invalid={invalid(field)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={domId(field.name)}>Título</FieldLabel>
-                    {revertButton("title")}
-                  </div>
-                  <Input
-                    id={domId(field.name)}
-                    value={field.state.value ?? ""}
-                    placeholder={resolved.title}
-                    maxLength={70}
-                    aria-invalid={invalid(field)}
-                    aria-describedby={describedBy(field, field.name)}
-                    onChange={(event) => field.handleChange(event.target.value || null)}
-                    onBlur={field.handleBlur}
-                  />
-                  <FieldDescription>
-                    {sourceNote("title", resolved.source.title)} ·{" "}
-                    {(field.state.value ?? "").length}/70 caracteres
-                  </FieldDescription>
-                  {error(field, field.name)}
-                </Field>
-              )}
-            </form.Field>
+        }}
+      >
+        <Card>
+          <CardHeader>
+            <CardTitle>{entityName}</CardTitle>
+            <CardDescription>
+              O que ficar vazio herda a loja e, depois, o padrão. URL canônica e JSON-LD valem só
+              nesta entidade.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup className="gap-5">
+              <form.Field name="title">
+                {(field: any) => (
+                  <Field data-invalid={invalid(field)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <FieldLabel htmlFor={domId(field.name)}>Título</FieldLabel>
+                      {revertButton("title")}
+                    </div>
+                    <Input
+                      id={domId(field.name)}
+                      value={field.state.value ?? ""}
+                      placeholder={resolved.title}
+                      maxLength={70}
+                      aria-invalid={invalid(field)}
+                      aria-describedby={describedBy(field, field.name)}
+                      onChange={(event) => field.handleChange(event.target.value || null)}
+                      onBlur={field.handleBlur}
+                    />
+                    <FieldDescription>
+                      {sourceNote("title", resolved.source.title)} ·{" "}
+                      {(field.state.value ?? "").length}/70 caracteres
+                    </FieldDescription>
+                    {error(field, field.name)}
+                  </Field>
+                )}
+              </form.Field>
 
-            <form.Field name="description">
-              {(field: any) => (
-                <Field data-invalid={invalid(field)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={domId(field.name)}>Descrição</FieldLabel>
-                    {revertButton("description")}
-                  </div>
-                  <Textarea
-                    id={domId(field.name)}
-                    rows={3}
-                    value={field.state.value ?? ""}
-                    placeholder={resolved.description ?? "Sem descrição herdada."}
-                    maxLength={200}
-                    aria-invalid={invalid(field)}
-                    aria-describedby={describedBy(field, field.name)}
-                    onChange={(event) => field.handleChange(event.target.value || null)}
-                    onBlur={field.handleBlur}
-                  />
-                  <FieldDescription>
-                    {sourceNote("description", resolved.source.description)} ·{" "}
-                    {(field.state.value ?? "").length}/200 caracteres
-                  </FieldDescription>
-                  {error(field, field.name)}
-                </Field>
-              )}
-            </form.Field>
+              <form.Field name="description">
+                {(field: any) => (
+                  <Field data-invalid={invalid(field)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <FieldLabel htmlFor={domId(field.name)}>Descrição</FieldLabel>
+                      {revertButton("description")}
+                    </div>
+                    <Textarea
+                      id={domId(field.name)}
+                      rows={3}
+                      value={field.state.value ?? ""}
+                      placeholder={resolved.description ?? "Sem descrição herdada."}
+                      maxLength={200}
+                      aria-invalid={invalid(field)}
+                      aria-describedby={describedBy(field, field.name)}
+                      onChange={(event) => field.handleChange(event.target.value || null)}
+                      onBlur={field.handleBlur}
+                    />
+                    <FieldDescription>
+                      {sourceNote("description", resolved.source.description)} ·{" "}
+                      {(field.state.value ?? "").length}/200 caracteres
+                    </FieldDescription>
+                    {error(field, field.name)}
+                  </Field>
+                )}
+              </form.Field>
 
-            <form.Field name="canonicalUrl">
-              {(field: any) => (
-                <Field data-invalid={invalid(field)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={domId(field.name)}>URL canônica</FieldLabel>
-                    {revertButton("canonicalUrl")}
-                  </div>
-                  <Input
-                    id={domId(field.name)}
-                    type="url"
-                    inputMode="url"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={field.state.value ?? ""}
-                    placeholder="https://sualoja.com.br/caminho"
-                    aria-invalid={invalid(field)}
-                    aria-describedby={describedBy(field, field.name)}
-                    onChange={(event) => field.handleChange(event.target.value || null)}
-                    onBlur={field.handleBlur}
-                  />
-                  <FieldDescription>
-                    Opcional, sempre desta entidade: uma URL canônica herdada apontaria para outra
-                    página.
-                  </FieldDescription>
-                  {error(field, field.name)}
-                </Field>
-              )}
-            </form.Field>
+              <form.Field name="canonicalUrl">
+                {(field: any) => (
+                  <Field data-invalid={invalid(field)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <FieldLabel htmlFor={domId(field.name)}>URL canônica</FieldLabel>
+                      {revertButton("canonicalUrl")}
+                    </div>
+                    <Input
+                      id={domId(field.name)}
+                      type="url"
+                      inputMode="url"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={field.state.value ?? ""}
+                      placeholder="https://sualoja.com.br/caminho"
+                      aria-invalid={invalid(field)}
+                      aria-describedby={describedBy(field, field.name)}
+                      onChange={(event) => field.handleChange(event.target.value || null)}
+                      onBlur={field.handleBlur}
+                    />
+                    <FieldDescription>
+                      Opcional, sempre desta entidade: uma URL canônica herdada apontaria para outra
+                      página.
+                    </FieldDescription>
+                    {error(field, field.name)}
+                  </Field>
+                )}
+              </form.Field>
 
-            <form.Field name="socialImageUrl">
-              {(field: any) => (
-                <Field data-invalid={invalid(field)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={domId(field.name)}>Imagem para redes sociais</FieldLabel>
-                    {revertButton("socialImageUrl")}
-                  </div>
-                  <Input
-                    id={domId(field.name)}
-                    type="url"
-                    inputMode="url"
-                    autoComplete="off"
-                    spellCheck={false}
-                    value={field.state.value ?? ""}
-                    placeholder={resolved.socialImageUrl ?? "https://sualoja.com.br/imagem.jpg"}
-                    aria-invalid={invalid(field)}
-                    aria-describedby={describedBy(field, field.name)}
-                    onChange={(event) => field.handleChange(event.target.value || null)}
-                    onBlur={field.handleBlur}
-                  />
-                  <FieldDescription>
-                    {sourceNote("socialImageUrl", resolved.source.socialImageUrl)}
-                  </FieldDescription>
-                  {error(field, field.name)}
-                </Field>
-              )}
-            </form.Field>
+              <form.Field name="socialImageUrl">
+                {(field: any) => (
+                  <Field data-invalid={invalid(field)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <FieldLabel htmlFor={domId(field.name)}>Imagem para redes sociais</FieldLabel>
+                      {revertButton("socialImageUrl")}
+                    </div>
+                    <Input
+                      id={domId(field.name)}
+                      type="url"
+                      inputMode="url"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={field.state.value ?? ""}
+                      placeholder={resolved.socialImageUrl ?? "https://sualoja.com.br/imagem.jpg"}
+                      aria-invalid={invalid(field)}
+                      aria-describedby={describedBy(field, field.name)}
+                      onChange={(event) => field.handleChange(event.target.value || null)}
+                      onBlur={field.handleBlur}
+                    />
+                    <FieldDescription>
+                      {sourceNote("socialImageUrl", resolved.source.socialImageUrl)}
+                    </FieldDescription>
+                    {error(field, field.name)}
+                  </Field>
+                )}
+              </form.Field>
 
-            <form.Field name="jsonLd">
-              {(field: any) => (
-                <Field data-invalid={invalid(field)}>
-                  <div className="flex items-start justify-between gap-2">
-                    <FieldLabel htmlFor={domId(field.name)}>JSON-LD</FieldLabel>
-                    {revertButton("jsonLd")}
-                  </div>
-                  <JsonLdField
-                    id={domId(field.name)}
-                    value={field.state.value ?? null}
-                    onChange={field.handleChange}
-                    onBlur={field.handleBlur}
-                    maxLength={4000}
-                    placeholder='{ "@context": "https://schema.org", "@type": "Product" }'
-                    invalid={invalid(field)}
-                    describedBy={describedBy(field, field.name)}
-                    analysis={jsonLdAnalysis}
-                    suggestedJson={suggestedJson}
-                    context={previewContext ?? null}
-                  />
-                  <FieldDescription>
-                    Opcional, sempre desta entidade. O JSON é validado enquanto você digita e de
-                    novo no servidor ao salvar.
-                  </FieldDescription>
-                  {error(field, field.name)}
-                </Field>
-              )}
-            </form.Field>
-          </FieldGroup>
-        </CardContent>
-      </Card>
+              <form.Field name="jsonLd">
+                {(field: any) => (
+                  <Field data-invalid={invalid(field)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <FieldLabel htmlFor={domId(field.name)}>JSON-LD</FieldLabel>
+                      {revertButton("jsonLd")}
+                    </div>
+                    <JsonLdField
+                      id={domId(field.name)}
+                      value={field.state.value ?? null}
+                      onChange={field.handleChange}
+                      onBlur={field.handleBlur}
+                      maxLength={4000}
+                      placeholder='{ "@context": "https://schema.org", "@type": "Product" }'
+                      invalid={invalid(field)}
+                      describedBy={describedBy(field, field.name)}
+                      analysis={jsonLdAnalysis}
+                      suggestedJson={suggestedJson}
+                      context={previewContext ?? null}
+                    />
+                    <FieldDescription>
+                      Opcional, sempre desta entidade. O JSON é validado enquanto você digita e de
+                      novo no servidor ao salvar.
+                    </FieldDescription>
+                    {error(field, field.name)}
+                  </Field>
+                )}
+              </form.Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
 
-      {serverError ? (
-        <Alert variant="destructive">
-          <AlertTitle>Não foi possível salvar o SEO</AlertTitle>
-          <AlertDescription>{serverError}</AlertDescription>
-        </Alert>
-      ) : null}
+        {serverError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Não foi possível salvar o SEO</AlertTitle>
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      {status ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {status}
-        </p>
-      ) : null}
+        {status ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            {status}
+          </p>
+        ) : null}
 
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={revertAllMutation.isPending}
-          onClick={() => setConfirmingRevert(true)}
-        >
-          Reverter tudo
-        </Button>
-        <form.Subscribe selector={(state: any) => state.isSubmitting}>
-          {(isSubmitting: boolean) => (
-            <Button
-              type="submit"
-              disabled={isSubmitting || saveMutation.isPending || jsonLdAnalysis.error !== null}
-            >
-              {isSubmitting || saveMutation.isPending ? <Spinner data-icon="inline-start" /> : null}
-              Salvar SEO
-            </Button>
-          )}
-        </form.Subscribe>
-      </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={revertAllMutation.isPending}
+            onClick={() => setConfirmingRevert(true)}
+          >
+            Reverter tudo
+          </Button>
+          <form.Subscribe selector={(state: any) => state.isSubmitting}>
+            {(isSubmitting: boolean) => (
+              <Button
+                type="submit"
+                disabled={isSubmitting || saveMutation.isPending || jsonLdAnalysis.error !== null}
+              >
+                {isSubmitting || saveMutation.isPending ? (
+                  <Spinner data-icon="inline-start" />
+                ) : null}
+                Salvar SEO
+              </Button>
+            )}
+          </form.Subscribe>
+        </div>
 
-      <AlertDialog open={confirmingRevert} onOpenChange={setConfirmingRevert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{`Reverter o SEO de "${entityName}"?`}</AlertDialogTitle>
-            <AlertDialogDescription>
-              O override desta entidade é descartado e todos os campos voltam a herdar a loja. Esta
-              ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={revertAllMutation.isPending}
-              onClick={() => revertAllMutation.mutate()}
-            >
-              {revertAllMutation.isPending ? "Revertendo…" : "Reverter tudo"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </form>
+        <AlertDialog open={confirmingRevert} onOpenChange={setConfirmingRevert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{`Reverter o SEO de "${entityName}"?`}</AlertDialogTitle>
+              <AlertDialogDescription>
+                O override desta entidade é descartado e todos os campos voltam a herdar a loja.
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={revertAllMutation.isPending}
+                onClick={() => revertAllMutation.mutate()}
+              >
+                {revertAllMutation.isPending ? "Revertendo…" : "Reverter tudo"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </form>
+
+      <aside className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+        <SeoPreviewCard
+          title={effectiveTitle}
+          description={effectiveDescription}
+          url={effectiveUrl}
+          socialImageUrl={effectiveSocialImageUrl}
+          analysis={jsonLdAnalysis}
+          json={effectiveJson}
+          context={previewContext ?? null}
+        />
+      </aside>
+    </div>
   );
 }

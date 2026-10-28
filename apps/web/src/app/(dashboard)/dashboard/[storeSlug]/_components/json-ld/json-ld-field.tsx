@@ -6,7 +6,6 @@ import type { JsonLdAnalysis } from "@menuza/shared/seo";
 import { formatJsonLd } from "@menuza/shared/seo";
 import { Button } from "@/components/ui/button.tsx";
 import { FieldError } from "@/components/ui/field.tsx";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { JSON_LD_CODE_CLASS, JSON_LD_CODE_CSS } from "./json-ld-code.ts";
 import type { JsonLdPreviewContext } from "./json-ld-preview.ts";
 
@@ -16,8 +15,6 @@ import type { JsonLdPreviewContext } from "./json-ld-preview.ts";
  * campo é um `textarea` comum — o mesmo, com o mesmo id e o mesmo valor.
  */
 const JsonLdEditor = dynamic(() => import("./json-ld-editor.tsx"), { ssr: false });
-
-const JsonLdPreview = dynamic(() => import("./json-ld-preview.tsx"), { ssr: false });
 
 export interface JsonLdFieldProps {
   id: string;
@@ -32,7 +29,7 @@ export interface JsonLdFieldProps {
   analysis: JsonLdAnalysis;
   /** O modelo pronto do produto, quando a entidade tem um. */
   suggestedJson: string | null;
-  context: JsonLdPreviewContext | null;
+  context?: JsonLdPreviewContext | null;
 }
 
 export function JsonLdField({
@@ -46,7 +43,6 @@ export function JsonLdField({
   describedBy,
   analysis,
   suggestedJson,
-  context,
 }: JsonLdFieldProps) {
   const text = value ?? "";
   const jsonErrorId = `${id}-json-error`;
@@ -58,8 +54,6 @@ export function JsonLdField({
     [describedBy, analysis.error === null ? null : jsonErrorId].filter(Boolean).join(" ") ||
     undefined;
 
-  const effectiveJson = text.trim() === "" ? suggestedJson : text;
-
   const format = () => {
     if (analysis.error !== null) return;
 
@@ -67,67 +61,59 @@ export function JsonLdField({
   };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+    <div className="flex flex-col gap-2">
       <style>{JSON_LD_CODE_CSS}</style>
 
-      <div className="flex min-w-0 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={analysis.error !== null || text.trim() === ""}
-            onClick={format}
-          >
-            Formatar
-          </Button>
-
-          {suggestedJson ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => onChange(suggestedJson)}>
-              Usar modelo
-            </Button>
-          ) : null}
-        </div>
-
-        <Suspense
-          fallback={
-            <PlainTextarea
-              id={id}
-              value={text}
-              onChange={onChange}
-              onBlur={onBlur}
-              maxLength={maxLength}
-              placeholder={placeholder}
-              invalid={invalid}
-              describedBy={describedByWithError}
-            />
-          }
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={analysis.error !== null || text.trim() === ""}
+          onClick={format}
         >
-          <JsonLdEditor
+          Formatar
+        </Button>
+
+        {suggestedJson ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange(suggestedJson)}>
+            Usar modelo
+          </Button>
+        ) : null}
+      </div>
+
+      <Suspense
+        fallback={
+          <PlainTextarea
             id={id}
             value={text}
-            onChange={handleChange}
+            onChange={onChange}
             onBlur={onBlur}
             maxLength={maxLength}
             placeholder={placeholder}
             invalid={invalid}
             describedBy={describedByWithError}
-            errorLine={analysis.error?.line ?? null}
           />
-        </Suspense>
+        }
+      >
+        <JsonLdEditor
+          id={id}
+          value={text}
+          onChange={handleChange}
+          onBlur={onBlur}
+          maxLength={maxLength}
+          placeholder={placeholder}
+          invalid={invalid}
+          describedBy={describedByWithError}
+          errorLine={analysis.error?.line ?? null}
+        />
+      </Suspense>
 
-        {analysis.error ? (
-          <FieldError id={jsonErrorId}>
-            Linha {analysis.error.line}, coluna {analysis.error.column}: {analysis.error.message}
-          </FieldError>
-        ) : null}
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-3">
-        <Suspense fallback={<Skeleton className="h-40 w-full" />}>
-          <JsonLdPreview analysis={analysis} json={effectiveJson} context={context} />
-        </Suspense>
-      </div>
+      {analysis.error ? (
+        <FieldError id={jsonErrorId}>
+          Linha {analysis.error.line}, coluna {analysis.error.column}: {analysis.error.message}
+        </FieldError>
+      ) : null}
     </div>
   );
 }
@@ -161,11 +147,10 @@ function PlainTextarea({
       maxLength={maxLength}
       placeholder={placeholder}
       spellCheck={false}
-      wrap="off"
-      rows={10}
+      rows={14}
       aria-invalid={invalid}
       aria-describedby={describedBy}
-      className={`block w-full resize-y rounded-lg border border-input bg-transparent p-3 transition-colors outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 ${JSON_LD_CODE_CLASS}`}
+      className={`block h-72 min-h-[14rem] w-full resize-y overflow-auto rounded-lg border border-input bg-muted/20 p-3 font-mono text-xs leading-5 text-foreground transition-colors outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 ${JSON_LD_CODE_CLASS}`}
     />
   );
 }

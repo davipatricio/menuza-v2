@@ -51,7 +51,7 @@ export const listDepartmentsImpl = os.handler(async ({ input, context }) => {
 
       return {
         rows: await sorted.orderBy((department) => department.id.asc()).all(),
-        links: await db.orm.public.CategoryDepartment.all(),
+        links: await db.orm.public.CategoryDepartment.where({ tenantId: store.tenantId }).all(),
         categories: await db.orm.public.Category.where({ tenantId: store.tenantId })
           .select("id")
           .all(),

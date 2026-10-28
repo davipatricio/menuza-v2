@@ -124,6 +124,9 @@ function viewLabel(
 
   if (amountMilli === null) return `— ${unit}`;
 
+  // When portion matches the 100 g/mL base, a second column would duplicate the first.
+  if (amountMilli === 100_000) return null;
+
   return `${formatAmount(milliToAmount(amountMilli))} ${unit}`;
 }
 

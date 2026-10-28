@@ -78,7 +78,7 @@ export const listProductsImpl = os.handler(async ({ input, context }) => {
         categories: await db.orm.public.Category.where({ tenantId: store.tenantId })
           .select("id", "name")
           .all(),
-        links: await db.orm.public.CategoryDepartment.all(),
+        links: await db.orm.public.CategoryDepartment.where({ tenantId: store.tenantId }).all(),
         departments: await db.orm.public.Department.where({ tenantId: store.tenantId })
           .select("id", "name")
           .all(),

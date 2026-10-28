@@ -2,8 +2,10 @@
 
 import type { ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   CircleCheck,
   CircleSlash,
   FolderInput,
@@ -142,7 +144,17 @@ function stockLabel(product: PanelProductList): string | null {
 type ProductView = "table" | "grid" | "tree";
 
 /** Departments > categories > subcategories > products, for the tree view. */
-function buildProductTree(products: PanelProductList[]): FileTreeItem[] {
+function buildProductTree(
+  products: PanelProductList[],
+  options?: {
+    onMove?: (
+      product: PanelProductList,
+      direction: "up" | "down",
+      siblings: PanelProductList[],
+    ) => void;
+    disabled?: boolean;
+  },
+): FileTreeItem[] {
   const departments = new Map<
     string,
     {
@@ -216,16 +228,71 @@ function buildProductTree(products: PanelProductList[]): FileTreeItem[] {
           a.name.localeCompare(b.name, "pt-BR"),
         )) {
           productCount += subcategory.products.length;
+
+          const sorted = [...subcategory.products].sort(
+            (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "pt-BR"),
+          );
+
           subcategories.push({
             id: subcategory.id,
             name: subcategory.name,
             type: "folder",
             badge: subcategory.products.length,
-            children: subcategory.products.map((product) => ({
+            children: sorted.map((product, idx) => ({
               id: `product:${product.id}`,
               name: product.name,
               type: "file",
-              badge: product.available ? undefined : "Inativo",
+              badge: (
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground tabular-nums"
+                    title={`Ordem no cardápio: ${product.sortOrder}`}
+                  >
+                    #{product.sortOrder}
+                  </span>
+                  {options?.onMove ? (
+                    <div className="flex items-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="size-5 text-muted-foreground hover:text-foreground"
+                        disabled={idx === 0 || options.disabled}
+                        title="Mover para cima"
+                        aria-label={`Mover ${product.name} para cima`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          options.onMove?.(product, "up", sorted);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <ArrowUp data-icon />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="size-5 text-muted-foreground hover:text-foreground"
+                        disabled={idx === sorted.length - 1 || options.disabled}
+                        title="Mover para baixo"
+                        aria-label={`Mover ${product.name} para baixo`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          options.onMove?.(product, "down", sorted);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        <ArrowDown data-icon />
+                      </Button>
+                    </div>
+                  ) : null}
+                  {product.available ? null : (
+                    <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                      Inativo
+                    </Badge>
+                  )}
+                </div>
+              ),
             })),
           });
         }
@@ -412,7 +479,59 @@ export function ProductsTable({
     );
   };
 
-  const treeItems = useMemo(() => buildProductTree(products), [products]);
+  const reorderMutation = useMutation({
+    mutationFn: ({ productId, sortOrder }: { productId: string; sortOrder: number }) =>
+      client().panel.updateProduct({ storeSlug, productId, sortOrder }),
+    onSuccess: () => {
+      setBulkError(null);
+      router.refresh();
+    },
+    onError: (error) => setBulkError(bulkMessage(error)),
+  });
+
+  const handleReorder = useCallback(
+    async (product: PanelProductList, direction: "up" | "down", siblings: PanelProductList[]) => {
+      const idx = siblings.findIndex((p) => p.id === product.id);
+
+      if (idx === -1) return;
+
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+
+      if (targetIdx < 0 || targetIdx >= siblings.length) return;
+
+      const target = siblings[targetIdx];
+
+      if (!target) return;
+
+      if (product.sortOrder !== target.sortOrder) {
+        await Promise.all([
+          reorderMutation.mutateAsync({ productId: product.id, sortOrder: target.sortOrder }),
+          reorderMutation.mutateAsync({ productId: target.id, sortOrder: product.sortOrder }),
+        ]);
+      } else {
+        const reindexed = [...siblings];
+        reindexed.splice(idx, 1);
+        reindexed.splice(targetIdx, 0, product);
+        await Promise.all(
+          reindexed.map((item, order) =>
+            item.sortOrder !== order
+              ? reorderMutation.mutateAsync({ productId: item.id, sortOrder: order })
+              : Promise.resolve(),
+          ),
+        );
+      }
+    },
+    [reorderMutation],
+  );
+
+  const treeItems = useMemo(
+    () =>
+      buildProductTree(products, {
+        onMove: (product, direction, siblings) => void handleReorder(product, direction, siblings),
+        disabled: reorderMutation.isPending,
+      }),
+    [products, handleReorder, reorderMutation.isPending],
+  );
 
   const openBulkDialog = (next: Exclude<BulkDialog, null>) => {
     setBulkError(null);
@@ -1085,7 +1204,8 @@ export function ProductsTable({
           <CardHeader>
             <CardTitle>Catálogo por departamento</CardTitle>
             <CardDescription>
-              Departamentos → categorias → subcategorias → produtos.
+              Departamentos → categorias → subcategorias → produtos. Use as setas para ordenar
+              produtos dentro da categoria.
             </CardDescription>
           </CardHeader>
           <CardContent>

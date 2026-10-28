@@ -596,7 +596,7 @@ function ProductFields({
         <FieldGroup className="grid gap-4 lg:grid-cols-2">
           <form.Field name="name">
             {(field: any) => (
-              <Field data-invalid={fieldInvalid(field, submitted)}>
+              <Field data-invalid={fieldInvalid(field, submitted)} className="lg:col-span-2">
                 <FieldLabel htmlFor={field.name}>Nome</FieldLabel>
                 <Input
                   id={field.name}
@@ -610,32 +610,6 @@ function ProductFields({
                 />
                 <FieldDescription id={`${field.name}-description`}>
                   Até 120 caracteres.
-                </FieldDescription>
-                {fieldError(field, field.name, submitted)}
-              </Field>
-            )}
-          </form.Field>
-
-          <form.Field name="sortOrder">
-            {(field: any) => (
-              <Field data-invalid={fieldInvalid(field, submitted)}>
-                <FieldLabel htmlFor={field.name}>Ordem</FieldLabel>
-                <Input
-                  id={field.name}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={maskIntegerInput(String(field.state.value))}
-                  aria-invalid={fieldInvalid(field, submitted)}
-                  aria-describedby={fieldDescribedBy(field, field.name, submitted)}
-                  onChange={(event) => {
-                    const digits = event.target.value.replace(/\D/g, "");
-                    field.handleChange(digits === "" ? 0 : Number(digits));
-                  }}
-                  onBlur={field.handleBlur}
-                />
-                <FieldDescription id={`${field.name}-description`}>
-                  Menor número aparece primeiro na listagem.
                 </FieldDescription>
                 {fieldError(field, field.name, submitted)}
               </Field>
