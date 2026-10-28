@@ -47,6 +47,7 @@ Defined once in `packages/shared/src/nutrition/nutrients.ts` and `label.ts`:
 
 - **Vertical:** all constituents, with 100 g/mL, the declared portion and `%VD`.
 - **Simplified (Anexo X):** non-significant constituents leave the grid and are named in the sentence below it ("Não contém quantidades significativas de …"). If every constituent is non-significant, only the sentence is rendered.
+- **Redundant portion rule (RDC 429 Art. 9º):** when the declared portion is 100 g (or 100 mL), the second column is omitted so the table does not display duplicate 100 g columns.
 - Horizontal, broken, linear and aggregate models are **not** implemented.
 
 ## UI

@@ -187,6 +187,23 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   - Product search matches name, description, SEO title/description, variation
     names, category, department and tags (`product-filter.ts`); the list payload
     carries those fields so filtering stays server-side and request-free.
+  - **`sortOrder` is edited in the tree view, not the product form.** The Produto
+    tab no longer renders an "Ordem" input; in `view=tree`, `products-table.tsx`
+    renders up/down arrows per product inside its category and writes `sortOrder`
+    through `panel.updateProduct`. The tree sorts by `sortOrder` asc → name.
+  - **The SEO tab is form-left / preview-right.** `_components/seo-form.tsx` is a
+    two-column grid at `lg`; `_components/seo-preview-card.tsx` is `lg:sticky
+    lg:top-20 lg:self-start` (below the form on mobile, same as the nutrition tab).
+    Its three modes are Google search snippet, social/Open Graph card and JSON-LD;
+    the preview reads the live form values, not the saved row.
+  - **The JSON-LD editor is a transparent textarea over a TanStack Highlight
+    `<pre>`.** `json-ld-editor.tsx` + `json-ld-code.ts` share one class
+    (`json-ld-editor-shared`) that pins font, padding, `line-height` and
+    `white-space: pre-wrap` on both layers — change the metrics in one place or the
+    caret drifts from the glyphs. The highlighter returns a full `<pre><code>`
+    document, so `extractHighlightedCode` unwraps it; do not nest a second `<pre>`.
+    Long lines wrap (auto-wrap) and the textarea's `scrollTop`/`scrollLeft` are
+    mirrored onto the `<pre>` on scroll, type and Tab.
 - `settings/account` (password change + active sessions with revocation) and
   `settings/team` (read-only member/role list) are live, both added by MEN-225.
   The `account.*` procedures are **member-level** — they take no `storeSlug` —

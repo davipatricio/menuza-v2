@@ -190,6 +190,13 @@ describe("views and completeness", () => {
     expect(sodium?.percentDv).toBe(21);
   });
 
+  test("100 g portion hides duplicate column", () => {
+    const label = buildNutritionLabel({ ...base, portionMilli: 100_000 });
+
+    expect(label.columns.view).toBeNull();
+    expect(label.official).toBe(true);
+  });
+
   test("custom amount is a simulation and says so", () => {
     const label = buildNutritionLabel(base, { mode: "custom", amountMilli: 300_000 });
     const sodium = label.rows.find((row) => row.key === "sodiumMg");
