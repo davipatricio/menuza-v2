@@ -32,21 +32,26 @@ interface UrlParts {
   path: string;
 }
 
+const PLACEHOLDER_ORIGIN = "https://sualoja.menuza.app";
+
+/** `/menu/<id>` é o padrão do editor: caminho sem host, nunca um host chamado "menu". */
+function pathLabel(segments: string[]): string {
+  return segments.length > 0 ? ` › ${segments.join(" › ")}` : "";
+}
+
 function parseUrlParts(raw: string | null): UrlParts {
   if (!raw) return { domain: "sualoja.menuza.app", path: "" };
 
+  // Root-relative values resolve against a placeholder origin, so `/menu/x`
+  // stays a path instead of turning "menu" into a hostname.
   try {
-    const parsed = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-    const domain = parsed.hostname.replace(/^www\./, "");
-    const segments = parsed.pathname.split("/").filter(Boolean);
-    const path = segments.length > 0 ? ` › ${segments.join(" › ")}` : "";
+    const parsed = new URL(raw, PLACEHOLDER_ORIGIN);
+    const isPlaceholder = parsed.origin === PLACEHOLDER_ORIGIN;
+    const domain = isPlaceholder ? "sualoja.menuza.app" : parsed.hostname.replace(/^www\./, "");
 
-    return { domain, path };
+    return { domain, path: pathLabel(parsed.pathname.split("/").filter(Boolean)) };
   } catch {
-    const trimmed = raw.startsWith("/") ? raw.slice(1) : raw;
-    const path = trimmed ? ` › ${trimmed.replaceAll("/", " › ")}` : "";
-
-    return { domain: "sualoja.menuza.app", path };
+    return { domain: "sualoja.menuza.app", path: "" };
   }
 }
 

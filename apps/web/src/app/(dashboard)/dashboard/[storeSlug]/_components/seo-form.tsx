@@ -297,17 +297,30 @@ export function SeoForm({
   const sourceNote = (name: keyof SeoFields, source: SeoSource) =>
     loaded[name] === null ? SOURCE_LABELS[source] : "Definido aqui";
 
+  /**
+   * O que a página vai publicar. Campo limpo (`null`) volta a herdar, mas
+   * `resolved` ainda carrega o override salvo — ele só serve de fallback quando
+   * não havia nada gravado para limpar. Sem isso, apagar o título continuaria
+   * mostrando o título antigo na prévia.
+   */
+  const published = (name: keyof SeoFields): string | null => {
+    const value = formValues[name];
+
+    if (value !== null && value !== "") return value;
+
+    return loaded[name] === null ? resolved[name] : null;
+  };
+
   const effectiveJson =
     formValues.jsonLd && formValues.jsonLd.trim() !== "" ? formValues.jsonLd : suggestedJson;
 
-  const effectiveTitle = formValues.title || resolved.title;
+  const effectiveTitle = published("title");
 
-  const effectiveDescription = formValues.description || resolved.description;
+  const effectiveDescription = published("description");
 
-  const effectiveUrl =
-    formValues.canonicalUrl || resolved.canonicalUrl || previewContext?.url || `/menu/${entityId}`;
+  const effectiveUrl = published("canonicalUrl") ?? previewContext?.url ?? `/menu/${entityId}`;
 
-  const effectiveSocialImageUrl = formValues.socialImageUrl || resolved.socialImageUrl;
+  const effectiveSocialImageUrl = published("socialImageUrl");
 
   return (
     <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">

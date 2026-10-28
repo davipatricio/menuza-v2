@@ -264,6 +264,7 @@ function buildProductTree(
                           event.stopPropagation();
                           options.onMove?.(product, "up", sorted);
                         }}
+                        onKeyDown={(event) => event.stopPropagation()}
                       >
                         <ArrowUp data-icon />
                       </Button>
@@ -279,6 +280,7 @@ function buildProductTree(
                           event.stopPropagation();
                           options.onMove?.(product, "down", sorted);
                         }}
+                        onKeyDown={(event) => event.stopPropagation()}
                       >
                         <ArrowDown data-icon />
                       </Button>
