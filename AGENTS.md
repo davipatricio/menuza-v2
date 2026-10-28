@@ -15,6 +15,7 @@
 - Shared server and auth/tenant procedure plumbing in `@menuza/orpc-server` (`/fetch`, `/tenant`, `/auth`, `/internal`).
 - Browser-side offline support directly in `apps/web/src/offline` (IndexedDB persister, mutation queue, Background Sync drain).
 - Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based, owns async tenant scoping).
+- Pagar.me client and webhook adapter in `@menuza/pagarme-api-client` (outbound transport, credential parsing, webhook validation).
 - One BullMQ worker process (`apps/worker`).
 - Local infrastructure: Postgres + Redis + Jaeger via Podman Compose (`infra/compose.yaml`).
 

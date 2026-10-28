@@ -18,6 +18,7 @@
   "dependencies": {
     "@menuza/db": "workspace:*",
     "@menuza/orpc-server": "workspace:*",
+    "@menuza/pagarme-api-client": "workspace:*",
     "@menuza/shared": "workspace:*",
     "@orpc/server": "catalog:",
     "valibot": "catalog:"

@@ -74,13 +74,16 @@ const ALLOWED_WORKSPACES = new Set([
   "packages/db",
   "packages/api-commerce",
   "packages/api-tenant",
+  "packages/pagarme-api-client",
 ]);
 
 for (const ws of workspaces) {
   const normalizedWs = ws.replace(/\\/g, "/");
 
   if (!ALLOWED_WORKSPACES.has(normalizedWs)) {
-    problems.push(`unrecognized workspace "${ws}". Do not create micro-packages without explicit approval`);
+    problems.push(
+      `unrecognized workspace "${ws}". Do not create micro-packages without explicit approval`,
+    );
   }
 }
 

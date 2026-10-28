@@ -21,6 +21,8 @@
         "@menuza/api-commerce": "workspace:*",
         "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
+        "@menuza/shared": "workspace:*",
+        "bullmq": "catalog:",
       },
       "devDependencies": {
         "@oxlint/plugins": "catalog:",
@@ -160,7 +162,7 @@
         "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
         "@menuza/shared": "workspace:*",
-        "bullmq": "6.3.14",
+        "bullmq": "catalog:",
         "bullmq-otel": "2.0.1",
         "web-push": "3.6.7",
       },
@@ -180,6 +182,7 @@
       "dependencies": {
         "@menuza/db": "workspace:*",
         "@menuza/orpc-server": "workspace:*",
+        "@menuza/pagarme-api-client": "workspace:*",
         "@menuza/shared": "workspace:*",
         "@orpc/server": "catalog:",
         "valibot": "catalog:",
@@ -230,6 +233,21 @@
         "typescript": "catalog:",
       },
     },
+    "packages/pagarme-api-client": {
+      "name": "@menuza/pagarme-api-client",
+      "version": "0.0.0",
+      "dependencies": {
+        "valibot": "catalog:",
+      },
+      "devDependencies": {
+        "@oxlint/plugins": "catalog:",
+        "@types/node": "catalog:",
+        "bun-types": "catalog:",
+        "oxfmt": "catalog:",
+        "oxlint": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/shared": {
       "name": "@menuza/shared",
       "version": "0.0.0",
@@ -254,6 +272,7 @@
     "@orpc/server": "2.0.0-beta.35",
     "@oxlint/plugins": "1.88.0",
     "@types/node": "26.6.5",
+    "bullmq": "6.3.14",
     "bun-types": "1.4.3",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
@@ -640,6 +659,8 @@
     "@menuza/db": ["@menuza/db@workspace:packages/db"],
 
     "@menuza/orpc-server": ["@menuza/orpc-server@workspace:apps/orpc-server"],
+
+    "@menuza/pagarme-api-client": ["@menuza/pagarme-api-client@workspace:packages/pagarme-api-client"],
 
     "@menuza/shared": ["@menuza/shared@workspace:packages/shared"],
 

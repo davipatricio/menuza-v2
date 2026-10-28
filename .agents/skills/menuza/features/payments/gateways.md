@@ -41,12 +41,14 @@
   is no fallback between providers of the same method. A method bound to the `offline`
   provider creates the order with no expiry window (the store reconciles it); anything else
   keeps the 24 h window.
-- **Pagar.me adapter and callback** —
-  `packages/api-commerce/src/domains/commerce/subdomains/payments/`: `pagarme.ts` (payload
-  parsing, event → action, Basic-auth check, the outbound client), `receive.ts` (authenticate,
-  record, enqueue), `applyGatewayEvent.impl.ts` (apply to the order). The producer is
-  `apps/commerce/src/payment-webhook.ts` (plain route, own redacted log — the token is in the
-  URL); the drain is `apps/worker/src/payment-events.ts`.
+- **Pagar.me client and callback** —
+  `@menuza/pagarme-api-client` (`packages/pagarme-api-client/`) owns the Core API v5
+  outbound transport (`pagarMeRequest`), credential parsing, webhook envelope decoding,
+  Basic-auth verification, and event → action mapping (re-exported by
+  `packages/api-commerce/src/domains/commerce/subdomains/payments/pagarme.ts`). The receiver
+  is `receive.ts` (authenticate, record, enqueue) and `applyGatewayEvent.impl.ts` (apply to the
+  order). The producer is `apps/commerce/src/payment-webhook.ts` (plain route, own redacted
+  log — the token is in the URL); the drain is `apps/worker/src/payment-events.ts`.
 - **Only `paid` moves an order.** Declines are recorded and leave the order awaiting (retry is
   allowed), and refunds, chargebacks and provider cancellations are recorded and ignored —
   those touch stock and wallet money the store owns through the panel.
