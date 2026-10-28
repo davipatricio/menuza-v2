@@ -6,6 +6,7 @@ import {
   exchangeAuthorizationCode,
   getOAuthServerMetadata,
   issueAuthorizationCode,
+  resolveRequestedScopes,
   revokeOAuthToken,
   validateOAuthToken,
   verifyPkce,
@@ -77,20 +78,19 @@ function createOAuthDb(options?: { clientId?: string; redirectUris?: string[] })
                   (filter.id ? c.id === filter.id : true) &&
                   (filter.codeHash ? c.codeHash === filter.codeHash : true),
               ) ?? null,
-            deleteAll: async () => {
+            // Mirrors the real terminal: the count IS the compare-and-swap.
+            deleteAndCount: async () => {
               const idx = authCodes.findIndex(
                 (c) =>
                   (filter.id ? c.id === filter.id : true) &&
                   (filter.codeHash ? c.codeHash === filter.codeHash : true),
               );
 
-              if (idx !== -1) {
-                authCodes.splice(idx, 1);
+              if (idx === -1) return 0;
 
-                return { count: 1 };
-              }
+              authCodes.splice(idx, 1);
 
-              return { count: 0 };
+              return 1;
             },
           }),
           create: async (data: FakeAuthCodeRow) => {
@@ -228,6 +228,66 @@ describe("OAuth 2.1 PKCE Flow — Unit", () => {
     ).rejects.toThrow("Invalid PKCE code_verifier");
   });
 
+  test("a wrong verifier does not burn the code", async () => {
+    const { db, authCodes } = createOAuthDb();
+    const verifier = randomBytes(32).toString("base64url");
+    const codeChallenge = createHash("sha256").update(verifier).digest("base64url");
+
+    const code = await issueAuthorizationCode({
+      clientId: "test-client",
+      memberId: "member-123",
+      codeChallenge,
+      tenantIds: ["tenant-abc"],
+      scopes: ["admin"],
+      redirectUri: "http://localhost:8080/callback",
+      db,
+    });
+
+    await expect(
+      exchangeAuthorizationCode({ code, verifier: "wrong", clientId: "test-client", db }),
+    ).rejects.toThrow("Invalid PKCE code_verifier");
+
+    // Validation runs before consumption, so the real client can still redeem.
+    expect(authCodes).toHaveLength(1);
+
+    const result = await exchangeAuthorizationCode({
+      code,
+      verifier,
+      clientId: "test-client",
+      db,
+    });
+
+    expect(result.accessToken).toBeDefined();
+  });
+
+  test("concurrent exchanges of one code mint exactly one token", async () => {
+    const { db, tokens } = createOAuthDb();
+    const verifier = randomBytes(32).toString("base64url");
+    const codeChallenge = createHash("sha256").update(verifier).digest("base64url");
+
+    const code = await issueAuthorizationCode({
+      clientId: "test-client",
+      memberId: "member-123",
+      codeChallenge,
+      tenantIds: ["tenant-abc"],
+      scopes: ["admin"],
+      redirectUri: "http://localhost:8080/callback",
+      db,
+    });
+
+    // Both requests read the row before either deletes it; only the delete that
+    // removes the row may proceed, so one of them must fail.
+    const results = await Promise.allSettled([
+      exchangeAuthorizationCode({ code, verifier, clientId: "test-client", db }),
+      exchangeAuthorizationCode({ code, verifier, clientId: "test-client", db }),
+    ]);
+
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+
+    expect(fulfilled).toHaveLength(1);
+    expect(tokens).toHaveLength(1);
+  });
+
   test("validateOAuthToken validates active token, ignores revoked or expired", async () => {
     const { db } = createOAuthDb();
     const verifier = randomBytes(32).toString("base64url");
@@ -260,6 +320,35 @@ describe("OAuth 2.1 PKCE Flow — Unit", () => {
     await revokeOAuthToken(accessToken, { db });
     const afterRevoke = await validateOAuthToken(accessToken, { db });
     expect(afterRevoke).toBeNull();
+  });
+
+  test("a scope this server cannot enforce is refused, not stored", async () => {
+    const { db, authCodes, tokens } = createOAuthDb();
+    const verifier = randomBytes(32).toString("base64url");
+    const codeChallenge = createHash("sha256").update(verifier).digest("base64url");
+
+    // `orders:read` is a capability name, not a scope: storing it would imply a
+    // narrowing the panel never applies, so a token could still write.
+    await expect(
+      issueAuthorizationCode({
+        clientId: "test-client",
+        memberId: "member-123",
+        codeChallenge,
+        tenantIds: ["tenant-abc"],
+        scopes: ["orders:read"],
+        redirectUri: "http://localhost:8080/callback",
+        db,
+      }),
+    ).rejects.toThrow("Unsupported scope: orders:read");
+
+    expect(authCodes).toHaveLength(0);
+    expect(tokens).toHaveLength(0);
+  });
+
+  test("an omitted scope list resolves to admin", async () => {
+    expect(resolveRequestedScopes(undefined)).toEqual(["admin"]);
+    expect(resolveRequestedScopes([])).toEqual(["admin"]);
+    expect(resolveRequestedScopes(["admin"])).toEqual(["admin"]);
   });
 
   test("an unregistered client cannot start a flow", async () => {

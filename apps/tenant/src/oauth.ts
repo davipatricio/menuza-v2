@@ -257,18 +257,17 @@ async function handleAuthorize(req: Request): Promise<Response> {
       codeChallenge: params.codeChallenge,
       codeChallengeMethod: params.codeChallengeMethod,
       tenantIds: validTenantIds,
-      scopes: params.scopes && params.scopes.length > 0 ? params.scopes : ["admin"],
+      scopes: params.scopes,
       redirectUri: params.redirectUri,
     });
   } catch (error) {
-    // An unregistered client or a URI it never registered. Answer as a plain
-    // error with NO redirect: the whole point of the check is that this URI is
-    // not one the client proved it owns.
+    // An unregistered client, a URI it never registered, or a scope this server
+    // cannot honour. Answer as a plain error with NO redirect: the whole point
+    // of the checks is that this request did not prove it is safe to redirect.
     return Response.json(
       {
         error: "invalid_request",
-        error_description:
-          error instanceof Error ? error.message : "Client or redirect URI not registered",
+        error_description: error instanceof Error ? error.message : "Authorization refused",
       },
       { status: 400, headers: { "Access-Control-Allow-Origin": "*" } },
     );

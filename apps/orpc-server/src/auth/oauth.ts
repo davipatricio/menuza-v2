@@ -4,6 +4,50 @@ import { hashSessionToken } from "./session.ts";
 
 export const DEFAULT_AUTH_CODE_TTL_SECONDS = 10 * 60; // 10 minutes
 
+/**
+ * The scopes this server actually grants. `admin` is the whole grant: what a
+ * token may do inside the stores it was given is decided per call by the
+ * member's role and the `TENANT_CAPABILITIES` map, not by a scope string. So
+ * there is nothing finer to promise — and a token claiming `orders:read` would
+ * still reach `product_create` if that claim were treated as a grant, which is
+ * exactly the mismatch that must not exist.
+ */
+export const SUPPORTED_OAUTH_SCOPES = ["admin"] as const;
+
+export type OAuthScope = (typeof SUPPORTED_OAUTH_SCOPES)[number];
+
+/**
+ * Narrows a requested scope list to the supported set, rejecting anything else
+ * rather than silently dropping it. An omitted request means `admin`.
+ */
+export function resolveRequestedScopes(requested: readonly string[] | undefined): OAuthScope[] {
+  if (!requested || requested.length === 0) return ["admin"];
+
+  // `isOAuthScope` is the narrowing itself: every value that reaches `accepted`
+  // has been checked against the supported list, so no cast is needed after it.
+  const accepted: OAuthScope[] = [];
+  const unsupported: string[] = [];
+
+  for (const scope of requested) {
+    if (isOAuthScope(scope)) {
+      if (!accepted.includes(scope)) accepted.push(scope);
+    } else {
+      unsupported.push(scope);
+    }
+  }
+
+  if (unsupported.length > 0) {
+    throw new Error(`Unsupported scope: ${unsupported.join(", ")}`);
+  }
+
+  return accepted;
+}
+
+/** Narrows a stored or requested scope string to the supported set. */
+export function isOAuthScope(value: string): value is OAuthScope {
+  return SUPPORTED_OAUTH_SCOPES.some((scope) => scope === value);
+}
+
 export const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 /**
@@ -30,7 +74,8 @@ export interface IssueAuthorizationCodeOptions {
   codeChallenge: string;
   codeChallengeMethod?: string;
   tenantIds: readonly string[];
-  scopes: readonly string[];
+  /** Omitted means `admin`; anything outside `SUPPORTED_OAUTH_SCOPES` is refused. */
+  scopes?: readonly string[];
   redirectUri: string;
   ttlSeconds?: number;
   db?: Db;
@@ -142,6 +187,10 @@ export async function issueAuthorizationCode(
   const now = Temporal.Now.zonedDateTimeISO("UTC");
   const expiresAt = now.add({ seconds: ttl }).toPlainDateTime();
 
+  // Refused here, at the request that asks for them: a stored scope this
+  // server cannot honour must never reach a token row.
+  const scopes = resolveRequestedScopes(options.scopes);
+
   await requireOAuthClient(options.clientId, options.redirectUri, { db: client });
 
   await unscoped(() =>
@@ -153,7 +202,7 @@ export async function issueAuthorizationCode(
       codeChallenge: options.codeChallenge,
       codeChallengeMethod: options.codeChallengeMethod ?? "S256",
       tenantIds: [...options.tenantIds],
-      scopes: [...options.scopes],
+      scopes,
       redirectUri: options.redirectUri,
       expiresAt,
     }),
@@ -179,9 +228,8 @@ export async function exchangeAuthorizationCode(
     throw new Error("Invalid or expired authorization code");
   }
 
-  // Delete code immediately to prevent replay (single use)
-  await unscoped(() => client.orm.public.OAuthAuthCode.where({ id: authCode.id }).deleteAll());
-
+  // Validate before consuming: a wrong-verifier attempt must not burn the
+  // code, or a single typo would force the user through consent again.
   if (authCode.clientId !== options.clientId) {
     throw new Error("Client ID mismatch");
   }
@@ -198,6 +246,18 @@ export async function exchangeAuthorizationCode(
 
   if (!verifyPkce(options.verifier, authCode.codeChallenge, authCode.codeChallengeMethod)) {
     throw new Error("Invalid PKCE code_verifier");
+  }
+
+  // Consume the code atomically and stop unless this request was the one that
+  // removed it. A read-then-delete would let two overlapping exchanges both
+  // pass the checks above and each mint a token from one supposedly
+  // single-use code; the row count is the compare-and-swap.
+  const consumed = await unscoped(() =>
+    client.orm.public.OAuthAuthCode.where({ id: authCode.id }).deleteAndCount(),
+  );
+
+  if (consumed !== 1) {
+    throw new Error("Authorization code already used");
   }
 
   const rawAccessToken = randomBytes(32).toString("base64url");
@@ -290,6 +350,6 @@ export function getOAuthServerMetadata(origin: string) {
     code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: ["none"],
     grant_types_supported: ["authorization_code"],
-    scopes_supported: ["admin"],
+    scopes_supported: [...SUPPORTED_OAUTH_SCOPES],
   };
 }
