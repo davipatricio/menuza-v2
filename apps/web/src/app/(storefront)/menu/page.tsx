@@ -90,6 +90,20 @@ function ProductCard({ product }: { product: MenuProduct }) {
             sizes="(min-width: 640px) 50vw, 100vw"
             className="object-cover"
           />
+          {product.badges.length > 0 ? (
+            <div className="pointer-events-none absolute start-2 top-2 z-10 flex flex-wrap items-center gap-1">
+              {product.badges.map((badge) => (
+                // eslint-disable-next-line nextjs/no-img-element -- badge images are arbitrary tenant URLs, outside the next/image allowlist
+                <img
+                  key={badge.id}
+                  src={badge.imageUrl}
+                  alt={badge.name}
+                  loading="lazy"
+                  className="h-6 w-auto max-w-20 object-contain drop-shadow-sm"
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

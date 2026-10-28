@@ -259,6 +259,26 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/tags/{tagId}",
   },
   {
+    procedure: tenantContractObject.panel.listBadges,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/badges",
+  },
+  {
+    procedure: tenantContractObject.panel.createBadge,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/badges",
+  },
+  {
+    procedure: tenantContractObject.panel.updateBadge,
+    method: "put",
+    path: "/panel/stores/{storeSlug}/badges/{badgeId}",
+  },
+  {
+    procedure: tenantContractObject.panel.deleteBadge,
+    method: "delete",
+    path: "/panel/stores/{storeSlug}/badges/{badgeId}",
+  },
+  {
     procedure: tenantContractObject.panel.listKits,
     method: "get",
     path: "/panel/stores/{storeSlug}/kits",

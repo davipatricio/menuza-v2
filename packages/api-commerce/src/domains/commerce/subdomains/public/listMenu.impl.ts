@@ -50,6 +50,11 @@ export const listMenuImpl = os.public.listMenu
           .include("tags", (productTag) =>
             productTag.include("tag", (tag) => tag.select("name", "isActive")),
           )
+          .include("badges", (productBadge) =>
+            productBadge.include("badge", (badge) =>
+              badge.where({ isActive: true }).select("id", "name", "imageUrl", "sortOrder"),
+            ),
+          )
           .orderBy((product) => product.sortOrder.asc())
           .orderBy((product) => product.name.asc())
           .all(),

@@ -36,6 +36,9 @@ export function loadProduct(tx: CatalogTx, tenantId: string, productId: string) 
           ),
       )
       .include("tags", (productTag) => productTag.include("tag", (tag) => tag.select("id", "name")))
+      .include("badges", (productBadge) =>
+        productBadge.include("badge", (badge) => badge.select("id", "name", "imageUrl")),
+      )
       .include("variations", (variation) =>
         variation
           .select("id", "name", "priceCents", "stockMode", "stockQty")
@@ -78,6 +81,21 @@ export type ProductWithRelations = NonNullable<Awaited<ReturnType<typeof loadPro
 function tagsOf(product: ProductWithRelations): { id: string; name: string }[] {
   return (product.tags ?? []).flatMap((entry) =>
     entry.tag === null ? [] : [{ id: entry.tag.id, name: entry.tag.name }],
+  );
+}
+
+/**
+ * Drops the joins whose badge row is gone (a to-one include answers `null`).
+ * Takes the join list rather than the product, so `listProducts` — whose row
+ * type differs from the detail's — can reuse it.
+ */
+export function badgesOf(
+  joins: readonly { badge: { id: string; name: string; imageUrl: string } | null }[] | undefined,
+): { id: string; name: string; imageUrl: string }[] {
+  return (joins ?? []).flatMap((entry) =>
+    entry.badge === null
+      ? []
+      : [{ id: entry.badge.id, name: entry.badge.name, imageUrl: entry.badge.imageUrl }],
   );
 }
 
@@ -160,6 +178,7 @@ export function toProductDetail(product: ProductWithRelations): PanelProductDeta
     departmentIds: departments.map((department) => department.id),
     departmentNames: departments.map((department) => department.name),
     tags: tagsOf(product),
+    badges: badgesOf(product.badges),
     priceCents: priceOf(variations),
     available: product.available,
     archived: product.archived,
@@ -216,6 +235,7 @@ export async function assertOwnedIds(
   input: {
     subcategoryId?: string | null;
     tagIds?: readonly string[];
+    badgeIds?: readonly string[];
   },
 ): Promise<void> {
   if (input.subcategoryId !== null && input.subcategoryId !== undefined) {
@@ -231,5 +251,11 @@ export async function assertOwnedIds(
     const tag = await tx.orm.public.Tag.where({ tenantId, id: tagId }).first();
 
     if (!tag) throw notFound();
+  }
+
+  for (const badgeId of new Set(input.badgeIds ?? [])) {
+    const badge = await tx.orm.public.Badge.where({ tenantId, id: badgeId }).first();
+
+    if (!badge) throw notFound();
   }
 }

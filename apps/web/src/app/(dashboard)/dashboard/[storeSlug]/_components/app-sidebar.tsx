@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Award,
   Boxes,
   ChevronRight,
   FolderTree,
@@ -219,6 +220,7 @@ export function AppSidebar({
         { href: `${basePath}/catalog/categories`, label: "Categorias", icon: FolderTree },
         { href: `${basePath}/catalog/subcategories`, label: "Subcategorias", icon: ListTree },
         { href: `${basePath}/catalog/tags`, label: "Tags", icon: Tag },
+        { href: `${basePath}/catalog/badges`, label: "Etiquetas", icon: Award },
       ],
     },
     {

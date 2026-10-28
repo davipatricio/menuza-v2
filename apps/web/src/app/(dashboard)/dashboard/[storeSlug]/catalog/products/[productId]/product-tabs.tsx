@@ -25,12 +25,14 @@ export function ProductTabs({
   seo,
   subcategories,
   tags,
+  badges,
 }: {
   storeSlug: string;
   product: PanelProductDetail;
   seo: PanelSeo;
   subcategories: SubcategoryOption[];
   tags: Array<{ id: string; name: string }>;
+  badges: Array<{ id: string; name: string }>;
 }) {
   const [tab, setTab] = useQueryState(
     "tab",
@@ -96,6 +98,7 @@ export function ProductTabs({
               product={product}
               subcategories={subcategories}
               tags={tags}
+              badges={badges}
             />
           </TabsContent>
 

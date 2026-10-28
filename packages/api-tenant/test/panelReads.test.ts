@@ -21,6 +21,7 @@ import { listProductsImpl } from "../src/domains/tenant/subdomains/panel/listPro
 import { listCategoriesImpl } from "../src/domains/tenant/subdomains/panel/listCategories.impl.ts";
 import { listCouponsImpl } from "../src/domains/tenant/subdomains/panel/listCoupons.impl.ts";
 import { listAuditLogsImpl } from "../src/domains/tenant/subdomains/panel/listAuditLogs.impl.ts";
+import { listBadgesImpl } from "../src/domains/tenant/subdomains/panel/listBadges.impl.ts";
 
 interface MemberRow {
   id: string;
@@ -220,6 +221,26 @@ const coupons: CouponRow[] = [];
 
 const auditLogs: AuditLogRow[] = [];
 
+interface BadgeRow {
+  id: string;
+  tenantId: string;
+  name: string;
+  imageUrl: string;
+  sortOrder: number;
+  isActive: boolean;
+  updatedAt: Temporal.PlainDateTime;
+}
+
+interface ProductBadgeRow {
+  tenantId: string;
+  productId: string;
+  badgeId: string;
+}
+
+const badges: BadgeRow[] = [];
+
+const productBadges: ProductBadgeRow[] = [];
+
 // SAFETY: Captured once, before `installFakes` overwrites the model accessors;
 // the query builders are read back verbatim on restore.
 const originals = {
@@ -241,6 +262,8 @@ const originals = {
   categoryDepartmentAll: db.orm.public.CategoryDepartment.all,
   couponWhere: db.orm.public.Coupon.where,
   auditWhere: db.orm.public.AuditLog.where,
+  badgeWhere: db.orm.public.Badge.where,
+  productBadgeWhere: db.orm.public.ProductBadge.where,
 };
 
 // SAFETY: Distinct random ids, so no fixture can collide with another's row.
@@ -255,6 +278,8 @@ const OTHER_TENANT_ID = randomUUID();
 const CUSTOMER_ID = randomUUID();
 
 const OTHER_CUSTOMER_ID = randomUUID();
+
+const BADGE_ID = randomUUID();
 
 const COOKIE_NAME = "menuza_tenant_sid";
 
@@ -407,6 +432,11 @@ function installFakes() {
         variations: variations.filter(
           (v) => v.tenantId === filter.tenantId && v.productId === product.id,
         ),
+        badges: productBadges.flatMap((link) =>
+          link.tenantId === filter.tenantId && link.productId === product.id
+            ? [{ badge: badges.find((badge) => badge.id === link.badgeId) ?? null }]
+            : [],
+        ),
       }));
 
     return {
@@ -465,6 +495,13 @@ function installFakes() {
   // SAFETY: Mocking AuditLog.where; the panel orders by createdAt.
   db.orm.public.AuditLog.where = ((filter: TenantFilter) =>
     rows(byTenant(auditLogs, filter))) as any;
+
+  // SAFETY: Mocking Badge.where; the panel orders by sortOrder and name.
+  db.orm.public.Badge.where = ((filter: TenantFilter) => rows(byTenant(badges, filter))) as any;
+
+  // SAFETY: Mocking ProductBadge.where; the panel counts items.
+  db.orm.public.ProductBadge.where = ((filter: TenantFilter) =>
+    rows(byTenant(productBadges, filter))) as any;
 }
 
 function restoreFakes() {
@@ -486,6 +523,8 @@ function restoreFakes() {
   db.orm.public.CategoryDepartment.all = originals.categoryDepartmentAll;
   db.orm.public.Coupon.where = originals.couponWhere;
   db.orm.public.AuditLog.where = originals.auditWhere;
+  db.orm.public.Badge.where = originals.badgeWhere;
+  db.orm.public.ProductBadge.where = originals.productBadgeWhere;
 }
 
 function cookieHeader(token: string): Headers {
@@ -574,6 +613,11 @@ const READS = [
   {
     name: "listCoupons",
     impl: listCouponsImpl,
+    input: (storeSlug: string) => ({ storeSlug }),
+  },
+  {
+    name: "listBadges",
+    impl: listBadgesImpl,
     input: (storeSlug: string) => ({ storeSlug }),
   },
   {
@@ -819,6 +863,30 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       ip: "177.12.89.4",
       createdAt: at("2026-09-20 11:05"),
     });
+
+    const badgeId = BADGE_ID;
+
+    badges.push({
+      id: badgeId,
+      tenantId: TENANT_ID,
+      name: "Novo",
+      imageUrl: "https://cdn.menuza.app/badges/novo.png",
+      sortOrder: 0,
+      isActive: true,
+      updatedAt: at("2026-01-01 00:00"),
+    });
+
+    badges.push({
+      id: randomUUID(),
+      tenantId: OTHER_TENANT_ID,
+      name: "Outro",
+      imageUrl: "https://cdn.menuza.app/badges/outro.png",
+      sortOrder: 0,
+      isActive: true,
+      updatedAt: at("2026-01-01 00:00"),
+    });
+
+    productBadges.push({ tenantId: TENANT_ID, productId, badgeId });
   });
 
   afterAll(() => {
@@ -1122,6 +1190,44 @@ describe("panel reads — Unit (infrastructure-free)", () => {
 
       expect(result.logs).toHaveLength(1);
       expect(result.logs[0]).toMatchObject({ action: "COUPON_CREATE", target: "QUERO20" });
+    });
+  });
+
+  describe("panel.listBadges", () => {
+    test("returns the store's badges with the item count", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        listBadgesImpl,
+        { storeSlug: "mawifoods" },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.badges).toHaveLength(1);
+      expect(result.badges[0]).toMatchObject({
+        name: "Novo",
+        imageUrl: "https://cdn.menuza.app/badges/novo.png",
+        isActive: true,
+        itemsCount: 1,
+      });
+    });
+  });
+
+  describe("panel.listProducts badges", () => {
+    test("carries the products' badges", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        listProductsImpl,
+        { storeSlug: "mawifoods" },
+        { context: { reqHeaders } },
+      );
+
+      const marmita = result.products.find((product) => product.name === "Marmita frango grelhado");
+
+      expect(marmita?.badges).toEqual([
+        { id: BADGE_ID, name: "Novo", imageUrl: "https://cdn.menuza.app/badges/novo.png" },
+      ]);
     });
   });
 });

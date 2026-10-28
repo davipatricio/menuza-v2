@@ -8,7 +8,7 @@ import { createORPCClient, ORPCError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterContractClient } from "@orpc/contract";
 import { useMutation } from "@tanstack/react-query";
-import { Plus, Tag, Trash2, CircleHelp } from "lucide-react";
+import { Award, Plus, Tag, Trash2, CircleHelp } from "lucide-react";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { CreateProductInputSchema, UpdateProductInputSchema } from "@menuza/shared/tenant";
 import type { PanelProductDetail, StockMode } from "@menuza/shared/tenant";
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
 import {
   Card,
   CardContent,
@@ -108,6 +109,7 @@ type ProductValues = {
   description: string;
   subcategoryId: string | null;
   tagIds: string[];
+  badgeIds: string[];
   available: boolean;
   archived: boolean;
   hidden: boolean;
@@ -125,6 +127,7 @@ type ProductPatch = {
   description?: string | null;
   subcategoryId?: string | null;
   tagIds?: string[];
+  badgeIds?: string[];
   available?: boolean;
   archived?: boolean;
   hidden?: boolean;
@@ -177,6 +180,8 @@ function productPatch(baseline: ProductValues, values: ProductValues): ProductPa
 
   if (!sameIds(values.tagIds, baseline.tagIds)) patch.tagIds = values.tagIds;
 
+  if (!sameIds(values.badgeIds, baseline.badgeIds)) patch.badgeIds = values.badgeIds;
+
   if (values.available !== baseline.available) patch.available = values.available;
 
   if (values.archived !== baseline.archived) patch.archived = values.archived;
@@ -200,6 +205,7 @@ function snapshotOf(values: ProductValues): ProductValues {
     description: values.description,
     subcategoryId: values.subcategoryId,
     tagIds: [...values.tagIds],
+    badgeIds: [...values.badgeIds],
     available: values.available,
     archived: values.archived,
     hidden: values.hidden,
@@ -584,11 +590,13 @@ function ProductFields({
   submitted,
   subcategories,
   tags,
+  badges,
 }: {
   form: any;
   submitted: boolean;
   subcategories: SubcategoryItem[];
   tags: TaxonomyItem[];
+  badges: TaxonomyItem[];
 }) {
   return (
     <>
@@ -680,6 +688,59 @@ function ProductFields({
                     className="w-full"
                   />
                 )}
+              </Field>
+            )}
+          </form.Field>
+
+          <form.Field name="badgeIds">
+            {(field: any) => (
+              <Field className="lg:col-span-2">
+                <FieldTitle id={`${field.name}-label`}>Etiquetas</FieldTitle>
+                {badges.length === 0 ? (
+                  <Empty className="border">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Award data-icon />
+                      </EmptyMedia>
+                      <EmptyTitle>Nenhuma etiqueta cadastrada</EmptyTitle>
+                      <EmptyDescription>
+                        Crie etiquetas em Catálogo › Etiquetas para destacar este produto.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <div
+                    role="group"
+                    aria-labelledby={`${field.name}-label`}
+                    className="flex flex-wrap gap-x-4 gap-y-2"
+                  >
+                    {badges.map((badge) => {
+                      const selectedIds: string[] = field.state.value;
+
+                      return (
+                        <Field key={badge.id} orientation="horizontal" className="w-auto">
+                          <Checkbox
+                            id={`${field.name}-${badge.id}`}
+                            checked={selectedIds.includes(badge.id)}
+                            onCheckedChange={(next) =>
+                              field.handleChange(
+                                next
+                                  ? [...selectedIds, badge.id]
+                                  : selectedIds.filter((id) => id !== badge.id),
+                              )
+                            }
+                          />
+                          <FieldLabel htmlFor={`${field.name}-${badge.id}`}>
+                            {badge.name}
+                          </FieldLabel>
+                        </Field>
+                      );
+                    })}
+                  </div>
+                )}
+                <FieldDescription>
+                  As etiquetas aparecem sobre a foto do produto no cardápio.
+                </FieldDescription>
               </Field>
             )}
           </form.Field>
@@ -862,11 +923,13 @@ export function ProductForm({
   product,
   subcategories,
   tags,
+  badges,
 }: {
   storeSlug: string;
   product?: PanelProductDetail;
   subcategories: SubcategoryItem[];
   tags: TaxonomyItem[];
+  badges: TaxonomyItem[];
 }) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -888,6 +951,7 @@ export function ProductForm({
     description: product?.description ?? "",
     subcategoryId: product?.subcategoryId ?? null,
     tagIds: product?.tags.map((tag) => tag.id) ?? [],
+    badgeIds: product?.badges.map((badge) => badge.id) ?? [],
     available: product?.available ?? true,
     archived: product?.archived ?? false,
     hidden: product?.hidden ?? false,
@@ -968,6 +1032,7 @@ export function ProductForm({
     description: formValues.description ?? "",
     subcategoryId: formValues.subcategoryId ?? null,
     tagIds: formValues.tagIds ?? [],
+    badgeIds: formValues.badgeIds ?? [],
     available: formValues.available,
     archived: formValues.archived,
     hidden: formValues.hidden,
@@ -995,6 +1060,7 @@ export function ProductForm({
                 submitted={submitted}
                 subcategories={subcategories}
                 tags={tags}
+                badges={badges}
               />
             )}
           </form.Subscribe>

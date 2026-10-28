@@ -32,6 +32,10 @@ import { listTagsImpl } from "./listTags.impl.ts";
 import { createTagImpl } from "./createTag.impl.ts";
 import { updateTagImpl } from "./updateTag.impl.ts";
 import { deleteTagImpl } from "./deleteTag.impl.ts";
+import { listBadgesImpl } from "./listBadges.impl.ts";
+import { createBadgeImpl } from "./createBadge.impl.ts";
+import { updateBadgeImpl } from "./updateBadge.impl.ts";
+import { deleteBadgeImpl } from "./deleteBadge.impl.ts";
 import { createCouponImpl } from "./createCoupon.impl.ts";
 import { deleteCouponImpl } from "./deleteCoupon.impl.ts";
 import { listCouponsImpl } from "./listCoupons.impl.ts";
@@ -84,6 +88,10 @@ export const panelSubdomainRouter = {
   createTag: createTagImpl,
   updateTag: updateTagImpl,
   deleteTag: deleteTagImpl,
+  listBadges: listBadgesImpl,
+  createBadge: createBadgeImpl,
+  updateBadge: updateBadgeImpl,
+  deleteBadge: deleteBadgeImpl,
   listCoupons: listCouponsImpl,
   createCoupon: createCouponImpl,
   updateCoupon: updateCouponImpl,

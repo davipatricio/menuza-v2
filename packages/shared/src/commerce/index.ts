@@ -20,6 +20,7 @@ export {
   PublicNutritionSchema,
   PublicProductDetailSchema,
   PublicProductSchema,
+  PublicBadgeSchema,
   walletContract,
   walletContractObject,
 } from "./contract.ts";

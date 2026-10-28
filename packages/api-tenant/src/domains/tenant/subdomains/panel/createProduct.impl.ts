@@ -70,6 +70,14 @@ export const createProductImpl = os.handler(async ({ input, context }) => {
         await tx.orm.public.ProductTag.create({ tenantId: store.tenantId, productId: id, tagId });
       }
 
+      for (const badgeId of new Set(input.badgeIds ?? [])) {
+        await tx.orm.public.ProductBadge.create({
+          tenantId: store.tenantId,
+          productId: id,
+          badgeId,
+        });
+      }
+
       return id;
     });
 

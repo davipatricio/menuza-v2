@@ -60,6 +60,12 @@ export const publicStoreOutput = v.object({
   seo: publicSeoOutput,
 });
 
+export const PublicBadgeSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  imageUrl: v.string(),
+});
+
 /** One sellable product as the menu renders it. No stock, no cost, no hidden rows. */
 export const PublicProductSchema = v.object({
   id: v.string(),
@@ -79,6 +85,7 @@ export const PublicProductSchema = v.object({
     }),
   ),
   tags: v.array(v.string()),
+  badges: v.array(PublicBadgeSchema),
 });
 
 /**

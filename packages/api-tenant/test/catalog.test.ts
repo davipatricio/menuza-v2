@@ -23,6 +23,9 @@ import { deleteProductImpl } from "../src/domains/tenant/subdomains/panel/delete
 import { deleteCategoryImpl } from "../src/domains/tenant/subdomains/panel/deleteCategory.impl.ts";
 import { listTagsImpl } from "../src/domains/tenant/subdomains/panel/listTags.impl.ts";
 import { updateTagImpl } from "../src/domains/tenant/subdomains/panel/updateTag.impl.ts";
+import { createBadgeImpl } from "../src/domains/tenant/subdomains/panel/createBadge.impl.ts";
+import { updateBadgeImpl } from "../src/domains/tenant/subdomains/panel/updateBadge.impl.ts";
+import { deleteBadgeImpl } from "../src/domains/tenant/subdomains/panel/deleteBadge.impl.ts";
 
 type Cell = string | number | boolean | null | Temporal.PlainDateTime;
 
@@ -63,6 +66,10 @@ const departments: Row[] = [];
 const categoryDepartments: Row[] = [];
 
 const tags: Row[] = [];
+
+const badges: Row[] = [];
+
+const productBadges: Row[] = [];
 
 const orderItems: Row[] = [];
 
@@ -177,6 +184,11 @@ function joinProduct(product: Row): Row {
         : [],
     ),
     variations: variations.filter((variation) => variation.productId === product.id),
+    badges: productBadges.flatMap((link) =>
+      link.productId === product.id
+        ? [{ ...link, badge: badges.find((badge) => badge.id === link.badgeId) ?? null }]
+        : [],
+    ),
     // 1:1: the label is either the product's one row or absent.
     nutrition: productNutritions.find((row) => row.productId === product.id) ?? null,
   };
@@ -198,6 +210,8 @@ const MODEL_NAMES = [
   "Department",
   "CategoryDepartment",
   "Tag",
+  "Badge",
+  "ProductBadge",
   "OrderItem",
   "KitItem",
   "ProductNutrition",
@@ -217,6 +231,8 @@ const MODELS: Record<ModelName, Model> = {
   Department: model(departments),
   CategoryDepartment: model(categoryDepartments),
   Tag: model(tags),
+  Badge: model(badges),
+  ProductBadge: model(productBadges),
   OrderItem: model(orderItems),
   KitItem: model(kitItems),
   ProductNutrition: model(productNutritions),
@@ -359,6 +375,10 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
 
   let otherSubcategoryId = "";
 
+  let badgeId = "";
+
+  let otherBadgeId = "";
+
   beforeAll(async () => {
     installFakes();
     installSessionFakes();
@@ -441,6 +461,26 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
       sortOrder: 0,
       active: true,
       updatedAt: at("2026-01-01 00:00"),
+    });
+
+    badgeId = randomUUID();
+    badges.push({
+      id: badgeId,
+      tenantId: TENANT_ID,
+      name: "Novo",
+      imageUrl: "https://cdn.menuza.app/badges/novo.png",
+      sortOrder: 0,
+      isActive: true,
+    });
+
+    otherBadgeId = randomUUID();
+    badges.push({
+      id: otherBadgeId,
+      tenantId: OTHER_TENANT_ID,
+      name: "Outro",
+      imageUrl: "https://cdn.menuza.app/badges/outro.png",
+      sortOrder: 0,
+      isActive: true,
     });
   });
 
@@ -533,6 +573,33 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
 
       try {
         await call(createProductImpl, productInput({ tagIds: [otherTagId] }), {
+          context: { reqHeaders },
+        });
+        throw new Error("expected createProduct to fail");
+      } catch (error) {
+        // SAFETY: the tenant guard only throws the NOT_FOUND code.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
+    });
+
+    test("links the badges that belong to the store", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(createProductImpl, productInput({ badgeIds: [badgeId] }), {
+        context: { reqHeaders },
+      });
+
+      expect(result.product.badges).toEqual([
+        { id: badgeId, name: "Novo", imageUrl: "https://cdn.menuza.app/badges/novo.png" },
+      ]);
+      expect(productBadges.filter((row) => row.productId === result.product.id)).toHaveLength(1);
+    });
+
+    test("a badge from another tenant is NOT_FOUND", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(createProductImpl, productInput({ badgeIds: [otherBadgeId] }), {
           context: { reqHeaders },
         });
         throw new Error("expected createProduct to fail");
@@ -1205,6 +1272,103 @@ describe("panel catalog writes — Unit (infrastructure-free)", () => {
         // SAFETY: a duplicate name only throws the CONFLICT code.
         expect((error as { code: string }).code).toBe("CONFLICT");
       }
+    });
+  });
+
+  describe("panel badge writes", () => {
+    test("createBadge inserts a store-scoped badge", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        createBadgeImpl,
+        {
+          storeSlug: "mawifoods",
+          name: "Promoção",
+          imageUrl: "https://cdn.menuza.app/badges/promocao.png",
+        },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.success).toBe(true);
+
+      const row = badges.find((entry) => entry.name === "Promoção");
+
+      expect(row?.tenantId).toBe(TENANT_ID);
+      expect(row?.sortOrder).toBe(0);
+      expect(row?.isActive).toBe(true);
+    });
+
+    test("a duplicate badge name is a CONFLICT", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(
+          createBadgeImpl,
+          { storeSlug: "mawifoods", name: "Novo", imageUrl: "https://cdn.menuza.app/x.png" },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected createBadge to fail");
+      } catch (error) {
+        // SAFETY: a duplicate name only throws the CONFLICT code.
+        expect((error as { code: string }).code).toBe("CONFLICT");
+      }
+    });
+
+    test("updateBadge patches only the fields it is given", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const result = await call(
+        updateBadgeImpl,
+        { storeSlug: "mawifoods", badgeId, isActive: false, sortOrder: 4 },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.success).toBe(true);
+
+      const row = badges.find((entry) => entry.id === badgeId);
+
+      expect(row?.name).toBe("Novo");
+      expect(row?.isActive).toBe(false);
+      expect(row?.sortOrder).toBe(4);
+    });
+
+    test("another tenant's badge is NOT_FOUND", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(
+          updateBadgeImpl,
+          { storeSlug: "mawifoods", badgeId: otherBadgeId, name: "Sequestrada" },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected updateBadge to fail");
+      } catch (error) {
+        // SAFETY: the tenant guard only throws the NOT_FOUND code.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
+    });
+
+    test("deleteBadge removes the row", async () => {
+      const reqHeaders = await sessionCookie();
+
+      const created = await call(
+        createBadgeImpl,
+        { storeSlug: "mawifoods", name: "Temporária", imageUrl: "https://cdn.menuza.app/t.png" },
+        { context: { reqHeaders } },
+      );
+
+      expect(created.success).toBe(true);
+
+      const row = badges.find((entry) => entry.name === "Temporária");
+
+      const result = await call(
+        deleteBadgeImpl,
+        { storeSlug: "mawifoods", badgeId: String(row?.id ?? "") },
+        { context: { reqHeaders } },
+      );
+
+      expect(result.success).toBe(true);
+      expect(badges.find((entry) => entry.name === "Temporária")).toBeUndefined();
     });
   });
 });

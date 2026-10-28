@@ -51,6 +51,9 @@ type PublicProductRow = {
     stockQty: number | null;
   }[];
   tags: readonly { tag: { name: string; isActive: boolean } | null }[];
+  badges?: readonly {
+    badge: { id: string; name: string; imageUrl: string; sortOrder: number } | null;
+  }[];
 };
 
 /** The menu's product shape, shared by the listing and the direct URL read. */
@@ -71,6 +74,11 @@ export function toPublicProduct(product: PublicProductRow) {
       available: variation.stockMode === "unlimited" || (variation.stockQty ?? 0) > 0,
     })),
     tags: product.tags.flatMap((entry) => (entry.tag?.isActive ? [entry.tag.name] : [])),
+    // Oldest-first by the panel's own order; the join row has no order of its own.
+    badges: (product.badges ?? [])
+      .flatMap((pb) => (pb.badge ? [pb.badge] : []))
+      .sort((left, right) => left.sortOrder - right.sortOrder)
+      .map((badge) => ({ id: badge.id, name: badge.name, imageUrl: badge.imageUrl })),
   };
 }
 

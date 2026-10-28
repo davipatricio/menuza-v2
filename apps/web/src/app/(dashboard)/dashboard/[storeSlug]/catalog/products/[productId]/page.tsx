@@ -178,6 +178,7 @@ async function EditProduct({ params, searchParams }: EditProductPageProps) {
           seo={seo}
           subcategories={taxonomy.subcategories}
           tags={taxonomy.tags}
+          badges={taxonomy.badges}
         />
       </section>
     </ProductCrumb>
