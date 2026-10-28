@@ -8,6 +8,7 @@ import { ROLE_LABELS } from "@/lib/panel-labels.ts";
 import { panelClient, type TenantClient } from "@/lib/server-tenant.ts";
 import { AppSidebar } from "./_components/app-sidebar.tsx";
 import { CrumbLabelsProvider } from "./_components/crumb-labels.tsx";
+import { DashboardTools } from "./_components/dashboard-tools.tsx";
 import { HeaderActions } from "../_components/header-actions.tsx";
 import { StoreBreadcrumb } from "./_components/store-breadcrumb.tsx";
 
@@ -104,6 +105,11 @@ export default async function StoreLayout({
           <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
         </CrumbLabelsProvider>
       </SidebarInset>
+      <DashboardTools
+        storeSlug={store.tenantSlug}
+        storeName={store.tenantName}
+        role={ROLE_LABELS[store.role]}
+      />
       <KomiAssistant />
     </SidebarProvider>
   );

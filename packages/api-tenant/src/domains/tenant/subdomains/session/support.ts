@@ -16,6 +16,7 @@ import {
   isSameOriginRequest,
   isTenantRole,
   parseCookies,
+  validateOAuthToken,
 } from "@menuza/orpc-server/auth";
 import { db, unscoped } from "@menuza/db";
 import {
@@ -79,6 +80,12 @@ export function assertSameOrigin(reqHeaders?: Headers): void {
 /**
  * Reads and validates the management session from the request cookie.
  * Throws `UNAUTHORIZED` when the cookie is absent, unknown, expired or revoked.
+ *
+ * Cookie-only on purpose: the member-level procedures (`account.*`,
+ * `profile.*`, `session.*`) must never run on a delegated OAuth token, which is
+ * scoped to stores and cannot carry the session identity those procedures
+ * revoke and rewrite. Use `requireBrowserSession` at those call sites, and
+ * `requirePanelCaller` for the store-scoped `panel.*` surface.
  */
 export async function requireSession(reqHeaders?: Headers): Promise<TenantSessionRow> {
   const cookie = parseCookies(reqHeaders?.get("cookie"))[getCookieName("tenant")];
@@ -90,6 +97,54 @@ export async function requireSession(reqHeaders?: Headers): Promise<TenantSessio
   if (!session || session.namespace !== "tenant") throw unauthorized();
 
   return { id: session.id, memberId: session.memberId };
+}
+
+/** Alias that names the constraint: a human-driven cookie session, no tokens. */
+export const requireBrowserSession = requireSession;
+
+/**
+ * Who is calling the store-scoped `panel.*` surface, and which stores they may
+ * touch on this request.
+ *
+ * Two credentials reach it: the dashboard's `menuza_tenant_sid` cookie, and a
+ * bearer OAuth token minted through `/oauth/token` for a delegated client
+ * (the remote MCP server). The token is the narrower one — its consent step
+ * selected `tenantIds`, so `grantedTenantIds` is the store allowlist that
+ * `resolveStore` enforces. A cookie session is unrestricted (`null`) because
+ * its per-store authority is the membership row alone.
+ */
+export interface PanelCaller {
+  readonly memberId: string;
+  readonly grantedTenantIds: readonly string[] | null;
+}
+
+export async function requirePanelCaller(reqHeaders?: Headers): Promise<PanelCaller> {
+  const bearer = readBearerToken(reqHeaders);
+
+  if (bearer) {
+    const token = await validateOAuthToken(bearer);
+
+    if (!token) throw unauthorized();
+
+    return { memberId: token.memberId, grantedTenantIds: token.tenantIds };
+  }
+
+  const session = await requireSession(reqHeaders);
+
+  return { memberId: session.memberId, grantedTenantIds: null };
+}
+
+/** `Authorization: Bearer <token>`, or `null` when absent or another scheme. */
+export function readBearerToken(reqHeaders?: Headers): string | null {
+  const header = reqHeaders?.get("authorization")?.trim();
+
+  if (!header) return null;
+
+  const [scheme, ...rest] = header.split(/\s+/);
+
+  if (scheme?.toLowerCase() !== "bearer" || rest.length === 0) return null;
+
+  return rest.join(" ");
 }
 
 /**

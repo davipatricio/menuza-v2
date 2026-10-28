@@ -1,30 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useMemo } from "react";
 import * as v from "valibot";
-
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
-
-type JsonSchema = { [key: string]: JsonValue };
-
-/** JSON input shape the browser hands to a tool; parsed per tool before use. */
-type ToolInput = {
-  [key: string]: string | number | boolean | null | string[] | undefined;
-};
-
-type ToolResult = { ok: boolean; error?: string };
-
-type Tool = {
-  name: string;
-  description: string;
-  inputSchema: JsonSchema;
-  execute: (input: ToolInput) => ToolResult | Promise<ToolResult>;
-};
-
-type ModelContext = {
-  registerTool: (tool: Tool) => void;
-  unregisterTool?: (name: string) => void;
-};
+import { useRegisterTools } from "@/hooks/use-tools.ts";
+import type { JsonSchema, ToolDefinition } from "@/lib/tools/registry.ts";
 
 const FillInputSchema = v.object({
   name: v.optional(v.string()),
@@ -74,111 +53,89 @@ const ADD_VARIATION_INPUT = {
 } satisfies JsonSchema;
 
 /**
- * WebMCP is a draft browser API and not in lib.dom yet. Chrome exposes it on
- * `document.modelContext`; older builds used `navigator.modelContext`. Absent
- * in every other browser, where this whole module is a no-op.
- */
-function readModelContext(): ModelContext | null {
-  // SAFETY: WebMCP is a draft global not in lib.dom; the hook runs only in the
-  // browser, so `document` and `navigator` exist and the property is optional.
-  const doc = document as { modelContext?: ModelContext };
-  // SAFETY: same draft global, older exposure point.
-  const nav = navigator as { modelContext?: ModelContext };
-
-  return doc.modelContext ?? nav.modelContext ?? null;
-}
-
-/**
- * Exposes the controlled form to an in-browser agent. The form stays the source
- * of truth: every tool calls the same TanStack setters the UI calls, so saving
- * goes through the existing validation and mutation path.
+ * Exposes the controlled form to WebMCP and in-app AI assistant.
+ * The form stays the source of truth: every tool calls the same TanStack setters
+ * the UI calls, so saving goes through the existing validation and mutation path.
  */
 export function useProductWebMcp(form: any) {
-  useEffect(() => {
-    const context = readModelContext();
+  const tools = useMemo<ToolDefinition[]>(
+    () => [
+      {
+        name: "product.fill",
+        description:
+          "Preenche campos do produto. Aceita name, description, subcategoryId, tagIds, available e sortOrder.",
+        inputSchema: FILL_INPUT,
+        execute: (input) => {
+          const parsed = v.safeParse(FillInputSchema, input);
 
-    if (!context) return;
+          if (!parsed.success) {
+            return { ok: false, error: "Campos com tipos inválidos." };
+          }
 
-    const names = ["product.fill", "product.addVariation", "product.save"];
+          const values = parsed.output;
 
-    context.registerTool({
-      name: "product.fill",
-      description:
-        "Preenche campos do produto. Aceita name, description, subcategoryId, tagIds, available e sortOrder.",
-      inputSchema: FILL_INPUT,
-      execute: (input) => {
-        const parsed = v.safeParse(FillInputSchema, input);
+          if (values.name !== undefined) form.setFieldValue("name", values.name);
 
-        if (!parsed.success) {
-          return { ok: false, error: "Campos com tipos inválidos." };
-        }
+          if (values.description !== undefined) {
+            form.setFieldValue("description", values.description);
+          }
 
-        const values = parsed.output;
+          if (values.subcategoryId !== undefined) {
+            form.setFieldValue("subcategoryId", values.subcategoryId);
+          }
 
-        if (values.name !== undefined) form.setFieldValue("name", values.name);
+          if (values.tagIds !== undefined) {
+            form.setFieldValue("tagIds", values.tagIds);
+          }
 
-        if (values.description !== undefined) {
-          form.setFieldValue("description", values.description);
-        }
+          if (values.available !== undefined) {
+            form.setFieldValue("available", values.available);
+          }
 
-        if (values.subcategoryId !== undefined) {
-          form.setFieldValue("subcategoryId", values.subcategoryId);
-        }
+          if (values.sortOrder !== undefined) {
+            form.setFieldValue("sortOrder", values.sortOrder);
+          }
 
-        if (values.tagIds !== undefined) {
-          form.setFieldValue("tagIds", values.tagIds);
-        }
-
-        if (values.available !== undefined) {
-          form.setFieldValue("available", values.available);
-        }
-
-        if (values.sortOrder !== undefined) {
-          form.setFieldValue("sortOrder", values.sortOrder);
-        }
-
-        return { ok: true };
+          return { ok: true };
+        },
       },
-    });
+      {
+        name: "product.addVariation",
+        description:
+          "Adiciona uma variação ao produto. controlled exige stockQty; unlimited usa stockQty null.",
+        inputSchema: ADD_VARIATION_INPUT,
+        execute: (input) => {
+          const parsed = v.safeParse(AddVariationInputSchema, input);
 
-    context.registerTool({
-      name: "product.addVariation",
-      description:
-        "Adiciona uma variação ao produto. controlled exige stockQty; unlimited usa stockQty null.",
-      inputSchema: ADD_VARIATION_INPUT,
-      execute: (input) => {
-        const parsed = v.safeParse(AddVariationInputSchema, input);
+          if (!parsed.success) {
+            return { ok: false, error: "Variação com tipos inválidos." };
+          }
 
-        if (!parsed.success) {
-          return { ok: false, error: "Variação com tipos inválidos." };
-        }
+          const variation = parsed.output;
 
-        const variation = parsed.output;
+          form.pushFieldValue("variations", {
+            name: variation.name,
+            priceCents: variation.priceCents,
+            stockMode: variation.stockMode,
+            stockQty: variation.stockMode === "unlimited" ? null : (variation.stockQty ?? 0),
+          });
 
-        form.pushFieldValue("variations", {
-          name: variation.name,
-          priceCents: variation.priceCents,
-          stockMode: variation.stockMode,
-          stockQty: variation.stockMode === "unlimited" ? null : (variation.stockQty ?? 0),
-        });
-
-        return { ok: true };
+          return { ok: true };
+        },
       },
-    });
+      {
+        name: "product.save",
+        description: "Valida e envia o formulário de produto.",
+        inputSchema: EMPTY_INPUT,
+        execute: async () => {
+          await form.handleSubmit();
 
-    context.registerTool({
-      name: "product.save",
-      description: "Valida e envia o formulário de produto.",
-      inputSchema: EMPTY_INPUT,
-      execute: async () => {
-        await form.handleSubmit();
-
-        return { ok: true };
+          return { ok: true };
+        },
       },
-    });
+    ],
+    [form],
+  );
 
-    return () => {
-      for (const name of names) context.unregisterTool?.(name);
-    };
-  }, [form]);
+  useRegisterTools(tools);
 }

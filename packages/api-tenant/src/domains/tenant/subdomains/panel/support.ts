@@ -16,7 +16,7 @@ import { can, type TenantCapability } from "@menuza/orpc-server/auth";
 import {
   canonicalRole,
   notFound,
-  requireSession,
+  requirePanelCaller,
   type TenantSessionRow,
 } from "../session/support.ts";
 import type { TenantRole } from "@menuza/shared/tenant";
@@ -30,23 +30,33 @@ export interface ResolvedStore {
 }
 
 /**
- * Reads the management session from the request cookie, resolves the slug to a
- * tenant and verifies the caller is a member. Throws `UNAUTHORIZED` without a
- * session and `NOT_FOUND` for an unknown store or a non-member.
+ * Resolves the slug to a tenant and verifies the caller may act on it. Throws
+ * `UNAUTHORIZED` without a usable credential and `NOT_FOUND` for an unknown
+ * store, a non-member, or a store outside an OAuth token's consent grant.
+ *
+ * The grant check is not redundant with the membership row: a token's consent
+ * step selects stores, so a token granted store A must not reach store B even
+ * when the same member belongs to both. `NOT_FOUND` rather than `FORBIDDEN`
+ * keeps the response identical to "no such store", so a token cannot probe for
+ * stores it was not granted.
  */
 export async function resolveStore(
   reqHeaders: Headers | undefined,
   storeSlug: string,
 ): Promise<ResolvedStore> {
-  const session = await requireSession(reqHeaders);
+  const caller = await requirePanelCaller(reqHeaders);
 
   const tenant = await unscoped(() => db.orm.public.Tenant.where({ slug: storeSlug }).first());
 
   if (!tenant) throw notFound();
 
+  if (caller.grantedTenantIds !== null && !caller.grantedTenantIds.includes(tenant.id)) {
+    throw notFound();
+  }
+
   const membership = await unscoped(() =>
     db.orm.public.TenantMembership.where({
-      memberId: session.memberId,
+      memberId: caller.memberId,
       tenantId: tenant.id,
     }).first(),
   );
@@ -54,7 +64,9 @@ export async function resolveStore(
   if (!membership) throw notFound();
 
   return {
-    session,
+    // `id` is the digest of a cookie session and has no meaning for a bearer
+    // token; the panel only reads `memberId`, so the token's member stands in.
+    session: { id: "", memberId: caller.memberId },
     tenantId: tenant.id,
     tenantSlug: tenant.slug,
     tenantName: tenant.displayName,

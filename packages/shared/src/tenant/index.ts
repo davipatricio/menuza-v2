@@ -75,6 +75,8 @@ export {
   ListDepartmentsInputSchema,
   ListCategoriesInputSchema,
   ListSubcategoriesInputSchema,
+  ListProductsInputSchema,
+  ListTagsInputSchema,
   CreateCategoryInputSchema,
   UpdateCategoryInputSchema,
   DeleteCategoryInputSchema,

@@ -37,6 +37,28 @@ export {
   type TenantRole,
 } from "./types.ts";
 
+export {
+  DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+  DEFAULT_AUTH_CODE_TTL_SECONDS,
+  exchangeAuthorizationCode,
+  getOAuthClient,
+  getOAuthServerMetadata,
+  hashOAuthToken,
+  issueAuthorizationCode,
+  registerOAuthClient,
+  requireOAuthClient,
+  resolveRequestedScopes,
+  revokeOAuthToken,
+  SUPPORTED_OAUTH_SCOPES,
+  validateOAuthToken,
+  verifyPkce,
+  type ExchangeAuthorizationCodeOptions,
+  type IssueAuthorizationCodeOptions,
+  type OAuthScope,
+  type OAuthTokenResult,
+  type ValidatedOAuthToken,
+} from "./oauth.ts";
+
 export type {
   AuthContext,
   AuthNamespace,
