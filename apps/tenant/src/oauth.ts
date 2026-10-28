@@ -7,6 +7,7 @@ import {
   getSession,
   issueAuthorizationCode,
   parseCookies,
+  requireOAuthClient,
   revokeOAuthToken,
 } from "@menuza/orpc-server/auth";
 
@@ -47,9 +48,33 @@ function corsOptionsResponse(): Response {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
-function handleMetadata(url: URL): Response {
-  const origin = url.origin;
-  const metadata = getOAuthServerMetadata(origin);
+/**
+ * The origin a remote OAuth client must address.
+ *
+ * Behind the web app's rewrite this process sees its own loopback origin, so
+ * `url.origin` would advertise `http://127.0.0.1:3002` and discovery would be
+ * useless. The public host arrives in `x-forwarded-host`/`x-forwarded-proto`,
+ * which the Next proxy sets with `changeOrigin`. Only trust them when the
+ * deployment declares trusted hops — the same switch `proxy.ts` uses — so a
+ * direct caller cannot forge its way into the document.
+ */
+function publicOrigin(req: Request, url: URL): string {
+  const trustedHops = Number(process.env.TRUSTED_PROXY_HOPS ?? 0);
+
+  if (trustedHops <= 0) return url.origin;
+
+  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+
+  if (!forwardedHost) return url.origin;
+
+  const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
+
+  return `${proto}://${forwardedHost}`;
+}
+
+function handleMetadata(req: Request, url: URL): Response {
+  const metadata = getOAuthServerMetadata(publicOrigin(req, url));
 
   return Response.json(metadata, {
     status: 200,
@@ -161,6 +186,29 @@ async function parseAuthorizeBody(req: Request): Promise<AuthorizeRequest | null
   return parsed.success ? parsed.output : null;
 }
 
+/**
+ * `GET /oauth/client-check?client_id=…&redirect_uri=…` — does this client own
+ * this redirect URI? 204 when it does, 404 when it does not.
+ *
+ * Exists so the consent page can refuse to render for a URI the client never
+ * registered: Cancel navigates to that URI, and an unvalidated one would make
+ * the screen a one-click open redirect. No session, no secrets, no body.
+ */
+async function handleClientCheck(url: URL): Promise<Response> {
+  const clientId = url.searchParams.get("client_id") ?? "";
+  const redirectUri = url.searchParams.get("redirect_uri") ?? "";
+
+  if (!clientId || !redirectUri) return new Response(null, { status: 400 });
+
+  try {
+    await requireOAuthClient(clientId, redirectUri);
+
+    return new Response(null, { status: 204 });
+  } catch {
+    return new Response(null, { status: 404 });
+  }
+}
+
 async function handleAuthorize(req: Request): Promise<Response> {
   const cookieHeader = req.headers.get("cookie");
   const cookie = parseCookies(cookieHeader)[getCookieName("tenant")];
@@ -200,15 +248,31 @@ async function handleAuthorize(req: Request): Promise<Response> {
   const allowedTenantIds = new Set(memberMemberships.map((m) => m.tenantId));
   const validTenantIds = requestedTenantIds.filter((id) => allowedTenantIds.has(id));
 
-  const code = await issueAuthorizationCode({
-    clientId: params.clientId,
-    memberId: session.memberId,
-    codeChallenge: params.codeChallenge,
-    codeChallengeMethod: params.codeChallengeMethod,
-    tenantIds: validTenantIds,
-    scopes: params.scopes && params.scopes.length > 0 ? params.scopes : ["admin"],
-    redirectUri: params.redirectUri,
-  });
+  let code: string;
+
+  try {
+    code = await issueAuthorizationCode({
+      clientId: params.clientId,
+      memberId: session.memberId,
+      codeChallenge: params.codeChallenge,
+      codeChallengeMethod: params.codeChallengeMethod,
+      tenantIds: validTenantIds,
+      scopes: params.scopes && params.scopes.length > 0 ? params.scopes : ["admin"],
+      redirectUri: params.redirectUri,
+    });
+  } catch (error) {
+    // An unregistered client or a URI it never registered. Answer as a plain
+    // error with NO redirect: the whole point of the check is that this URI is
+    // not one the client proved it owns.
+    return Response.json(
+      {
+        error: "invalid_request",
+        error_description:
+          error instanceof Error ? error.message : "Client or redirect URI not registered",
+      },
+      { status: 400, headers: { "Access-Control-Allow-Origin": "*" } },
+    );
+  }
 
   return Response.json({
     code,
@@ -247,7 +311,7 @@ export async function handleOAuthRequest(req: Request): Promise<Response | null>
   if (url.pathname === "/.well-known/oauth-authorization-server") {
     if (req.method === "OPTIONS") return corsOptionsResponse();
 
-    return handleMetadata(url);
+    return handleMetadata(req, url);
   }
 
   if (url.pathname === "/oauth/token") {
@@ -256,6 +320,10 @@ export async function handleOAuthRequest(req: Request): Promise<Response | null>
     if (req.method !== "POST") return new Response(null, { status: 405 });
 
     return await handleToken(req);
+  }
+
+  if (url.pathname === "/oauth/client-check" && req.method === "GET") {
+    return await handleClientCheck(url);
   }
 
   if (url.pathname === "/oauth/authorize" && req.method === "POST") {

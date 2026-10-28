@@ -57,6 +57,47 @@ describe("Tenant API OAuth Handlers — Unit/Integration", () => {
     expect(json.error).toBe("invalid_request");
   });
 
+  test("metadata advertises the forwarded public origin when trusted hops are declared", async () => {
+    process.env.TRUSTED_PROXY_HOPS = "1";
+
+    try {
+      const req = new Request("http://127.0.0.1:3002/.well-known/oauth-authorization-server", {
+        method: "GET",
+        headers: {
+          "x-forwarded-host": "app.menuza.com",
+          "x-forwarded-proto": "https",
+        },
+      });
+
+      const res = await handleOAuthRequest(req);
+      const json = await res?.json();
+
+      // A remote client must be told the address it can actually reach.
+      expect(json.issuer).toBe("https://app.menuza.com");
+      expect(json.token_endpoint).toBe("https://app.menuza.com/oauth/token");
+    } finally {
+      delete process.env.TRUSTED_PROXY_HOPS;
+    }
+  });
+
+  test("metadata ignores forwarded headers when no trusted hop is declared", async () => {
+    delete process.env.TRUSTED_PROXY_HOPS;
+
+    const req = new Request("http://127.0.0.1:3002/.well-known/oauth-authorization-server", {
+      method: "GET",
+      headers: {
+        "x-forwarded-host": "evil.example",
+        "x-forwarded-proto": "https",
+      },
+    });
+
+    const res = await handleOAuthRequest(req);
+    const json = await res?.json();
+
+    // A direct caller must not be able to forge its way into the document.
+    expect(json.issuer).toBe("http://127.0.0.1:3002");
+  });
+
   test("POST /oauth/authorize rejects unauthenticated request", async () => {
     const req = new Request("http://127.0.0.1:3002/oauth/authorize", {
       method: "POST",

@@ -81,6 +81,10 @@ jobs:
             bun-${{ runner.os }}-
       - name: Frozen install
         run: bun install --frozen-lockfile
+      # The generated client is gitignored, so a bare checkout has no contract
+      # for `@menuza/db` to import; the typecheck job already emits it.
+      - name: Prisma contract emit
+        run: bun run db:generate
       - name: Unit tests (no infra)
         run: bun test
 

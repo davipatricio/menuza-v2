@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card.tsx";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
 import { getPanelSession } from "@/lib/server-tenant.ts";
+import { isRegisteredRedirect } from "./actions.ts";
 import { ConsentForm } from "./consent-form.tsx";
 
 export const instant = false;
@@ -84,6 +85,11 @@ export default async function OAuthAuthorizePage(props: PageProps) {
     validationError = "Parâmetro 'code_challenge' ausente (PKCE obrigatório).";
   } else if (codeChallengeMethod !== "S256") {
     validationError = "Parâmetro 'code_challenge_method' deve ser 'S256'.";
+  } else if (!(await isRegisteredRedirect(clientId, redirectUri))) {
+    // The consent screen is the one place a URI from the query string is acted
+    // on — Cancel navigates to it. An unregistered pair is refused here so the
+    // page never renders a form whose Cancel button is an open redirect.
+    validationError = "Cliente ou 'redirect_uri' não registrado.";
   }
 
   const stores = session.memberships.map((m) => ({

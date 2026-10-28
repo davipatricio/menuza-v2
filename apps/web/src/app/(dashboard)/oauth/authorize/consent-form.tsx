@@ -73,9 +73,22 @@ export function ConsentForm({
     );
   }
 
+  /**
+   * Cancelling must never be the thing that leaks the user off-site: the URI is
+   * only navigated to when the server already confirmed the client registered
+   * it (the page refuses to render this form otherwise), and the scheme is
+   * re-checked here so a `javascript:` value can never reach `location`.
+   */
   function handleCancel() {
     try {
       const url = new URL(redirectUri);
+
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        setError("URI de redirecionamento inválida.");
+
+        return;
+      }
+
       url.searchParams.set("error", "access_denied");
       url.searchParams.set("error_description", "User denied authorization");
 

@@ -18,6 +18,33 @@ export interface AuthorizeResult {
   error?: string;
 }
 
+/**
+ * Whether the tenant API has this exact client/URI pair registered.
+ *
+ * Both the consent page (before it renders, so Cancel cannot navigate to an
+ * unregistered URI) and the authorize action (before a code is issued) ask
+ * this. It is a read-only check against the tenant API, which owns the client
+ * registry; the web app never decides on its own. Fails closed.
+ */
+export async function isRegisteredRedirect(
+  clientId: string,
+  redirectUri: string,
+): Promise<boolean> {
+  const tenantInternal = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002";
+  const url = new URL("/oauth/client-check", tenantInternal);
+
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", redirectUri);
+
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function authorizeOAuth(input: AuthorizeInput): Promise<AuthorizeResult> {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get("menuza_tenant_sid")?.value;
