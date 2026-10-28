@@ -163,6 +163,21 @@ export const updateProductImpl = os.handler(async ({ input, context }) => {
             });
           }
         }
+
+        if (input.badgeIds !== undefined) {
+          await tx.orm.public.ProductBadge.where({
+            tenantId: store.tenantId,
+            productId: input.productId,
+          }).deleteAll();
+
+          for (const badgeId of new Set(input.badgeIds)) {
+            await tx.orm.public.ProductBadge.create({
+              tenantId: store.tenantId,
+              productId: input.productId,
+              badgeId,
+            });
+          }
+        }
       }),
     );
   } catch (error) {

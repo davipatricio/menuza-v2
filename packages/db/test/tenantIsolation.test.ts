@@ -191,6 +191,8 @@ describe.skipIf(!process.env.TEST_INTEGRATION)("Tenant Isolation (fail-closed)",
       "AuditLog",
       "MealSubscription",
       "ProductNutrition",
+      "Badge",
+      "ProductBadge",
     ]) {
       expect(TENANT_SCOPED_MODELS.has(model)).toBe(true);
     }

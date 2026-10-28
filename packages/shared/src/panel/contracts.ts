@@ -364,6 +364,13 @@ export const PanelProductTagSchema = v.object({
   name: v.string(),
 });
 
+/** What the panel and the storefront both render: the image is the whole point. */
+export const ProductBadgeRefSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  imageUrl: v.string(),
+});
+
 export const PanelProductSchema = v.object({
   id: v.string(),
   name: v.string(),
@@ -374,6 +381,7 @@ export const PanelProductSchema = v.object({
   departmentIds: v.array(v.string()),
   departmentNames: v.array(v.string()),
   tags: v.array(PanelProductTagSchema),
+  badges: v.array(ProductBadgeRefSchema),
   priceCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
   available: v.boolean(),
   archived: v.boolean(),
@@ -595,6 +603,7 @@ export const CreateProductInputSchema = v.strictObject({
   description: productDescription,
   subcategoryId: productSubcategoryId,
   tagIds: productTagIds,
+  badgeIds: v.optional(v.array(v.string())),
   available: v.boolean(),
   archived: v.optional(v.boolean()),
   hidden: v.optional(v.boolean()),
@@ -614,6 +623,7 @@ export const UpdateProductInputSchema = v.strictObject({
   description: v.optional(productDescription),
   subcategoryId: v.optional(productSubcategoryId),
   tagIds: v.optional(productTagIds),
+  badgeIds: v.optional(v.array(v.string())),
   available: v.optional(v.boolean()),
   archived: v.optional(v.boolean()),
   hidden: v.optional(v.boolean()),
@@ -793,6 +803,19 @@ export const PanelTagsOutputSchema = v.object({
   tags: v.array(PanelTagSchema),
 });
 
+export const PanelBadgeSchema = v.object({
+  id: v.string(),
+  name: v.string(),
+  imageUrl: v.string(),
+  sortOrder: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  isActive: v.boolean(),
+  itemsCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const PanelBadgesOutputSchema = v.object({
+  badges: v.array(PanelBadgeSchema),
+});
+
 // --- Taxonomy list inputs ----------------------------------------------------
 //
 // The dashboard writes its filters, sort and order to the URL, so the server
@@ -934,6 +957,53 @@ export const UpdateTagInputSchema = v.strictObject({
 export const DeleteTagInputSchema = v.strictObject({
   storeSlug: catalogStoreSlug,
   tagId: taxonomyId("Tag inválida."),
+});
+
+const badgeName = v.pipe(
+  v.string("Informe o nome da etiqueta."),
+  v.trim(),
+  v.nonEmpty("Informe o nome da etiqueta."),
+  v.maxLength(64, "Use no máximo 64 caracteres."),
+);
+
+/** Absolute http(s) only: the storefront renders it as-is, so no `data:` or `javascript:`. */
+const BADGE_IMAGE_URL_MESSAGE = "Use uma URL completa (http:// ou https://).";
+
+const badgeImageUrl = v.pipe(
+  v.string("Informe a URL da imagem."),
+  v.trim(),
+  v.nonEmpty("Informe a URL da imagem."),
+  v.maxLength(1000, "Use no máximo 1000 caracteres."),
+  v.url(BADGE_IMAGE_URL_MESSAGE),
+  v.regex(/^https?:\/\//i, BADGE_IMAGE_URL_MESSAGE),
+);
+
+const catalogBadgeId = v.pipe(
+  v.string("Etiqueta inválida."),
+  v.nonEmpty("Etiqueta inválida."),
+  v.maxLength(64, "Etiqueta inválida."),
+);
+
+export const CreateBadgeInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  name: badgeName,
+  imageUrl: badgeImageUrl,
+  sortOrder: v.optional(catalogSortOrder),
+  isActive: v.optional(v.boolean()),
+});
+
+export const UpdateBadgeInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  badgeId: catalogBadgeId,
+  name: v.optional(badgeName),
+  imageUrl: v.optional(badgeImageUrl),
+  sortOrder: v.optional(catalogSortOrder),
+  isActive: v.optional(v.boolean()),
+});
+
+export const DeleteBadgeInputSchema = v.strictObject({
+  storeSlug: catalogStoreSlug,
+  badgeId: catalogBadgeId,
 });
 
 /** `valueCents` is set only for a fixed discount; percentages carry `valuePercent`. */
@@ -1487,6 +1557,19 @@ export const listTags = panelRead
   .input(ListTagsInputSchema)
   .output(PanelTagsOutputSchema);
 
+export const listBadges = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/badges",
+      operationId: "listPanelBadges",
+      summary: "Lista as etiquetas do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelBadgesOutputSchema);
+
 export const createCategory = sessionContract
   .meta(
     openapi({
@@ -1654,6 +1737,45 @@ export const deleteTag = sessionContract
     }),
   )
   .input(DeleteTagInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const createBadge = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/badges",
+      operationId: "createPanelBadge",
+      summary: "Cria uma etiqueta do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(CreateBadgeInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const updateBadge = sessionContract
+  .meta(
+    openapi({
+      method: "PUT",
+      path: "/panel/stores/{storeSlug}/badges/{badgeId}",
+      operationId: "updatePanelBadge",
+      summary: "Atualiza uma etiqueta do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(UpdateBadgeInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const deleteBadge = sessionContract
+  .meta(
+    openapi({
+      method: "DELETE",
+      path: "/panel/stores/{storeSlug}/badges/{badgeId}",
+      operationId: "deletePanelBadge",
+      summary: "Exclui uma etiqueta do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(DeleteBadgeInputSchema)
   .output(PanelSuccessOutputSchema);
 
 export const listKits = panelRead
@@ -2308,6 +2430,10 @@ export const panelContractObject = {
   createTag,
   updateTag,
   deleteTag,
+  listBadges,
+  createBadge,
+  updateBadge,
+  deleteBadge,
   listKits,
   listCoupons,
   createCoupon,
@@ -2378,6 +2504,14 @@ export type PanelSubcategory = v.InferOutput<typeof PanelSubcategorySchema>;
 export type PanelDepartment = v.InferOutput<typeof PanelDepartmentSchema>;
 
 export type PanelCoupon = v.InferOutput<typeof PanelCouponSchema>;
+
+export type PanelBadge = v.InferOutput<typeof PanelBadgeSchema>;
+
+export type CreateBadgeInput = v.InferOutput<typeof CreateBadgeInputSchema>;
+
+export type UpdateBadgeInput = v.InferOutput<typeof UpdateBadgeInputSchema>;
+
+export type DeleteBadgeInput = v.InferOutput<typeof DeleteBadgeInputSchema>;
 
 /** SEO row shapes: the saved override, the resolved values, and the list row. */
 export type SeoEntityType = v.InferOutput<typeof SeoEntityTypeSchema>;

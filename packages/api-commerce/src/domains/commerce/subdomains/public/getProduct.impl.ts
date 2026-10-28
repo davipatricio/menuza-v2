@@ -36,6 +36,11 @@ export const getProductImpl = os.public.getProduct
           .include("tags", (productTag) =>
             productTag.include("tag", (tag) => tag.select("name", "isActive")),
           )
+          .include("badges", (productBadge) =>
+            productBadge.include("badge", (badge) =>
+              badge.where({ isActive: true }).select("id", "name", "imageUrl", "sortOrder"),
+            ),
+          )
           // The 1:1 label; `toPublicNutrition` is what decides whether it ships.
           .include("nutrition", (nutrition) =>
             nutrition.select(

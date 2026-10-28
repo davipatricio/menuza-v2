@@ -31,6 +31,8 @@ model Tenant {
   storeSettings     StoreSettings?
   productNutritions ProductNutrition[]
   productTags       ProductTag[]
+  badges            Badge[]
+  productBadges     ProductBadge[]
   categoryDepartments CategoryDepartment[]
   paymentIntegrations PaymentIntegration[]
   paymentMethodAssignments PaymentMethodAssignment[]
@@ -458,6 +460,22 @@ model Tag {
   @@map("Tag")
 }
 
+model Badge {
+  id        String         @id(map: "Badge_pkey")
+  tenantId  String
+  name      String
+  imageUrl  String
+  sortOrder Int            @default(0)
+  isActive  Boolean        @default(true)
+  updatedAt Timestamp(3)   @default(now())
+  tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "Badge_tenantId_fkey")
+  products  ProductBadge[]
+
+  @@unique([tenantId, name], map: "Badge_tenantId_name_key")
+  @@index([tenantId], map: "Badge_tenantId_idx")
+  @@map("Badge")
+}
+
 model Product {
   id            String        @id(map: "Product_pkey")
   tenantId      String
@@ -475,6 +493,7 @@ model Product {
   subcategory   Subcategory?  @relation(fields: [subcategoryId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "Product_subcategoryId_fkey")
   variations    Variation[]
   tags          ProductTag[]
+  badges        ProductBadge[]
   orderItems    OrderItem[]
   nutrition     ProductNutrition?
 
@@ -535,6 +554,20 @@ model ProductTag {
   @@index([tenantId], map: "ProductTag_tenantId_idx")
 
   @@map("ProductTag")
+}
+
+model ProductBadge {
+  tenantId  String
+  productId String
+  badgeId   String
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductBadge_tenantId_fkey")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductBadge_productId_fkey")
+  badge     Badge   @relation(fields: [badgeId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "ProductBadge_badgeId_fkey")
+
+  @@id([productId, badgeId], map: "ProductBadge_pkey")
+  @@index([badgeId], map: "ProductBadge_badgeId_idx")
+  @@index([tenantId], map: "ProductBadge_tenantId_idx")
+  @@map("ProductBadge")
 }
 
 // A sellable bundle of variations (MEN-82). The pricing formula is still open

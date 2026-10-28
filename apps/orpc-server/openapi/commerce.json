@@ -813,6 +813,28 @@
                                               "items": {
                                                 "type": "string"
                                               }
+                                            },
+                                            "badges": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "id": {
+                                                    "type": "string"
+                                                  },
+                                                  "name": {
+                                                    "type": "string"
+                                                  },
+                                                  "imageUrl": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "id",
+                                                  "name",
+                                                  "imageUrl"
+                                                ]
+                                              }
                                             }
                                           },
                                           "required": [
@@ -825,7 +847,8 @@
                                             "sortOrder",
                                             "fromPriceCents",
                                             "variations",
-                                            "tags"
+                                            "tags",
+                                            "badges"
                                           ]
                                         }
                                       }
@@ -931,6 +954,28 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "badges": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "imageUrl": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "imageUrl"
+                              ]
+                            }
                           }
                         },
                         "required": [
@@ -943,7 +988,8 @@
                           "sortOrder",
                           "fromPriceCents",
                           "variations",
-                          "tags"
+                          "tags",
+                          "badges"
                         ]
                       }
                     }
@@ -1158,6 +1204,28 @@
                               "type": "array",
                               "items": {
                                 "type": "string"
+                              }
+                            },
+                            "badges": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "imageUrl": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "name",
+                                  "imageUrl"
+                                ]
                               }
                             },
                             "nutrition": {
@@ -1452,6 +1520,7 @@
                             "fromPriceCents",
                             "variations",
                             "tags",
+                            "badges",
                             "nutrition",
                             "seo"
                           ]

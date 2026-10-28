@@ -2,6 +2,7 @@ import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { db } from "@menuza/db";
+import { badgesOf } from "./catalog.ts";
 import { inTenantScope, resolveStore } from "./support.ts";
 import { isoOf } from "./taxonomy.ts";
 
@@ -46,6 +47,9 @@ export const listProductsImpl = os.handler(async ({ input, context }) => {
       const base = db.orm.public.Product.where({ tenantId: store.tenantId })
         .include("tags", (productTag) =>
           productTag.include("tag", (tag) => tag.select("id", "name")),
+        )
+        .include("badges", (productBadge) =>
+          productBadge.include("badge", (badge) => badge.select("id", "name", "imageUrl")),
         )
         .include("variations", (variation) =>
           variation
@@ -164,6 +168,7 @@ export const listProductsImpl = os.handler(async ({ input, context }) => {
           return { id: tag.id, name: tag.name };
         })
         .filter((entry): entry is { id: string; name: string } => entry !== null),
+      badges: badgesOf(product.badges),
       priceCents:
         product.variations.find((variation) => variation.name === "default")?.priceCents ??
         product.variations[0]?.priceCents ??

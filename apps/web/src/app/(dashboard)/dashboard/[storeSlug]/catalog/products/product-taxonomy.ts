@@ -15,10 +15,11 @@ export async function getProductTaxonomy(storeSlug: string) {
 
   if (!client) return null;
 
-  const [{ categories }, { subcategories }, { tags }] = await Promise.all([
+  const [{ categories }, { subcategories }, { tags }, { badges }] = await Promise.all([
     client.panel.listCategories({ storeSlug }),
     client.panel.listSubcategories({ storeSlug }),
     client.panel.listTags({ storeSlug }),
+    client.panel.listBadges({ storeSlug }),
   ]);
 
   const departmentByCategory = new Map(
@@ -31,5 +32,7 @@ export async function getProductTaxonomy(storeSlug: string) {
       departmentName: departmentByCategory.get(subcategory.categoryId) ?? "Sem departamento",
     })),
     tags,
+    // The form picks badge ids; the image is only needed by the badges screen.
+    badges: badges.map((badge) => ({ id: badge.id, name: badge.name })),
   };
 }

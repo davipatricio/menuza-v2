@@ -34,6 +34,7 @@ async function NewProduct({ params }: { params: Promise<{ storeSlug: string }> }
         storeSlug={storeSlug}
         subcategories={taxonomy.subcategories}
         tags={taxonomy.tags}
+        badges={taxonomy.badges}
       />
     </section>
   );

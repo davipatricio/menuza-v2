@@ -1,0 +1,547 @@
+[
+  {
+    "id": "table.Badge",
+    "label": "Create table \"Badge\"",
+    "summary": "Creates table \"Badge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Badge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Badge\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Badge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"Badge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Badge\"",
+        "sql": "CREATE TABLE \"public\".\"Badge\" (\n  \"id\" text NOT NULL,\n  \"imageUrl\" text NOT NULL,\n  \"isActive\" bool DEFAULT true NOT NULL,\n  \"name\" text NOT NULL,\n  \"sortOrder\" int4 DEFAULT 0 NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  CONSTRAINT \"Badge_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Badge\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"Badge\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"Badge\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.ProductBadge",
+    "label": "Create table \"ProductBadge\"",
+    "summary": "Creates table \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"ProductBadge\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductBadge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"ProductBadge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"ProductBadge\"",
+        "sql": "CREATE TABLE \"public\".\"ProductBadge\" (\n  \"badgeId\" text NOT NULL,\n  \"productId\" text NOT NULL,\n  \"tenantId\" text NOT NULL,\n  CONSTRAINT \"ProductBadge_pkey\" PRIMARY KEY (\"productId\", \"badgeId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"ProductBadge\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"ProductBadge\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"ProductBadge\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "unique.Badge.Badge_tenantId_name_key",
+    "label": "Add unique constraint on \"Badge\" (tenantId, name)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "Badge_tenantId_name_key",
+        "table": "Badge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Badge_tenantId_name_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Badge_tenantId_name_key", "public", "\"public\".\"Badge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"Badge_tenantId_name_key\" on \"Badge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"Badge_tenantId_name_key\"",
+        "sql": "ALTER TABLE \"public\".\"Badge\" ADD CONSTRAINT \"Badge_tenantId_name_key\" UNIQUE (\"tenantId\", \"name\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"Badge_tenantId_name_key\" exists on (tenantId, name)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "Badge_tenantId_name_key",
+          "public",
+          "\"public\".\"Badge\"",
+          "u",
+          "[\"tenantId\",\"name\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Badge.Badge_tenantId_idx",
+    "label": "Create index \"Badge_tenantId_idx\" on \"Badge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Badge_tenantId_idx",
+        "table": "Badge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Badge_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Badge_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"Badge_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Badge_tenantId_idx\"",
+        "sql": "CREATE INDEX \"Badge_tenantId_idx\" ON \"public\".\"Badge\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Badge_tenantId_idx\" exists on \"Badge\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"Badge_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"Badge\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductBadge.ProductBadge_badgeId_idx",
+    "label": "Create index \"ProductBadge_badgeId_idx\" on \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductBadge_badgeId_idx",
+        "table": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductBadge_badgeId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductBadge_badgeId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ProductBadge_badgeId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductBadge_badgeId_idx\"",
+        "sql": "CREATE INDEX \"ProductBadge_badgeId_idx\" ON \"public\".\"ProductBadge\" (\"badgeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductBadge_badgeId_idx\" exists on \"ProductBadge\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ProductBadge_badgeId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"ProductBadge\"",
+          "btree",
+          "[\"badgeId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductBadge.ProductBadge_productId_idx_5858600a",
+    "label": "Create index \"ProductBadge_productId_idx_5858600a\" on \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductBadge_productId_idx_5858600a",
+        "table": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductBadge_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductBadge_productId_idx_5858600a\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ProductBadge_productId_idx_5858600a\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductBadge_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"ProductBadge_productId_idx_5858600a\" ON \"public\".\"ProductBadge\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductBadge_productId_idx_5858600a\" exists on \"ProductBadge\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ProductBadge_productId_idx_5858600a\"",
+          "i",
+          "I",
+          "\"public\".\"ProductBadge\"",
+          "btree",
+          "[\"productId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ProductBadge.ProductBadge_tenantId_idx",
+    "label": "Create index \"ProductBadge_tenantId_idx\" on \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ProductBadge_tenantId_idx",
+        "table": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ProductBadge_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"ProductBadge_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"ProductBadge_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ProductBadge_tenantId_idx\"",
+        "sql": "CREATE INDEX \"ProductBadge_tenantId_idx\" ON \"public\".\"ProductBadge\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ProductBadge_tenantId_idx\" exists on \"ProductBadge\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"ProductBadge_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"ProductBadge\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Badge.Badge_tenantId_fkey",
+    "label": "Add foreign key \"Badge_tenantId_fkey\" on \"Badge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Badge_tenantId_fkey",
+        "table": "Badge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Badge_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["Badge_tenantId_fkey", "public", "\"public\".\"Badge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"Badge_tenantId_fkey\" on \"Badge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Badge_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Badge\"\nADD CONSTRAINT \"Badge_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Badge_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "Badge_tenantId_fkey",
+          "public",
+          "\"public\".\"Badge\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductBadge.ProductBadge_tenantId_fkey",
+    "label": "Add foreign key \"ProductBadge_tenantId_fkey\" on \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductBadge_tenantId_fkey",
+        "table": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductBadge_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductBadge_tenantId_fkey", "public", "\"public\".\"ProductBadge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"ProductBadge_tenantId_fkey\" on \"ProductBadge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductBadge_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductBadge\"\nADD CONSTRAINT \"ProductBadge_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductBadge_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "ProductBadge_tenantId_fkey",
+          "public",
+          "\"public\".\"ProductBadge\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductBadge.ProductBadge_productId_fkey",
+    "label": "Add foreign key \"ProductBadge_productId_fkey\" on \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductBadge_productId_fkey",
+        "table": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductBadge_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductBadge_productId_fkey", "public", "\"public\".\"ProductBadge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"ProductBadge_productId_fkey\" on \"ProductBadge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductBadge_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductBadge\"\nADD CONSTRAINT \"ProductBadge_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"Product\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductBadge_productId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "ProductBadge_productId_fkey",
+          "public",
+          "\"public\".\"ProductBadge\"",
+          "f",
+          "[\"productId\"]",
+          "\"public\".\"Product\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ProductBadge.ProductBadge_badgeId_fkey",
+    "label": "Add foreign key \"ProductBadge_badgeId_fkey\" on \"ProductBadge\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ProductBadge_badgeId_fkey",
+        "table": "ProductBadge"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ProductBadge_badgeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["ProductBadge_badgeId_fkey", "public", "\"public\".\"ProductBadge\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"ProductBadge_badgeId_fkey\" on \"ProductBadge\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ProductBadge_badgeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ProductBadge\"\nADD CONSTRAINT \"ProductBadge_badgeId_fkey\"\nFOREIGN KEY (\"badgeId\")\nREFERENCES \"public\".\"Badge\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ProductBadge_badgeId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "ProductBadge_badgeId_fkey",
+          "public",
+          "\"public\".\"ProductBadge\"",
+          "f",
+          "[\"badgeId\"]",
+          "\"public\".\"Badge\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.guard-product-badge-tenant",
+    "label": "Reject a ProductBadge row whose product and badge do not share its tenant",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check the ProductBadge table exists",
+        "sql": "SELECT to_regclass('\"public\".\"ProductBadge\"') IS NOT NULL AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Update the guard function to include ProductBadge",
+        "sql": "CREATE OR REPLACE FUNCTION \"public\".\"menuza_join_tenant_guard\"() RETURNS trigger AS $$\nDECLARE\n  first_tenant text;\n  second_tenant text;\nBEGIN\n  IF TG_TABLE_NAME = 'ProductTag' THEN\n    SELECT \"tenantId\" INTO first_tenant FROM \"public\".\"Product\" WHERE \"id\" = NEW.\"productId\";\n    SELECT \"tenantId\" INTO second_tenant FROM \"public\".\"Tag\" WHERE \"id\" = NEW.\"tagId\";\n  ELSIF TG_TABLE_NAME = 'ProductBadge' THEN\n    SELECT \"tenantId\" INTO first_tenant FROM \"public\".\"Product\" WHERE \"id\" = NEW.\"productId\";\n    SELECT \"tenantId\" INTO second_tenant FROM \"public\".\"Badge\" WHERE \"id\" = NEW.\"badgeId\";\n  ELSE\n    SELECT \"tenantId\" INTO first_tenant FROM \"public\".\"Category\" WHERE \"id\" = NEW.\"categoryId\";\n    SELECT \"tenantId\" INTO second_tenant FROM \"public\".\"Department\" WHERE \"id\" = NEW.\"departmentId\";\n  END IF;\n\n  IF first_tenant IS NULL\n     OR second_tenant IS NULL\n     OR first_tenant <> NEW.\"tenantId\"\n     OR second_tenant <> NEW.\"tenantId\" THEN\n    RAISE EXCEPTION '% row tenant % does not match its parents (%) and (%)',\n      TG_TABLE_NAME, NEW.\"tenantId\", first_tenant, second_tenant;\n  END IF;\n\n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql",
+        "params": []
+      },
+      {
+        "description": "Drop the product badge guard if it is already there",
+        "sql": "DROP TRIGGER IF EXISTS \"ProductBadge_tenant_matches_parents\" ON \"public\".\"ProductBadge\"",
+        "params": []
+      },
+      {
+        "description": "Guard the product badges",
+        "sql": "CREATE TRIGGER \"ProductBadge_tenant_matches_parents\"\nBEFORE INSERT OR UPDATE ON \"public\".\"ProductBadge\"\nFOR EACH ROW EXECUTE FUNCTION \"public\".\"menuza_join_tenant_guard\"()",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify ProductBadge carries the guard",
+        "sql": "SELECT (\n  SELECT count(*) FROM pg_trigger\n  WHERE tgname = 'ProductBadge_tenant_matches_parents'\n    AND NOT tgisinternal\n) = 1 AS ok",
+        "params": []
+      }
+    ]
+  }
+]

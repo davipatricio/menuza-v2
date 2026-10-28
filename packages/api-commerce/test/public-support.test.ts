@@ -18,8 +18,13 @@ import {
 /** One `Product.tags` entry as the `tag` include returns it. */
 type ProductTagJoin = { tag: { name: string; isActive: boolean } | null };
 
+/** One `Product.badges` entry as the `badge` include returns it. */
+type ProductBadgeJoin = {
+  badge: { id: string; name: string; imageUrl: string; sortOrder: number } | null;
+};
+
 /** The slice of a product row `toPublicProduct` reads. */
-function productWithTags(tags: ProductTagJoin[]) {
+function productWithTags(tags: ProductTagJoin[], badges: ProductBadgeJoin[] = []) {
   return {
     id: "product-1",
     name: "Açaí 500ml",
@@ -38,6 +43,7 @@ function productWithTags(tags: ProductTagJoin[]) {
       },
     ],
     tags,
+    badges,
   };
 }
 
@@ -61,6 +67,61 @@ describe("toPublicProduct tags", () => {
     const product = productWithTags([{ tag: null }]);
 
     expect(toPublicProduct(product).tags).toEqual([]);
+  });
+});
+
+describe("toPublicProduct badges", () => {
+  test("maps the active badge rows to id, name and image", () => {
+    const product = productWithTags(
+      [],
+      [
+        {
+          badge: {
+            id: "badge-1",
+            name: "Novo",
+            imageUrl: "https://cdn.menuza.app/novo.png",
+            sortOrder: 0,
+          },
+        },
+      ],
+    );
+
+    expect(toPublicProduct(product).badges).toEqual([
+      { id: "badge-1", name: "Novo", imageUrl: "https://cdn.menuza.app/novo.png" },
+    ]);
+  });
+
+  // The join row carries no order of its own, so `sortOrder` decides which
+  // badge wins the left-most overlay slot.
+  test("orders badges by sortOrder, not by join order", () => {
+    const product = productWithTags(
+      [],
+      [
+        {
+          badge: { id: "b-2", name: "Artesanal", imageUrl: "https://x/2.png", sortOrder: 20 },
+        },
+        { badge: { id: "b-1", name: "Novo", imageUrl: "https://x/1.png", sortOrder: 10 } },
+      ],
+    );
+
+    expect(toPublicProduct(product).badges.map((badge) => badge.id)).toEqual(["b-1", "b-2"]);
+  });
+
+  test("drops a null badge join and tolerates no badges at all", () => {
+    expect(toPublicProduct(productWithTags([], [{ badge: null }])).badges).toEqual([]);
+    expect(
+      toPublicProduct({
+        id: "product-1",
+        name: "Açaí",
+        description: null,
+        imageUrl: null,
+        available: true,
+        archived: false,
+        sortOrder: 0,
+        variations: [],
+        tags: [],
+      }).badges,
+    ).toEqual([]);
   });
 });
 

@@ -136,6 +136,21 @@ export default async function ProductDetailPage({
         </BreadcrumbList>
       </Breadcrumb>
 
+      {product.badges.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {product.badges.map((badge) => (
+            <div key={badge.id} className="inline-flex items-center gap-1.5" title={badge.name}>
+              {/* eslint-disable-next-line nextjs/no-img-element -- badge images are arbitrary tenant URLs, outside the next/image allowlist */}
+              <img
+                src={badge.imageUrl}
+                alt={badge.name}
+                className="h-7 w-auto max-w-28 object-contain"
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <h1 className="text-2xl font-semibold tracking-tight">{product.name}</h1>
 
       {product.imageUrl ? (
