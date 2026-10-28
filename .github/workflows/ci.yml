@@ -68,6 +68,10 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      # Importing the client requires the variable; the connection is lazy, so
+      # no database has to be reachable for the unit suites.
+      DATABASE_URL: postgres://menuza:menuza@127.0.0.1:5433/menuza?schema=public
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
