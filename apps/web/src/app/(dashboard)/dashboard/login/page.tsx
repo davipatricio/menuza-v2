@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Store } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
+import { safeReturnTo } from "@/lib/return-to.ts";
 import { getPanelSession } from "@/lib/server-tenant.ts";
 import { LoginForm } from "./login-form.tsx";
 
@@ -19,10 +20,14 @@ export const metadata: Metadata = {
  * brand and theme control, then a single centered card. No tenant context is
  * known before authentication, so nothing here reads the store.
  */
-export default async function LoginPage() {
+export default async function LoginPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await getPanelSession();
 
-  if (session) redirect("/dashboard");
+  if (session) {
+    redirect(safeReturnTo((await props.searchParams).returnTo));
+  }
 
   return (
     <div className="flex min-h-svh flex-col bg-background">

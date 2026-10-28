@@ -15,6 +15,8 @@ import {
 } from "@menuza/orpc-server";
 import { disconnectDb, pingDb } from "@menuza/db";
 import { tenantDomainRouter } from "@menuza/api-tenant";
+import { handleOAuthRequest } from "./oauth.ts";
+import { handleMcpRequest } from "./mcp/server.ts";
 
 initSentry({ service: "tenant" });
 
@@ -47,6 +49,14 @@ const server = Bun.serve({
         return new Response("unready", { status: 503 });
       }
     }
+
+    const oauthResponse = await handleOAuthRequest(req);
+
+    if (oauthResponse) return oauthResponse;
+
+    const mcpResponse = await handleMcpRequest(req);
+
+    if (mcpResponse) return mcpResponse;
 
     if (url.pathname.startsWith("/openapi")) return openApiFetch(req, "/openapi");
 

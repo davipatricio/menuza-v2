@@ -80,10 +80,11 @@ const ALWAYS_ALLOW = [
   "/favicon.ico",
   "/sitemap.xml",
   "/robots.txt",
+  "/.well-known",
 ];
 
 const PREFIXES = {
-  main: ["/about", "/pricing", "/contact", "/dashboard"],
+  main: ["/about", "/pricing", "/contact", "/dashboard", "/oauth"],
   storefront: ["/store", "/menu", "/cart", "/checkout"],
 } as const;
 

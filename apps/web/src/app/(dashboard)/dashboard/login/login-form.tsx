@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { ORPCError } from "@orpc/client";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { safeReturnTo } from "@/lib/return-to.ts";
 import { loginSession } from "@/lib/session-client.ts";
 
 const GENERIC_ERROR = "Não foi possível entrar. Tente novamente.";
@@ -18,6 +19,8 @@ const GENERIC_ERROR = "Não foi possível entrar. Tente novamente.";
  */
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get("returnTo");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +33,8 @@ export function LoginForm() {
 
     try {
       await loginSession({ email: email.trim(), password });
-      router.replace("/dashboard");
+
+      router.replace(safeReturnTo(returnTo));
       router.refresh();
     } catch (err) {
       setError(

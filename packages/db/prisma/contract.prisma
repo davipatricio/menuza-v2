@@ -1031,3 +1031,56 @@ model MealSubscription {
 
   @@map("MealSubscription")
 }
+
+model OAuthClient {
+  id               String          @id(map: "OAuthClient_pkey")
+  clientId         String
+  clientSecretHash String?
+  name             String
+  redirectUris     String[]
+  isPublic         Boolean         @default(true)
+  createdAt        Timestamp(3)    @default(now())
+  tokens           OAuthToken[]
+  authCodes        OAuthAuthCode[]
+
+  @@index([clientId], map: "OAuthClient_clientId_key", unique: true)
+  @@map("OAuthClient")
+}
+
+model OAuthAuthCode {
+  id                  String       @id(map: "OAuthAuthCode_pkey")
+  codeHash            String
+  clientId            String
+  memberId            String
+  codeChallenge       String
+  codeChallengeMethod String
+  tenantIds           String[]
+  scopes              String[]
+  redirectUri         String
+  expiresAt           Timestamp(3)
+  createdAt           Timestamp(3) @default(now())
+  client              OAuthClient  @relation(fields: [clientId], references: [clientId], onDelete: Cascade, map: "OAuthAuthCode_clientId_fkey")
+
+  @@index([codeHash], map: "OAuthAuthCode_codeHash_key", unique: true)
+  @@index([expiresAt], map: "OAuthAuthCode_expiresAt_idx")
+  @@map("OAuthAuthCode")
+}
+
+model OAuthToken {
+  id               String        @id(map: "OAuthToken_pkey")
+  accessTokenHash  String
+  refreshTokenHash String?
+  clientId         String
+  memberId         String
+  tenantIds        String[]
+  scopes           String[]
+  expiresAt        Timestamp(3)
+  revokedAt        Timestamp(3)?
+  createdAt        Timestamp(3)  @default(now())
+  client           OAuthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade, map: "OAuthToken_clientId_fkey")
+
+  @@index([accessTokenHash], map: "OAuthToken_accessTokenHash_key", unique: true)
+  @@index([refreshTokenHash], map: "OAuthToken_refreshTokenHash_key", unique: true)
+  @@index([expiresAt], map: "OAuthToken_expiresAt_idx")
+  @@map("OAuthToken")
+}

@@ -16,13 +16,19 @@
     "fmt:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
+    "oauth:client": "bun --env-file-if-exists=../../.env src/oauth-client.ts",
     "start": "bun --env-file-if-exists=../../.env src/server.ts",
     "typecheck": "bun check"
   },
   "dependencies": {
     "@menuza/api-tenant": "workspace:*",
     "@menuza/db": "workspace:*",
-    "@menuza/orpc-server": "workspace:*"
+    "@menuza/orpc-server": "workspace:*",
+    "@menuza/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@orpc/server": "catalog:",
+    "@valibot/to-json-schema": "1.8.0",
+    "valibot": "catalog:"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",

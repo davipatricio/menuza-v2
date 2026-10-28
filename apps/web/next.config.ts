@@ -38,6 +38,12 @@ const config: NextConfig = {
     return [
       { source: "/commerce/:path*", destination: `${commerceInternal}/:path*` },
       { source: "/tenant/:path*", destination: `${tenantInternal}/:path*` },
+      { source: "/oauth/token", destination: `${tenantInternal}/oauth/token` },
+      { source: "/oauth/revoke", destination: `${tenantInternal}/oauth/revoke` },
+      {
+        source: "/.well-known/oauth-authorization-server",
+        destination: `${tenantInternal}/.well-known/oauth-authorization-server`,
+      },
       // Provider callbacks (Pagar.me) land on the commerce service, which owns
       // the integration token → tenant resolution.
       { source: "/webhooks/:path*", destination: `${commerceInternal}/:path*` },
