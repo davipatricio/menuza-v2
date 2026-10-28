@@ -1,0 +1,1055 @@
+[
+  {
+    "id": "table.McpSession",
+    "label": "Create table \"McpSession\"",
+    "summary": "Creates table \"McpSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "McpSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"McpSession\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"McpSession\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"McpSession\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"McpSession\"",
+        "sql": "CREATE TABLE \"public\".\"McpSession\" (\n  \"clientName\" text NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"integrationId\" text NOT NULL,\n  \"label\" text NOT NULL,\n  \"lastUsedAt\" timestamp(3),\n  \"memberId\" text NOT NULL,\n  \"oauthTokenId\" text NOT NULL,\n  \"revokedAt\" timestamp(3),\n  \"tenantId\" text NOT NULL,\n  \"tokenDigest\" text NOT NULL,\n  CONSTRAINT \"McpSession_pkey\" PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"McpSession\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"McpSession\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"McpSession\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.OAuthAuthCode",
+    "label": "Create table \"OAuthAuthCode\"",
+    "summary": "Creates table \"OAuthAuthCode\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "OAuthAuthCode"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"OAuthAuthCode\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthAuthCode\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"OAuthAuthCode\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"OAuthAuthCode\"",
+        "sql": "CREATE TABLE \"public\".\"OAuthAuthCode\" (\n  \"clientId\" text NOT NULL,\n  \"codeChallenge\" text NOT NULL,\n  \"codeChallengeMethod\" text NOT NULL,\n  \"codeHash\" text NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamp(3) NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"redirectUri\" text NOT NULL,\n  \"scopes\" text[] NOT NULL,\n  \"tenantIds\" text[] NOT NULL,\n  CONSTRAINT \"OAuthAuthCode_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"OAuthAuthCode_scopes_elem_not_null_de6fcc8e\" CHECK (array_position(\"scopes\", NULL) IS NULL),\n  CONSTRAINT \"OAuthAuthCode_tenantIds_elem_not_null_48f162d4\" CHECK (array_position(\"tenantIds\", NULL) IS NULL)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"OAuthAuthCode\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"OAuthAuthCode\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"OAuthAuthCode\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.OAuthClient",
+    "label": "Create table \"OAuthClient\"",
+    "summary": "Creates table \"OAuthClient\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "OAuthClient"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"OAuthClient\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthClient\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"OAuthClient\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"OAuthClient\"",
+        "sql": "CREATE TABLE \"public\".\"OAuthClient\" (\n  \"clientId\" text NOT NULL,\n  \"clientSecretHash\" text,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"isPublic\" bool DEFAULT true NOT NULL,\n  \"name\" text NOT NULL,\n  \"redirectUris\" text[] NOT NULL,\n  CONSTRAINT \"OAuthClient_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"OAuthClient_redirectUris_elem_not_null_57e7d982\" CHECK (array_position(\"redirectUris\", NULL) IS NULL)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"OAuthClient\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"OAuthClient\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"OAuthClient\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.OAuthToken",
+    "label": "Create table \"OAuthToken\"",
+    "summary": "Creates table \"OAuthToken\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "OAuthToken"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"OAuthToken\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthToken\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"OAuthToken\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"OAuthToken\"",
+        "sql": "CREATE TABLE \"public\".\"OAuthToken\" (\n  \"accessTokenHash\" text NOT NULL,\n  \"clientId\" text NOT NULL,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamp(3) NOT NULL,\n  \"id\" text NOT NULL,\n  \"memberId\" text NOT NULL,\n  \"refreshTokenHash\" text,\n  \"revokedAt\" timestamp(3),\n  \"scopes\" text[] NOT NULL,\n  \"tenantIds\" text[] NOT NULL,\n  CONSTRAINT \"OAuthToken_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"OAuthToken_scopes_elem_not_null_de6fcc8e\" CHECK (array_position(\"scopes\", NULL) IS NULL),\n  CONSTRAINT \"OAuthToken_tenantIds_elem_not_null_48f162d4\" CHECK (array_position(\"tenantIds\", NULL) IS NULL)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"OAuthToken\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"OAuthToken\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"OAuthToken\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "table.StoreIntegration",
+    "label": "Create table \"StoreIntegration\"",
+    "summary": "Creates table \"StoreIntegration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "StoreIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"StoreIntegration\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"StoreIntegration\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "table \"StoreIntegration\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"StoreIntegration\"",
+        "sql": "CREATE TABLE \"public\".\"StoreIntegration\" (\n  \"config\" text,\n  \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL,\n  \"enabledAt\" timestamp(3),\n  \"id\" text NOT NULL,\n  \"integrationId\" text NOT NULL,\n  \"status\" text DEFAULT 'disabled' NOT NULL,\n  \"tenantId\" text NOT NULL,\n  \"updatedAt\" timestamp(3) NOT NULL,\n  CONSTRAINT \"StoreIntegration_pkey\" PRIMARY KEY (\"id\"),\n  CONSTRAINT \"StoreIntegration_status_check_7d6cabce\" CHECK (\"status\" IN ('enabled', 'disabled', 'paused', 'error'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"StoreIntegration\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3))) AS \"result\"",
+        "params": ["\"public\".\"StoreIntegration\"", "r", "p"],
+        "expectation": {
+          "expects": "present",
+          "object": "table \"StoreIntegration\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "unique.StoreIntegration.StoreIntegration_tenantId_integrationId_key",
+    "label": "Add unique constraint on \"StoreIntegration\" (tenantId, integrationId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "StoreIntegration_tenantId_integrationId_key",
+        "table": "StoreIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"StoreIntegration_tenantId_integrationId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "StoreIntegration_tenantId_integrationId_key",
+          "public",
+          "\"public\".\"StoreIntegration\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"StoreIntegration_tenantId_integrationId_key\" on \"StoreIntegration\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"StoreIntegration_tenantId_integrationId_key\"",
+        "sql": "ALTER TABLE \"public\".\"StoreIntegration\" ADD CONSTRAINT \"StoreIntegration_tenantId_integrationId_key\" UNIQUE (\"tenantId\", \"integrationId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify unique constraint \"StoreIntegration_tenantId_integrationId_key\" exists on (tenantId, integrationId)",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb)) AS \"result\"",
+        "params": [
+          "StoreIntegration_tenantId_integrationId_key",
+          "public",
+          "\"public\".\"StoreIntegration\"",
+          "u",
+          "[\"tenantId\",\"integrationId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.McpSession.McpSession_memberId_idx",
+    "label": "Create index \"McpSession_memberId_idx\" on \"McpSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "McpSession_memberId_idx",
+        "table": "McpSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"McpSession_memberId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"McpSession_memberId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"McpSession_memberId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"McpSession_memberId_idx\"",
+        "sql": "CREATE INDEX \"McpSession_memberId_idx\" ON \"public\".\"McpSession\" (\"memberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"McpSession_memberId_idx\" exists on \"McpSession\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"McpSession_memberId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"McpSession\"",
+          "btree",
+          "[\"memberId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.McpSession.McpSession_tenantId_idx_c93ed4f1",
+    "label": "Create index \"McpSession_tenantId_idx_c93ed4f1\" on \"McpSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "McpSession_tenantId_idx_c93ed4f1",
+        "table": "McpSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"McpSession_tenantId_idx_c93ed4f1\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"McpSession_tenantId_idx_c93ed4f1\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"McpSession_tenantId_idx_c93ed4f1\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"McpSession_tenantId_idx_c93ed4f1\"",
+        "sql": "CREATE INDEX \"McpSession_tenantId_idx_c93ed4f1\" ON \"public\".\"McpSession\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"McpSession_tenantId_idx_c93ed4f1\" exists on \"McpSession\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"McpSession_tenantId_idx_c93ed4f1\"",
+          "i",
+          "I",
+          "\"public\".\"McpSession\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.McpSession.McpSession_tenantId_integrationId_idx",
+    "label": "Create index \"McpSession_tenantId_integrationId_idx\" on \"McpSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "McpSession_tenantId_integrationId_idx",
+        "table": "McpSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"McpSession_tenantId_integrationId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"McpSession_tenantId_integrationId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"McpSession_tenantId_integrationId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"McpSession_tenantId_integrationId_idx\"",
+        "sql": "CREATE INDEX \"McpSession_tenantId_integrationId_idx\" ON \"public\".\"McpSession\" (\"tenantId\", \"integrationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"McpSession_tenantId_integrationId_idx\" exists on \"McpSession\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"McpSession_tenantId_integrationId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"McpSession\"",
+          "btree",
+          "[\"tenantId\",\"integrationId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.McpSession.McpSession_tokenDigest_key",
+    "label": "Create index \"McpSession_tokenDigest_key\" on \"McpSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "McpSession_tokenDigest_key",
+        "table": "McpSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"McpSession_tokenDigest_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"McpSession_tokenDigest_key\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"McpSession_tokenDigest_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"McpSession_tokenDigest_key\"",
+        "sql": "CREATE UNIQUE INDEX \"McpSession_tokenDigest_key\" ON \"public\".\"McpSession\" (\"tokenDigest\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"McpSession_tokenDigest_key\" exists on \"McpSession\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"McpSession_tokenDigest_key\"",
+          "i",
+          "I",
+          "\"public\".\"McpSession\"",
+          "btree",
+          "[\"tokenDigest\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthAuthCode.OAuthAuthCode_clientId_idx_153a9a49",
+    "label": "Create index \"OAuthAuthCode_clientId_idx_153a9a49\" on \"OAuthAuthCode\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthAuthCode_clientId_idx_153a9a49",
+        "table": "OAuthAuthCode"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthAuthCode_clientId_idx_153a9a49\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthAuthCode_clientId_idx_153a9a49\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthAuthCode_clientId_idx_153a9a49\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthAuthCode_clientId_idx_153a9a49\"",
+        "sql": "CREATE INDEX \"OAuthAuthCode_clientId_idx_153a9a49\" ON \"public\".\"OAuthAuthCode\" (\"clientId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthAuthCode_clientId_idx_153a9a49\" exists on \"OAuthAuthCode\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthAuthCode_clientId_idx_153a9a49\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthAuthCode\"",
+          "btree",
+          "[\"clientId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthAuthCode.OAuthAuthCode_codeHash_key",
+    "label": "Create index \"OAuthAuthCode_codeHash_key\" on \"OAuthAuthCode\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthAuthCode_codeHash_key",
+        "table": "OAuthAuthCode"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthAuthCode_codeHash_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthAuthCode_codeHash_key\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthAuthCode_codeHash_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthAuthCode_codeHash_key\"",
+        "sql": "CREATE UNIQUE INDEX \"OAuthAuthCode_codeHash_key\" ON \"public\".\"OAuthAuthCode\" (\"codeHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthAuthCode_codeHash_key\" exists on \"OAuthAuthCode\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthAuthCode_codeHash_key\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthAuthCode\"",
+          "btree",
+          "[\"codeHash\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthAuthCode.OAuthAuthCode_expiresAt_idx",
+    "label": "Create index \"OAuthAuthCode_expiresAt_idx\" on \"OAuthAuthCode\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthAuthCode_expiresAt_idx",
+        "table": "OAuthAuthCode"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthAuthCode_expiresAt_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthAuthCode_expiresAt_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthAuthCode_expiresAt_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthAuthCode_expiresAt_idx\"",
+        "sql": "CREATE INDEX \"OAuthAuthCode_expiresAt_idx\" ON \"public\".\"OAuthAuthCode\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthAuthCode_expiresAt_idx\" exists on \"OAuthAuthCode\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthAuthCode_expiresAt_idx\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthAuthCode\"",
+          "btree",
+          "[\"expiresAt\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthClient.OAuthClient_clientId_key",
+    "label": "Create index \"OAuthClient_clientId_key\" on \"OAuthClient\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthClient_clientId_key",
+        "table": "OAuthClient"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthClient_clientId_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthClient_clientId_key\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthClient_clientId_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthClient_clientId_key\"",
+        "sql": "CREATE UNIQUE INDEX \"OAuthClient_clientId_key\" ON \"public\".\"OAuthClient\" (\"clientId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthClient_clientId_key\" exists on \"OAuthClient\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthClient_clientId_key\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthClient\"",
+          "btree",
+          "[\"clientId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthToken.OAuthToken_accessTokenHash_key",
+    "label": "Create index \"OAuthToken_accessTokenHash_key\" on \"OAuthToken\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthToken_accessTokenHash_key",
+        "table": "OAuthToken"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthToken_accessTokenHash_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthToken_accessTokenHash_key\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthToken_accessTokenHash_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthToken_accessTokenHash_key\"",
+        "sql": "CREATE UNIQUE INDEX \"OAuthToken_accessTokenHash_key\" ON \"public\".\"OAuthToken\" (\"accessTokenHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthToken_accessTokenHash_key\" exists on \"OAuthToken\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthToken_accessTokenHash_key\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthToken\"",
+          "btree",
+          "[\"accessTokenHash\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthToken.OAuthToken_clientId_idx_153a9a49",
+    "label": "Create index \"OAuthToken_clientId_idx_153a9a49\" on \"OAuthToken\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthToken_clientId_idx_153a9a49",
+        "table": "OAuthToken"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthToken_clientId_idx_153a9a49\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthToken_clientId_idx_153a9a49\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthToken_clientId_idx_153a9a49\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthToken_clientId_idx_153a9a49\"",
+        "sql": "CREATE INDEX \"OAuthToken_clientId_idx_153a9a49\" ON \"public\".\"OAuthToken\" (\"clientId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthToken_clientId_idx_153a9a49\" exists on \"OAuthToken\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthToken_clientId_idx_153a9a49\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthToken\"",
+          "btree",
+          "[\"clientId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthToken.OAuthToken_expiresAt_idx",
+    "label": "Create index \"OAuthToken_expiresAt_idx\" on \"OAuthToken\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthToken_expiresAt_idx",
+        "table": "OAuthToken"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthToken_expiresAt_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthToken_expiresAt_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthToken_expiresAt_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthToken_expiresAt_idx\"",
+        "sql": "CREATE INDEX \"OAuthToken_expiresAt_idx\" ON \"public\".\"OAuthToken\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthToken_expiresAt_idx\" exists on \"OAuthToken\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthToken_expiresAt_idx\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthToken\"",
+          "btree",
+          "[\"expiresAt\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.OAuthToken.OAuthToken_refreshTokenHash_key",
+    "label": "Create index \"OAuthToken_refreshTokenHash_key\" on \"OAuthToken\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "OAuthToken_refreshTokenHash_key",
+        "table": "OAuthToken"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"OAuthToken_refreshTokenHash_key\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"OAuthToken_refreshTokenHash_key\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"OAuthToken_refreshTokenHash_key\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"OAuthToken_refreshTokenHash_key\"",
+        "sql": "CREATE UNIQUE INDEX \"OAuthToken_refreshTokenHash_key\" ON \"public\".\"OAuthToken\" (\"refreshTokenHash\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"OAuthToken_refreshTokenHash_key\" exists on \"OAuthToken\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND \"i\".\"indisunique\" AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"OAuthToken_refreshTokenHash_key\"",
+          "i",
+          "I",
+          "\"public\".\"OAuthToken\"",
+          "btree",
+          "[\"refreshTokenHash\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.StoreIntegration.StoreIntegration_tenantId_idx",
+    "label": "Create index \"StoreIntegration_tenantId_idx\" on \"StoreIntegration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "StoreIntegration_tenantId_idx",
+        "table": "StoreIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"StoreIntegration_tenantId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"StoreIntegration_tenantId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"StoreIntegration_tenantId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"StoreIntegration_tenantId_idx\"",
+        "sql": "CREATE INDEX \"StoreIntegration_tenantId_idx\" ON \"public\".\"StoreIntegration\" (\"tenantId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"StoreIntegration_tenantId_idx\" exists on \"StoreIntegration\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"StoreIntegration_tenantId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"StoreIntegration\"",
+          "btree",
+          "[\"tenantId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.McpSession.McpSession_tenantId_fkey",
+    "label": "Add foreign key \"McpSession_tenantId_fkey\" on \"McpSession\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "McpSession_tenantId_fkey",
+        "table": "McpSession"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"McpSession_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["McpSession_tenantId_fkey", "public", "\"public\".\"McpSession\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"McpSession_tenantId_fkey\" on \"McpSession\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"McpSession_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"McpSession\"\nADD CONSTRAINT \"McpSession_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"McpSession_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "McpSession_tenantId_fkey",
+          "public",
+          "\"public\".\"McpSession\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.OAuthAuthCode.OAuthAuthCode_clientId_fkey",
+    "label": "Add foreign key \"OAuthAuthCode_clientId_fkey\" on \"OAuthAuthCode\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "OAuthAuthCode_clientId_fkey",
+        "table": "OAuthAuthCode"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"OAuthAuthCode_clientId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["OAuthAuthCode_clientId_fkey", "public", "\"public\".\"OAuthAuthCode\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"OAuthAuthCode_clientId_fkey\" on \"OAuthAuthCode\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"OAuthAuthCode_clientId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"OAuthAuthCode\"\nADD CONSTRAINT \"OAuthAuthCode_clientId_fkey\"\nFOREIGN KEY (\"clientId\")\nREFERENCES \"public\".\"OAuthClient\" (\"clientId\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"OAuthAuthCode_clientId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "OAuthAuthCode_clientId_fkey",
+          "public",
+          "\"public\".\"OAuthAuthCode\"",
+          "f",
+          "[\"clientId\"]",
+          "\"public\".\"OAuthClient\"",
+          "[\"clientId\"]",
+          "c",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.OAuthToken.OAuthToken_clientId_fkey",
+    "label": "Add foreign key \"OAuthToken_clientId_fkey\" on \"OAuthToken\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "OAuthToken_clientId_fkey",
+        "table": "OAuthToken"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"OAuthToken_clientId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["OAuthToken_clientId_fkey", "public", "\"public\".\"OAuthToken\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"OAuthToken_clientId_fkey\" on \"OAuthToken\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"OAuthToken_clientId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"OAuthToken\"\nADD CONSTRAINT \"OAuthToken_clientId_fkey\"\nFOREIGN KEY (\"clientId\")\nREFERENCES \"public\".\"OAuthClient\" (\"clientId\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"OAuthToken_clientId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "OAuthToken_clientId_fkey",
+          "public",
+          "\"public\".\"OAuthToken\"",
+          "f",
+          "[\"clientId\"]",
+          "\"public\".\"OAuthClient\"",
+          "[\"clientId\"]",
+          "c",
+          "a"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.StoreIntegration.StoreIntegration_tenantId_fkey",
+    "label": "Add foreign key \"StoreIntegration_tenantId_fkey\" on \"StoreIntegration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "StoreIntegration_tenantId_fkey",
+        "table": "StoreIntegration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"StoreIntegration_tenantId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": ["StoreIntegration_tenantId_fkey", "public", "\"public\".\"StoreIntegration\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "FK \"StoreIntegration_tenantId_fkey\" on \"StoreIntegration\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"StoreIntegration_tenantId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"StoreIntegration\"\nADD CONSTRAINT \"StoreIntegration_tenantId_fkey\"\nFOREIGN KEY (\"tenantId\")\nREFERENCES \"public\".\"Tenant\" (\"id\")\nON DELETE CASCADE\nON UPDATE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"StoreIntegration_tenantId_fkey\" exists with the planned columns, referenced table and actions",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3) AND \"c\".\"contype\" = $4 AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"conkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"conrelid\" AND key_attribute.attnum = key_column.attnum) = ($5)::jsonb AND \"c\".\"confrelid\" = to_regclass($6) AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"c\".\"confkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"c\".\"confrelid\" AND key_attribute.attnum = key_column.attnum) = ($7)::jsonb AND \"c\".\"confdeltype\" = $8 AND \"c\".\"confupdtype\" = $9)) AS \"result\"",
+        "params": [
+          "StoreIntegration_tenantId_fkey",
+          "public",
+          "\"public\".\"StoreIntegration\"",
+          "f",
+          "[\"tenantId\"]",
+          "\"public\".\"Tenant\"",
+          "[\"id\"]",
+          "c",
+          "c"
+        ]
+      }
+    ]
+  }
+]

@@ -1473,6 +1473,41 @@ if (mawifoodsTenantId) {
   console.log(`[db:seed] mawifoods team: ${TEAM_FIXTURES.length} extra members`);
 }
 
+/**
+ * The default OAuth client the dashboard's MCP integration connects through.
+ *
+ * Registration is normally an operator step (`oauth:client`), but the
+ * integration must work on a fresh local database, so the demo client is
+ * seeded with a fixed id and the two loopback redirects the local web app and
+ * the CLI's manual paste flow use. No secret: this is a public client (PKCE
+ * only). Re-running does not widen the redirect list.
+ */
+const DEMO_OAUTH_CLIENT_ID = "menuza-dashboard";
+
+const DEMO_OAUTH_REDIRECT_URIS = [
+  "http://localhost:3000/oauth/callback",
+  "http://127.0.0.1:3000/oauth/callback",
+];
+
+const oauthClientBefore = await db.orm.public.OAuthClient.where({
+  clientId: DEMO_OAUTH_CLIENT_ID,
+}).first();
+
+if (oauthClientBefore) {
+  console.log(`[db:seed] oauth client ${DEMO_OAUTH_CLIENT_ID} (kept)`);
+} else {
+  await db.orm.public.OAuthClient.create({
+    id: randomUUID(),
+    clientId: DEMO_OAUTH_CLIENT_ID,
+    clientSecretHash: null,
+    name: "Menuza",
+    redirectUris: DEMO_OAUTH_REDIRECT_URIS,
+    isPublic: true,
+  });
+
+  console.log(`[db:seed] oauth client ${DEMO_OAUTH_CLIENT_ID} (created)`);
+}
+
 console.log(`[db:seed] done: ${created} created, ${reused} reused, ${conflicts} conflicts`);
 
 await db.close();

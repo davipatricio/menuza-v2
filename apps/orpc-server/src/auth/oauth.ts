@@ -99,6 +99,10 @@ export interface OAuthTokenResult {
 }
 
 export interface ValidatedOAuthToken {
+  /** `OAuthToken.id` — what an `McpSession` row points at to be revocable. */
+  tokenId: string;
+  /** `SHA-256(raw token)`; the `McpSession.tokenDigest` unique key. */
+  tokenDigest: string;
   memberId: string;
   tenantIds: readonly string[];
   scopes: readonly string[];
@@ -314,6 +318,8 @@ export async function validateOAuthToken(
   }
 
   return {
+    tokenId: token.id,
+    tokenDigest: accessTokenHash,
     memberId: token.memberId,
     tenantIds: token.tenantIds,
     scopes: token.scopes,

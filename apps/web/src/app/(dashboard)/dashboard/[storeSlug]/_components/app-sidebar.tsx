@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   ListTree,
   Package,
+  Puzzle,
   ScrollText,
   Settings,
   ShoppingCart,
@@ -230,6 +231,10 @@ export function AppSidebar({
         { href: `${basePath}/coupons`, label: "Cupons", icon: Ticket },
         { href: `${basePath}/audit`, label: "Auditoria", icon: ScrollText },
       ],
+    },
+    {
+      label: "Sistema",
+      items: [{ href: `${basePath}/integrations`, label: "Integrações", icon: Puzzle }],
     },
   ];
 

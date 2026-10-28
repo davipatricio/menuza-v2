@@ -26,6 +26,15 @@
   `menuza_tenant_sid` session, `session.register` creates the `Member` and
   opens the same session, and `session.logout` revokes it and clears the
   cookie.
+- Integrations (MEN-282) are `panel.listIntegrations`, `panel.saveIntegration`,
+  `panel.listMcpSessions` and `panel.revokeMcpSession`. The **catalog** is code —
+  `src/panel/integrations.ts` (`INTEGRATIONS`, `findIntegration`, `defaultConfigFor`)
+  lists each entry's section, copy, author, logo, typed settings and capabilities —
+  while `StoreIntegration` holds only per-store state. Adding an integration is a
+  catalog entry plus an implementation; if the list or detail page has to change
+  for it, the abstraction has leaked. `saveIntegration` is gated on `catalog:write`
+  and does **not** revoke MCP sessions when it disables one: revocation is
+  explicit from the sessions list.
 - `account.*` (MEN-225) is the account page's whole backend:
   `account.listSessions`, `account.changePassword`, `account.revokeSession` and
   `account.revokeOtherSessions`. The session rows are keyed by the SHA-256
@@ -58,8 +67,12 @@ on one source of truth; it is metadata only, never a shape change to the
   slug: `GET /panel/stores/{storeSlug}/orders` and
   `GET /panel/stores/{storeSlug}/orders/{orderCode}` (the order is addressed by its
   human code, not its id), `/customers` and `/customers/{customerId}`, `/products`,
-  `/categories`, `/coupons`, `/audit-logs` and `/team`. Profile: `POST
-  /profile/onboarding`.
+  `/categories`, `/coupons`, `/audit-logs` and `/team`. Integrations:
+  `GET /panel/stores/{storeSlug}/integrations`,
+  `POST /panel/stores/{storeSlug}/integrations/{integrationId}`, and the MCP session
+  collection `GET …/integrations/mcp-dashboard/sessions` plus the per-session
+  `POST …/sessions/{sessionId}/revoke` (revocation is an action, not a `DELETE`,
+  because the row stays for the audit trail). Profile: `POST /profile/onboarding`.
 - `path` is absolute under each service's OpenAPI prefix (`/openapi`), so it does
   not depend on the router key structure; `operationId` is explicit for stable
   generated documents.

@@ -48,6 +48,46 @@ export async function revokeSessionDigests(
 }
 
 /**
+ * Revokes every live MCP session of a member and the OAuth tokens behind them.
+ *
+ * A connected MCP client is a *grant*, not a browser cookie: it holds a bearer
+ * token that never sees a password change and is not a `Session` row, so the
+ * session revocations below would leave it working. Every event that should
+ * end a member's access — a password change, a revocation-of-others, losing a
+ * store membership — runs this too, or the credential outlives the trust.
+ *
+ * Both tables carry `revokedAt`, and both are set in one transaction: revoking
+ * only the handle would leave a live token the UI no longer shows.
+ */
+export async function revokeMemberMcpSessions(memberId: string): Promise<number> {
+  const now = Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
+
+  const sessions = await unscoped(() =>
+    db.orm.public.McpSession.where((row) =>
+      and(row.memberId.eq(memberId), row.revokedAt.eq(null)),
+    ).all(),
+  );
+
+  if (sessions.length === 0) return 0;
+
+  const tokenIds = sessions.map((row) => row.oauthTokenId);
+
+  await unscoped(() =>
+    db.transaction(async (tx) => {
+      await tx.orm.public.McpSession.where((row) =>
+        and(row.memberId.eq(memberId), row.revokedAt.eq(null)),
+      ).updateAll({ revokedAt: now });
+
+      await tx.orm.public.OAuthToken.where((token) =>
+        and(token.id.in(tokenIds), token.revokedAt.eq(null)),
+      ).updateAll({ revokedAt: now });
+    }),
+  );
+
+  return sessions.length;
+}
+
+/**
  * Revokes every live session of a member except one — the response to a
  * suspected compromise, and what a password change runs on its own so a stolen
  * cookie cannot outlive the credential it was opened with.

@@ -18,6 +18,7 @@ import { oc } from "@orpc/contract";
 import { openapi } from "@orpc/openapi";
 import * as v from "valibot";
 import { sharedErrorCodes } from "../errors/index.ts";
+import { IntegrationStatusSchema } from "./integrations.ts";
 
 export const MemberKindSchema = v.picklist(["human", "bot"]);
 
@@ -2335,6 +2336,111 @@ export const savePaymentMethodAssignment = sessionContract
   .input(SavePaymentMethodAssignmentInputSchema)
   .output(v.object({ assignments: v.array(PanelPaymentAssignmentSchema) }));
 
+// --- Integrations (MEN-282) --------------------------------------------------
+//
+// The catalog is code (`./integrations.ts`); the API moves per-store state and
+// the config blob. `config` crosses as an open record so a new integration can
+// add a setting without a contract change — the integration module validates
+// its own keys on read.
+
+export const IntegrationConfigSchema = v.record(v.string(), v.union([v.string(), v.boolean()]));
+
+export const PanelIntegrationSchema = v.object({
+  integrationId: v.string(),
+  status: IntegrationStatusSchema,
+  config: IntegrationConfigSchema,
+  enabledAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+  updatedAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+});
+
+export const PanelIntegrationsOutputSchema = v.object({
+  integrations: v.array(PanelIntegrationSchema),
+});
+
+export const SaveIntegrationInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  integrationId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  /** `null` clears the integration; `error`/`paused` are set by its own checks. */
+  status: v.optional(IntegrationStatusSchema),
+  config: v.optional(IntegrationConfigSchema),
+});
+
+export const IntegrationIdInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  integrationId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+});
+
+/** One connected MCP client. Never carries the token, only its identification. */
+export const PanelMcpSessionSchema = v.object({
+  id: v.string(),
+  label: v.string(),
+  clientName: v.string(),
+  memberName: v.string(),
+  createdAt: v.pipe(v.string(), v.isoTimestamp()),
+  lastUsedAt: v.nullable(v.pipe(v.string(), v.isoTimestamp())),
+});
+
+export const PanelMcpSessionsOutputSchema = v.object({
+  sessions: v.array(PanelMcpSessionSchema),
+});
+
+export const RevokeMcpSessionInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  sessionId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+});
+
+export const listIntegrations = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/integrations",
+      operationId: "listPanelIntegrations",
+      summary: "Estado por loja de cada integração do catálogo.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelIntegrationsOutputSchema);
+
+export const saveIntegration = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/integrations/{integrationId}",
+      operationId: "savePanelIntegration",
+      summary: "Liga, desliga ou reconfigura uma integração da loja.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SaveIntegrationInputSchema)
+  .output(v.object({ integration: PanelIntegrationSchema }));
+
+export const listMcpSessions = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/integrations/mcp-dashboard/sessions",
+      operationId: "listPanelMcpSessions",
+      summary: "Sessões MCP conectadas a esta loja.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelMcpSessionsOutputSchema);
+
+export const revokeMcpSession = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/integrations/mcp-dashboard/sessions/{sessionId}/revoke",
+      operationId: "revokePanelMcpSession",
+      summary: "Revoga a sessão MCP e o token que ela usa.",
+      tags: ["panel"],
+    }),
+  )
+  .input(RevokeMcpSessionInputSchema)
+  .output(PanelSuccessOutputSchema);
+
 export const listAuditLogs = panelRead
   .meta(
     openapi({
@@ -2449,6 +2555,10 @@ export const panelContractObject = {
   savePaymentIntegration,
   deletePaymentIntegration,
   savePaymentMethodAssignment,
+  listIntegrations,
+  saveIntegration,
+  listMcpSessions,
+  revokeMcpSession,
   listAuditLogs,
   listTeamMembers,
 };
@@ -2564,6 +2674,12 @@ export type TenantRole = v.InferOutput<typeof TenantRoleSchema>;
 export type MemberKind = v.InferOutput<typeof MemberKindSchema>;
 
 export type SessionRouterContract = typeof sessionContractObject;
+
+export type PanelIntegration = v.InferOutput<typeof PanelIntegrationSchema>;
+
+export type PanelMcpSession = v.InferOutput<typeof PanelMcpSessionSchema>;
+
+export type IntegrationConfig = v.InferOutput<typeof IntegrationConfigSchema>;
 
 export type AccountRouterContract = typeof accountContractObject;
 
