@@ -52,6 +52,10 @@ import { deletePaymentIntegrationImpl } from "./deletePaymentIntegration.impl.ts
 import { savePaymentMethodAssignmentImpl } from "./savePaymentMethodAssignment.impl.ts";
 import { listAuditLogsImpl } from "./listAuditLogs.impl.ts";
 import { listTeamMembersImpl } from "./listTeamMembers.impl.ts";
+import { listIntegrationsImpl } from "./listIntegrations.impl.ts";
+import { saveIntegrationImpl } from "./saveIntegration.impl.ts";
+import { listMcpSessionsImpl } from "./listMcpSessions.impl.ts";
+import { revokeMcpSessionImpl } from "./revokeMcpSession.impl.ts";
 
 export const panelSubdomainRouter = {
   getStore: getStoreImpl,
@@ -108,6 +112,10 @@ export const panelSubdomainRouter = {
   savePaymentMethodAssignment: savePaymentMethodAssignmentImpl,
   listAuditLogs: listAuditLogsImpl,
   listTeamMembers: listTeamMembersImpl,
+  listIntegrations: listIntegrationsImpl,
+  saveIntegration: saveIntegrationImpl,
+  listMcpSessions: listMcpSessionsImpl,
+  revokeMcpSession: revokeMcpSessionImpl,
 };
 
 export type PanelSubdomainRouter = typeof panelSubdomainRouter;

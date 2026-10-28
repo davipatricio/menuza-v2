@@ -364,6 +364,26 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/team",
   },
   {
+    procedure: tenantContractObject.panel.listIntegrations,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/integrations",
+  },
+  {
+    procedure: tenantContractObject.panel.saveIntegration,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/integrations/{integrationId}",
+  },
+  {
+    procedure: tenantContractObject.panel.listMcpSessions,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/integrations/mcp-dashboard/sessions",
+  },
+  {
+    procedure: tenantContractObject.panel.revokeMcpSession,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/integrations/mcp-dashboard/sessions/{sessionId}/revoke",
+  },
+  {
     procedure: tenantContractObject.profile.saveOnboarding,
     method: "post",
     path: "/profile/onboarding",

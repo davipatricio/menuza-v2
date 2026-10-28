@@ -94,7 +94,10 @@ const PREFIXES = {
 // allowlist has already rejected unknown hosts before `isAllowed` runs.
 // `/webhooks` carries provider callbacks: the integration token in the path is
 // what authenticates them, so no tenant or session applies.
-const API_PREFIXES = ["/commerce", "/tenant", "/webhooks"] as const;
+// `/mcp` carries the remote MCP server: external clients address it on the
+// public origin and authenticate with an OAuth bearer token, so it must pass
+// on any resolved host just like the API mounts.
+const API_PREFIXES = ["/commerce", "/tenant", "/webhooks", "/mcp"] as const;
 
 /**
  * Host -> tenantId lookup cache. The set of hosts is small and changes rarely,

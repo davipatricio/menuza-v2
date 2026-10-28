@@ -26,11 +26,14 @@ import { toolsFor, type ToolDefinition } from "./tools.ts";
 
 export const MCP_PATH = "/mcp";
 
-/** Where the token-lookup helpers live, kept next to the handler that uses them. */
+/** The token behind one MCP request, narrowed to what the handler needs. */
 interface CallerGrant {
   readonly memberId: string;
   /** `null` for an unrestricted cookie session; always a list for a token. */
   readonly tenantIds: readonly string[] | null;
+  /** `OAuthToken.id` and its digest, for recording the session row. */
+  readonly tokenId: string;
+  readonly tokenDigest: string;
 }
 
 function unauthorized(): Response {
@@ -50,7 +53,12 @@ async function grantFor(authorization: string | null): Promise<CallerGrant | nul
 
   if (!token) return null;
 
-  return { memberId: token.memberId, tenantIds: token.tenantIds };
+  return {
+    memberId: token.memberId,
+    tenantIds: token.tenantIds,
+    tokenId: token.tokenId,
+    tokenDigest: token.tokenDigest,
+  };
 }
 
 /** Roles the member holds in the stores this grant covers. */
@@ -91,6 +99,82 @@ async function singleStoreSlug(grant: CallerGrant): Promise<string | null> {
   const slugs = await slugsFor(grant);
 
   return slugs.length === 1 ? (slugs[0] ?? null) : null;
+}
+
+/** The store ids this grant covers, intersected with the member's own memberships. */
+async function grantedTenantIds(grant: CallerGrant): Promise<string[]> {
+  const rows = await unscoped(() =>
+    db.orm.public.TenantMembership.where({ memberId: grant.memberId }).all(),
+  );
+
+  return rows
+    .map((row) => row.tenantId)
+    .filter((tenantId) => grant.tenantIds === null || grant.tenantIds.includes(tenantId));
+}
+
+/**
+ * Whether the integration is switched on for this store.
+ *
+ * The dashboard's switch is the publish control: a store that has not enabled
+ * the MCP integration must not serve tools, even to a member holding a valid
+ * token — the token proves who they are, the switch proves the store agreed.
+ * A store with no row has never enabled it.
+ */
+async function integrationEnabled(tenantId: string): Promise<boolean> {
+  const row = await unscoped(() =>
+    db.orm.public.StoreIntegration.where({
+      tenantId,
+      integrationId: "mcp-dashboard",
+    }).first(),
+  );
+
+  return row?.status === "enabled";
+}
+
+/**
+ * Records (or refreshes) the `McpSession` row for this token on this store.
+ *
+ * The row is what the dashboard lists and revokes, so it is created the first
+ * time a token is used and its `lastUsedAt` slides afterwards. Keyed by the
+ * token digest, so one token maps to one row no matter how many tools it calls:
+ * a row per request would make the sessions list unusable.
+ */
+async function touchSession(grant: CallerGrant, tenantId: string, clientName: string) {
+  const now = Temporal.Now.zonedDateTimeISO("UTC").toPlainDateTime();
+
+  const existing = await unscoped(() =>
+    db.orm.public.McpSession.where({ tokenDigest: grant.tokenDigest }).first(),
+  );
+
+  if (existing) {
+    await unscoped(() =>
+      db.orm.public.McpSession.where({ id: existing.id }).updateAll({ lastUsedAt: now }),
+    );
+
+    return;
+  }
+
+  await unscoped(() =>
+    db.orm.public.McpSession.create({
+      id: crypto.randomUUID(),
+      tenantId,
+      memberId: grant.memberId,
+      integrationId: "mcp-dashboard",
+      label: `${clientName} — ${now.toPlainDate().toString()}`,
+      clientName,
+      oauthTokenId: grant.tokenId,
+      tokenDigest: grant.tokenDigest,
+      lastUsedAt: now,
+      createdAt: now,
+    }),
+  );
+}
+
+/** The `initialize` client name, or a stable fallback when a client omits it. */
+function clientNameOf(req: Request): string {
+  const raw = req.headers.get("x-menuza-mcp-client")?.trim();
+
+  return raw && raw.length <= 60 ? raw : "Cliente MCP";
 }
 
 /** A tool's JSON payload, already serialized at the boundary by `JSON.stringify`. */
@@ -181,6 +265,27 @@ export async function handleMcpRequest(req: Request): Promise<Response | null> {
   const grant = await grantFor(authorization);
 
   if (!grant || !authorization) return unauthorized();
+
+  const tenantIds = await grantedTenantIds(grant);
+
+  // Only the stores that switched the integration on serve tools. A token
+  // granted two stores gets the one that agreed, not both.
+  const enabled = await Promise.all(tenantIds.map((tenantId) => integrationEnabled(tenantId)));
+  const allowedTenantIds = tenantIds.filter((_, index) => enabled[index]);
+
+  if (allowedTenantIds.length === 0) {
+    return Response.json(
+      {
+        error: "integration_disabled",
+        error_description: "A integração MCP não está ativada nesta loja.",
+      },
+      { status: 403 },
+    );
+  }
+
+  for (const tenantId of allowedTenantIds) {
+    await touchSession(grant, tenantId, clientNameOf(req));
+  }
 
   const defaultSlug = await singleStoreSlug(grant);
   const tools = toolsFor({ roles: await rolesFor(grant), singleStoreSlug: defaultSlug });

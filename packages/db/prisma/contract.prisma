@@ -29,6 +29,8 @@ model Tenant {
   wallets           Wallet[]
   seoMeta           SeoMeta[]
   storeSettings     StoreSettings?
+  storeIntegrations StoreIntegration[]
+  mcpSessions       McpSession[]
   productNutritions ProductNutrition[]
   productTags       ProductTag[]
   badges            Badge[]
@@ -254,6 +256,18 @@ enum payment_integration_status {
 
   active
   disabled
+}
+
+// Per-store integration switch. `error` and `paused` are states the catalog's
+// own checks put a store into (a broken credential, a paused sync); the
+// platform never guesses at them.
+enum integration_status {
+  @@type("pg/text@1")
+
+  enabled
+  disabled
+  paused
+  error
 }
 
 // A received provider callback. `received` means it is persisted but the order
@@ -1116,4 +1130,54 @@ model OAuthToken {
   @@index([refreshTokenHash], map: "OAuthToken_refreshTokenHash_key", unique: true)
   @@index([expiresAt], map: "OAuthToken_expiresAt_idx")
   @@map("OAuthToken")
+}
+
+// One store's switch for one catalog integration (MCP today; GA4, Meta Pixel,
+// Lalamove and the rest later). The catalog itself lives in code — an
+// integration exists because a module ships, not because a row does — so this
+// table is only per-store state: is it on, and what did the store configure.
+//
+// `config` is opaque JSON: each integration module owns its own shape and
+// validates it on read, which keeps adding an integration from changing the
+// schema.
+model StoreIntegration {
+  id            String             @id(map: "StoreIntegration_pkey")
+  tenantId      String
+  // Catalog id from the integration modules, e.g. "mcp-dashboard".
+  integrationId String
+  status        integration_status @default(disabled)
+  config        String?
+  enabledAt     Timestamp(3)?
+  createdAt     Timestamp(3)       @default(now())
+  updatedAt     Timestamp(3)
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "StoreIntegration_tenantId_fkey")
+
+  @@unique([tenantId, integrationId], map: "StoreIntegration_tenantId_integrationId_key")
+  @@index([tenantId], map: "StoreIntegration_tenantId_idx")
+  @@map("StoreIntegration")
+}
+
+// A connected MCP client session: one row per "Conectar" a member completed.
+// Several members (and one member on two machines) hold sessions at once, so
+// this is the store-facing handle an admin can list and revoke by name; the
+// credential itself stays in `OAuthToken`, and `oauthTokenId` links the two.
+model McpSession {
+  id            String        @id(map: "McpSession_pkey")
+  tenantId      String
+  memberId      String
+  integrationId String
+  // Human label shown in the sessions list ("Claude Code — notebook").
+  label         String
+  clientName    String
+  oauthTokenId  String
+  tokenDigest   String
+  lastUsedAt    Timestamp(3)?
+  revokedAt     Timestamp(3)?
+  createdAt     Timestamp(3)  @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "McpSession_tenantId_fkey")
+
+  @@index([tenantId, integrationId], map: "McpSession_tenantId_integrationId_idx")
+  @@index([memberId], map: "McpSession_memberId_idx")
+  @@index([tokenDigest], map: "McpSession_tokenDigest_key", unique: true)
+  @@map("McpSession")
 }

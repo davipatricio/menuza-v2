@@ -145,6 +145,18 @@ export {
   StoreDisplayNameSchema,
   StoreSlugSchema,
   RESERVED_STORE_SLUGS,
+  PanelIntegrationSchema,
+  PanelIntegrationsOutputSchema,
+  SaveIntegrationInputSchema,
+  IntegrationIdInputSchema,
+  IntegrationConfigSchema,
+  PanelMcpSessionSchema,
+  PanelMcpSessionsOutputSchema,
+  RevokeMcpSessionInputSchema,
+  listIntegrations,
+  saveIntegration,
+  listMcpSessions,
+  revokeMcpSession,
   sessionContractObject,
   accountContractObject,
   panelContractObject,
@@ -191,6 +203,9 @@ export type {
   PanelPaymentAssignment,
   PaymentProvider,
   PaymentIntegrationStatus,
+  PanelIntegration,
+  PanelMcpSession,
+  IntegrationConfig,
   ActiveSession,
   TeamMember,
   FinancialStatus,
@@ -206,5 +221,27 @@ export type {
   PanelRouterContract,
   ProfileRouterContract,
 } from "../panel/contracts.ts";
+
+// The integration catalog: ids, copy and field descriptors the dashboard and
+// the tenant API both read. Code, not a table — see `panel/integrations.ts`.
+export {
+  INTEGRATIONS,
+  INTEGRATION_SECTION_LABELS,
+  INTEGRATION_STATUS_LABELS,
+  IntegrationSectionSchema,
+  IntegrationSettingSchema,
+  IntegrationStatusSchema,
+  IntegrationCapabilitySchema,
+  defaultConfigFor,
+  findIntegration,
+} from "../panel/integrations.ts";
+
+export type {
+  IntegrationCapability,
+  IntegrationDefinition,
+  IntegrationSection,
+  IntegrationSetting,
+  IntegrationStatus,
+} from "../panel/integrations.ts";
 
 export type { TenantRouterContract } from "./contract.ts";

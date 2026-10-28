@@ -86,6 +86,7 @@ const originals = {
   membershipInclude: db.orm.public.TenantMembership.include,
   sessionWhere: db.orm.public.Session.where,
   sessionCreate: db.orm.public.Session.create,
+  mcpSessionWhere: db.orm.public.McpSession.where,
 };
 
 // SAFETY: Captured once, before `installFakes` overwrites the model accessors;
@@ -347,6 +348,14 @@ function installFakes() {
 
     return row;
   }) as any;
+
+  // SAFETY: Mocking McpSession.where; `revokeMemberMcpSessions` reads the
+  // member's live rows before deciding whether to open a transaction. These
+  // tests exercise browser sessions, so it always sees none — which is also the
+  // assertion that MCP revocation is a no-op when nothing is connected.
+  db.orm.public.McpSession.where = (() => ({
+    all: async () => [],
+  })) as any;
 }
 
 function restoreFakes() {
@@ -356,6 +365,7 @@ function restoreFakes() {
   db.orm.public.TenantMembership.include = originals.membershipInclude;
   db.orm.public.Session.where = originals.sessionWhere;
   db.orm.public.Session.create = originals.sessionCreate;
+  db.orm.public.McpSession.where = originals.mcpSessionWhere;
 }
 
 function cookieHeader(token: string): Headers {

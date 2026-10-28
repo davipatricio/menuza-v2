@@ -99,6 +99,14 @@
 - A controlled variation carries a quantity and an unlimited one carries none:
   `variation_stock_mode_consistent` says so, and the seed and the panel write
   the two halves that agree with it.
+- `StoreIntegration` (MEN-282) is per-store state for a **code** catalog: `status`
+  (`integration_status`, default `disabled`), an opaque `config` JSON string and
+  `enabledAt`. A store with no row has never touched the integration, which is why
+  every read is "row or catalog default" rather than an error. `McpSession` is the
+  other half: one row per connected MCP client, `tokenDigest` unique, `oauthTokenId`
+  pointing at the `OAuthToken` that authenticates it, `revokedAt` for the sweep.
+  Both carry `tenantId` and are tenant-scoped; a revocation sets `revokedAt` rather
+  than deleting, so the audit trail survives.
 - The join tables (`ProductTag`, `CategoryDepartment`) carry their own
   `tenantId`, so the isolation guard checks them, and a trigger
   (`menuza_join_tenant_guard`) rejects a row whose two parents do not share

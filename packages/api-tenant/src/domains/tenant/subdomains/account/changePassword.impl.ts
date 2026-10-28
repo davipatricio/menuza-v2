@@ -5,7 +5,11 @@ import { sharedErrorCodes } from "@menuza/shared/errors";
 import { hashPassword, verifyPassword } from "@menuza/orpc-server/auth";
 import { db, unscoped } from "@menuza/db";
 import { assertSameOrigin, requireSession } from "../session/support.ts";
-import { currentSessionDigest, revokeAllSessionsExcept } from "./support.ts";
+import {
+  currentSessionDigest,
+  revokeAllSessionsExcept,
+  revokeMemberMcpSessions,
+} from "./support.ts";
 
 const os = implement(
   tenantContractObject.account.changePassword,
@@ -60,6 +64,12 @@ export const changePasswordImpl = os.handler(async ({ input, context }) => {
   );
 
   await revokeAllSessionsExcept(member.id, currentSessionDigest(session.id));
+
+  // A connected MCP client holds a bearer token, not a browser session, so the
+  // revocation above does not reach it. Changing a password is the moment to
+  // end every delegated grant too — leaving one alive would mean the reason
+  // for changing the password had not been honoured.
+  await revokeMemberMcpSessions(member.id);
 
   return { changed: true };
 });

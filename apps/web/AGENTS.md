@@ -218,6 +218,24 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
     `listTeamMembers` is gated on `team:read` and a `staff` role is refused.
   - `formatDateTime` (in `src/lib/format.ts`) is the one ISO→pt-BR date
     conversion, same edge-conversion role as `formatBrl`.
+- `settings/../integrations` (MEN-282) is the Integrações tab, reached from the
+  sidebar's "Sistema" group. Two routes: the list (one section per catalog group,
+  one card per integration, each with a logo, a switch and a status badge) and
+  `[integrationId]` (status, author, last change, settings, MCP connect block,
+  connected sessions, "Sobre").
+  - **The catalog is code** (`INTEGRATIONS` in `@menuza/shared/tenant`). Cards are
+    generated from it and state comes from `panel.listIntegrations`, so a newly
+    added integration appears with no backfill and no page change. If you find
+    yourself branching on a specific integration id in the list, the catalog has
+    leaked.
+  - `_components/integration-logo.tsx` draws the inline brand SVG, falling back to
+    a monogram when the catalog has no mark. Logos are inline paths (no `<img>`,
+    no per-card request).
+  - Only `mcp-dashboard` is wired; every other card is `mock: true` and its detail
+    page says so. Do not hide the mock badge to make the page look fuller.
+  - The connect block copies the Claude Code / Codex CLI command and the raw URL;
+    the sessions list below it is what an admin revokes. Turning the switch off
+    does **not** revoke sessions — the copy on the page says so.
 - Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
 - PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest file at `public/manifest.webmanifest` served (and referenced in `layout.tsx` metadata) as `/manifest.webmanifest`.
   - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.

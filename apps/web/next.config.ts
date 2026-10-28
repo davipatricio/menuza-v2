@@ -44,6 +44,11 @@ const config: NextConfig = {
         source: "/.well-known/oauth-authorization-server",
         destination: `${tenantInternal}/.well-known/oauth-authorization-server`,
       },
+      // The remote MCP server. Remote clients address the public app origin,
+      // and this rewrite is what makes the `/mcp` URL in the dashboard's
+      // snippet reach the tenant API that serves it.
+      { source: "/mcp", destination: `${tenantInternal}/mcp` },
+      { source: "/mcp/:path*", destination: `${tenantInternal}/mcp/:path*` },
       // Provider callbacks (Pagar.me) land on the commerce service, which owns
       // the integration token → tenant resolution.
       { source: "/webhooks/:path*", destination: `${commerceInternal}/:path*` },

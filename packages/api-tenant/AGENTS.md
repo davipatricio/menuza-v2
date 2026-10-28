@@ -6,7 +6,9 @@
 - `dev`/`start` delegate to `@menuza/tenant` (which owns the Bun.serve process).
 - Deny-by-default: the health probe, the push routes, the staff session, account,
   panel and profile routes (`session.*`, `account.*`, the `panel.*` reads and
-  `panel.getStore` / `panel.createStore`, `profile.saveOnboarding`), and the
+  the `panel.*` writes — `getStore`, `createStore`, the catalog writes,
+  `saveIntegration` and `revokeMcpSession` — and `profile.saveOnboarding`), and
+  the
   internal `internal.resolveHost` procedure are exposed; everything else is
   absent. `resolveHost` requires the shared internal token; the
   session/account/panel/profile routes resolve the member from the
@@ -30,6 +32,18 @@
   (`can` from `@menuza/orpc-server/auth`) turned into a `FORBIDDEN` throw.
   `panel.listTeamMembers` is the first caller: `staff` has no `team:read` and is
   refused, which the web renders as the read-only notice.
+- `panel.integrations` (MEN-282) reads catalog definitions from
+  `@menuza/shared/tenant` and per-store state from `StoreIntegration`. A store with
+  no row reads as `disabled` with the catalog defaults — absence is never an error.
+  `saveIntegration` is gated on `catalog:write`; disabling an integration does
+  **not** revoke its MCP sessions, because that would silently break a colleague's
+  client when someone moves a switch. `revokeMcpSession` revokes the `McpSession`
+  and its `OAuthToken` in one transaction, scoped by `tenantId`.
+- `revokeMemberMcpSessions` in `account/support.ts` is the invalidation path for
+  delegated grants: `changePassword` and `revokeOtherSessions` both call it,
+  because an MCP client holds a bearer token that no `Session` revocation reaches.
+  Losing a store membership needs no equivalent — every MCP call re-reads the
+  member's memberships.
 - Server-only: do NOT import from `apps/web` or any client code.
 - Middlewares: import `tenantMiddleware` and `authMiddleware` from `@menuza/orpc-server/tenant` and `@menuza/orpc-server/auth`, and `internalTokenMiddleware` from `@menuza/orpc-server/internal`. Do NOT create dedicated packages for middleware or auth. Contracts come from `@menuza/shared/tenant`.
 

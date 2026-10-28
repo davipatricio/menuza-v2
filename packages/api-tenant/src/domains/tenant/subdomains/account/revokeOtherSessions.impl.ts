@@ -2,7 +2,11 @@ import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { assertSameOrigin, requireSession } from "../session/support.ts";
-import { currentSessionDigest, revokeAllSessionsExcept } from "./support.ts";
+import {
+  currentSessionDigest,
+  revokeAllSessionsExcept,
+  revokeMemberMcpSessions,
+} from "./support.ts";
 
 const os = implement(
   tenantContractObject.account.revokeOtherSessions,
@@ -18,9 +22,13 @@ export const revokeOtherSessionsImpl = os.handler(async ({ context }) => {
 
   const session = await requireSession(context.reqHeaders);
 
-  return {
-    revoked: await revokeAllSessionsExcept(session.memberId, currentSessionDigest(session.id)),
-  };
+  const revoked = await revokeAllSessionsExcept(session.memberId, currentSessionDigest(session.id));
+
+  // Delegated MCP clients are not `Session` rows; "sign out everywhere" has to
+  // include them or the least visible credential survives the sweep.
+  await revokeMemberMcpSessions(session.memberId);
+
+  return { revoked };
 });
 
 export type RevokeOtherSessionsImpl = typeof revokeOtherSessionsImpl;
