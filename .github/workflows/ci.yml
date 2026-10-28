@@ -81,6 +81,10 @@ jobs:
             bun-${{ runner.os }}-
       - name: Frozen install
         run: bun install --frozen-lockfile
+      # `@menuza/db` imports the emitted contract; without it the suites that
+      # touch the client fail on a missing `contract.json`.
+      - name: Prisma contract emit
+        run: bun run db:generate
       - name: Unit tests (no infra)
         run: bun test
 
