@@ -149,8 +149,13 @@ export const createOrderImpl = os
 
     const createdAt = toPlainDateTime(now);
 
+    // Everything the coupon took off the order, freight included: a redemption
+    // records the whole cost of the coupon, not just the merchandise discount.
+    // `applyCoupons` folds these into one redemption per coupon.
     const appliedCoupons = priced.discounts.filter(
-      (discount) => discount.source === "coupon" && discount.couponCode !== undefined,
+      (discount) =>
+        (discount.source === "coupon" || discount.source === "shipping") &&
+        discount.couponCode !== undefined,
     );
 
     const code = await insertWithCode(input.code ?? null, async (candidate) => {

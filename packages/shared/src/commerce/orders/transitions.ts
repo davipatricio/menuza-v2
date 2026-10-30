@@ -111,6 +111,21 @@ export function releasesStock(fulfilment: string, financial: string): boolean {
   return fulfilment === "canceled" || financial === "expired" || financial === "canceled";
 }
 
+/**
+ * Whether a dead order gives its coupon back.
+ *
+ * Only when no money was ever received: a coupon spent on an order that never
+ * became a sale burned a `usageLimit` slot and blocked the customer's
+ * `perCustomerLimit` for nothing. A paid order keeps its redemption even when
+ * it is later refunded — the store did grant that discount, and the refund is
+ * the refund of the price, not of the coupon.
+ */
+export function releasesCoupon(fulfilment: string, financial: string): boolean {
+  if (financial === "paid" || financial === "refunded") return false;
+
+  return fulfilment === "canceled" || financial === "expired" || financial === "canceled";
+}
+
 function rule(
   axis: OrderAxis,
   from: string,

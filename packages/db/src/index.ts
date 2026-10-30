@@ -25,6 +25,10 @@ export {
   type StockReservation,
 } from "./stock.ts";
 
+// The coupon ledger. Shared by the commerce checkout and the dashboard order
+// actions, so a release agrees on both paths.
+export { releaseCouponRedemptions } from "./couponRedemption.ts";
+
 // ORM predicate combinators. Re-exported so consumers compose `where` callbacks
 // without taking a direct dependency on the Prisma package: `@menuza/db` owns
 // that version pin, and the combinators only exist alongside a contract.

@@ -5,17 +5,12 @@ import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { conflict } from "../session/support.ts";
 import { db } from "@menuza/db";
-import { inTenantScope, resolveStore } from "./support.ts";
+import { couponWindow } from "./coupon-window.ts";
+import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 
 const os = implement(
   tenantContractObject.panel.createCoupon,
 ).$context<RequestHeadersHandlerPluginContext>();
-
-function toPlainDateTime(value: string | null | undefined) {
-  if (value == null || value === "") return null;
-
-  return Temporal.PlainDateTime.from(value);
-}
 
 function toCoupon(row: any) {
   return {
@@ -42,16 +37,9 @@ function toCoupon(row: any) {
 export const createCouponImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
-  let parsedStarts = toPlainDateTime(input.startsAt ?? null);
-  let parsedEnds = toPlainDateTime(input.endsAt ?? null);
+  requireCapability(store.role, "catalog:write");
 
-  if (
-    parsedStarts != null &&
-    parsedEnds != null &&
-    Temporal.PlainDateTime.compare(parsedStarts, parsedEnds) > 0
-  ) {
-    parsedStarts = parsedEnds;
-  }
+  const { startsAt, endsAt } = couponWindow(input.startsAt, input.endsAt);
 
   const code = input.code.trim().toUpperCase();
 
@@ -73,8 +61,8 @@ export const createCouponImpl = os.handler(async ({ input, context }) => {
         discountType: input.discountType,
         value: input.discountValue,
         status: input.status,
-        startsAt: parsedStarts,
-        endsAt: parsedEnds,
+        startsAt,
+        endsAt,
         usageLimit: input.usageLimit ?? null,
         perCustomerLimit: input.perCustomerLimit ?? null,
         minimumOrderCents: input.minimumOrderCents ?? null,

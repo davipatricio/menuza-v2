@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { TRANSITIONS, applyTransition, nextTransitions, releasesStock } from "./transitions.ts";
+import {
+  TRANSITIONS,
+  applyTransition,
+  nextTransitions,
+  releasesCoupon,
+  releasesStock,
+} from "./transitions.ts";
 import type {
   FinancialStatus,
   FulfilmentStatus,
@@ -252,5 +258,26 @@ describe("releasesStock", () => {
     expect(releasesStock("pending", "awaiting_payment")).toBe(false);
     expect(releasesStock("preparing", "paid")).toBe(false);
     expect(releasesStock("ready", "pending_on_delivery")).toBe(false);
+  });
+});
+
+describe("releasesCoupon", () => {
+  test("an order that never became a sale gives the coupon back", () => {
+    expect(releasesCoupon("canceled", "pending")).toBe(true);
+    expect(releasesCoupon("pending", "expired")).toBe(true);
+    expect(releasesCoupon("pending", "canceled")).toBe(true);
+  });
+
+  // A paid order did redeem the coupon; refunding the price does not refund
+  // the discount, and a kitchen cancellation after payment keeps it too.
+  test("an order that was paid keeps its redemption", () => {
+    expect(releasesCoupon("completed", "paid")).toBe(false);
+    expect(releasesCoupon("out_for_delivery", "refunded")).toBe(false);
+    expect(releasesCoupon("canceled", "refunded")).toBe(false);
+  });
+
+  test("an order still on its way keeps its redemption", () => {
+    expect(releasesCoupon("pending", "awaiting_payment")).toBe(false);
+    expect(releasesCoupon("preparing", "paid")).toBe(false);
   });
 });

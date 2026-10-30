@@ -37,9 +37,9 @@ import { DatePicker } from "../../signup/_components/date-picker.tsx";
 import { fieldErrors } from "../../signup/_components/form-errors.ts";
 import { formatBrlInput, maskBrlInput, maskIntegerInput, parseBrlToCents } from "@/lib/format.ts";
 import { CreateCouponInputSchema, UpdateCouponInputSchema } from "@menuza/shared/tenant";
-import type { PanelCoupon } from "@menuza/shared/tenant";
+import type { PanelCouponSummary } from "@menuza/shared/tenant";
 
-type PanelCouponType = PanelCoupon;
+type PanelCouponType = PanelCouponSummary;
 
 const COUPON_STATUS_ITEMS_CREATE = [
   { label: "Ativo", value: "active" },
@@ -239,7 +239,7 @@ function IntegerInput({
   );
 }
 
-function splitValue(coupon: PanelCoupon) {
+function splitValue(coupon: PanelCouponSummary) {
   return coupon.discountType === "fixed" ? (coupon.valueCents ?? 0) : (coupon.valuePercent ?? 0);
 }
 

@@ -112,6 +112,12 @@ export interface DataTableProps<TData extends object> {
    * Ignored when `rowHref` is set.
    */
   onRowClick?: (row: TData) => void;
+  /**
+   * Rows per page. A table whose rows are already one server page passes that
+   * page size here, so the built-in paginator stays on a single page and the
+   * server-side one is the only control.
+   */
+  pageSize?: number;
 }
 
 /** Interactivity that owns its own navigation; a row click must not steal it. */
@@ -340,6 +346,7 @@ export function DataTable<TData extends object>({
   tableLabel,
   rowHref,
   onRowClick,
+  pageSize = 8,
 }: DataTableProps<TData>) {
   const router = useRouter();
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -361,7 +368,7 @@ export function DataTable<TData extends object>({
     initialState: {
       pagination: {
         pageIndex: 0,
-        pageSize: 8,
+        pageSize,
       },
     },
   });

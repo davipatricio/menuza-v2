@@ -747,9 +747,14 @@ model OrderEvent {
   @@map("OrderEvent")
 }
 
-// A coupon actually used on an order, one row per (coupon, order). The two
-// uniques are what `Coupon.usageCount` and the per-customer limit are counted
-// from, so they are constraints rather than code.
+// A coupon actually used on an order. `@@unique([couponId, orderId])` is the
+// idempotency guarantee — one order redeems one coupon once — and `discountCents`
+// is the whole amount the coupon took off, freight included.
+//
+// The per-customer limit is a rule, not a constraint: `(couponId, customerId)`
+// is only indexed, so `Coupon.perCustomerLimit` can be 1, 2 or N and the check
+// lives in `applyCoupons` under the coupon row lock. A unique here would cap
+// every coupon at one redemption per customer and make that field inert.
 model CouponRedemption {
   id            String   @id(map: "CouponRedemption_pkey")
   tenantId      String
@@ -757,14 +762,16 @@ model CouponRedemption {
   orderId       String
   customerId    String
   discountCents Int
+  createdAt     Timestamp(3) @default(now())
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_tenantId_fkey")
   coupon        Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_couponId_fkey")
   order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_orderId_fkey")
   customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "CouponRedemption_customerId_fkey")
 
   @@unique([couponId, orderId], map: "CouponRedemption_couponId_orderId_key")
-  @@unique([couponId, customerId], map: "CouponRedemption_couponId_customerId_key")
+  @@index([couponId, customerId], map: "CouponRedemption_couponId_customerId_idx")
   @@index([tenantId], map: "CouponRedemption_tenantId_idx")
+  @@index([tenantId, createdAt], map: "CouponRedemption_tenantId_createdAt_idx")
 
   @@map("CouponRedemption")
 }

@@ -12836,7 +12836,833 @@
         }
       }
     },
+    "/panel/stores/{storeSlug}/coupons/summaries": {
+      "get": {
+        "operationId": "listPanelCouponSummaries",
+        "summary": "Lista os cupons com os agregados de uso.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "coupons": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "discountType": {
+                            "enum": [
+                              "percentage",
+                              "fixed"
+                            ],
+                            "type": "string"
+                          },
+                          "valueCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "valuePercent": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "shippingDiscountPercent": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "active",
+                              "expired",
+                              "disabled"
+                            ],
+                            "type": "string"
+                          },
+                          "usageCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "usageLimit": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "perCustomerLimit": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "minimumOrderCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "maximumDiscountCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "startsAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "endsAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "stackable": {
+                            "type": "boolean"
+                          },
+                          "firstPurchaseOnly": {
+                            "type": "boolean"
+                          },
+                          "effectiveStatus": {
+                            "enum": [
+                              "active",
+                              "expired",
+                              "disabled"
+                            ],
+                            "type": "string"
+                          },
+                          "redemptionCount": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "discountCents": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "uniqueCustomers": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "lastRedeemedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "code",
+                          "description",
+                          "discountType",
+                          "valueCents",
+                          "valuePercent",
+                          "shippingDiscountPercent",
+                          "status",
+                          "usageCount",
+                          "usageLimit",
+                          "perCustomerLimit",
+                          "minimumOrderCents",
+                          "maximumDiscountCents",
+                          "startsAt",
+                          "endsAt",
+                          "stackable",
+                          "firstPurchaseOnly",
+                          "effectiveStatus",
+                          "redemptionCount",
+                          "discountCents",
+                          "uniqueCustomers",
+                          "lastRedeemedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "coupons"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/stores/{storeSlug}/coupons/{couponId}": {
+      "get": {
+        "operationId": "getPanelCouponDetail",
+        "summary": "Detalhe do cupom com histórico de resgates e série de uso.",
+        "tags": [
+          "panel"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "storeSlug",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "in": "path",
+            "required": true,
+            "name": "couponId",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "enum": [
+                "recent",
+                "oldest",
+                "discount"
+              ],
+              "type": "string"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "pageSize",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "coupon": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "discountType": {
+                          "enum": [
+                            "percentage",
+                            "fixed"
+                          ],
+                          "type": "string"
+                        },
+                        "valueCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "valuePercent": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "shippingDiscountPercent": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "enum": [
+                            "active",
+                            "expired",
+                            "disabled"
+                          ],
+                          "type": "string"
+                        },
+                        "usageCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "usageLimit": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "perCustomerLimit": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "minimumOrderCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maximumDiscountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "startsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "endsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "stackable": {
+                          "type": "boolean"
+                        },
+                        "firstPurchaseOnly": {
+                          "type": "boolean"
+                        },
+                        "effectiveStatus": {
+                          "enum": [
+                            "active",
+                            "expired",
+                            "disabled"
+                          ],
+                          "type": "string"
+                        },
+                        "redemptionCount": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "discountCents": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "uniqueCustomers": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "lastRedeemedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "description",
+                        "discountType",
+                        "valueCents",
+                        "valuePercent",
+                        "shippingDiscountPercent",
+                        "status",
+                        "usageCount",
+                        "usageLimit",
+                        "perCustomerLimit",
+                        "minimumOrderCents",
+                        "maximumDiscountCents",
+                        "startsAt",
+                        "endsAt",
+                        "stackable",
+                        "firstPurchaseOnly",
+                        "effectiveStatus",
+                        "redemptionCount",
+                        "discountCents",
+                        "uniqueCustomers",
+                        "lastRedeemedAt"
+                      ]
+                    },
+                    "redemptions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "discountCents": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "customer": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "email"
+                            ]
+                          },
+                          "order": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "totalCents": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "totalCents",
+                              "createdAt"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "discountCents",
+                          "createdAt",
+                          "customer",
+                          "order"
+                        ]
+                      }
+                    },
+                    "redemptionsTotal": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "usage": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "bucket": {
+                            "type": "string",
+                            "format": "date"
+                          },
+                          "redemptions": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "discountCents": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "bucket",
+                          "redemptions",
+                          "discountCents"
+                        ]
+                      }
+                    },
+                    "ordersWithCouponCents": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "coupon",
+                    "redemptions",
+                    "redemptionsTotal",
+                    "usage",
+                    "ordersWithCouponCents"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão ausente ou inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Unauthorized"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Operação não autorizada para esta sessão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Forbidden"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/NotFound"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito de estado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Conflict"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Não foi possível identificar o tenant da requisição., Dados de entrada inválidos., Limite de requisições excedido., Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TenantNotResolved"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationFailed"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RateLimited"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Internal"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "operationId": "updatePanelCoupon",
         "summary": "Atualiza um cupom promocional.",
@@ -13312,10 +14138,14 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
+                    },
+                    "archived": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
-                    "success"
+                    "success",
+                    "archived"
                   ]
                 }
               }

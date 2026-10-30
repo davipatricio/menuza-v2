@@ -1,0 +1,196 @@
+[
+  {
+    "id": "dropConstraint.CouponRedemption.CouponRedemption_couponId_customerId_key",
+    "label": "Drop constraint \"CouponRedemption_couponId_customerId_key\" on \"CouponRedemption\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "CouponRedemption_couponId_customerId_key",
+        "table": "CouponRedemption"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"CouponRedemption_couponId_customerId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CouponRedemption_couponId_customerId_key",
+          "public",
+          "\"public\".\"CouponRedemption\""
+        ],
+        "expectation": {
+          "expects": "present",
+          "object": "constraint \"CouponRedemption_couponId_customerId_key\" on \"CouponRedemption\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"CouponRedemption_couponId_customerId_key\"",
+        "sql": "ALTER TABLE \"public\".\"CouponRedemption\" DROP CONSTRAINT \"CouponRedemption_couponId_customerId_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"CouponRedemption_couponId_customerId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "CouponRedemption_couponId_customerId_key",
+          "public",
+          "\"public\".\"CouponRedemption\""
+        ],
+        "expectation": {
+          "expects": "absent",
+          "object": "constraint \"CouponRedemption_couponId_customerId_key\" on \"CouponRedemption\""
+        }
+      }
+    ]
+  },
+  {
+    "id": "column.public.CouponRedemption.createdAt",
+    "label": "Add column \"createdAt\" to \"CouponRedemption\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "createdAt",
+        "table": "CouponRedemption"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"createdAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "CouponRedemption", "createdAt"],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"createdAt\" on \"CouponRedemption\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"createdAt\"",
+        "sql": "ALTER TABLE \"public\".\"CouponRedemption\" ADD COLUMN \"createdAt\" timestamp(3) DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"createdAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "CouponRedemption", "createdAt"],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"createdAt\" on \"CouponRedemption\""
+        }
+      },
+      {
+        "description": "verify column \"createdAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": ["public", "CouponRedemption", "createdAt", "timestamp(3) without time zone"]
+      },
+      {
+        "description": "verify column \"createdAt\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": ["public", "CouponRedemption", "createdAt", "NO"]
+      }
+    ]
+  },
+  {
+    "id": "index.CouponRedemption.CouponRedemption_couponId_customerId_idx",
+    "label": "Create index \"CouponRedemption_couponId_customerId_idx\" on \"CouponRedemption\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "CouponRedemption_couponId_customerId_idx",
+        "table": "CouponRedemption"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"CouponRedemption_couponId_customerId_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"CouponRedemption_couponId_customerId_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"CouponRedemption_couponId_customerId_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"CouponRedemption_couponId_customerId_idx\"",
+        "sql": "CREATE INDEX \"CouponRedemption_couponId_customerId_idx\" ON \"public\".\"CouponRedemption\" (\"couponId\", \"customerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"CouponRedemption_couponId_customerId_idx\" exists on \"CouponRedemption\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"CouponRedemption_couponId_customerId_idx\"",
+          "i",
+          "I",
+          "\"public\".\"CouponRedemption\"",
+          "btree",
+          "[\"couponId\",\"customerId\"]"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.CouponRedemption.CouponRedemption_tenantId_createdAt_idx",
+    "label": "Create index \"CouponRedemption_tenantId_createdAt_idx\" on \"CouponRedemption\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "CouponRedemption_tenantId_createdAt_idx",
+        "table": "CouponRedemption"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"CouponRedemption_tenantId_createdAt_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"CouponRedemption_tenantId_createdAt_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"CouponRedemption_tenantId_createdAt_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"CouponRedemption_tenantId_createdAt_idx\"",
+        "sql": "CREATE INDEX \"CouponRedemption_tenantId_createdAt_idx\" ON \"public\".\"CouponRedemption\" (\"tenantId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"CouponRedemption_tenantId_createdAt_idx\" exists on \"CouponRedemption\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"CouponRedemption_tenantId_createdAt_idx\"",
+          "i",
+          "I",
+          "\"public\".\"CouponRedemption\"",
+          "btree",
+          "[\"tenantId\",\"createdAt\"]"
+        ]
+      }
+    ]
+  }
+]

@@ -43,11 +43,6 @@ export interface CouponInput {
   /** Previous orders of this customer; `0` means first purchase. */
   customerOrderCount: number;
   status: "active" | "expired" | "disabled";
-  /**
-   * Delivery modes the coupon is limited to, when the store configured any.
-   * Absent or empty means every mode.
-   */
-  deliveryModes?: readonly string[];
 }
 
 export interface PriceOrderInput {
@@ -55,7 +50,6 @@ export interface PriceOrderInput {
   now: Date;
   lines: PriceLineInput[];
   shippingCents: number;
-  deliveryMode?: string;
   coupons: CouponInput[];
   walletAvailableCents: number;
   walletRequestedCents: number;
@@ -81,8 +75,7 @@ export interface RejectedCoupon {
     | "usage_limit"
     | "per_customer_limit"
     | "not_first_purchase"
-    | "not_stackable"
-    | "delivery_mode";
+    | "not_stackable";
 }
 
 export interface PriceOrderResult {

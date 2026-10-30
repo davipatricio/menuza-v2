@@ -191,6 +191,17 @@ export function formatDateTime(iso: string): string {
 }
 
 /**
+ * The calendar day a day-granular value names, read in UTC. A validity window
+ * is stored as a UTC midnight boundary, so a local-time format would render the
+ * day before it west of Greenwich.
+ */
+export function formatDay(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" }).format(
+    new Date(iso),
+  );
+}
+
+/**
  * Tempo relativo curto para cartões de quadro: "agora", "12 min", "3 h", "2 d".
  * O detalhe usa `formatDateTime`, que é a data absoluta.
  */

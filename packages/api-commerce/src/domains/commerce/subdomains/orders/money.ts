@@ -14,7 +14,20 @@ import type { DbTransaction } from "@menuza/db";
 
 import { conflict } from "../../support.ts";
 
-/** Records the coupon redemptions of an order and counts each coupon up. */
+/**
+ * Records one redemption per coupon used by the order, and counts each coupon
+ * up once.
+ *
+ * `appliedCoupons` is the discount list, and one coupon can contribute twice to
+ * it — a merchandise discount and a shipping discount are separate entries with
+ * the same `couponId`. Writing one redemption per entry would collide on
+ * `@@unique([couponId, orderId])` and fail the whole checkout, so the entries
+ * are folded into one redemption per coupon first.
+ *
+ * Both limits are re-read under the coupon row lock: the price was computed
+ * from a snapshot taken before the transaction, so `usageLimit` and
+ * `perCustomerLimit` can both have been reached by a concurrent checkout since.
+ */
 export async function applyCoupons(
   tx: DbTransaction,
   tenantId: string,
@@ -22,12 +35,18 @@ export async function applyCoupons(
   customerId: string,
   appliedCoupons: readonly AppliedDiscount[],
 ): Promise<void> {
+  const perCoupon = new Map<string, number>();
+
   for (const discount of appliedCoupons) {
-    const couponId = discount.couponId;
-    const couponCode = discount.couponCode;
+    if (discount.couponId === undefined) continue;
 
-    if (couponId === undefined || couponCode === undefined) continue;
+    perCoupon.set(
+      discount.couponId,
+      (perCoupon.get(discount.couponId) ?? 0) + discount.amountCents,
+    );
+  }
 
+  for (const [couponId, discountCents] of perCoupon) {
     const locked = await tx.orm.public.Coupon.where({ tenantId, id: couponId }).forUpdate().first();
 
     if (!locked) throw conflict();
@@ -36,13 +55,40 @@ export async function applyCoupons(
       throw conflict();
     }
 
+    if (locked.perCustomerLimit !== null) {
+      const redemptions = await tx.orm.public.CouponRedemption.where({
+        tenantId,
+        couponId,
+        customerId,
+      })
+        .aggregate((aggregate) => ({ count: aggregate.count() }))
+        .then((count) => count.count);
+
+      if (redemptions >= locked.perCustomerLimit) throw conflict();
+    }
+
+    // `priceOrder` enforced `firstPurchaseOnly` from an order count read before
+    // this transaction, and two concurrent checkouts could both see zero. The
+    // coupon row lock above serializes them, and under READ COMMITTED the second
+    // transaction's count — a statement issued after it acquired the lock — sees
+    // the order the first one committed.
+    if (locked.firstPurchaseOnly) {
+      const orders = await tx.orm.public.Order.where({ tenantId, customerId })
+        .aggregate((aggregate) => ({ count: aggregate.count() }))
+        .then((count) => count.count);
+
+      // The order being written in this transaction is already a row here, so a
+      // first purchase counts one and any earlier purchase makes it two.
+      if (orders > 1) throw conflict();
+    }
+
     await tx.orm.public.CouponRedemption.create({
       id: randomUUID(),
       tenantId,
       couponId,
       orderId,
       customerId,
-      discountCents: discount.amountCents,
+      discountCents,
     });
 
     await tx.orm.public.Coupon.where({ tenantId, id: couponId }).updateAll({
