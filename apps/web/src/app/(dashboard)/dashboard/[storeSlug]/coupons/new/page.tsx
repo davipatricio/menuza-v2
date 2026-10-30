@@ -1,15 +1,20 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { panelClient } from "@/lib/server-tenant.ts";
+import { SimpleLoading } from "../../_components/simple-loading.tsx";
 import { CouponCreateForm } from "../coupon-form.tsx";
 
-// Reads the session and the store slug on every request, like the shell.
-export const instant = false;
+export const instant = true;
 
-export default async function NewCouponPage({
-  params,
-}: {
-  params: Promise<{ storeSlug: string }>;
-}) {
+export default function NewCouponPage({ params }: { params: Promise<{ storeSlug: string }> }) {
+  return (
+    <Suspense fallback={<SimpleLoading label="Carregando cupom" />}>
+      <NewCoupon params={params} />
+    </Suspense>
+  );
+}
+
+async function NewCoupon({ params }: { params: Promise<{ storeSlug: string }> }) {
   const { storeSlug } = await params;
   const client = await panelClient();
 

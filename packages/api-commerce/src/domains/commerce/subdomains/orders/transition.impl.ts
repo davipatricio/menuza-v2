@@ -9,10 +9,15 @@
 import { randomUUID } from "node:crypto";
 import { ORPCError, implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import { applyTransition, commerceContractObject, releasesStock } from "@menuza/shared/commerce";
+import {
+  applyTransition,
+  commerceContractObject,
+  releasesCoupon,
+  releasesStock,
+} from "@menuza/shared/commerce";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db, releaseVariationStock, stockLinesFor } from "@menuza/db";
+import { db, releaseCouponRedemptions, releaseVariationStock, stockLinesFor } from "@menuza/db";
 import { actorOf, notFound, requireCapability, requireMember } from "../../support.ts";
 
 const os = implement(
@@ -88,19 +93,29 @@ export const transitionOrderImpl = os
       // The stock goes back on the edge into a state the order never leaves:
       // a cancelled order never reaches the buyer. Comparing the pair before
       // and after is what makes the release happen once, even when the order
-      // is later expired as well.
-      const wasReleased = releasesStock(order.fulfilmentStatus, order.financialStatus);
+      // is later expired as well. The coupon follows the same edge, but only
+      // while the order is unpaid — see `releasesCoupon`.
+      const nowPair = {
+        fulfilment: input.axis === "fulfilment" ? next : order.fulfilmentStatus,
+        financial: input.axis === "financial" ? next : order.financialStatus,
+      };
 
-      const isReleased = releasesStock(
-        input.axis === "fulfilment" ? next : order.fulfilmentStatus,
-        input.axis === "financial" ? next : order.financialStatus,
-      );
+      const before = { fulfilment: order.fulfilmentStatus, financial: order.financialStatus };
 
-      if (wasReleased || !isReleased) return;
+      if (!releasesStock(before.fulfilment, before.financial)) {
+        if (releasesStock(nowPair.fulfilment, nowPair.financial)) {
+          const items = await tx.orm.public.OrderItem.where({ tenantId, orderId: order.id }).all();
 
-      const items = await tx.orm.public.OrderItem.where({ tenantId, orderId: order.id }).all();
+          await releaseVariationStock(tx, tenantId, await stockLinesFor(tx, tenantId, items));
+        }
+      }
 
-      await releaseVariationStock(tx, tenantId, await stockLinesFor(tx, tenantId, items));
+      if (
+        !releasesCoupon(before.fulfilment, before.financial) &&
+        releasesCoupon(nowPair.fulfilment, nowPair.financial)
+      ) {
+        await releaseCouponRedemptions(tx, tenantId, order.id);
+      }
     });
 
     return {

@@ -75,7 +75,7 @@ export function priceOrder(input: PriceOrderInput): PriceOrderResult {
   for (const coupon of coupons) {
     assertCoupon(coupon);
 
-    const reason = ineligibility(coupon, subtotalCents, input.deliveryMode, now);
+    const reason = ineligibility(coupon, subtotalCents, now);
 
     if (reason === null) {
       applicable.push(coupon);
@@ -172,7 +172,6 @@ export function priceOrder(input: PriceOrderInput): PriceOrderResult {
 function ineligibility(
   coupon: CouponInput,
   subtotalCents: number,
-  deliveryMode: string | undefined,
   now: Date,
 ): RejectedCoupon["reason"] | null {
   if (coupon.status !== "active") return "inactive";
@@ -194,14 +193,6 @@ function ineligibility(
 
   if (coupon.minimumOrderCents !== null && subtotalCents < coupon.minimumOrderCents) {
     return "below_minimum";
-  }
-
-  if (
-    coupon.deliveryModes !== undefined &&
-    coupon.deliveryModes.length > 0 &&
-    (deliveryMode === undefined || !coupon.deliveryModes.includes(deliveryMode))
-  ) {
-    return "delivery_mode";
   }
 
   return null;

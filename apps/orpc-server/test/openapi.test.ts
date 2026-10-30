@@ -289,6 +289,16 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/coupons",
   },
   {
+    procedure: tenantContractObject.panel.listCouponSummaries,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/coupons/summaries",
+  },
+  {
+    procedure: tenantContractObject.panel.getCouponDetail,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/coupons/{couponId}",
+  },
+  {
     procedure: tenantContractObject.panel.createCoupon,
     method: "post",
     path: "/panel/stores/{storeSlug}/coupons",

@@ -1034,6 +1034,85 @@ export const PanelCouponsOutputSchema = v.object({
   coupons: v.array(PanelCouponSchema),
 });
 
+/** One coupon row plus what the list needs, so the table never counts per row. */
+export const PanelCouponSummarySchema = v.object({
+  id: v.string(),
+  code: v.string(),
+  description: v.nullable(v.string()),
+  discountType: DiscountTypeSchema,
+  valueCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  valuePercent: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100))),
+  shippingDiscountPercent: v.nullable(
+    v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100)),
+  ),
+  status: CouponStatusSchema,
+  usageCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  usageLimit: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  perCustomerLimit: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+  minimumOrderCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  maximumDiscountCents: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(0))),
+  startsAt: v.nullable(v.string()),
+  endsAt: v.nullable(v.string()),
+  stackable: v.boolean(),
+  firstPurchaseOnly: v.boolean(),
+  /** Derived from `endsAt`: a coupon past its window reads as expired. */
+  effectiveStatus: CouponStatusSchema,
+  redemptionCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  discountCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  uniqueCustomers: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  lastRedeemedAt: v.nullable(v.string()),
+});
+
+export const PanelCouponSummariesOutputSchema = v.object({
+  coupons: v.array(PanelCouponSummarySchema),
+});
+
+/** One redemption row of the coupon detail's history. */
+export const PanelCouponRedemptionSchema = v.object({
+  id: v.string(),
+  discountCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  createdAt: v.pipe(v.string(), v.isoTimestamp()),
+  customer: v.object({
+    id: v.string(),
+    name: v.string(),
+    email: v.string(),
+  }),
+  order: v.object({
+    id: v.string(),
+    code: v.string(),
+    totalCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+    createdAt: v.pipe(v.string(), v.isoTimestamp()),
+  }),
+});
+
+/** One bucket of the usage series. Buckets are keyed by the redemption day (UTC). */
+export const PanelCouponUsagePointSchema = v.object({
+  bucket: v.pipe(v.string(), v.isoDate()),
+  redemptions: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  discountCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
+export const PanelCouponDetailInputSchema = v.strictObject({
+  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
+  couponId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  /** Customer name/e-mail or order code, matched in SQL. */
+  search: v.optional(v.pipe(v.string(), v.maxLength(120))),
+  sort: v.optional(v.picklist(["recent", "oldest", "discount"])),
+  /** 1-based page of the redemption history. */
+  page: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(2000))),
+  pageSize: v.optional(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(50))),
+});
+
+export const PanelCouponDetailOutputSchema = v.object({
+  coupon: PanelCouponSummarySchema,
+  redemptions: v.array(PanelCouponRedemptionSchema),
+  /** Rows the search matches, so the client knows how many pages exist. */
+  redemptionsTotal: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  usage: v.array(PanelCouponUsagePointSchema),
+  /** Sum of the orders that used this coupon, so the ticket average needs no second read. */
+  ordersWithCouponCents: v.pipe(v.number(), v.integer(), v.minValue(0)),
+});
+
 /** `action` stays free text until MEN-74 closes the event catalog. */
 export const PanelAuditLogSchema = v.object({
   id: v.string(),
@@ -1804,6 +1883,32 @@ export const listCoupons = panelRead
   .input(PanelStoreInputSchema)
   .output(PanelCouponsOutputSchema);
 
+export const listCouponSummaries = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/coupons/summaries",
+      operationId: "listPanelCouponSummaries",
+      summary: "Lista os cupons com os agregados de uso.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelStoreInputSchema)
+  .output(PanelCouponSummariesOutputSchema);
+
+export const getCouponDetail = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/coupons/{couponId}",
+      operationId: "getPanelCouponDetail",
+      summary: "Detalhe do cupom com histórico de resgates e série de uso.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelCouponDetailInputSchema)
+  .output(PanelCouponDetailOutputSchema);
+
 export const CreateCouponInputSchema = v.pipe(
   v.strictObject({
     storeSlug: v.pipe(
@@ -1966,7 +2071,11 @@ export const DeleteCouponInputSchema = v.strictObject({
 
 const couponCreatedOutput = v.object({ coupon: PanelCouponSchema });
 
-const couponDeletedOutput = v.object({ success: v.boolean() });
+/**
+ * `archived` is true when the coupon had redemptions and was disabled instead
+ * of deleted, so the dialog can tell the member which of the two happened.
+ */
+const couponDeletedOutput = v.object({ success: v.boolean(), archived: v.boolean() });
 
 export const createCoupon = sessionContract
   .meta(
@@ -2542,6 +2651,8 @@ export const panelContractObject = {
   deleteBadge,
   listKits,
   listCoupons,
+  listCouponSummaries,
+  getCouponDetail,
   createCoupon,
   updateCoupon,
   deleteCoupon,
@@ -2614,6 +2725,14 @@ export type PanelSubcategory = v.InferOutput<typeof PanelSubcategorySchema>;
 export type PanelDepartment = v.InferOutput<typeof PanelDepartmentSchema>;
 
 export type PanelCoupon = v.InferOutput<typeof PanelCouponSchema>;
+
+export type PanelCouponSummary = v.InferOutput<typeof PanelCouponSummarySchema>;
+
+export type PanelCouponRedemption = v.InferOutput<typeof PanelCouponRedemptionSchema>;
+
+export type PanelCouponUsagePoint = v.InferOutput<typeof PanelCouponUsagePointSchema>;
+
+export type PanelCouponDetail = v.InferOutput<typeof PanelCouponDetailOutputSchema>;
 
 export type PanelBadge = v.InferOutput<typeof PanelBadgeSchema>;
 

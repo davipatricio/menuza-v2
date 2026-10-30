@@ -174,17 +174,6 @@ describe("priceOrder: rejection reasons", () => {
     ]);
     expect(result.discountCents).toBe(0);
   });
-
-  test("delivery mode not allowed", () => {
-    const result = priceOrder(
-      order({
-        deliveryMode: "pickup",
-        coupons: [coupon({ deliveryModes: ["delivery"] })],
-      }),
-    );
-
-    expect(result.rejectedCoupons.map((rejected) => rejected.reason)).toEqual(["delivery_mode"]);
-  });
 });
 
 describe("priceOrder: stacking (provisional, MEN-98 open)", () => {

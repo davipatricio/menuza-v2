@@ -3,17 +3,12 @@ import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
 import { db } from "@menuza/db";
 import { conflict, notFound } from "../session/support.ts";
-import { inTenantScope, resolveStore } from "./support.ts";
+import { couponWindow } from "./coupon-window.ts";
+import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 
 const os = implement(
   tenantContractObject.panel.updateCoupon,
 ).$context<RequestHeadersHandlerPluginContext>();
-
-function parseTimestamp(value: string | null | undefined) {
-  if (value == null || value === "") return null;
-
-  return Temporal.PlainDateTime.from(value);
-}
 
 function toCoupon(row: any) {
   return {
@@ -39,6 +34,9 @@ function toCoupon(row: any) {
 
 export const updateCouponImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
+
+  requireCapability(store.role, "catalog:write");
+
   const code = input.code.trim().toUpperCase();
 
   const existing = await inTenantScope(store.tenantId, () =>
@@ -55,11 +53,7 @@ export const updateCouponImpl = os.handler(async ({ input, context }) => {
     if (duplicate) throw conflict();
   }
 
-  let startsAt = parseTimestamp(input.startsAt);
-  let endsAt = parseTimestamp(input.endsAt);
-
-  if (startsAt != null && endsAt != null && Temporal.PlainDateTime.compare(startsAt, endsAt) > 0)
-    startsAt = endsAt;
+  const { startsAt, endsAt } = couponWindow(input.startsAt, input.endsAt);
 
   let rows;
 

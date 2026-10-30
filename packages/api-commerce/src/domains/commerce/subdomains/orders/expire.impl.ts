@@ -16,7 +16,7 @@ import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { commerceContractObject, release, releasesStock } from "@menuza/shared/commerce";
 import { internalTokenMiddleware } from "@menuza/orpc-server/internal";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db, releaseVariationStock, stockLinesFor } from "@menuza/db";
+import { db, releaseCouponRedemptions, releaseVariationStock, stockLinesFor } from "@menuza/db";
 import { notFound } from "../../support.ts";
 
 const os = implement(
@@ -66,12 +66,15 @@ export const expireOrderImpl = os
 
       // The stock goes back when the order dies unpaid: it never reaches the
       // buyer. An order that was already cancelled released its stock then, so
-      // it does not release it twice.
+      // it does not release it twice. The coupon follows the same rule — an
+      // expired order never became a sale, so its redemption is given back.
       if (!releasesStock(order.fulfilmentStatus, order.financialStatus)) {
         const items = await tx.orm.public.OrderItem.where({ tenantId, orderId: order.id }).all();
 
         await releaseVariationStock(tx, tenantId, await stockLinesFor(tx, tenantId, items));
       }
+
+      await releaseCouponRedemptions(tx, tenantId, order.id);
 
       if (order.walletAppliedCents === 0) return;
 

@@ -44,6 +44,7 @@ export {
   TRANSITIONS,
   applyTransition,
   nextTransitions,
+  releasesCoupon,
   releasesStock,
 } from "./orders/transitions.ts";
 

@@ -10,10 +10,10 @@
 import { randomUUID } from "node:crypto";
 import { ORPCError, implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
-import { applyTransition, releasesStock, reversal } from "@menuza/shared/commerce";
+import { applyTransition, releasesCoupon, releasesStock, reversal } from "@menuza/shared/commerce";
 import { sharedErrorCodes } from "@menuza/shared/errors";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { db, releaseVariationStock, stockLinesFor } from "@menuza/db";
+import { db, releaseCouponRedemptions, releaseVariationStock, stockLinesFor } from "@menuza/db";
 import { notFound } from "../session/support.ts";
 import { inTenantScope, requireCapability, resolveStore } from "./support.ts";
 import { actorOf, transitionsOf } from "./orderOps.ts";
@@ -93,6 +93,16 @@ export const transitionOrderImpl = os.handler(async ({ input, context }) => {
           store.tenantId,
           await stockLinesFor(tx, store.tenantId, items),
         );
+      }
+
+      // The coupon follows the stock: an unpaid order that never became a sale
+      // gives its redemption back, so the limit it spent is not burned. Same
+      // before/after edge check, so a later expiry does not release twice.
+      if (
+        !releasesCoupon(order.fulfilmentStatus, order.financialStatus) &&
+        releasesCoupon(fulfilmentStatus, financialStatus)
+      ) {
+        await releaseCouponRedemptions(tx, store.tenantId, order.id);
       }
 
       if (input.to !== "refunded" || order.cashbackCents === 0) return;
