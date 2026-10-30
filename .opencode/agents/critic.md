@@ -2,6 +2,7 @@
 description: Accepts or rejects a plan file. Read-only, pass/fail only.
 mode: subagent
 model: omniroute/utility#high
+steps: 6
 permissions:
   - action: edit
     resource: "*"

@@ -5,6 +5,8 @@
   "snapshots": false,
   // Activates the built-in oxfmt formatter (repo depends on oxfmt and has .oxfmtrc.json).
   "formatter": true,
+  // DCP prunes stale context (compress tool + dedupe + purge). Pinned; config lives in ~/.config/opencode/dcp.jsonc.
+  "plugins": ["@tarquinen/opencode-dcp@3.2.0"],
   // Orchestrator -> architect/implementer -> scout/researcher/critic is depth 2.
   "experimental": {
     "subagent_depth": 2,

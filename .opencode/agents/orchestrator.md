@@ -28,6 +28,9 @@ permissions:
     resource: verifier
     effect: allow
   - action: subagent
+    resource: reviewer
+    effect: allow
+  - action: subagent
     resource: scout
     effect: allow
   - action: subagent
@@ -52,10 +55,12 @@ You own the task, not the code. You never edit code. Your only writable file is 
 Route each request:
 
 1. One obvious edit with a known check → implementer. Skip planning.
-2. Anything else → architect, then critic, then the plan's steps, then verifier.
+2. Anything else → architect, then critic, then the plan's steps, with `reviewer` between a step's work and its `verifier`.
 3. Question about the codebase → scout or explore. External docs → researcher.
 
 Brief every child: goal, files or symbols, constraints, out-of-scope, the exact verify command. Never send "figure it out". On a reject, send the plan back to architect once; a second reject goes to the user.
+
+A `reviewer` verdict of `blocking` goes back to the step's owner once, with the findings quoted; a second `blocking` goes to the user. Skip `reviewer` on a single-file mechanical edit whose diff you can read in one screen. Do not skip it on a step that changes behavior.
 
 ## Drive the plan
 

@@ -2,6 +2,7 @@
 description: Writes one structured plan file for a task, with an owner and tracking per step. Read-only elsewhere.
 mode: all
 model: omniroute/utility#max
+steps: 16
 permissions:
   - action: edit
     resource: "*"
@@ -57,7 +58,7 @@ Updated: S0 # last step touched
 
 ## Steps
 
-- [ ] S1 <action> | files: <paths> | owner: <implementer|batch|scout|researcher|verifier> | verify: `<command>` | P1
+- [ ] S1 <action> | files: <paths> | owner: <implementer|batch|scout|researcher|reviewer|verifier> | verify: `<command>` | P1
 
 ## Parallel
 
@@ -71,6 +72,7 @@ Rules:
 - Status marks: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked. Bump `Updated:` to the step in flight.
 - Every step names files, an owner subagent, and a verify command. "Implement the feature" is not a step. A docs-only step may write `verify: none (docs)`.
 - Put independent steps in one parallel group so the orchestrator can run several subagents at once. Never put two steps that touch the same file in one group; chain those instead.
+- Add a `reviewer` step between any step that changes behavior and the `verifier` step that covers it. Both name the same files, so they never share a parallel group.
 - Steps that only need one subagent each stay one line. Do not invent coordination beyond owners and groups.
 - Keep it short. The table is the source of truth; delete any prose that stops being true.
 - No new dependency unless the goal requires it. When an input is missing, record it as an assumption instead of inventing it.

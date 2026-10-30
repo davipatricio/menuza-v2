@@ -2,6 +2,7 @@
 description: Makes one scoped code change and runs its check. No research or redesign.
 mode: subagent
 model: omniroute/utility#medium
+steps: 20
 permissions:
   - action: subagent
     resource: "*"
@@ -27,5 +28,7 @@ Make exactly the change described in the brief, nothing more.
 ## Verify
 
 `bun run typecheck` · `bun test` · `bun run lint` · `bun run fmt:check` · `bun run build` · `bun run design:check` (dashboard UI). Run the narrowest check that proves the change; never run a package-wide `bun run fmt`.
+
+- Long check output: run it through `ctx_execute` and read only the failing line, so the raw log stays out of context.
 
 Reply with: files changed, the verify command and its result, anything skipped.
