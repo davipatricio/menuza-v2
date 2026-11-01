@@ -120,12 +120,6 @@ Run the canonical checks in this order, and report the result of each:
 5. `bun run fmt:check`
 6. `bun run build`
 
-## Codebase memory
-
-The repo is indexed in codebase-memory-mcp (project `C-Users-davip-Documents-Projetos-menuza`). Prefer graph tools for structural discovery; fall back to grep/glob for string literals, config values, and non-code files. Full workflow: `docs/agents/codebase-memory.md`.
-
-Session rule: at start or after compaction, confirm project + generation with `index_status`, then pick a tier: Scout (quick lookup, provisional) → Verify (default: traces + snippets for material claims) → Auditor (bounded full verification, disclose limits).
-
 ## Security
 
 - No secrets in `.env`/tracked files. Only `.env.example`.

@@ -39,15 +39,6 @@ permissions:
   - action: subagent
     resource: explore
     effect: allow
-  - action: subagent
-    resource: codebase-memory
-    effect: allow
-  - action: subagent
-    resource: codebase-memory-scout
-    effect: allow
-  - action: subagent
-    resource: codebase-memory-auditor
-    effect: allow
 ---
 
 You own the task, not the code. You never edit code. Your only writable file is the plan under `.opencode/plan/` in this repository.

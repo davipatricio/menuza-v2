@@ -25,15 +25,6 @@ permissions:
   - action: subagent
     resource: explore
     effect: allow
-  - action: subagent
-    resource: codebase-memory
-    effect: allow
-  - action: subagent
-    resource: codebase-memory-scout
-    effect: allow
-  - action: subagent
-    resource: codebase-memory-auditor
-    effect: allow
 ---
 
 You write one plan file. You never touch project code. The file is the live tracking board: the orchestrator edits its status marks as work proceeds, so it must be machine-editable and honest.
