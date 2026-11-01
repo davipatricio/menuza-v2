@@ -16,6 +16,12 @@ export interface PriceLineInput {
   quantity: number;
   /** Per-line catalog markdown already decided by the catalog (menu price, promotion). */
   catalogDiscountCents?: number;
+  /**
+   * Catalog product this line came from (MEN-97). Optional because only coupons
+   * with a product scope read it: an omitted `productId` never matches an
+   * `include` scope and is never blocked by an `exclude` one.
+   */
+  productId?: string;
 }
 
 /**
@@ -43,6 +49,13 @@ export interface CouponInput {
   /** Previous orders of this customer; `0` means first purchase. */
   customerOrderCount: number;
   status: "active" | "expired" | "disabled";
+  /**
+   * Product scope (MEN-97). `include` limits the coupon to `productIds`,
+   * `exclude` blocks them. Omitted reads as `"include"`, and an empty
+   * `productIds` means every product in both modes.
+   */
+  productScopeMode?: "include" | "exclude";
+  productIds?: string[];
 }
 
 export interface PriceOrderInput {
@@ -75,7 +88,9 @@ export interface RejectedCoupon {
     | "usage_limit"
     | "per_customer_limit"
     | "not_first_purchase"
-    | "not_stackable";
+    | "not_stackable"
+    /** The product scope matched no line: the coupon never becomes a zero discount. */
+    | "product_scope";
 }
 
 export interface PriceOrderResult {

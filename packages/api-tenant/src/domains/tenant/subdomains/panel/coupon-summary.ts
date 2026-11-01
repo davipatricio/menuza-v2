@@ -32,6 +32,9 @@ export interface CouponRow {
   readonly stackable: boolean;
   readonly firstPurchaseOnly: boolean;
   readonly status: CouponStatus;
+  readonly productScopeMode: string;
+  /** The join rows, eager-loaded; absent when the read did not ask for them. */
+  readonly products?: readonly { readonly productId: string }[];
 }
 
 export interface RedemptionAggregate {
@@ -44,8 +47,10 @@ export interface RedemptionAggregate {
 }
 
 /**
- * A coupon past its `endsAt` reads as expired whatever the stored status says:
- * nothing writes `expired`, so the column cannot be trusted for display.
+ * Writes store `expired` once the window has closed and the switch value
+ * otherwise, so the column is usually right; a row that closed while stored
+ * `active` still reads `expired` here. A stored `disabled` reads as `disabled`:
+ * the merchant turned it off, and that outranks the window.
  */
 export function effectiveCouponStatus(coupon: CouponRow, now: Date): CouponStatus {
   if (coupon.status !== "active") return coupon.status;
@@ -169,6 +174,10 @@ export function toCouponSummary(
     endsAt: toOptionalPanelTimestamp(coupon.endsAt),
     stackable: Boolean(coupon.stackable),
     firstPurchaseOnly: Boolean(coupon.firstPurchaseOnly),
+    // Same normalization as the writes: anything but `exclude` reads as `include`.
+    productScopeMode:
+      coupon.productScopeMode === "exclude" ? ("exclude" as const) : ("include" as const),
+    productIds: (coupon.products ?? []).map((link) => link.productId),
     effectiveStatus: effectiveCouponStatus(coupon, now),
     redemptionCount: totals.redemptions,
     discountCents: totals.discountCents,

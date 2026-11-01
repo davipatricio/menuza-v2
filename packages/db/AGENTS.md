@@ -107,8 +107,8 @@
   pointing at the `OAuthToken` that authenticates it, `revokedAt` for the sweep.
   Both carry `tenantId` and are tenant-scoped; a revocation sets `revokedAt` rather
   than deleting, so the audit trail survives.
-- The join tables (`ProductTag`, `CategoryDepartment`) carry their own
-  `tenantId`, so the isolation guard checks them, and a trigger
+- The join tables (`ProductTag`, `CategoryDepartment`, `CouponProduct`, `ProductBadge`) carry
+  their own `tenantId`, so the isolation guard checks them, and a trigger
   (`menuza_join_tenant_guard`) rejects a row whose two parents do not share
   that tenant — a foreign key cannot say that.
 - `src/stock.ts` owns the stock a variation carries: `stockLinesFor` expands

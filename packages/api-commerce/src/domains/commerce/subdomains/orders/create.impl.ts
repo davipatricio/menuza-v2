@@ -19,7 +19,7 @@ import {
   type PaymentMethod,
 } from "@menuza/shared/commerce";
 import { tenantMiddleware } from "@menuza/orpc-server/tenant";
-import { db, reserveVariationStock, stockLinesFor } from "@menuza/db";
+import { and, db, reserveVariationStock, stockLinesFor } from "@menuza/db";
 import {
   conflict,
   notFound,
@@ -89,6 +89,29 @@ export const createOrderImpl = os
       ),
     ]);
 
+    // The product scope of those coupons is a second tenant-scoped read over the
+    // same snapshot: one query for every priced coupon, never one per coupon.
+    // A coupon with no row keeps an empty scope, which `priceOrder` reads as
+    // "every product" in both modes.
+    const couponIds = couponRows.flatMap((row) => (row === null ? [] : [row.id]));
+
+    const productIdsByCoupon = new Map<string, string[]>();
+
+    if (couponIds.length > 0) {
+      const scopeRows = await db.orm.public.CouponProduct.where((link) =>
+        and(link.tenantId.eq(tenantId), link.couponId.in([...couponIds])),
+      )
+        .select("couponId", "productId")
+        .all();
+
+      for (const scopeRow of scopeRows) {
+        const productIds = productIdsByCoupon.get(scopeRow.couponId) ?? [];
+
+        productIds.push(scopeRow.productId);
+        productIdsByCoupon.set(scopeRow.couponId, productIds);
+      }
+    }
+
     const coupons: CouponInput[] = [];
 
     for (const row of couponRows) {
@@ -122,6 +145,8 @@ export const createOrderImpl = os
         customerRedemptionCount: redemptions,
         customerOrderCount: orderCount,
         status: row.status === "expired" ? "expired" : "active",
+        productScopeMode: row.productScopeMode === "exclude" ? "exclude" : "include",
+        productIds: productIdsByCoupon.get(row.id) ?? [],
       });
     }
 
@@ -132,6 +157,7 @@ export const createOrderImpl = os
         unitPriceCents: line.unitPriceCents,
         quantity: line.quantity,
         catalogDiscountCents: line.catalogDiscountCents,
+        productId: line.productId,
       })),
       shippingCents: input.shippingCents,
       walletRequestedCents: input.walletRequestedCents,

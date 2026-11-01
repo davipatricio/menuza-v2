@@ -42,6 +42,8 @@ import { listCouponsImpl } from "./listCoupons.impl.ts";
 import { listCouponSummariesImpl } from "./listCouponSummaries.impl.ts";
 import { getCouponDetailImpl } from "./getCouponDetail.impl.ts";
 import { updateCouponImpl } from "./updateCoupon.impl.ts";
+import { setCouponStatusImpl } from "./setCouponStatus.impl.ts";
+import { bulkDeleteCouponsImpl } from "./bulkDeleteCoupons.impl.ts";
 import { getStoreSeoImpl } from "./getStoreSeo.impl.ts";
 import { saveStoreSeoImpl } from "./saveStoreSeo.impl.ts";
 import { listSeoEntitiesImpl } from "./listSeoEntities.impl.ts";
@@ -54,6 +56,7 @@ import { deletePaymentIntegrationImpl } from "./deletePaymentIntegration.impl.ts
 import { savePaymentMethodAssignmentImpl } from "./savePaymentMethodAssignment.impl.ts";
 import { listAuditLogsImpl } from "./listAuditLogs.impl.ts";
 import { listTeamMembersImpl } from "./listTeamMembers.impl.ts";
+import { searchImpl } from "./search.impl.ts";
 import { listIntegrationsImpl } from "./listIntegrations.impl.ts";
 import { saveIntegrationImpl } from "./saveIntegration.impl.ts";
 import { listMcpSessionsImpl } from "./listMcpSessions.impl.ts";
@@ -104,6 +107,8 @@ export const panelSubdomainRouter = {
   createCoupon: createCouponImpl,
   updateCoupon: updateCouponImpl,
   deleteCoupon: deleteCouponImpl,
+  setCouponStatus: setCouponStatusImpl,
+  bulkDeleteCoupons: bulkDeleteCouponsImpl,
   getStoreSeo: getStoreSeoImpl,
   saveStoreSeo: saveStoreSeoImpl,
   listSeoEntities: listSeoEntitiesImpl,
@@ -116,6 +121,7 @@ export const panelSubdomainRouter = {
   savePaymentMethodAssignment: savePaymentMethodAssignmentImpl,
   listAuditLogs: listAuditLogsImpl,
   listTeamMembers: listTeamMembersImpl,
+  search: searchImpl,
   listIntegrations: listIntegrationsImpl,
   saveIntegration: saveIntegrationImpl,
   listMcpSessions: listMcpSessionsImpl,

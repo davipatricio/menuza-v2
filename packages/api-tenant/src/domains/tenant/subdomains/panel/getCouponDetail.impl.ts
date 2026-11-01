@@ -32,10 +32,34 @@ export const getCouponDetailImpl = os.handler(async ({ input, context }) => {
   const now = new Date();
 
   const coupon = await inTenantScope(store.tenantId, () =>
-    db.orm.public.Coupon.where({ tenantId: store.tenantId, id: input.couponId }).first(),
+    db.orm.public.Coupon.where((coupon) =>
+      and(
+        coupon.tenantId.eq(store.tenantId),
+        coupon.id.eq(input.couponId),
+        coupon.deletedAt.eq(null),
+      ),
+    )
+      .include("products", (link) =>
+        link.include("product", (product) => product.select("id", "name")),
+      )
+      .first(),
   );
 
   if (!coupon) throw notFound();
+
+  // The scope chips show names, so the join carries its product. `productId` is a
+  // NOT NULL FK (`onDelete: Cascade`) and the eager load always resolves; Prisma
+  // still types it nullable, so the check lives here. The include builder sorts
+  // by column, not by a related field, hence the sort in JS.
+  const products = coupon.products
+    .map((link) => {
+      if (!link.product) {
+        throw new Error(`Coupon ${coupon.id} is scoped to a product that is gone`);
+      }
+
+      return link.product;
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
 
   const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
   const page = input.page ?? 1;
@@ -188,6 +212,7 @@ export const getCouponDetailImpl = os.handler(async ({ input, context }) => {
 
   return {
     coupon: toCouponSummary(coupon, aggregate, now),
+    products,
     redemptions: history,
     redemptionsTotal,
     usage: usageSeries(usageBuckets),

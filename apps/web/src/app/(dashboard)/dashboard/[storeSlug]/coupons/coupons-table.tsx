@@ -9,8 +9,8 @@ import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { AlertTriangle, Search, X } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { AlertTriangle, Search, Trash2, X } from "lucide-react";
 import { debounce, useQueryStates } from "nuqs";
 
 import {
@@ -24,22 +24,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
 import { Button } from "@/components/ui/button.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
 import { DataTable, dashboardTableFeatures } from "@/components/ui/data-table.tsx";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
+import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import { formatBrl, formatDateTime, formatInteger } from "@/lib/format.ts";
-import {
-  COUPON_STATUS_LABELS,
-  COUPON_STATUS_VARIANTS,
-  DISCOUNT_TYPE_LABELS,
-} from "@/lib/panel-labels.ts";
+import { COUPON_STATUS_LABELS, DISCOUNT_TYPE_LABELS } from "@/lib/panel-labels.ts";
 import { couponSearchParams } from "./coupon-search-params.ts";
 import { useCouponWebMcp } from "./coupons-webmcp.ts";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
+
+/** The switch writes the stored status; `expired` is derived on read. */
+type CouponWriteStatus = "active" | "disabled";
 
 function client() {
   return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
@@ -68,10 +68,40 @@ function deleteMessage(error: Error): string {
   if (error instanceof ORPCError) {
     if (error.code === "FORBIDDEN") return "Você não tem permissão para excluir cupons nesta loja.";
 
-    if (error.code === "NOT_FOUND") return "Este cupom não existe mais. Atualize a lista.";
+    if (error.code === "NOT_FOUND") return "Um ou mais cupons não existem mais. Atualize a lista.";
   }
 
-  return error.message || "Não foi possível excluir o cupom.";
+  return error.message || "Não foi possível excluir os cupons.";
+}
+
+function statusMessage(error: Error): string {
+  if (error instanceof ORPCError) {
+    if (error.code === "FORBIDDEN") return "Você não tem permissão para alterar cupons nesta loja.";
+
+    if (error.code === "NOT_FOUND") return "Este cupom não existe mais. Atualize a lista.";
+
+    // Activating a coupon whose window already closed is refused by the server.
+    if (error.code === "VALIDATION_FAILED") return error.message;
+  }
+
+  return error.message || "Não foi possível alterar o status do cupom.";
+}
+
+/** Reports both bulk outcomes: archived rows keep their usage history. */
+function bulkDeleteNotice(deleted: number, archived: number): string {
+  const removed = `${deleted} ${deleted === 1 ? "cupom excluído" : "cupons excluídos"}`;
+
+  const kept = `${archived} ${
+    archived === 1
+      ? "cupom desativado por ter histórico de uso"
+      : "cupons desativados por terem histórico de uso"
+  }`;
+
+  if (deleted === 0) return `${kept}.`;
+
+  if (archived === 0) return `${removed}.`;
+
+  return `${removed} e ${kept}.`;
 }
 
 export function CouponsTable({
@@ -90,9 +120,11 @@ export function CouponsTable({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [confirming, setConfirming] = useState<PanelCouponSummary | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, CouponWriteStatus>>({});
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const [filters, setFilters] = useQueryStates(couponSearchParams, {
     shallow: false,
@@ -105,25 +137,88 @@ export function CouponsTable({
 
   useCouponWebMcp(storeCoupons);
 
-  const deleteMutation = useMutation({
-    mutationFn: (couponId: string) => client().panel.deleteCoupon({ storeSlug, couponId }),
-    onSuccess: ({ archived }) => {
+  const couponIds = useMemo(() => new Set(coupons.map((coupon) => coupon.id)), [coupons]);
+
+  // Selection lives outside `DataTable`, which remounts on every filter change,
+  // and is pruned to the rows on screen so a hidden row never leaves the action set.
+  const activeSelectedIds = useMemo(
+    () => selectedIds.filter((id) => couponIds.has(id)),
+    [selectedIds, couponIds],
+  );
+
+  const selectedSet = useMemo(() => new Set(activeSelectedIds), [activeSelectedIds]);
+
+  const allSelected = coupons.length > 0 && coupons.every((coupon) => selectedSet.has(coupon.id));
+
+  const someSelected = activeSelectedIds.length > 0;
+
+  const statusMutation = useMutation({
+    mutationFn: ({ couponId, status }: { couponId: string; status: CouponWriteStatus }) =>
+      client().panel.setCouponStatus({ storeSlug, couponId, status }),
+    onMutate: ({ couponId, status }) => {
+      setStatusOverrides((current) => ({ ...current, [couponId]: status }));
+    },
+    onSuccess: () => {
       setFailure(null);
-      setNotice(
-        archived
-          ? "O cupom já tinha resgates, então foi desativado em vez de excluído. O histórico de uso foi mantido."
-          : "Cupom excluído.",
-      );
-      setConfirming(null);
+      router.refresh();
+    },
+    onError: (error, { couponId }) => {
+      setStatusOverrides((current) => {
+        const next = { ...current };
+        delete next[couponId];
+
+        return next;
+      });
+      setFailure(statusMessage(error));
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => client().panel.bulkDeleteCoupons({ storeSlug, couponIds: activeSelectedIds }),
+    onSuccess: ({ deleted, archived }) => {
+      setFailure(null);
+      setNotice(bulkDeleteNotice(deleted, archived));
+      setBulkDeleteOpen(false);
+      setSelectedIds([]);
       router.refresh();
     },
     onError: (error) => {
       // The dialog is modal, so an error left behind it is invisible. Close it
       // first and let the Alert on the page carry the message.
-      setConfirming(null);
+      setBulkDeleteOpen(false);
       setFailure(deleteMessage(error));
     },
   });
+
+  const toggleRow = (id: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked ? [...current, id] : current.filter((item) => item !== id),
+    );
+  };
+
+  const toggleAll = () => {
+    setSelectedIds(allSelected ? [] : coupons.map((coupon) => coupon.id));
+  };
+
+  const statusSwitch = (coupon: PanelCouponSummary) => {
+    const effectiveStatus = statusOverrides[coupon.id] ?? coupon.effectiveStatus;
+
+    const checked = effectiveStatus === "active";
+
+    const pending = statusMutation.isPending && statusMutation.variables?.couponId === coupon.id;
+
+    return (
+      <Switch
+        size="sm"
+        checked={checked}
+        disabled={pending || effectiveStatus === "expired"}
+        onCheckedChange={(next) =>
+          statusMutation.mutate({ couponId: coupon.id, status: next ? "active" : "disabled" })
+        }
+        aria-label={checked ? `Desativar o cupom ${coupon.code}` : `Ativar o cupom ${coupon.code}`}
+      />
+    );
+  };
 
   const activeFilters = q.trim() !== "" || status !== "all";
 
@@ -139,7 +234,6 @@ export function CouponsTable({
       redemptionCount: "redemptions",
       discountCents: "discount",
       lastRedeemedAt: "lastRedeemed",
-      endsAt: "endDate",
     },
     onSort: (key: string) => {
       // SAFETY: DataTable only calls this with keys declared in `columns`.
@@ -153,6 +247,33 @@ export function CouponsTable({
   };
 
   const columns: ColumnDef<typeof dashboardTableFeatures, PanelCouponSummary, unknown>[] = [
+    {
+      id: "select",
+      meta: { width: 32 },
+      enableSorting: false,
+      header: () => (
+        <Checkbox
+          aria-label={allSelected ? "Desmarcar todos os cupons" : "Selecionar todos os cupons"}
+          checked={allSelected}
+          indeterminate={someSelected && !allSelected}
+          onCheckedChange={toggleAll}
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          aria-label={`Selecionar ${row.original.code}`}
+          checked={selectedSet.has(row.original.id)}
+          onCheckedChange={(checked) => toggleRow(row.original.id, checked)}
+        />
+      ),
+    },
+    {
+      id: "switch",
+      meta: { width: 56 },
+      enableSorting: false,
+      header: () => <span className="sr-only">Ativo</span>,
+      cell: ({ row }) => statusSwitch(row.original),
+    },
     {
       accessorKey: "code",
       header: "Cupom",
@@ -173,11 +294,6 @@ export function CouponsTable({
       ),
     },
     {
-      accessorKey: "discountType",
-      header: "Desconto",
-      cell: ({ row }) => <span className="tabular-nums">{formatDiscount(row.original)}</span>,
-    },
-    {
       id: "redemptionCount",
       meta: { width: 120 },
       header: "Resgates",
@@ -194,6 +310,7 @@ export function CouponsTable({
     {
       id: "uniqueCustomers",
       meta: { width: 110 },
+      enableSorting: false,
       header: "Clientes",
       cell: ({ row }) => (
         <span className="tabular-nums">{formatInteger(row.original.uniqueCustomers)}</span>
@@ -211,36 +328,6 @@ export function CouponsTable({
             {formatDateTime(row.original.lastRedeemedAt)}
           </span>
         ),
-    },
-    {
-      accessorKey: "effectiveStatus",
-      meta: { width: 120 },
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge variant={COUPON_STATUS_VARIANTS[row.original.effectiveStatus]}>
-          {COUPON_STATUS_LABELS[row.original.effectiveStatus]}
-        </Badge>
-      ),
-    },
-    {
-      id: "actions",
-      meta: { width: 90 },
-      header: () => <span className="sr-only">Ações</span>,
-      cell: ({ row }) => (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          disabled={deleteMutation.isPending && confirming?.id === row.original.id}
-          onClick={(event) => {
-            event.stopPropagation();
-            setFailure(null);
-            setConfirming(row.original);
-          }}
-        >
-          Excluir
-        </Button>
-      ),
     },
   ];
 
@@ -345,6 +432,31 @@ export function CouponsTable({
         {coupons.length} de {totalCount} cupons
       </p>
 
+      {activeSelectedIds.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/40 p-3">
+          <p className="mr-1 text-sm font-medium">
+            {activeSelectedIds.length}{" "}
+            {activeSelectedIds.length === 1 ? "selecionado" : "selecionados"}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            disabled={bulkDeleteMutation.isPending}
+            onClick={() => {
+              setFailure(null);
+              setBulkDeleteOpen(true);
+            }}
+          >
+            <Trash2 data-icon="inline-start" aria-hidden="true" />
+            Excluir
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
+            Limpar seleção
+          </Button>
+        </div>
+      ) : null}
+
       {notice ? (
         <Alert>
           <AlertTitle>Alteração aplicada</AlertTitle>
@@ -355,7 +467,7 @@ export function CouponsTable({
       {failure ? (
         <Alert variant="destructive">
           <AlertTriangle aria-hidden="true" />
-          <AlertTitle>Não foi possível excluir o cupom</AlertTitle>
+          <AlertTitle>Não foi possível concluir a ação</AlertTitle>
           <AlertDescription>{failure}</AlertDescription>
         </Alert>
       ) : null}
@@ -372,37 +484,27 @@ export function CouponsTable({
         exportColumns={exportColumns}
       />
 
-      <AlertDialog
-        open={confirming !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirming(null);
-        }}
-      >
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{`Excluir o cupom "${confirming?.code}"?`}</AlertDialogTitle>
+            <AlertDialogTitle>
+              Excluir {activeSelectedIds.length}{" "}
+              {activeSelectedIds.length === 1 ? "cupom" : "cupons"}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {confirming !== null && confirming.redemptionCount > 0
-                ? `Este cupom já foi usado ${formatInteger(confirming.redemptionCount)} ${confirming.redemptionCount === 1 ? "vez" : "vezes"}. Ele será desativado, não excluído, para o desconto concedido continuar aparecendo nos pedidos.`
-                : "O cupom nunca foi usado, então será removido permanentemente. Esta ação não pode ser desfeita."}
+              Cupons que já tiveram resgates ou aparecem em pedidos são desativados, e o desconto
+              concedido continua no histórico. Os demais são removidos permanentemente. Esta ação
+              não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (!confirming) return;
-
-                deleteMutation.mutate(confirming.id);
-              }}
+              disabled={bulkDeleteMutation.isPending}
+              onClick={() => bulkDeleteMutation.mutate()}
             >
-              {deleteMutation.isPending
-                ? "Processando…"
-                : confirming !== null && confirming.redemptionCount > 0
-                  ? "Desativar cupom"
-                  : "Excluir cupom"}
+              {bulkDeleteMutation.isPending ? "Excluindo…" : "Excluir cupons"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

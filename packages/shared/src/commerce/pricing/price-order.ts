@@ -16,9 +16,12 @@
  * 3. Coupons: a non-stackable coupon applies **alone** — when more than one
  *    coupon is applicable the non-stackable ones are rejected as
  *    `not_stackable` and the stackable ones apply in the order given. A rejected
- *    coupon contributes 0. Percentage discounts floor on the subtotal, fixed ones
- *    are taken as-is; both are capped by `maximumDiscountCents` and clamped to the
- *    remaining merchandise so the total can never go negative.
+ *    coupon contributes 0. Percentage discounts floor on the eligible gross
+ *    subtotal (the whole order unless the coupon has a product scope), fixed ones
+ *    stay whole-order amounts capped by that same subtotal; both are then capped
+ *    by `maximumDiscountCents` and clamped to the remaining merchandise so the
+ *    total can never go negative. A scope that matches no line rejects the coupon
+ *    as `product_scope` instead of silently discounting zero.
  * 4. Shipping discount: `floor(shipping * shippingDiscountPercent / 100)` of the
  *    applied coupons, off `shippingCents` only, never merchandising. The result's
  *    `shippingCents` is the net freight actually charged.
@@ -51,6 +54,8 @@ export function priceOrder(input: PriceOrderInput): PriceOrderResult {
   let subtotalCents = 0;
   let discountCents = 0;
 
+  const pricedLines: PricedLine[] = [];
+
   for (const line of lines) {
     assertCents("unitPriceCents", line.unitPriceCents);
     assertCount("quantity", line.quantity);
@@ -63,35 +68,41 @@ export function priceOrder(input: PriceOrderInput): PriceOrderResult {
     // below zero and the order still prices.
     const applied = Math.min(itemDiscount, gross);
 
+    pricedLines.push({ productId: line.productId, grossCents: gross });
     subtotalCents += gross;
     discountCents += applied;
 
     if (applied > 0) discounts.push({ source: "item", amountCents: applied });
   }
 
-  const applicable: CouponInput[] = [];
+  const applicable: ApplicableCoupon[] = [];
   const rejectedCoupons: RejectedCoupon[] = [];
 
   for (const coupon of coupons) {
     assertCoupon(coupon);
 
     const reason = ineligibility(coupon, subtotalCents, now);
+    const eligibleSubtotalCents = reason === null ? scopedSubtotalCents(coupon, pricedLines) : null;
 
-    if (reason === null) {
-      applicable.push(coupon);
+    if (reason === null && eligibleSubtotalCents !== null) {
+      applicable.push({ coupon, eligibleSubtotalCents });
       continue;
     }
 
-    rejectedCoupons.push({ couponId: coupon.id, code: coupon.code, reason });
+    rejectedCoupons.push({
+      couponId: coupon.id,
+      code: coupon.code,
+      reason: reason ?? "product_scope",
+    });
   }
 
   // Provisional precedence (MEN-98): stackable coupons win, a non-stackable one
   // only ever applies when it is the only applicable coupon.
   const applying =
-    applicable.length > 1 ? applicable.filter((coupon) => coupon.stackable) : applicable;
+    applicable.length > 1 ? applicable.filter((entry) => entry.coupon.stackable) : applicable;
 
   if (applicable.length > 1) {
-    for (const coupon of applicable) {
+    for (const { coupon } of applicable) {
       if (!coupon.stackable) {
         rejectedCoupons.push({ couponId: coupon.id, code: coupon.code, reason: "not_stackable" });
       }
@@ -100,11 +111,11 @@ export function priceOrder(input: PriceOrderInput): PriceOrderResult {
 
   let shippingCents = input.shippingCents;
 
-  for (const coupon of applying) {
+  for (const { coupon, eligibleSubtotalCents } of applying) {
     const raw =
       coupon.discountType === "percentage"
-        ? Math.floor((subtotalCents * coupon.value) / 100)
-        : coupon.value;
+        ? Math.floor((eligibleSubtotalCents * coupon.value) / 100)
+        : Math.min(coupon.value, eligibleSubtotalCents);
 
     const capped =
       coupon.maximumDiscountCents === null ? raw : Math.min(raw, coupon.maximumDiscountCents);
@@ -196,6 +207,50 @@ function ineligibility(
   }
 
   return null;
+}
+
+/** A line after the engine computed its gross, kept for scope matching. */
+interface PricedLine {
+  productId: string | undefined;
+  grossCents: number;
+}
+
+/** A coupon that passed every check, with the gross its discount applies to. */
+interface ApplicableCoupon {
+  coupon: CouponInput;
+  eligibleSubtotalCents: number;
+}
+
+/**
+ * Gross subtotal the coupon may discount, or `null` when its product scope
+ * matches no line at all. An empty `productIds` is "every product" in both
+ * modes, so an unscoped coupon always sees the whole order.
+ */
+function scopedSubtotalCents(coupon: CouponInput, lines: readonly PricedLine[]): number | null {
+  const scope = coupon.productIds ?? [];
+
+  if (scope.length === 0) {
+    return lines.reduce((sum, line) => sum + line.grossCents, 0);
+  }
+
+  const include = (coupon.productScopeMode ?? "include") === "include";
+  const listed = new Set(scope);
+
+  let subtotalCents = 0;
+  let matchedLines = 0;
+
+  for (const line of lines) {
+    // A line without a `productId` is never listed: out of an `include` scope,
+    // and not blocked by an `exclude` one.
+    const listedProduct = line.productId !== undefined && listed.has(line.productId);
+
+    if (listedProduct === include) {
+      subtotalCents += line.grossCents;
+      matchedLines += 1;
+    }
+  }
+
+  return matchedLines === 0 ? null : subtotalCents;
 }
 
 function assertCoupon(coupon: CouponInput): void {

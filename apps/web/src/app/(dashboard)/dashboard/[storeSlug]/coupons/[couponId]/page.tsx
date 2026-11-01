@@ -9,6 +9,7 @@ import {
   REDEMPTION_PAGE_SIZE,
   type CouponRedemptionSearchParams,
 } from "../coupon-search-params.ts";
+import type { ProductOption } from "../coupon-product-picker.tsx";
 import { CouponCrumb } from "./coupon-crumb.tsx";
 import { CouponTabs } from "./coupon-tabs.tsx";
 
@@ -51,6 +52,31 @@ async function loadCoupon(
   }
 }
 
+/**
+ * The scope picker's options: one catalog read. A failing read leaves the picker
+ * with the coupon's own products instead of failing the whole detail page.
+ */
+async function loadProductOptions(storeSlug: string) {
+  const client = await panelClient();
+
+  if (!client) return [];
+
+  try {
+    const { products } = await client.panel.listProducts({ storeSlug });
+
+    return products.map((product) => ({ id: product.id, name: product.name }));
+  } catch {
+    return [];
+  }
+}
+
+/** Selected products lead the list, with the names the detail read already supplied. */
+function withScopedProducts(scoped: readonly ProductOption[], products: ProductOption[]) {
+  const seen = new Set(scoped.map((product) => product.id));
+
+  return [...scoped, ...products.filter((product) => !seen.has(product.id))];
+}
+
 /** One bar, one state: expired wins, then disabled, then active. */
 function couponStatusBar(effectiveStatus: "active" | "expired" | "disabled") {
   if (effectiveStatus === "expired") return "bg-destructive";
@@ -64,12 +90,17 @@ async function CouponDetail({ params, searchParams }: CouponDetailPageProps) {
   const { storeSlug, couponId } = await params;
 
   // The URL decides what the history read asks for, so it is resolved first.
-  const filters = await loadCouponRedemptionSearchParams(searchParams);
+  const [filters, productOptions] = await Promise.all([
+    loadCouponRedemptionSearchParams(searchParams),
+    loadProductOptions(storeSlug),
+  ]);
+
   const detail = await loadCoupon(storeSlug, couponId, filters);
 
   if (!detail) notFound();
 
   const { coupon } = detail;
+  const products = withScopedProducts(detail.products ?? [], productOptions);
 
   return (
     <CouponCrumb couponId={coupon.id} code={coupon.code}>
@@ -104,6 +135,7 @@ async function CouponDetail({ params, searchParams }: CouponDetailPageProps) {
         <CouponTabs
           storeSlug={storeSlug}
           coupon={coupon}
+          products={products}
           redemptions={detail.redemptions}
           totalRedemptions={detail.redemptionsTotal}
           usage={detail.usage}

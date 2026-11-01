@@ -1,7 +1,7 @@
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { db } from "@menuza/db";
+import { and, db } from "@menuza/db";
 import { toCouponSummary, redemptionAggregates, type CouponRow } from "./coupon-summary.ts";
 import { inTenantScope, resolveStore } from "./support.ts";
 
@@ -15,7 +15,10 @@ export const listCouponSummariesImpl = os.handler(async ({ input, context }) => 
   const now = new Date();
 
   const coupons = await inTenantScope(store.tenantId, () =>
-    db.orm.public.Coupon.where({ tenantId: store.tenantId })
+    db.orm.public.Coupon.where((coupon) =>
+      and(coupon.tenantId.eq(store.tenantId), coupon.deletedAt.eq(null)),
+    )
+      .include("products", (link) => link.select("productId"))
       .orderBy((coupon) => coupon.code.asc())
       .all(),
   );

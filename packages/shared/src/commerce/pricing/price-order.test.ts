@@ -110,6 +110,170 @@ describe("priceOrder: clamping", () => {
   });
 });
 
+describe("priceOrder: product scope (MEN-97)", () => {
+  // 2000 of "p-a" plus 500 of "p-b": 2500 gross.
+  const mixedCart = [
+    { unitPriceCents: 1000, quantity: 2, productId: "p-a" },
+    { unitPriceCents: 500, quantity: 1, productId: "p-b" },
+  ];
+
+  test("include applies to the listed line only", () => {
+    const result = priceOrder(
+      order({
+        lines: mixedCart,
+        coupons: [coupon({ value: 10, productScopeMode: "include", productIds: ["p-a"] })],
+      }),
+    );
+
+    // 10% of the eligible 2000, not of the 2500 cart.
+    expect(result.discountCents).toBe(200);
+    expect(result.discounts).toEqual([
+      { source: "coupon", couponId: "coupon-1", couponCode: "DEZ", amountCents: 200 },
+    ]);
+    expect(result.rejectedCoupons).toEqual([]);
+    expect(result.totalCents).toBe(2300);
+  });
+
+  test("include matching no line rejects as product_scope", () => {
+    const result = priceOrder(
+      order({
+        lines: mixedCart,
+        coupons: [coupon({ value: 10, productScopeMode: "include", productIds: ["p-z"] })],
+      }),
+    );
+
+    expect(result.discountCents).toBe(0);
+    expect(result.rejectedCoupons).toEqual([
+      { couponId: "coupon-1", code: "DEZ", reason: "product_scope" },
+    ]);
+    expect(result.totalCents).toBe(2500);
+  });
+
+  test("exclude applies to the unlisted line", () => {
+    const result = priceOrder(
+      order({
+        lines: mixedCart,
+        coupons: [coupon({ value: 10, productScopeMode: "exclude", productIds: ["p-b"] })],
+      }),
+    );
+
+    // The blocked 500 drops out of the base: 10% of 2000.
+    expect(result.discountCents).toBe(200);
+    expect(result.discounts).toEqual([
+      { source: "coupon", couponId: "coupon-1", couponCode: "DEZ", amountCents: 200 },
+    ]);
+    expect(result.rejectedCoupons).toEqual([]);
+    expect(result.totalCents).toBe(2300);
+  });
+
+  test("exclude covering every line rejects as product_scope", () => {
+    const result = priceOrder(
+      order({
+        lines: mixedCart,
+        coupons: [coupon({ value: 10, productScopeMode: "exclude", productIds: ["p-a", "p-b"] })],
+      }),
+    );
+
+    expect(result.discountCents).toBe(0);
+    expect(result.rejectedCoupons).toEqual([
+      { couponId: "coupon-1", code: "DEZ", reason: "product_scope" },
+    ]);
+    expect(result.totalCents).toBe(2500);
+  });
+
+  test("empty productIds means every product in both modes", () => {
+    for (const mode of ["include", "exclude"] as const) {
+      const result = priceOrder(
+        order({
+          lines: mixedCart,
+          coupons: [coupon({ value: 10, productScopeMode: mode, productIds: [] })],
+        }),
+      );
+
+      // Whole 2500 cart: 250.
+      expect(result.discountCents).toBe(250);
+      expect(result.rejectedCoupons).toEqual([]);
+      expect(result.totalCents).toBe(2250);
+    }
+  });
+
+  test("partial eligibility makes the percentage base the eligible subtotal", () => {
+    const result = priceOrder(
+      order({
+        lines: [
+          { unitPriceCents: 1000, quantity: 2, productId: "p-a" },
+          { unitPriceCents: 3000, quantity: 1, productId: "p-b" },
+        ],
+        coupons: [coupon({ value: 10, productScopeMode: "include", productIds: ["p-a"] })],
+      }),
+    );
+
+    // 5000 gross, 2000 eligible: 200, never 500.
+    expect(result.subtotalCents).toBe(5000);
+    expect(result.discountCents).toBe(200);
+    expect(result.totalCents).toBe(4800);
+  });
+
+  test("partial eligibility caps a fixed coupon by the eligible subtotal, then by the maximum", () => {
+    const lines = [
+      { unitPriceCents: 1000, quantity: 2, productId: "p-a" },
+      { unitPriceCents: 3000, quantity: 1, productId: "p-b" },
+    ];
+
+    const cappedByEligible = priceOrder(
+      order({
+        lines,
+        coupons: [
+          coupon({
+            discountType: "fixed",
+            value: 99_999,
+            productScopeMode: "include",
+            productIds: ["p-a"],
+          }),
+        ],
+      }),
+    );
+
+    // 2000 eligible out of 5000: the fixed 99_999 stops at 2000.
+    expect(cappedByEligible.discountCents).toBe(2000);
+    expect(cappedByEligible.totalCents).toBe(3000);
+
+    const cappedByMaximum = priceOrder(
+      order({
+        lines,
+        coupons: [
+          coupon({
+            discountType: "fixed",
+            value: 99_999,
+            maximumDiscountCents: 1500,
+            productScopeMode: "include",
+            productIds: ["p-a"],
+          }),
+        ],
+      }),
+    );
+
+    // Eligible cap 2000 is then cut to maximumDiscountCents 1500.
+    expect(cappedByMaximum.discountCents).toBe(1500);
+    expect(cappedByMaximum.totalCents).toBe(3500);
+  });
+
+  test("a line without productId is ineligible under include", () => {
+    const result = priceOrder(
+      order({
+        lines: [{ unitPriceCents: 2000, quantity: 1 }],
+        coupons: [coupon({ value: 10, productScopeMode: "include", productIds: ["p-a"] })],
+      }),
+    );
+
+    expect(result.discountCents).toBe(0);
+    expect(result.rejectedCoupons).toEqual([
+      { couponId: "coupon-1", code: "DEZ", reason: "product_scope" },
+    ]);
+    expect(result.totalCents).toBe(2000);
+  });
+});
+
 describe("priceOrder: rejection reasons", () => {
   test("below minimum order", () => {
     const result = priceOrder(

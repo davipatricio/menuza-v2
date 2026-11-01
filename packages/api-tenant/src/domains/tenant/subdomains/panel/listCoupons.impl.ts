@@ -1,7 +1,7 @@
 import { implement } from "@orpc/server";
 import type { RequestHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { tenantContractObject } from "@menuza/shared/tenant";
-import { db } from "@menuza/db";
+import { and, db } from "@menuza/db";
 import { inTenantScope, resolveStore } from "./support.ts";
 
 const os = implement(
@@ -17,7 +17,10 @@ export const listCouponsImpl = os.handler(async ({ input, context }) => {
   const store = await resolveStore(context.reqHeaders, input.storeSlug);
 
   const coupons = await inTenantScope(store.tenantId, () =>
-    db.orm.public.Coupon.where({ tenantId: store.tenantId })
+    db.orm.public.Coupon.where((coupon) =>
+      and(coupon.tenantId.eq(store.tenantId), coupon.deletedAt.eq(null)),
+    )
+      .include("products", (link) => link.select("productId"))
       .orderBy((c) => c.code.asc())
       .all(),
   );
@@ -41,6 +44,10 @@ export const listCouponsImpl = os.handler(async ({ input, context }) => {
       stackable: Boolean(coupon.stackable),
       firstPurchaseOnly: Boolean(coupon.firstPurchaseOnly),
       status: coupon.status,
+      // Same normalization as the writes: anything but `exclude` reads as `include`.
+      productScopeMode:
+        coupon.productScopeMode === "exclude" ? ("exclude" as const) : ("include" as const),
+      productIds: (coupon.products ?? []).map((link) => link.productId),
     })),
   };
 });

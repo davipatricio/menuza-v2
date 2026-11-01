@@ -96,10 +96,16 @@ function installFakes() {
     first: async () => tokens.find((row) => row.accessTokenHash === filter.accessTokenHash) ?? null,
   })) as never;
 
-  // SAFETY: Mocking Coupon.where; the listing chains orderBy then all.
-  db.orm.public.Coupon.where = (() => ({
-    orderBy: () => ({ all: async () => [] }),
-  })) as never;
+  // SAFETY: Mocking Coupon.where; the listing chains include then orderBy then all.
+  db.orm.public.Coupon.where = (() => {
+    const rows = () => ({
+      include: () => rows(),
+      orderBy: () => rows(),
+      all: async () => [],
+    });
+
+    return rows();
+  }) as never;
 }
 
 function restore() {

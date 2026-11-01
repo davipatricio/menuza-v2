@@ -1,4 +1,11 @@
 /* eslint-disable anti-slop/no-chained-type-assertions */
+/* eslint-disable anti-slop/no-runtime-typeof -- one use, in the `Coupon.where`
+   double: it has to route both call shapes the coupon reads use (an object
+   filter from every other panel read, a predicate callback from the coupon
+   reads that filter `deletedAt.eq(null)`) to the same matcher. Telling a
+   callable from a plain object *is* a runtime type check; there is no domain
+   value to branch on, because the double's input is a query-builder convention
+   rather than parsed data. */
 /**
  * Panel read procedures — Unit (infrastructure-free), MEN-225.
  *
@@ -20,6 +27,8 @@ import { getCustomerImpl } from "../src/domains/tenant/subdomains/panel/getCusto
 import { listProductsImpl } from "../src/domains/tenant/subdomains/panel/listProducts.impl.ts";
 import { listCategoriesImpl } from "../src/domains/tenant/subdomains/panel/listCategories.impl.ts";
 import { listCouponsImpl } from "../src/domains/tenant/subdomains/panel/listCoupons.impl.ts";
+import { getCouponDetailImpl } from "../src/domains/tenant/subdomains/panel/getCouponDetail.impl.ts";
+import { updateCouponImpl } from "../src/domains/tenant/subdomains/panel/updateCoupon.impl.ts";
 import { listAuditLogsImpl } from "../src/domains/tenant/subdomains/panel/listAuditLogs.impl.ts";
 import { listBadgesImpl } from "../src/domains/tenant/subdomains/panel/listBadges.impl.ts";
 
@@ -173,6 +182,7 @@ interface CouponRow {
   value: number;
   usageCount: number;
   status: string;
+  deletedAt?: Temporal.PlainDateTime | null;
 }
 
 interface AuditLogRow {
@@ -281,6 +291,10 @@ const OTHER_CUSTOMER_ID = randomUUID();
 
 const BADGE_ID = randomUUID();
 
+// SAFETY: A distinct id, so the soft-deleted fixture cannot be reached by a
+// test that means the live coupon.
+const SOFT_DELETED_COUPON_ID = randomUUID();
+
 const COOKIE_NAME = "menuza_tenant_sid";
 
 const at = (iso: string) => Temporal.PlainDateTime.from(iso);
@@ -322,6 +336,72 @@ function withCustomer<T extends { customerId: string }>(source: T[]) {
 
 function byTenant<T extends { tenantId: string }>(source: T[], filter: TenantFilter): T[] {
   return source.filter((row) => row.tenantId === filter.tenantId);
+}
+
+/**
+ * The shape `evaluateCouponPredicate` resolves; `matchesCoupon` filters the
+ * fixtures on `tenantId`, `id`, `code` and `deletedAt`.
+ */
+interface CouponFilter extends TenantFilter {
+  id?: string;
+  deletedAt?: string | null;
+}
+
+/** The field proxy the coupon reads receive: one `eq` per column they filter. */
+interface CouponPredicateFields {
+  tenantId: { eq(value: string): void };
+  id: { eq(value: string): void };
+  code: { eq(value: string): void };
+  deletedAt: { eq(value: string | null): void };
+}
+
+/**
+ * The Coupon `where` takes two shapes: the object filter, and the predicate the
+ * null check (`deletedAt.eq(null)`) forces. The operators record a constraint
+ * and return `void`; the real `and(...)` is handed those values and only the
+ * recorded filter is read.
+ */
+function evaluateCouponPredicate(predicate: (coupon: CouponPredicateFields) => void): CouponFilter {
+  const filter: CouponFilter = { tenantId: "" };
+
+  predicate({
+    tenantId: {
+      eq: (value) => {
+        filter.tenantId = value;
+      },
+    },
+    id: {
+      eq: (value) => {
+        filter.id = value;
+      },
+    },
+    code: {
+      eq: (value) => {
+        filter.code = value;
+      },
+    },
+    deletedAt: {
+      eq: (value) => {
+        filter.deletedAt = value;
+      },
+    },
+  });
+
+  return filter;
+}
+
+/**
+ * Matches every column `evaluateCouponPredicate` recorded. A fixture that never
+ * declares `deletedAt` is a live row, which is what `deletedAt.eq(null)` means:
+ * the key's presence in the filter is what narrows, not the value's truthiness.
+ */
+function matchesCoupon(coupon: CouponRow, filter: CouponFilter): boolean {
+  return (
+    coupon.tenantId === filter.tenantId &&
+    (filter.id === undefined || coupon.id === filter.id) &&
+    (filter.code === undefined || coupon.code === filter.code) &&
+    (!("deletedAt" in filter) || (coupon.deletedAt ?? null) === filter.deletedAt)
+  );
 }
 
 function installFakes() {
@@ -489,8 +569,19 @@ function installFakes() {
       ),
     )) as any;
 
-  // SAFETY: Mocking Coupon.where; the panel orders by code.
-  db.orm.public.Coupon.where = ((filter: TenantFilter) => rows(byTenant(coupons, filter))) as any;
+  // SAFETY: Mocking Coupon.where; the panel orders by code. The predicate form
+  // is resolved first because the coupon reads filter `deletedAt.eq(null)`;
+  // every recorded column then narrows the rows.
+  db.orm.public.Coupon.where = ((
+    filterOrPredicate: TenantFilter | ((coupon: CouponPredicateFields) => void),
+  ) => {
+    const filter =
+      typeof filterOrPredicate === "function"
+        ? evaluateCouponPredicate(filterOrPredicate)
+        : filterOrPredicate;
+
+    return rows(coupons.filter((row) => matchesCoupon(row, filter)));
+  }) as any;
 
   // SAFETY: Mocking AuditLog.where; the panel orders by createdAt.
   db.orm.public.AuditLog.where = ((filter: TenantFilter) =>
@@ -854,6 +945,18 @@ describe("panel reads — Unit (infrastructure-free)", () => {
       status: "active",
     });
 
+    // Archived: still a row, but every panel read treats it as gone.
+    coupons.push({
+      id: SOFT_DELETED_COUPON_ID,
+      tenantId: TENANT_ID,
+      code: "EXPIRADO20",
+      discountType: "fixed",
+      value: 1500,
+      usageCount: 3,
+      status: "disabled",
+      deletedAt: at("2026-01-02 00:00"),
+    });
+
     auditLogs.push({
       id: randomUUID(),
       tenantId: TENANT_ID,
@@ -1175,6 +1278,54 @@ describe("panel reads — Unit (infrastructure-free)", () => {
         valueCents: 2000,
         valuePercent: null,
       });
+    });
+  });
+
+  describe("panel.getCouponDetail", () => {
+    test("a soft-deleted coupon is NOT_FOUND", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(
+          getCouponDetailImpl,
+          { storeSlug: "mawifoods", couponId: SOFT_DELETED_COUPON_ID },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected getCouponDetail to fail");
+      } catch (error) {
+        // SAFETY: getCouponDetail only throws the shared NOT_FOUND code here.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
+    });
+  });
+
+  describe("panel.updateCoupon", () => {
+    test("a soft-deleted coupon is NOT_FOUND and cannot be edited back to life", async () => {
+      const reqHeaders = await sessionCookie();
+
+      try {
+        await call(
+          updateCouponImpl,
+          {
+            storeSlug: "mawifoods",
+            couponId: SOFT_DELETED_COUPON_ID,
+            code: "EXPIRADO20",
+            description: null,
+            discountType: "fixed",
+            discountValue: 1500,
+            stackable: false,
+            firstPurchaseOnly: false,
+            status: "active",
+            productScopeMode: "include",
+            productIds: [],
+          },
+          { context: { reqHeaders } },
+        );
+        throw new Error("expected updateCoupon to fail");
+      } catch (error) {
+        // SAFETY: updateCoupon only throws the shared NOT_FOUND code here.
+        expect((error as { code: string }).code).toBe("NOT_FOUND");
+      }
     });
   });
 

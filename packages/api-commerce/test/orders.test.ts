@@ -46,6 +46,10 @@ const walletTransactions: Row[] = [];
 
 const coupons: Row[] = [];
 
+const couponProducts: Row[] = [];
+
+const products: Row[] = [];
+
 const redemptions: Row[] = [];
 
 const orders: Row[] = [];
@@ -62,23 +66,53 @@ const paymentIntegrations: Row[] = [];
 
 const paymentAssignments: Row[] = [];
 
-function matches(row: Row, filter: Row): boolean {
+/**
+ * The predicate form's setters, as the product-scope read and the coupon
+ * by-id lock call them. The object form needs none of it: `in` exists only on
+ * the predicate form.
+ */
+interface PredicateFields {
+  tenantId: { eq: (value: string) => void };
+  id: { eq: (value: string) => void };
+  couponId: { in: (values: readonly string[]) => void };
+  deletedAt: { eq: (value: Cell) => void };
+}
+
+/** `where` takes a filter object or a predicate over fields, never both. */
+type Filter = Row | ((fields: PredicateFields) => void);
+
+function matches(row: Row, filter: Filter): boolean {
+  // The predicate form is the only callable shape; the object form is a plain row.
+  if (filter instanceof Function) {
+    const checks: boolean[] = [];
+
+    filter({
+      tenantId: { eq: (value) => checks.push(row.tenantId === value) },
+      id: { eq: (value) => checks.push(row.id === value) },
+      couponId: { in: (values) => checks.push(values.some((value) => value === row.couponId)) },
+      deletedAt: { eq: (value) => checks.push(row.deletedAt === value) },
+    });
+
+    return checks.every(Boolean);
+  }
+
   return Object.entries(filter).every(([key, value]) => row[key] === value);
 }
 
 /**
- * The chainable stand-in. The procedures chain `.where().orderBy().all()` and
- * `.where().aggregate()`, and each call returns a fresh builder, so only the
+ * The chainable stand-in. The procedures chain `.where().where().orderBy().all()`
+ * and `.where().aggregate()`, and each call returns a fresh builder, so only the
  * terminal actually reached has to answer.
  */
-function builder(source: Row[], filter: Row) {
-  const found = () => source.filter((row) => matches(row, filter));
+function builder(source: Row[], filters: readonly Filter[]) {
+  const found = () => source.filter((row) => filters.every((filter) => matches(row, filter)));
 
   return {
-    select: () => builder(source, filter),
-    include: () => builder(source, filter),
-    orderBy: () => builder(source, filter),
-    forUpdate: () => builder(source, filter),
+    where: (filter: Filter) => builder(source, [...filters, filter]),
+    select: () => builder(source, filters),
+    include: () => builder(source, filters),
+    orderBy: () => builder(source, filters),
+    forUpdate: () => builder(source, filters),
     all: async () => found(),
     first: async () => found()[0] ?? null,
     aggregate: async (spec: (aggregate: { count: () => number }) => Counts) =>
@@ -101,7 +135,7 @@ function builder(source: Row[], filter: Row) {
 
 function model(source: Row[]) {
   return {
-    where: (filter: Row) => builder(source, filter),
+    where: (filter: Filter) => builder(source, [filter]),
     create: async (data: Row) => {
       source.push(data);
 
@@ -117,7 +151,9 @@ const MODEL_NAMES = [
   "Wallet",
   "WalletTransaction",
   "Coupon",
+  "CouponProduct",
   "CouponRedemption",
+  "Product",
   "Order",
   "OrderItem",
   "OrderEvent",
@@ -134,7 +170,9 @@ const SOURCES: Record<ModelName, Row[]> = {
   Wallet: wallets,
   WalletTransaction: walletTransactions,
   Coupon: coupons,
+  CouponProduct: couponProducts,
   CouponRedemption: redemptions,
+  Product: products,
   Order: orders,
   OrderItem: orderItems,
   OrderEvent: orderEvents,
@@ -331,6 +369,7 @@ describe("orders.create", () => {
       shippingDiscountPercent: null,
       startsAt: null,
       endsAt: null,
+      deletedAt: null,
       stackable: false,
       firstPurchaseOnly: false,
       status: "active",
@@ -407,6 +446,7 @@ describe("orders.create", () => {
       shippingDiscountPercent: null,
       startsAt: null,
       endsAt: null,
+      deletedAt: null,
       stackable: false,
       firstPurchaseOnly: false,
       status: "active",
@@ -430,6 +470,109 @@ describe("orders.create", () => {
     expect(result.discountCents).toBe(0);
     expect(result.rejectedCoupons).toEqual([{ code: "MINIMO50", reason: "below_minimum" }]);
     expect(redemptions).toHaveLength(0);
+  });
+
+  test("an excluded product scope rejects the coupon and records no redemption", async () => {
+    const couponId = randomUUID();
+    const productId = randomUUID();
+
+    coupons.push({
+      id: couponId,
+      tenantId: TENANT_ID,
+      code: "SEMFRANGO",
+      discountType: "percentage",
+      value: 10,
+      description: null,
+      usageCount: 0,
+      usageLimit: null,
+      perCustomerLimit: null,
+      minimumOrderCents: null,
+      maximumDiscountCents: null,
+      shippingDiscountPercent: null,
+      startsAt: null,
+      endsAt: null,
+      deletedAt: null,
+      stackable: false,
+      firstPurchaseOnly: false,
+      status: "active",
+      productScopeMode: "exclude",
+    });
+
+    couponProducts.push({ tenantId: TENANT_ID, couponId, productId });
+
+    products.push({ id: productId, tenantId: TENANT_ID });
+
+    seedWallet(0);
+
+    const result = await call(
+      createOrderImpl,
+      {
+        customerId: CUSTOMER_ID,
+        paymentMethod: null,
+        shippingCents: 0,
+        walletRequestedCents: 0,
+        lines: [{ productId, name: "Marmita", unitPriceCents: 2000, quantity: 1 }],
+        couponCodes: ["SEMFRANGO"],
+      },
+      { context: { reqHeaders: reqHeaders() } },
+    );
+
+    // The scope blocks the only line, so the coupon is reported instead of
+    // discounting zero: no redemption and no usage are recorded for it.
+    expect(result.discountCents).toBe(0);
+    expect(result.rejectedCoupons).toEqual([{ code: "SEMFRANGO", reason: "product_scope" }]);
+    expect(result.totalCents).toBe(2000);
+    expect(redemptions).toHaveLength(0);
+    expect(coupons[0]?.usageCount).toBe(0);
+  });
+
+  test("a coupon with no product scope still applies to every line", async () => {
+    const productId = randomUUID();
+
+    coupons.push({
+      id: randomUUID(),
+      tenantId: TENANT_ID,
+      code: "TUDO10",
+      discountType: "percentage",
+      value: 10,
+      description: null,
+      usageCount: 0,
+      usageLimit: null,
+      perCustomerLimit: null,
+      minimumOrderCents: null,
+      maximumDiscountCents: null,
+      shippingDiscountPercent: null,
+      startsAt: null,
+      endsAt: null,
+      deletedAt: null,
+      stackable: false,
+      firstPurchaseOnly: false,
+      status: "active",
+      productScopeMode: "exclude",
+    });
+
+    products.push({ id: productId, tenantId: TENANT_ID });
+
+    seedWallet(0);
+
+    const result = await call(
+      createOrderImpl,
+      {
+        customerId: CUSTOMER_ID,
+        paymentMethod: null,
+        shippingCents: 0,
+        walletRequestedCents: 0,
+        lines: [{ productId, name: "Marmita", unitPriceCents: 2000, quantity: 1 }],
+        couponCodes: ["TUDO10"],
+      },
+      { context: { reqHeaders: reqHeaders() } },
+    );
+
+    // An empty scope is "every product" in both modes, so a coupon with no rows
+    // applies to a line whose product is named.
+    expect(result.discountCents).toBe(200);
+    expect(result.rejectedCoupons).toEqual([]);
+    expect(redemptions[0]?.discountCents).toBe(200);
   });
 
   test("a method bound to an offline integration gets no payment window", async () => {

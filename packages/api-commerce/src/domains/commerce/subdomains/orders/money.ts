@@ -10,7 +10,7 @@
 import { randomUUID } from "node:crypto";
 
 import { creditCashback, reserve, type AppliedDiscount } from "@menuza/shared/commerce";
-import type { DbTransaction } from "@menuza/db";
+import { and, type DbTransaction } from "@menuza/db";
 
 import { conflict } from "../../support.ts";
 
@@ -47,7 +47,11 @@ export async function applyCoupons(
   }
 
   for (const [couponId, discountCents] of perCoupon) {
-    const locked = await tx.orm.public.Coupon.where({ tenantId, id: couponId }).forUpdate().first();
+    const locked = await tx.orm.public.Coupon.where((coupon) =>
+      and(coupon.tenantId.eq(tenantId), coupon.id.eq(couponId), coupon.deletedAt.eq(null)),
+    )
+      .forUpdate()
+      .first();
 
     if (!locked) throw conflict();
 

@@ -219,6 +219,21 @@ export const CouponStatusSchema = v.picklist(
   "Escolha um status válido.",
 );
 
+/**
+ * `expired` is derived from `endsAt` when the coupon is read, never chosen by a
+ * person, so the write path only accepts the two states the form can set.
+ */
+export const CouponWriteStatusSchema = v.picklist(
+  ["active", "disabled"],
+  "Escolha um status válido.",
+);
+
+/** `include` applies the coupon only to the listed products, `exclude` to the rest. */
+export const CouponProductScopeModeSchema = v.picklist(
+  ["include", "exclude"],
+  "Escolha o escopo de produtos.",
+);
+
 export const PanelStoreInputSchema = v.strictObject({
   storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
 });
@@ -873,6 +888,54 @@ export const ListTagsInputSchema = v.strictObject({
   order: taxonomyOrder,
 });
 
+// --- Global search -----------------------------------------------------------
+//
+// One coalesced read for the dashboard palette. Pages are not results: the nav
+// list lives in the web app, so the palette merges them client-side.
+
+/** Entities the palette searches. There is no `page` kind on purpose. */
+export const PanelSearchKindSchema = v.picklist([
+  "product",
+  "coupon",
+  "customer",
+  "tag",
+  "category",
+  "department",
+  "badge",
+  "subcategory",
+]);
+
+export const PanelSearchInputSchema = v.strictObject({
+  ...PanelStoreInputSchema.entries,
+  q: v.pipe(v.string(), v.trim(), v.minLength(2), v.maxLength(80)),
+});
+
+export const PanelSearchItemSchema = v.object({
+  kind: PanelSearchKindSchema,
+  id: v.string(),
+  label: v.string(),
+  /** Coupon code, category name, … */
+  sublabel: v.optional(v.string()),
+  /** `active`, `disabled`, `expired`, `available`, `unavailable`; the labels stay in the UI. */
+  status: v.optional(v.string()),
+  /** App-relative, resolved per kind from `storeSlug`. */
+  href: v.string(),
+});
+
+/**
+ * No per-group total: a group whose `items` reaches the server's per-group limit
+ * is the one the palette links to "Ver todos", which saves a count per keystroke.
+ */
+export const PanelSearchOutputSchema = v.object({
+  canWrite: v.boolean(),
+  groups: v.array(
+    v.object({
+      kind: PanelSearchKindSchema,
+      items: v.array(PanelSearchItemSchema),
+    }),
+  ),
+});
+
 // --- Taxonomy writes ---------------------------------------------------------
 //
 // Categories keep a name and a sort order; departments carry a name and an
@@ -1007,6 +1070,16 @@ export const DeleteBadgeInputSchema = v.strictObject({
   badgeId: catalogBadgeId,
 });
 
+/** Empty scope = every product. `include` applies only to the listed ones, `exclude` to the rest. */
+const couponProductIds = v.array(catalogProductId);
+
+/** Writes cap the scope and drop duplicates, so the picker may send the same id twice. */
+const couponProductScopeIds = v.pipe(
+  couponProductIds,
+  v.maxLength(200, "Selecione no máximo 200 produtos."),
+  v.transform((productIds) => [...new Set(productIds)]),
+);
+
 /** `valueCents` is set only for a fixed discount; percentages carry `valuePercent`. */
 export const PanelCouponSchema = v.object({
   id: v.string(),
@@ -1028,6 +1101,8 @@ export const PanelCouponSchema = v.object({
   stackable: v.boolean(),
   firstPurchaseOnly: v.boolean(),
   status: CouponStatusSchema,
+  productScopeMode: CouponProductScopeModeSchema,
+  productIds: couponProductIds,
 });
 
 export const PanelCouponsOutputSchema = v.object({
@@ -1055,6 +1130,8 @@ export const PanelCouponSummarySchema = v.object({
   endsAt: v.nullable(v.string()),
   stackable: v.boolean(),
   firstPurchaseOnly: v.boolean(),
+  productScopeMode: CouponProductScopeModeSchema,
+  productIds: couponProductIds,
   /** Derived from `endsAt`: a coupon past its window reads as expired. */
   effectiveStatus: CouponStatusSchema,
   redemptionCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
@@ -1105,6 +1182,8 @@ export const PanelCouponDetailInputSchema = v.strictObject({
 
 export const PanelCouponDetailOutputSchema = v.object({
   coupon: PanelCouponSummarySchema,
+  /** Names for the scope chips; the ids alone would force a second read on every open. */
+  products: v.optional(v.array(v.object({ id: catalogProductId, name: v.string() }))),
   redemptions: v.array(PanelCouponRedemptionSchema),
   /** Rows the search matches, so the client knows how many pages exist. */
   redemptionsTotal: v.pipe(v.number(), v.integer(), v.minValue(0)),
@@ -1970,7 +2049,10 @@ export const CreateCouponInputSchema = v.pipe(
     endsAt: v.optional(v.string()),
     stackable: v.boolean(),
     firstPurchaseOnly: v.boolean(),
-    status: CouponStatusSchema,
+    status: CouponWriteStatusSchema,
+    /** Omitted leaves the coupon unscoped, which is the same as every product. */
+    productScopeMode: v.optional(CouponProductScopeModeSchema, "include"),
+    productIds: v.optional(couponProductScopeIds, []),
   }),
   v.check(
     (input) => input.discountType !== "percentage" || input.discountValue <= 100,
@@ -2056,7 +2138,10 @@ export const UpdateCouponInputSchema = v.pipe(
     endsAt: v.optional(v.string()),
     stackable: v.boolean(),
     firstPurchaseOnly: v.boolean(),
-    status: CouponStatusSchema,
+    status: CouponWriteStatusSchema,
+    /** Omitted leaves the coupon unscoped, which is the same as every product. */
+    productScopeMode: v.optional(CouponProductScopeModeSchema, "include"),
+    productIds: v.optional(couponProductScopeIds, []),
   }),
   v.check(
     (input) => input.discountType !== "percentage" || input.discountValue <= 100,
@@ -2067,6 +2152,32 @@ export const UpdateCouponInputSchema = v.pipe(
 export const DeleteCouponInputSchema = v.strictObject({
   storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
   couponId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+});
+
+/** The switch writes the stored status only; `expired` is derived on read. */
+export const SetCouponStatusInputSchema = v.strictObject({
+  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
+  couponId: v.pipe(v.string(), v.nonEmpty(), v.maxLength(64)),
+  status: CouponWriteStatusSchema,
+});
+
+/** Drop duplicates, so the selection may send the same id twice. */
+const bulkCouponIds = v.pipe(
+  v.array(v.pipe(v.string(), v.nonEmpty(), v.maxLength(64))),
+  v.minLength(1, "Selecione ao menos um cupom."),
+  v.maxLength(200, "Selecione no máximo 200 cupons por vez."),
+  v.transform((couponIds) => [...new Set(couponIds)]),
+);
+
+export const BulkDeleteCouponsInputSchema = v.strictObject({
+  storeSlug: v.pipe(v.string(), v.nonEmpty(), v.maxLength(120)),
+  couponIds: bulkCouponIds,
+});
+
+/** Linked coupons are archived, the rest are deleted; the dialog reports both. */
+export const BulkDeleteCouponsOutputSchema = v.object({
+  deleted: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  archived: v.pipe(v.number(), v.integer(), v.minValue(0)),
 });
 
 const couponCreatedOutput = v.object({ coupon: PanelCouponSchema });
@@ -2115,6 +2226,32 @@ export const deleteCoupon = sessionContract
   )
   .input(DeleteCouponInputSchema)
   .output(couponDeletedOutput);
+
+export const setCouponStatus = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/coupons/{couponId}/status",
+      operationId: "setPanelCouponStatus",
+      summary: "Ativa ou desativa um cupom.",
+      tags: ["panel"],
+    }),
+  )
+  .input(SetCouponStatusInputSchema)
+  .output(PanelSuccessOutputSchema);
+
+export const bulkDeleteCoupons = sessionContract
+  .meta(
+    openapi({
+      method: "POST",
+      path: "/panel/stores/{storeSlug}/coupons/bulk-delete",
+      operationId: "bulkDeletePanelCoupons",
+      summary: "Exclui ou arquiva vários cupons.",
+      tags: ["panel"],
+    }),
+  )
+  .input(BulkDeleteCouponsInputSchema)
+  .output(BulkDeleteCouponsOutputSchema);
 
 // --- SEO (MEN-233 / MEN-253) --------------------------------------------------
 //
@@ -2580,6 +2717,24 @@ export const listTeamMembers = panelRead
   .input(PanelStoreInputSchema)
   .output(TeamMembersOutputSchema);
 
+/**
+ * One roundtrip for the dashboard palette: every entity kind, each group already
+ * capped by the server. `canWrite` only enables or disables the quick actions in
+ * the UI; the write procedures re-check the capability.
+ */
+export const search = panelRead
+  .meta(
+    openapi({
+      method: "GET",
+      path: "/panel/stores/{storeSlug}/search",
+      operationId: "searchPanel",
+      summary: "Busca produtos, cupons, clientes e taxonomias da loja.",
+      tags: ["panel"],
+    }),
+  )
+  .input(PanelSearchInputSchema)
+  .output(PanelSearchOutputSchema);
+
 export const profileContract = oc.errors({
   ...sharedErrorCodes,
 });
@@ -2656,6 +2811,8 @@ export const panelContractObject = {
   createCoupon,
   updateCoupon,
   deleteCoupon,
+  setCouponStatus,
+  bulkDeleteCoupons,
   getStoreSeo,
   saveStoreSeo,
   listSeoEntities,
@@ -2672,6 +2829,7 @@ export const panelContractObject = {
   revokeMcpSession,
   listAuditLogs,
   listTeamMembers,
+  search,
 };
 
 export const profileContractObject = {
@@ -2698,6 +2856,14 @@ export type PanelOrderTransition = v.InferOutput<typeof PanelOrderTransitionSche
 export type PanelCustomer = v.InferOutput<typeof PanelCustomerSchema>;
 
 export type PanelCustomerDetail = v.InferOutput<typeof PanelCustomerDetailSchema>;
+
+export type PanelSearchKind = v.InferOutput<typeof PanelSearchKindSchema>;
+
+export type PanelSearchInput = v.InferOutput<typeof PanelSearchInputSchema>;
+
+export type PanelSearchItem = v.InferOutput<typeof PanelSearchItemSchema>;
+
+export type PanelSearchOutput = v.InferOutput<typeof PanelSearchOutputSchema>;
 
 export type PanelProduct = v.InferOutput<typeof PanelProductSchema>;
 

@@ -12,14 +12,16 @@ import type {
 } from "@menuza/shared/tenant";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { CouponEditForm } from "../coupon-form.tsx";
+import type { ProductOption } from "../coupon-product-picker.tsx";
 import { CouponPerformance } from "./coupon-performance.tsx";
 import { RedemptionsTable } from "./redemptions-table.tsx";
 
-const TABS = ["desempenho", "resgates", "edicao"] as const;
+const TABS = ["edicao", "desempenho", "resgates"] as const;
 
 export function CouponTabs({
   storeSlug,
   coupon,
+  products,
   redemptions,
   totalRedemptions,
   usage,
@@ -27,6 +29,7 @@ export function CouponTabs({
 }: {
   storeSlug: string;
   coupon: PanelCouponSummary;
+  products: ProductOption[];
   redemptions: PanelCouponRedemption[];
   totalRedemptions: number;
   usage: readonly PanelCouponUsagePoint[];
@@ -35,7 +38,7 @@ export function CouponTabs({
   const [tab, setTab] = useQueryState(
     "tab",
     parseAsStringLiteral(TABS)
-      .withDefault("desempenho")
+      .withDefault("edicao")
       .withOptions({ history: "replace", scroll: false }),
   );
 
@@ -49,11 +52,15 @@ export function CouponTabs({
     >
       <div className="-mt-1 -mb-2 w-full [scrollbar-width:none] overflow-x-auto overflow-y-hidden pt-1 pb-2 [&::-webkit-scrollbar]:hidden">
         <TabsList aria-label="Seções do cupom">
+          <TabsTrigger value="edicao">Edição</TabsTrigger>
           <TabsTrigger value="desempenho">Desempenho</TabsTrigger>
           <TabsTrigger value="resgates">Resgates</TabsTrigger>
-          <TabsTrigger value="edicao">Edição</TabsTrigger>
         </TabsList>
       </div>
+
+      <TabsContent value="edicao" keepMounted>
+        <CouponEditForm storeSlug={storeSlug} coupon={coupon} products={products} />
+      </TabsContent>
 
       <TabsContent value="desempenho">
         <CouponPerformance
@@ -69,10 +76,6 @@ export function CouponTabs({
           redemptions={redemptions}
           totalRedemptions={totalRedemptions}
         />
-      </TabsContent>
-
-      <TabsContent value="edicao" keepMounted>
-        <CouponEditForm storeSlug={storeSlug} coupon={coupon} />
       </TabsContent>
     </Tabs>
   );

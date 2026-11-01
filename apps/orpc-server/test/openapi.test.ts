@@ -314,6 +314,16 @@ const TENANT_ROUTES = [
     path: "/panel/stores/{storeSlug}/coupons/{couponId}",
   },
   {
+    procedure: tenantContractObject.panel.setCouponStatus,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/coupons/{couponId}/status",
+  },
+  {
+    procedure: tenantContractObject.panel.bulkDeleteCoupons,
+    method: "post",
+    path: "/panel/stores/{storeSlug}/coupons/bulk-delete",
+  },
+  {
     procedure: tenantContractObject.panel.getStoreSeo,
     method: "get",
     path: "/panel/stores/{storeSlug}/seo",
@@ -372,6 +382,11 @@ const TENANT_ROUTES = [
     procedure: tenantContractObject.panel.listTeamMembers,
     method: "get",
     path: "/panel/stores/{storeSlug}/team",
+  },
+  {
+    procedure: tenantContractObject.panel.search,
+    method: "get",
+    path: "/panel/stores/{storeSlug}/search",
   },
   {
     procedure: tenantContractObject.panel.listIntegrations,

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { panelClient } from "@/lib/server-tenant.ts";
 import { SimpleLoading } from "../../_components/simple-loading.tsx";
 import { CouponCreateForm } from "../coupon-form.tsx";
+import type { ProductOption } from "../coupon-product-picker.tsx";
 
 export const instant = true;
 
@@ -14,11 +15,28 @@ export default function NewCouponPage({ params }: { params: Promise<{ storeSlug:
   );
 }
 
+/** The scope picker's options: one catalog read. A failing read leaves the list empty. */
+async function loadProductOptions(storeSlug: string): Promise<ProductOption[]> {
+  const client = await panelClient();
+
+  if (!client) return [];
+
+  try {
+    const { products } = await client.panel.listProducts({ storeSlug });
+
+    return products.map((product) => ({ id: product.id, name: product.name }));
+  } catch {
+    return [];
+  }
+}
+
 async function NewCoupon({ params }: { params: Promise<{ storeSlug: string }> }) {
   const { storeSlug } = await params;
   const client = await panelClient();
 
   if (!client) notFound();
+
+  const products = await loadProductOptions(storeSlug);
 
   return (
     <section aria-labelledby="coupon-new-heading" className="flex flex-col gap-6">
@@ -30,7 +48,7 @@ async function NewCoupon({ params }: { params: Promise<{ storeSlug: string }> })
           Crie uma promoção com regras de uso, validade e limites.
         </p>
       </div>
-      <CouponCreateForm storeSlug={storeSlug} />
+      <CouponCreateForm storeSlug={storeSlug} products={products} />
     </section>
   );
 }

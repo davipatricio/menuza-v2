@@ -1,0 +1,95 @@
+[
+  {
+    "id": "column.public.Coupon.deletedAt",
+    "label": "Add column \"deletedAt\" to \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deletedAt",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deletedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Coupon", "deletedAt"],
+        "expectation": {
+          "expects": "absent",
+          "object": "column \"deletedAt\" on \"Coupon\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deletedAt\"",
+        "sql": "ALTER TABLE \"public\".\"Coupon\" ADD COLUMN \"deletedAt\" timestamp(3)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deletedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": ["public", "Coupon", "deletedAt"],
+        "expectation": {
+          "expects": "present",
+          "object": "column \"deletedAt\" on \"Coupon\""
+        }
+      },
+      {
+        "description": "verify column \"deletedAt\" has type \"timestamp(3) without time zone\"",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_attribute\" AS \"a\" INNER JOIN \"pg_class\" AS \"c\" ON \"c\".\"oid\" = \"a\".\"attrelid\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"relnamespace\" WHERE (\"n\".\"nspname\" = $1 AND \"c\".\"relname\" = $2 AND \"a\".\"attname\" = $3 AND (format_type(\"a\".\"atttypid\", \"a\".\"atttypmod\")) = $4 AND NOT (\"a\".\"attisdropped\"))) AS \"result\"",
+        "params": ["public", "Coupon", "deletedAt", "timestamp(3) without time zone"]
+      }
+    ]
+  },
+  {
+    "id": "index.Coupon.Coupon_tenantId_deletedAt_idx",
+    "label": "Create index \"Coupon_tenantId_deletedAt_idx\" on \"Coupon\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Coupon_tenantId_deletedAt_idx",
+        "table": "Coupon"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Coupon_tenantId_deletedAt_idx\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": ["\"public\".\"Coupon_tenantId_deletedAt_idx\""],
+        "expectation": {
+          "expects": "absent",
+          "object": "index \"Coupon_tenantId_deletedAt_idx\""
+        }
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Coupon_tenantId_deletedAt_idx\"",
+        "sql": "CREATE INDEX \"Coupon_tenantId_deletedAt_idx\" ON \"public\".\"Coupon\" (\"tenantId\", \"deletedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Coupon_tenantId_deletedAt_idx\" exists on \"Coupon\" with the planned definition",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_class\" AS \"c\" INNER JOIN \"pg_index\" AS \"i\" ON \"i\".\"indexrelid\" = \"c\".\"oid\" INNER JOIN \"pg_am\" AS \"m\" ON \"m\".\"oid\" = \"c\".\"relam\" WHERE (\"c\".\"oid\" = to_regclass($1) AND (\"c\".\"relkind\" = $2 OR \"c\".\"relkind\" = $3) AND \"i\".\"indrelid\" = to_regclass($4) AND NOT (\"i\".\"indisunique\") AND \"m\".\"amname\" = $5 AND (\"i\".\"indexprs\" IS NULL AND (SELECT coalesce(jsonb_agg(key_attribute.attname ORDER BY key_column.position), '[]'::jsonb) FROM unnest(\"i\".\"indkey\"::int2[]) WITH ORDINALITY AS key_column(attnum, position) JOIN pg_attribute key_attribute ON key_attribute.attrelid = \"i\".\"indrelid\" AND key_attribute.attnum = key_column.attnum) = ($6)::jsonb) AND \"i\".\"indpred\" IS NULL)) AS \"result\"",
+        "params": [
+          "\"public\".\"Coupon_tenantId_deletedAt_idx\"",
+          "i",
+          "I",
+          "\"public\".\"Coupon\"",
+          "btree",
+          "[\"tenantId\",\"deletedAt\"]"
+        ]
+      }
+    ]
+  }
+]
