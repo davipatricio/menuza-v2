@@ -43,6 +43,7 @@ Load only the file the task needs. Every folder has an `INDEX.md` with a keyword
 | Monorepo workspaces, placement                         | `engineering/monorepo.md`             |
 | Backend request path, middleware, worker               | `engineering/backend.md`              |
 | Route rendering stages in apps/web                     | `engineering/route-stages.md`         |
+| Dashboard global search, Ctrl/Cmd+K palette            | `engineering/dashboard-search.md`     |
 | The checks a change must pass                          | `engineering/checks.md`               |
 | Open technical follow-ups                              | `engineering/followups.md`            |
 | Linear: querying, roadmap epics, module map            | `tickets/README.md`                   |

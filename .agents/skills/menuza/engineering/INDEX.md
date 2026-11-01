@@ -6,6 +6,7 @@
 | `backend.md`           | Request path, APIs, middleware, auth/sessions, db scope, worker, observability     | backend, orpc, middleware, request, worker, redis                                          |
 | `stack.md`             | Locked stack, ADRs, technical pendencies                                           | stack, architecture, ADR, bun, prisma, orpc                                                |
 | `route-stages.md`      | apps/web rendering stages, `ensureStatic`, dashboard caching/prefetch model, audit | route, ensureStatic, static, prefetch, private cache, dashboard suspense, app shell, cache |
+| `dashboard-search.md`  | Dashboard palette, `panel.search` contract, ranking, quick actions                 | global search, command palette, Ctrl/Cmd+K, search panel, quick actions                    |
 | `checks.md`            | Every-change commands and the 12 acceptance scenarios                              | checks, acceptance, scenarios, done                                                        |
 | `schema-migrations.md` | Prisma 8 migration loop, failure modes, data rules                                 | migration, prisma migrate, schema, contract, ref, column, backfill                         |
 | `followups.md`         | Open technical work and the product gates                                          | follow-up, pending, backlog                                                                |

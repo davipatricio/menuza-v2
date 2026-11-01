@@ -3,23 +3,7 @@
 import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Award,
-  Boxes,
-  ChevronRight,
-  FolderTree,
-  Layers,
-  LayoutDashboard,
-  ListTree,
-  Package,
-  Puzzle,
-  ScrollText,
-  Settings,
-  ShoppingCart,
-  Tag,
-  Ticket,
-  Users,
-} from "lucide-react";
+import { ChevronRight, Settings } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -45,31 +29,9 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { ThemeToggle } from "@/components/ui/theme-toggle.tsx";
 import { initials } from "@/lib/format.ts";
+import { type NavLeaf, navGroups, SETTINGS_CHILDREN } from "./nav-config.ts";
 import { StoreSwitcher, type SwitcherStore } from "./store-switcher.tsx";
 import { UserMenu } from "./user-menu.tsx";
-
-type NavIcon = typeof LayoutDashboard;
-
-interface NavLeaf {
-  href: string;
-  label: string;
-  icon: NavIcon;
-  exact?: boolean;
-}
-
-interface NavGroup {
-  label: string;
-  items: NavLeaf[];
-}
-
-const SETTINGS_CHILDREN: Array<{ href: string; label: string }> = [
-  { href: "store", label: "Loja" },
-  { href: "delivery", label: "Entrega" },
-  { href: "payments", label: "Pagamentos" },
-  { href: "notifications", label: "Notificações" },
-  { href: "team", label: "Equipe" },
-  { href: "account", label: "Conta" },
-];
 
 function isActivePath(pathname: string, href: string, exact?: boolean): boolean {
   if (exact) return pathname === href;
@@ -203,40 +165,7 @@ export function AppSidebar({
   role: string;
 }) {
   const { setOpen } = useSidebar();
-
-  const groups: NavGroup[] = [
-    {
-      label: "Operação",
-      items: [
-        { href: basePath, label: "Dashboard", icon: LayoutDashboard, exact: true },
-        { href: `${basePath}/orders`, label: "Pedidos", icon: ShoppingCart },
-      ],
-    },
-    {
-      label: "Catálogo",
-      items: [
-        { href: `${basePath}/catalog/products`, label: "Produtos", icon: Package },
-        { href: `${basePath}/catalog/kits`, label: "Kits", icon: Boxes },
-        { href: `${basePath}/catalog/departments`, label: "Departamentos", icon: Layers },
-        { href: `${basePath}/catalog/categories`, label: "Categorias", icon: FolderTree },
-        { href: `${basePath}/catalog/subcategories`, label: "Subcategorias", icon: ListTree },
-        { href: `${basePath}/catalog/tags`, label: "Tags", icon: Tag },
-        { href: `${basePath}/catalog/badges`, label: "Etiquetas", icon: Award },
-      ],
-    },
-    {
-      label: "Relacionamento",
-      items: [
-        { href: `${basePath}/customers`, label: "Clientes", icon: Users },
-        { href: `${basePath}/coupons`, label: "Cupons", icon: Ticket },
-        { href: `${basePath}/audit`, label: "Auditoria", icon: ScrollText },
-      ],
-    },
-    {
-      label: "Sistema",
-      items: [{ href: `${basePath}/integrations`, label: "Integrações", icon: Puzzle }],
-    },
-  ];
+  const groups = navGroups(basePath);
 
   return (
     <Sidebar collapsible="icon">

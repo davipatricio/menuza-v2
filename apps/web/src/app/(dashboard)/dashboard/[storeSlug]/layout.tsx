@@ -9,6 +9,7 @@ import { panelClient, type TenantClient } from "@/lib/server-tenant.ts";
 import { AppSidebar } from "./_components/app-sidebar.tsx";
 import { CrumbLabelsProvider } from "./_components/crumb-labels.tsx";
 import { DashboardTools } from "./_components/dashboard-tools.tsx";
+import { GlobalSearch } from "./_components/global-search.tsx";
 import { HeaderActions } from "../_components/header-actions.tsx";
 import { StoreBreadcrumb } from "./_components/store-breadcrumb.tsx";
 
@@ -100,6 +101,7 @@ export default async function StoreLayout({
                 <span className="text-foreground">{ROLE_LABELS[store.role]}</span>
               </span>
               <HeaderActions />
+              <GlobalSearch storeSlug={store.tenantSlug} />
             </div>
           </header>
           <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
