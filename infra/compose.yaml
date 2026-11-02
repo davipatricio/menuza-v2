@@ -25,11 +25,14 @@ services:
       timeout: 5s
       retries: 10
 
+  # Valkey is the Redis-compatible fork (same protocol and AOF format).
+  # BullMQ requires maxmemory-policy=noeviction. The image ships redis-cli,
+  # so the existing healthcheck and scripts/infra-up.ts probes keep working.
   redis:
-    image: docker.io/library/redis:7.4-alpine
+    image: docker.io/valkey/valkey:9.1-alpine
     container_name: menuza-redis
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
