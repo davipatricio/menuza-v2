@@ -1,5 +1,3 @@
-"use client";
-
 import { type ComponentPropsWithRef, forwardRef } from "react";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

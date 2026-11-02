@@ -44,8 +44,11 @@ export type FileTreeProps = {
 };
 
 const DEFAULT_INDENT = 16;
+
 const ROTATE_OPEN = 90;
+
 const ROTATE_CLOSED = 0;
+
 const TYPEAHEAD_PATTERN = /^[a-z0-9]$/i;
 
 type FlatNode = {
@@ -61,8 +64,10 @@ const flattenVisible = (
   parentId: string | null,
 ): FlatNode[] => {
   const result: FlatNode[] = [];
+
   for (const node of nodes) {
     result.push({ item: node, level, parentId });
+
     if (
       node.type === "folder" &&
       node.children &&
@@ -72,6 +77,7 @@ const flattenVisible = (
       result.push(...flattenVisible(node.children, expandedSet, level + 1, node.id));
     }
   }
+
   return result;
 };
 
@@ -117,22 +123,27 @@ const FileTreeRow = ({
     if (!hasChildren) {
       return;
     }
+
     if (wasOpenRef.current === isOpen) {
       return;
     }
+
     wasOpenRef.current = isOpen;
     const el = contentRef.current;
+
     if (!el) {
       return;
     }
 
     if (isOpen) {
       setHeight(el.scrollHeight);
+
       return;
     }
 
     setHeight(el.scrollHeight);
     const raf = requestAnimationFrame(() => setHeight(0));
+
     return () => cancelAnimationFrame(raf);
   }, [isOpen, hasChildren]);
 
@@ -166,6 +177,7 @@ const FileTreeRow = ({
         )}
         onClick={() => {
           onSelect(node.id);
+
           if (isFolder) {
             onToggle(node.id);
           }
@@ -286,6 +298,7 @@ const FileTree = ({
   const activeFocusId = focusedId ?? selectedId ?? flatList[0]?.item.id;
 
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
   const registerRef = useCallback((id: string, el: HTMLDivElement | null) => {
     if (el) {
       itemRefs.current.set(id, el);
@@ -293,6 +306,7 @@ const FileTree = ({
       itemRefs.current.delete(id);
     }
   }, []);
+
   const focusItem = useCallback((id: string | undefined) => {
     if (id) {
       itemRefs.current.get(id)?.focus();
@@ -304,6 +318,7 @@ const FileTree = ({
       if (!isExpandedControlled) {
         setInternalExpanded(next);
       }
+
       onExpandedChange?.(next);
     },
     [isExpandedControlled, onExpandedChange],
@@ -313,9 +328,11 @@ const FileTree = ({
     (id: string, force?: boolean) => {
       const isOpen = expandedSet.has(id);
       const shouldOpen = force ?? !isOpen;
+
       if (shouldOpen === isOpen) {
         return;
       }
+
       setExpandedList(
         shouldOpen ? [...expandedList, id] : expandedList.filter((existing) => existing !== id),
       );
@@ -328,6 +345,7 @@ const FileTree = ({
       if (!isSelectedControlled) {
         setInternalSelected(id);
       }
+
       onSelectedChange?.(id);
       setFocusedId(id);
     },
@@ -336,9 +354,11 @@ const FileTree = ({
 
   const flatIndexById = useMemo(() => {
     const map = new Map<string, number>();
+
     for (const [index, entry] of flatList.entries()) {
       map.set(entry.item.id, index);
     }
+
     return map;
   }, [flatList]);
 
@@ -347,6 +367,7 @@ const FileTree = ({
       if (!id) {
         return;
       }
+
       setFocusedId(id);
       focusItem(id);
     },
@@ -357,6 +378,7 @@ const FileTree = ({
     (letter: string, fromIndex: number) => {
       const lower = letter.toLowerCase();
       const count = flatList.length;
+
       for (let offset = 1; offset <= count; offset++) {
         const index = (fromIndex + offset) % count;
         const entry = flatList[index];
@@ -365,6 +387,7 @@ const FileTree = ({
 
         if (entry.item.name.toLowerCase().startsWith(lower)) {
           moveFocusTo(entry.item.id);
+
           return;
         }
       }
@@ -375,9 +398,11 @@ const FileTree = ({
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>, id: string) => {
       const index = flatIndexById.get(id);
+
       if (index === undefined) {
         return;
       }
+
       const entry = flatList[index];
 
       if (entry === undefined) return;
@@ -395,9 +420,11 @@ const FileTree = ({
           break;
         case "ArrowRight":
           event.preventDefault();
+
           if (node.type === "folder") {
             if (expandedSet.has(node.id)) {
               const next = flatList[index + 1];
+
               if (next && next.parentId === node.id) {
                 moveFocusTo(next.item.id);
               }
@@ -405,14 +432,17 @@ const FileTree = ({
               toggleExpanded(node.id, true);
             }
           }
+
           break;
         case "ArrowLeft":
           event.preventDefault();
+
           if (node.type === "folder" && expandedSet.has(node.id)) {
             toggleExpanded(node.id, false);
           } else if (entry.parentId) {
             moveFocusTo(entry.parentId);
           }
+
           break;
         case "Home":
           event.preventDefault();
@@ -432,6 +462,7 @@ const FileTree = ({
             event.preventDefault();
             typeahead(event.key, index);
           }
+
           break;
       }
     },

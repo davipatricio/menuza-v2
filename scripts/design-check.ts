@@ -6,9 +6,11 @@
  * Button API misuse. Runs on Bun with zero dependencies.
  *
  * Usage: bun run scripts/design-check.ts [--json] [paths...]
- * Default scope is the dashboard (apps/web/src/app/(dashboard)): DESIGN.md is
- * dashboard-scoped, and src/components/ui/ is upstream shadcn (managed via
- * `shadcn add --diff`, not hand-edited) so it is always skipped.
+ * Default scopes are the TanStack dashboard (routes/dashboard plus the
+ * dashboard feature folders): DESIGN.md is dashboard-scoped, and
+ * src/components/ui/ is upstream shadcn (managed via `shadcn add --diff`, not
+ * hand-edited) so it is always skipped. Storefront and marketing are
+ * intentionally out of scope.
  * Pass explicit paths to check marketing/storefront/shared components.
  * Exits 1 on errors, 0 on warnings only.
  */
@@ -23,9 +25,20 @@ const asJson = args.includes("--json");
 
 const roots = args.filter((a) => !a.startsWith("--"));
 
-const SCOPES = (roots.length > 0 ? roots : ["apps/web/src/app/(dashboard)"]).map((r) =>
-  resolve(ROOT, r),
-);
+const DEFAULT_SCOPES = [
+  "apps/web/src/routes/dashboard",
+  "apps/web/src/features/shell",
+  "apps/web/src/features/catalog",
+  "apps/web/src/features/coupons",
+  "apps/web/src/features/customers",
+  "apps/web/src/features/orders",
+  "apps/web/src/features/settings",
+  "apps/web/src/features/integrations",
+  "apps/web/src/features/assistant",
+  "apps/web/src/features/auth",
+];
+
+const SCOPES = (roots.length > 0 ? roots : DEFAULT_SCOPES).map((r) => resolve(ROOT, r));
 
 // Upstream shadcn primitives — managed via `shadcn add --diff`, never hand-fixed
 // to satisfy this script. Consumer rules below target app code, not these files.

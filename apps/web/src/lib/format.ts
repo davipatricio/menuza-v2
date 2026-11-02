@@ -182,11 +182,16 @@ export function maskIntegerInput(raw: string): string {
  * Data e hora no formato curto pt-BR, a partir do ISO-8601 com `Z` que o
  * contrato entrega. Fica aqui, junto do `formatBrl`, porque é o mesmo tipo de
  * conversão de borda: o valor cru nunca chega à tela.
+ *
+ * O fuso é fixo: o mesmo ISO renderiza o mesmo texto no servidor e no browser.
+ * Sem ele, o SSR usa o fuso da máquina e a hidratação o do usuário — o React
+ * descarta a árvore e o que o usuário digitou junto.
  */
 export function formatDateTime(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
   }).format(new Date(iso));
 }
 

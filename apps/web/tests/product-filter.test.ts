@@ -4,8 +4,8 @@ import {
   countActiveProductFilters,
   filterProducts,
   type SearchableProduct,
-} from "../src/app/(dashboard)/dashboard/[storeSlug]/catalog/products/product-filter.ts";
-import type { ProductSearchParams } from "../src/app/(dashboard)/dashboard/[storeSlug]/catalog/products/product-search-params.ts";
+} from "../src/features/catalog/lib/product-filter.ts";
+import type { ProductSearchParams } from "../src/features/catalog/schemas/product-search.ts";
 
 function product(overrides: Partial<SearchableProduct> = {}): SearchableProduct {
   return {

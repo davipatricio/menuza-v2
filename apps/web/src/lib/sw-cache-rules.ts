@@ -40,7 +40,12 @@ export function isStaticAssetRequest({ url, request }: RouteMatchContext): boole
 
   const p = url.pathname;
 
-  return p.startsWith("/_next/static/") || p === "/favicon.ico" || p === "/manifest.webmanifest";
+  return (
+    p.startsWith("/assets/") ||
+    p.startsWith("/serwist/") ||
+    p === "/favicon.ico" ||
+    p === "/manifest.webmanifest"
+  );
 }
 
 export function isPublicImageRequest({ url, request }: RouteMatchContext): boolean {
@@ -50,8 +55,6 @@ export function isPublicImageRequest({ url, request }: RouteMatchContext): boole
 
   // Never cache images from private sections
   if (p.startsWith("/dashboard/")) return false;
-
-  if (p.startsWith("/_next/image")) return true;
 
   if (request.destination === "image") return true;
 

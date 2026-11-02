@@ -1,5 +1,3 @@
-"use client";
-
 import {
   AssistantRuntimeProvider,
   InMemoryThreadListAdapter,
@@ -99,7 +97,7 @@ const KomiModelAdapter: ChatModelAdapter = {
   async run({ messages, abortSignal }) {
     await sleep(700, abortSignal);
 
-    const userMessage = messages.findLast((message) => message.role === "user");
+    const userMessage = [...messages].reverse().find((message) => message.role === "user");
     if (!userMessage) return { content: [{ type: "text", text: KOMI_GREETING }] };
 
     const prompt = normalize(

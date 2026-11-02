@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, useState, type ComponentProps, type RefObject } from "react";
 import { PauseIcon, PlayIcon } from "lucide-react";
 import { cn } from "@/lib/utils";

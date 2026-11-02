@@ -3,10 +3,10 @@
   "extends": ["//"],
   "tasks": {
     "build": {
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".output/**", "dist/**"]
     },
     "typegen": {
-      "outputs": [".next/types/**"]
+      "outputs": []
     }
   }
 }

@@ -1,5 +1,3 @@
-"use client";
-
 import { memo, useState, useEffect, useCallback, useRef, type PropsWithChildren } from "react";
 import { createPortal } from "react-dom";
 import { cva, type VariantProps } from "class-variance-authority";

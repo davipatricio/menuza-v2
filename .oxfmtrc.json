@@ -11,7 +11,7 @@
     "sortScripts": true
   },
   "sortTailwindcss": {
-    "stylesheet": "./apps/web/src/app/globals.css"
+    "stylesheet": "./apps/web/src/styles/globals.css"
   },
   "sortImports": false,
   "ignorePatterns": [
@@ -19,13 +19,13 @@
     "**/.next/**",
     "**/out/**",
     "**/dist/**",
+    "**/.serwist/**",
     "**/.turbo/**",
     "packages/db/prisma/generated/**",
     "apps/orpc-server/openapi/**",
-    "apps/web/.next/**",
+    "apps/web/src/routeTree.gen.ts",
     "**/*.tsbuildinfo",
     "**/*.min.*",
-    "apps/web/.shadcn-cache/**",
     ".bun/**",
     "**/.bun/**"
   ]

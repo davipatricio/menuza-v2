@@ -1,310 +1,143 @@
-# apps/web
+# apps/web — AGENTS.md
 
-<!-- BEGIN:nextjs-agent-rules -->
+The Menuza web app: TanStack Start (Start + Router + Query) on Vite, React 19,
+TypeScript 7, Tailwind 4 with Base UI shadcn components. One app, three
+surfaces:
 
-## This is NOT the Next.js you know
+- `src/routes/_marketing/**` — public marketing pages (`/`, `/about`,
+  `/pricing`, `/contact`). Static by construction: no loader, no request read.
+- `src/routes/_storefront/**` — buyer-facing store (`/store`, `/menu`,
+  `/menu/$productId`). The layout resolves the tenant from the request host once
+  and 404s when the host owns no store.
+- `src/routes/dashboard/**` — store admin (`/dashboard`, `/dashboard/login`,
+  `/dashboard/[storeSlug]/**`). This is the bulk of the app.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+The Next.js app in `apps/web` is the migration reference; it is deleted at
+cutover. Nothing added here may import from it or from Next.js imports.
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+Parent rules: `/AGENTS.md` (repo-wide) and `src/routes/AGENTS.md` (route file
+conventions). Dashboard visual rules: `DESIGN.md` in this folder.
 
-<!-- END:nextjs-agent-rules -->
+## Layout
 
-- Next.js 16.4 (stable), App Router, Server Components by default.
-- TypeScript v7 only — `experimental.useTypeScriptCli: true` is set in `next.config.ts` and verified against `next@16.4.2`.
-- Build type checking is enabled (`typescript.ignoreBuildErrors: false`).
-- Host-aware routing in `src/proxy.ts`. Two modes:
-  - `main` → marketing (pages at `/`, `/about`, `/pricing`, `/contact`) and dashboard
-    (`/dashboard/[storeSlug]`). `WEB_MAIN_DOMAIN` is authoritative: it is the only
-    main-domain host, plus `localhost`/`127.0.0.1`/`[::1]` outside production. Any other
-    host is denied with 404 (fail-closed, reversed in MEN-225; see ADR-0005's
-    amendment). Unknown paths still return 404.
-  - `storefront` → buyer-facing store on a tenant host
-    (`/store`, `/menu`, `/cart`, `/checkout`)
-    The proxy resolves `host → tenantId` through the tenant API's internal
-    `resolveHost` procedure (never the `Domain` table directly) for storefront
-    hosts only and injects `x-menuza-tenant-id`; a storefront host with no
-    `Domain` row returns 404. The main domain never resolves a tenant. The
-    `/store/[storeSlug]` path alias on the main domain lands in MEN-225.
-    See ADR-0005.
-- Document language: `pt-BR`. User-facing content stays in Portuguese.
-- UI components use `@base-ui/react` (NOT Radix). Tailwind v4 via `@import "tailwindcss"` in `src/app/globals.css` and `@tailwindcss/postcss` in `postcss.config.mjs`. shadcn (Base UI variant) provides `button`, `card`, `input`, `label`, `dialog`, `table`, `sidebar`, `badge`, `tabs`, `breadcrumb`, `dropdown-menu`, `checkbox`, `avatar`, `select`, `combobox`, `collapsible`, `popover`, `calendar`, `field` (plus `accordion`, `button-group`, `carousel`, `context-menu`, `input-group`, `radio-group`, `scroll-area`, `separator`, `sheet`, `skeleton`, `slider`, `switch`, `textarea`, `tooltip`, `use-mobile`) in `src/components/ui/`.
-- Dashboard visual system: `DESIGN.md` (tokens, recipes, motion, responsive, wording, slop bans) is authoritative for `/dashboard`. New pages follow its Iteration Guide, then run `bun run design:check` from the repo root before `typecheck`/`lint`.
-- Component-layer rules (primitive inventory, vendored folders, overlay policy, known gaps) live in `src/components/AGENTS.md`. `components.json` registers seven shadcn namespaces (`@reui`, `@smoothui`, `@magicui`, `@motion-primitives`, `@cult-ui`, `@aceternity`, `@ecomcn`); what each one actually gives you and which blocks fit each surface is in `docs/ui/component-catalog.md`.
+- `src/routes/**` — thin routes: one `Route` export, one component, `head` with
+  `pageTitle(...)`. Data comes from a loader that calls a server function.
+- `src/features/<domain>/{server,components,lib}` — `server/*.functions.ts`
+  holds `createServerFn` reads/writes; `components/*` are islands and pure
+  presentational pieces. One folder per product area: assistant, audit, auth,
+  catalog, coupons, customers, integrations, marketing, orders, settings, shell,
+  storefront.
+- `src/server/**` — server-only plumbing (panel/storefront clients, host
+  resolution, proxies, SEO origin). Never imported by a route or component;
+  see `src/server/AGENTS.md`.
+- `src/lib/**` — framework-agnostic helpers (formatting, labels, CSV, SEO
+  titles and JSON-LD, session client, sw cache rules).
+- `src/offline/**` — IndexedDB mutation queue, persister and Background Sync
+  client. `src/sw.ts` is the service worker, built by `serwistWorker()` in
+  `vite.config.ts`.
+- `src/components/ui/**` — shadcn (Base UI variant) primitives. Prefer an
+  existing primitive over a new one.
+
+## Data flow
+
+- Reads: `createServerFn({ method: "GET" })` with a valibot `.validator(...)`
+  and a `.handler(...)` that returns either the payload or a discriminated
+  result (`{ status: "ok" | "unauthenticated" | "not-found" }`). The route loader
+  maps `unauthenticated` to `throw redirect({ href: "/dashboard/login" })` and
+  `not-found` to `notFound()`.
+- Writes: client islands own their oRPC client
+  (`createORPCClient<RouterContractClient<typeof tenantContractObject>>(new RPCLink({ url: "/tenant/rpc" }))`),
+  use TanStack Query mutations, then `await router.invalidate()` so the loader
+  re-runs. There is no `revalidatePath` and no server action.
+- Client components never fetch on mount: the loader already read the data and
+  hands it down as typed props.
+- `staleTime` is only set for the product editor and the product-create
+  taxonomy options (`30_000`). List reads stay uncached so a reload reflects the
+  panel.
+- Never trust a client-supplied tenant id. The host decides the tenant
+  (`src/server/tenant-resolve.ts`), the layout passes `storeSlug` down, and the
+  API re-checks the session anyway.
+
+## Search params
+
+Routes that need URL state (orders board, product list) declare:
+
+```ts
+// SAFETY: nuqs validates the shape through `validateSearch` below.
+validateSearch: (search) => search as SearchParams,
+loaderDeps: ({ search }) => search,
+```
+
+and the **loader** parses the raw search with `load*SearchParams(deps)`.
+Parsing inside `validateSearch` rewrites the URL and causes a canonicalising 307. Islands then use
+`useQueryStates(schema, { shallow: false, history: "replace", scroll: false })`.
 
 ## Dashboard UI conventions
 
-- Every dashboard date field uses `DatePicker` from
-  `src/app/(dashboard)/dashboard/signup/_components/date-picker.tsx` (Popover +
-  `calendar`). Pass `minDate`/`maxDate` explicitly: `captionLayout="dropdown"` falls
-  back to the last 100 years without them. `<input type="date">` is banned.
-- A `Checkbox` outside `src/components/ui/**` is labeled with
-  `Field orientation="horizontal"` + `Checkbox id={field.name}` +
-  `FieldLabel htmlFor={field.name}`. A wrapping `<label>` trips
-  `jsx-a11y/label-has-associated-control`, because Base UI renders a `<button>` and
-  the rule does not count a button as a labelable control.
-- `Button render={<Link … />}` carries its `aria-label` on the `Link`, not on the
-  `Button`: `jsx-a11y/control-has-associated-label` reads the rendered element, and
-  the visible text must be contained in the label (WCAG 2.5.3).
-- Route skeletons: form/settings routes ship `loading.tsx` with `SimpleLoading`;
-  table routes use `TableLoading`. A catalog page also returns that same component
-  as its page-level `<Suspense>` fallback, so the heading frames the wait;
-  `loading.tsx` stays as the hard-load fallback.
-- `useForm` + a contract schema: writing optional fields as bare `undefined` in
-  `defaultValues` narrows the inferred form type to `undefined`, so the schema stops
-  being assignable to `validators`. Widen the schema once into a typed const
-  (`const couponSchema: any = CreateCouponInputSchema;`, reason in the comment) instead
-  of casting each `validators` entry — every `as` needs its own `SAFETY:` comment
-  (`anti-slop/require-safety-comment-for-type-assertion`).
+- pt-BR copy everywhere; semantic tokens only (`bg-background`,
+  `text-muted-foreground`, `border-border`), never raw palette classes.
+- Spacing with `gap-*` on a flex/grid parent, not `space-y-*`.
+- Overlays (`Dialog`, `Sheet`, `AlertDialog`, `Popover`, `DropdownMenu`) always
+  carry a `Title`; a `Button` used as a link is
+  `Button render={<Link to="…" params={{…}} aria-label="…" />}` with the
+  accessible name on the `Link`.
+- Tables are `DataTable` + `dashboardTableFeatures` (`src/components/ui/data-table.tsx`).
+  Each feature owns its column defs (`ColumnDef` type-only import from
+  `@tanstack/react-table`), toolbar state and CSV via `@/lib/csv-export.ts`.
+  Do not hand-roll a `<table>` for a list screen.
+- A checkbox outside `src/components/ui/**` is labelled with
+  `Field orientation="horizontal"` + `Checkbox id` + `FieldLabel htmlFor`
+  (Base UI renders a `<button>`, so a wrapping `<label>` breaks
+  `jsx-a11y/label-has-associated-control`).
+- Dates are `Popover` + `Calendar` (react-day-picker); `<input type="date">` is
+  banned.
+- Images are plain `<img>` with explicit dimensions or an `aspect-*` wrapper;
+  add `// eslint-disable-next-line nextjs/no-img-element` for the rule that still
+  ships with the shared config. Above-the-fold hero images get
+  `fetchPriority="high"`.
+- Loading states are route-level pending components (`defaultPendingComponent`)
+  or `Skeleton`; there is no `loading.tsx` equivalent. Errors go to
+  `ErrorBoundary` (`defaultErrorComponent`), which also reports to Sentry.
+- Forms use `@tanstack/react-form` with the shared valibot schema:
+  `const schema: any = …Schema;` plus a reason comment beats per-validator
+  casts. Field errors come from `@/lib/form-errors.ts`.
+- `design:check` (`bun run design:check`) scans dashboard routes only.
 
 ## Komi assistant (dashboard)
 
-- Komi is the dashboard's AI assistant and it is **mock-only**: canned replies from an
-  in-memory adapter. No backend, no network call, no env var.
-- Mounted once, in `src/app/(dashboard)/dashboard/[storeSlug]/layout.tsx`, as the last
-  child of `<SidebarProvider>` (after `</SidebarInset>`), so it covers every
-  `/dashboard/[storeSlug]/*` page. It is not on `/dashboard` (the store picker), login,
-  signup, the storefront or marketing.
-- Launcher: a floating button bottom-right (`fixed end-4 bottom-4 size-11`) that opens a
-  400px-wide resizable chat panel portalled above the shell — thread list ("Conversas"),
-  composer, message actions, three suggestion chips.
-- First-party code is a single file: `src/components/assistant-ui/komi-assistant.tsx` (the
-  runtime wrapper). The rest of `src/components/assistant-ui/elements/` and
-  `src/hooks/use-attachment-src.ts` are vendored registry files, changed only by the
-  deltas below.
-- Vendored from `https://r.assistant-ui.com/styles/base-nova/assistant-modal.json` and
-  its `registryDependencies` under `https://r.assistant-ui.com/base/<item>.json`. **Base
-  UI flavor only**: the `new-york` flavor of the same element imports `radix-ui`, which
-  this repo bans — never swap it in.
-- `src/lib/utils.ts` exists only because the vendored tree imports `cn` from the
-  `@/lib/utils` alias in `components.json`; it is one line (`export { cn } from "cn";`).
-  The five new deps are local to `apps/web/package.json` (single consumer, not catalog):
-  `@assistant-ui/react` 0.15.31, `@assistant-ui/react-markdown` 0.14.24, `remark-gfm`
-  4.0.1, `tw-shimmer` 0.4.14, `zustand` 5.0.16.
-- `AssistantRuntimeProvider` + `useRemoteThreadListRuntime` over
-  `InMemoryThreadListAdapter`; `KomiModelAdapter: ChatModelAdapter` returns canned pt-BR
-  replies after a ~700ms abortable delay, keyword-routed (catálogo/produtos/estoque,
-  pedidos, cupom/promoção/desconto, vitrine/loja, else round-robin).
-- A `KomiThreadListAdapter` subclass seeds the thread title "Komi" in `initialize`. All
-  state is in memory, so a reload resets the conversation.
-- Deliberate deltas from upstream — **preserve these when re-vendoring**: pt-BR strings in
-  `assistant-modal.aui.tsx`, `thread.aui.tsx`, `thread-list.aui.tsx`; the duplicated
-  `sr-only` label on `AssistantModalButton` removed (the a11y tree read "Abrir Komi Abrir
-  Komi"); `<ComposerAddAttachment />` not rendered (no attachment adapter, so it is a
-  dead control) with the composer action row moved `justify-between` → `justify-end`;
-  both composers' textareas use `outline-hidden!` and their shells
-  `focus-within:border-ring/60`, because the unlayered global `:focus-visible` rule in
-  `globals.css` beat the old `outline-none` and drew an orange ring inside the bubble;
-  `AssistantModalButton` has a hover/focus sheen sweep on the otherwise unused
-  `--btn-sheen` token and `--duration-move`, transform-only, `motion-reduce:hidden`.
-- No adapter is mounted for attachments, voice/dictation, feedback (helpful/not helpful),
-  branch navigation or export. Those controls stay hidden, not translated-and-dead.
-- `.oxlintrc.json` lists `assistant-ui/**` and `hooks/use-attachment-src.ts` in both
-  vendored override blocks, plus a third block scoped to `assistant-ui/**` that turns off
-  five upstream-flagged rules (`jsx-a11y/anchor-has-content`,
-  `jsx-a11y/heading-has-content`, `jsx-a11y/media-has-caption`, `jsx-a11y/no-autofocus`,
-  `promise/no-callback-in-promise`) — upstream false positives oxlint cannot see through
-  dynamic `{children}`, or deliberate upstream behaviour.
-- `bun run design:check` scans `src/app/(dashboard)` only, not `src/components/**`, so the
-  vendored tree sits outside that gate and has to be kept honest by hand.
-- The vendored animation classes (`animate-in`, `fade-in-0`, `zoom-in-95`) are inert:
-  `tw-animate-css` is not a dependency. A known repo-wide gap — do not fix it for Komi
-  alone.
-- `.aui.tsx` files are ordinary `.tsx` to the toolchain — matched by the `tsconfig`
-  `src/**/*.tsx` glob and linted/formatted by oxlint and oxfmt like anything else, so the
-  override block above is the only thing keeping upstream's a11y patterns quiet. A green
-  lint run is not evidence that a file was skipped.
+Mock-only assistant with canned pt-BR replies, a 700ms abortable delay and
+keyword routing; `InMemoryThreadListAdapter` and `KomiThreadListAdapter` seed the
+thread title "Komi". Mounted once in the dashboard `[storeSlug]` layout after
+`</SidebarInset>`; floating launcher `fixed end-4 bottom-4 size-11`, 400px
+panel. Vendored `src/components/assistant-ui/elements/**` deltas to preserve:
+pt-BR strings, the removed duplicate sr-only label, no attachment button,
+`justify-end` composer row, `outline-hidden!` + `focus-within:border-ring/60`,
+and the sheen sweep (`motion-reduce:hidden`). No attachment, voice, feedback,
+branch or export adapters. `animate-in`/`fade-in-0`/`zoom-in-95` are inert here
+(no `tw-animate-css`).
 
-## Lint and format
+## Auth
 
-- Format only what you touched: `bunx oxfmt <paths>`. Never a package-wide
-  `bun run fmt` — it rewrites files outside the change.
-- `anti-slop/require-readable-spacing` is autofixable: `bunx oxlint --fix <paths>`,
-  then re-run the formatter and lint again; formatting must not reintroduce findings.
-- `bunx oxfmt` is clean repo-wide. `bun run lint` exits **0**: the sonarjs rules are
-  warn severity and the script runs `oxlint .` without `--deny-warnings`, so the repo
-  reports ~830 warnings and no errors. The `catalog/` table files carry the known
-  complexity warnings (`kits-table.tsx`, `products-table.tsx`); `categories-table.tsx`,
-  `departments-table.tsx` and `tags-table.tsx` report none today. Judge a change by
-  `bunx oxfmt <paths>` + `bunx oxlint <paths>` on the files you touched, not by the
-  repo-wide totals.
-- Dashboard auth: `/dashboard/login` and the `/dashboard/signup/*` wizard (conta →
-  perfil → escolha → loja|convite) call same-origin `/tenant/rpc` through
-  `src/lib/session-client.ts`. Forms use `@tanstack/react-form` with the shared Valibot
-  schemas; the birthdate field is a Base UI `popover` + `calendar` (`react-day-picker`).
-- Dashboard data: every page under `/dashboard/[storeSlug]` is a Server Component
-  that reads through `panelClient()` in `src/lib/server-tenant.ts`, which forwards
-  the request's `menuza_tenant_sid` cookie to the tenant API. Tables and tab
-  switches are client islands (`*-table.tsx` / `*-tabs.tsx`) that receive rows as
-  props — no data fetch in the browser. The shell resolves `panel.getStore` on
-  every request (`export const instant = false`, no `generateStaticParams`), so an
-  unknown slug and a non-member are both 404 and a freshly created store opens
-  empty rather than 404ing. `src/lib/panel-labels.ts` is the only place the
-  contract's ASCII enums become pt-BR, and `formatBrl` takes cents (ADR-0006).
-  - No data-bearing App Shell: the shell awaits `params.storeSlug`, so the App
-    Shell (shared across links, URL-data free) cannot carry store or session data.
-    Do not add `ensureStatic` or a shell cache to the dashboard.
-  - Every catalog page is a synchronous `instant = true` default export returning
-    one `<Suspense>` whose child awaits `params`/`searchParams`/`panelClient()` in
-    a single `Promise.all` (products, new, editor, departments, tags, categories,
-    kits).
-  - Private caches only: `'use cache: private'`, never plain `'use cache'` for
-    panel data. Lists (departments/tags/categories/kits) use
-    `cacheLife({ stale: 300 })`; the product-form taxonomy and the editor's
-    product/SEO reads use `stale: 30`. `cacheTag` values are inert until a Server
-    Action or Route Handler invalidates them — nothing calls `revalidateTag` yet.
-  - The products list is deliberately uncached (an editor save refreshes only the
-    editor route, so a TTL would show the user their own edit for ≥30s); the
-    overview stays uncached with `instant = false`.
-  - Product row/card links use `HoverPrefetchLink`
-    (`catalog/products/hover-prefetch-link.tsx`), which flips `prefetch` from
-    `"auto"` to `true` on hover/focus. Do not add `prefetch={true}` to sidebar,
-    filter or "Novo produto" links, and never `prefetch={true}` on a destination
-    whose data is not cached behind a `<Suspense>` boundary.
-  - `prefetch()` / `navigation()` from `next/cache` remain unused (a blocking
-    layout gives them nothing to defer).
-- Catalog products surface:
-  - List search/filters are URL state parsed **server-side** by
-    `catalog/products/product-search-params.ts` (`nuqs` parsers + `createLoader`).
-    `products-table.tsx` writes the same keys with `useQueryStates` (shallow,
-    debounced text) and resets `page`; filtering/ordering is a pure function in
-    `product-filter.ts` over the one `panel.listProducts` payload. Deterministic
-    order is `sortOrder` asc → name → id (`sortOrder` is part of
-    `PanelProductSchema`).
-  - "Exportar CSV" is a server route (`catalog/products/export/route.ts`) that
-    reuses the same parser/filter and the session client: `text/csv`, UTF-8 BOM,
-    `private, no-store`, attachment named after the store slug.
-  - The editor's Produto/SEO tabs are Base UI `keepMounted` panels, so unsaved
-    input survives tab switches; `?tab=seo` is shallow URL state (no server hit).
-    `product-form.tsx` and `_components/seo-form.tsx` diff against the initial
-    snapshot and send **partial** payloads: omitted = untouched, `null` =
-    clear/inherit, empty diff = no request. `MoneyInput` formats digits as cents
-    on every keystroke (not only on blur).
-  - **Money inputs reuse `MoneyInput`.** Any new price/cost/freight field copies
-    the live-formatting pattern from `product-form.tsx` (integer cents in form
-    state, `formatBrlInput` + digit-only `onChange` in the input); never a raw
-    `type="number"` or a blur-only formatter.
-  - Product search matches name, description, SEO title/description, variation
-    names, category, department and tags (`product-filter.ts`); the list payload
-    carries those fields so filtering stays server-side and request-free.
-  - **`sortOrder` is edited in the tree view, not the product form.** The Produto
-    tab no longer renders an "Ordem" input; in `view=tree`, `products-table.tsx`
-    renders up/down arrows per product inside its category and writes `sortOrder`
-    through `panel.updateProduct`. The tree sorts by `sortOrder` asc → name.
-  - **The SEO tab is form-left / preview-right.** `_components/seo-form.tsx` is a
-    two-column grid at `lg`; `_components/seo-preview-card.tsx` is `lg:sticky
-    lg:top-20 lg:self-start` (below the form on mobile, same as the nutrition tab).
-    Its three modes are Google search snippet, social/Open Graph card and JSON-LD;
-    the preview reads the live form values, not the saved row.
-  - **The JSON-LD editor is a transparent textarea over a TanStack Highlight
-    `<pre>`.** `json-ld-editor.tsx` + `json-ld-code.ts` share one class
-    (`json-ld-editor-shared`) that pins font, padding, `line-height` and
-    `white-space: pre-wrap` on both layers — change the metrics in one place or the
-    caret drifts from the glyphs. The highlighter returns a full `<pre><code>`
-    document, so `extractHighlightedCode` unwraps it; do not nest a second `<pre>`.
-    Long lines wrap (auto-wrap) and the textarea's `scrollTop`/`scrollLeft` are
-    mirrored onto the `<pre>` on scroll, type and Tab.
-- `settings/account` (password change + active sessions with revocation) and
-  `settings/team` (read-only member/role list) are live, both added by MEN-225.
-  The `account.*` procedures are **member-level** — they take no `storeSlug` —
-  yet the page lives under the store shell's settings, because the sidebar is
-  store-scoped. The shell is the navigation, not the authorization.
-  - The session list shows row **digests**, never bearer tokens; the current row
-    is flagged so the UI hides its own revoke button (a crafted request may still
-    self-revoke, which is just logout).
-  - `changePassword` revokes every _other_ session, so the page says so up front —
-    a member whose other devices sign out should read it as intended, not a bug.
-  - `settings/team` renders `FORBIDDEN` as the read-only notice, because
-    `listTeamMembers` is gated on `team:read` and a `staff` role is refused.
-  - `formatDateTime` (in `src/lib/format.ts`) is the one ISO→pt-BR date
-    conversion, same edge-conversion role as `formatBrl`.
-- `settings/../integrations` (MEN-282) is the Integrações tab, reached from the
-  sidebar's "Sistema" group. Two routes: the list (one section per catalog group,
-  one card per integration, each with a logo, a switch and a status badge) and
-  `[integrationId]` (status, author, last change, settings, MCP connect block,
-  connected sessions, "Sobre").
-  - **The catalog is code** (`INTEGRATIONS` in `@menuza/shared/tenant`). Cards are
-    generated from it and state comes from `panel.listIntegrations`, so a newly
-    added integration appears with no backfill and no page change. If you find
-    yourself branching on a specific integration id in the list, the catalog has
-    leaked.
-  - `_components/integration-logo.tsx` draws the inline brand SVG, falling back to
-    a monogram when the catalog has no mark. Logos are inline paths (no `<img>`,
-    no per-card request).
-  - Only `mcp-dashboard` is wired; every other card is `mock: true` and its detail
-    page says so. Do not hide the mock badge to make the page look fuller.
-  - The connect block copies the Claude Code / Codex CLI command and the raw URL;
-    the sessions list below it is what an admin revokes. Turning the switch off
-    does **not** revoke sessions — the copy on the page says so.
-- Theme toggle (`next-themes`) lives in the storefront header and the dashboard sidebar footer; root layout provides `ThemeProvider` with `attribute="class"`.
-- PWA shell: `withSerwist` in `next.config.ts`, service worker served at `/serwist/sw.js`, `SerwistProvider` in root layout, manifest file at `public/manifest.webmanifest` served (and referenced in `layout.tsx` metadata) as `/manifest.webmanifest`.
-  - **Offline support**: SW handles `sync` event tagged `menuqueue-replay` and posts `menuqueue-drain` to open tabs. The page-side `OfflineListener` calls `drainQueue()` from `src/offline` and `invalidateQueries()` on conflict.
-- TanStack Query shell: `QueryProvider` in root layout wraps `PersistQueryClientProvider` with the IndexedDB persister from `src/offline`. No queries yet.
-- Browser clients hit same-origin `/commerce/...` and `/tenant/...` (rewritten to loopback APIs by `next.config.ts`).
-- Build artifact: `output: "standalone"` emits `.next/standalone/apps/web/server.js`; runs on Bun in `Containerfile`; images build via `bun run scripts/docker-build.ts web`.
-- Server clients use `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` and a per-request client. No shared cookies/tenant context across requests.
-- NEVER import `@menuza/db`, Prisma, or `@menuza/orpc-server` from client or shared code.
-- `apps/web` never reads the database directly and does not depend on `@menuza/db`. Every data operation goes through the internal API servers (`@menuza/commerce` or `@menuza/tenant`) using user session tokens or the shared `INTERNAL_API_SECRET` internal-communication token (sent as `x-menuza-internal-token`). The target origin is `COMMERCE_INTERNAL_URL` / `TENANT_INTERNAL_URL` (localhost or an external URL); never bypass the APIs with direct DB calls.
-- Tenant host resolution is `tenant.internal.resolveHost` called server-side from `src/proxy.ts` with the shared internal token; the proxy no longer touches `Domain` itself.
-- No secrets in `NEXT_PUBLIC_*` variables.
-- Sentry: `instrumentation-client.ts` (browser), `instrumentation.ts` + `sentry.server.config.ts`/`sentry.edge.config.ts` (server/edge), `global-error.tsx` (root boundary). `next.config.ts` is wrapped by `withSentryConfig`; source map upload and release creation run only when `SENTRY_AUTH_TOKEN` is set. Browser DSN is `NEXT_PUBLIC_SENTRY_DSN` (public by design). Tracing samples 10% by default (`*_TRACES_SAMPLE_RATE=0.1`); set `0` to rely on OpenTelemetry tracing only. LGPD scrubbing is shared via `@menuza/shared/sentry-privacy`. The Sentry tunnel route is intentionally off: `src/proxy.ts` does not exempt `/monitoring`.
+`/dashboard/login` and `/dashboard/signup/*` (conta → perfil → escolha →
+loja | convite) call the same-origin `/tenant/rpc` through
+`src/lib/session-client.ts`. The session cookie is httpOnly; the client never
+reads it. Every dashboard layout loader redirects to `/dashboard/login` when
+`panelClient()` returns `null`.
 
-## Next.js 16.4 adoption
+## Build, lint, checks
 
-- Versions: `next@16.4.2` (stable, dropped the canary pin) and `react`/`react-dom`
-  `19.3.1` (View Transitions, Fragment Refs, `browser()`). `cacheComponents` and
-  `partialPrefetching` were already enabled; 16.4 keeps them as the recommended model.
-- `ensureStatic` guards the routes that must stay static:
-  - `src/app/(marketing)/layout.tsx` → `ensureStatic = "navigation"`: the marketing
-    pages (`/`, `/about`, `/pricing`, `/contact`) are fully static, so a later dynamic
-    addition fails the build instead of silently becoming request-time.
-  - `src/app/(storefront)/store/layout.tsx` → `ensureStatic = "shell"`: the storefront
-    nav and Suspense fallbacks stay static while `CommerceStatusCard` streams per request.
-  - The dashboard shell intentionally stays dynamic (`instant = false`, session read per
-    request), so it sets no `ensureStatic`.
-- `navigation()` / `prefetch()` (`next/cache`) stay unused for the dashboard reason
-  above (a blocking layout, no data-bearing App Shell). Per-link `prefetch={true}` is now
-  used on product rows through `HoverPrefetchLink`. `CommerceStatusCard` stays an
-  uncached fetch deferred by its `<Suspense>` boundary, so no extra stage boundary is
-  needed.
-- Not adopted: `reactCompiler` + `turbopackRustReactCompiler` (experimental; rewrites
-  memoization across the client tree) and `turbopackAdditionalRoots` (for symlinked deps
-  outside the project root / a global virtual store — this repo uses Bun workspaces).
-- Per-route stage decisions and audits: use the `menuza` skill, `engineering/route-stages.md`.
-
-## Compatibility flags
-
-- `experimental.useTypeScriptCli: true` — required because TS 7 does not expose the legacy compiler API. Documented by Next (https://github.com/vercel/next.js/blob/canary/packages/next/src/lib/typescript/runTypeScriptCli.ts). Removal condition: when Next ships a non-CLI type-check path that supports TS 7 without this flag.
-- `typedRoutes` is OFF: `next.config.ts` sets `typedRoutes: false` and that file is authoritative.
-  Links are typed as plain `string` routes.
-- `cacheComponents: true` — required for the app's static shells and Partial Prefetching.
-- `partialPrefetching: true` — required; prefetches static route parts by default.
-- `experimental.agentUpgrade: "latest"` — upgrade reminders on `next dev`/`next build`.
-- `experimental.agentFeedback: true` — `next dev` maintains a managed feedback block in
-  this file; requires telemetry and is a no-op in CI.
-- `experimental.turbopackGc: true` — reclaims unused compile work in long dev sessions.
-- `experimental.turbopackLazyDynamicImports: true` — compiles client dynamic imports on demand.
-- `experimental.turbopackPluginRuntimeStrategy: "workerThreads"` — runs plugin tools
-  in-process; Next falls back to `childProcesses` on Node.js affected by nodejs/node#65100.
-- No `ignoreBuildErrors: true`. Type errors must be fixed, not suppressed.
-
-<!-- BEGIN:nextjs-agent-feedback -->
-
-## Report Next.js feedback
-
-The project owner enabled `experimental.agentFeedback`, authorizing this feedback pass. When enabled, `next dev` writes this block and restores it if removed. Commit `AGENTS.md` with your work to keep the tree clean.
-
-During the current user request, retain anonymized facts as feedback candidates for meaningful or recurring Next.js issues:
-
-- Crashes, hangs, OOMs, or unexpected slowness
-- Incorrect behavior, output, errors, or diagnostics
-- Missing, unclear, or conflicting documentation
-- Unexpected CLI, codemod, Skill, or upgrade behavior and non-obvious workarounds
-
-Continue the current user request without reporting immediately. Routine debugging is not feedback. Verify changes before retaining them as feedback candidates. Never retain code, logs, paths, URLs, secrets, personal information, or project-specific data.
-
-Retain qualifying friction even if it is later fixed or worked around; record the final outcome during the reporting pass.
-
-Before the final response, run one reporting pass. If candidates remain, from this file's directory run `npx --no-install next internal agent-feedback-instructions` once without piping or truncating its output. Follow its output or error guidance. If a network sandbox blocks it, retry with network access; if it still returns no output, continue normally.
-
-<!-- END:nextjs-agent-feedback -->
+- `bun run --filter '@menuza/web' build` — Vite build; also emits
+  `dist/client/serwist/sw.js` (see `serwistWorker()` in `vite.config.ts`).
+- `bun run --filter '@menuza/web' typecheck` — `bun check`.
+- Build before typecheck after adding or renaming a route: the route tree is
+  generated by the router plugin.
+- Format and lint only the paths a change touches:
+  `bunx oxfmt <paths>` then `bunx oxlint <paths>`.
+  `anti-slop/require-readable-spacing` is autofixable (`bunx oxlint --fix`); run
+  the formatter afterwards and confirm a second pass changes nothing.
+- Every type assertion needs a `// SAFETY:` line above it.
+- Repo-wide `bun run lint` still shows warn-only sonarjs complexity findings;
+  judge by the touched paths.
+- Server-only rule (enforced by `.oxlintrc.json` `no-restricted-imports`):
+  routes may not import `@/server/*`, and nothing here imports `@menuza/db`,
+  `@menuza/orpc-server` or `@prisma/*`.

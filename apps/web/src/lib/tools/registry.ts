@@ -1,5 +1,3 @@
-"use client";
-
 import { createContext, useContext, useState, createElement, type ReactNode } from "react";
 
 export type JsonValue =

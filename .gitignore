@@ -14,6 +14,7 @@ node_modules/
 .next/
 out/
 dist/
+.serwist/
 
 # Husky generated hooks
 .husky/_/

@@ -73,11 +73,11 @@ Banned: custom `@keyframes` in TSX, scroll hijacks, parallax, auto-play carousel
 
 ## Layout
 
-Shell (`dashboard/[storeSlug]/layout.tsx`): `SidebarProvider` → `AppSidebar` (`collapsible="icon"`) + `SidebarInset`. Sticky header `h-14 border-b bg-background/80 backdrop-blur`, `SidebarTrigger` + `StoreBreadcrumb` in `Suspense` + member chip (`hidden sm:flex`) + `HeaderActions`. Content: `flex flex-1 flex-col gap-6 p-4 md:p-8`. `h1.sr-only` carries the store name.
+Shell (`src/routes/dashboard/$storeSlug/route.tsx` → `features/shell/components/store-shell.tsx` + `app-sidebar.tsx`): `SidebarProvider` → `AppSidebar` (`collapsible="icon"`, store switcher header, settings group, footer user menu + theme toggle, rail) + `SidebarInset`. Sticky header `h-14 border-b bg-background/80 backdrop-blur`, `SidebarTrigger` + `StoreBreadcrumb` + member chip (`hidden sm:flex`) + `HeaderActions` + `GlobalSearch` right-aligned. Content: `flex flex-1 flex-col gap-6 p-4 md:p-8`. `h1.sr-only` carries the store name.
 
 Nav groups: **Operação** (Dashboard, Pedidos), **Catálogo** (Produtos, Kits, Departamentos, Categorias, Tags, Etiquetas), **Relacionamento** (Clientes, Cupons, Auditoria), **Configurações** collapsible (Loja, Entrega, Pagamentos, Notificações, Equipe, Conta). Mobile closes on navigation (`MobileSidebarCloser`); collapsed sidebar opens on demand instead of navigating blind.
 
-Page pattern: the default export is a **synchronous** Server Component returning one `<Suspense>` with the same skeleton as `loading.tsx`; the async child awaits `params`/`searchParams`/`panelClient()` in a single `Promise.all`, reads through `panelClient()` and hands rows to a client island (`*-table.tsx` / `*-tabs.tsx`). The heading paints before the read, so navigation shows the frame instead of a blank one. No data fetch in the browser. Every route still ships `loading.tsx` (table skeleton via `table-loading.tsx`, never a blank frame) for the hard load. Every page opens with `h2 text-xl font-semibold tracking-tight` + a `text-sm text-muted-foreground` description inside a `<section aria-labelledby>`, left-aligned with the content column — never a second `h1`, never a centered form under a left-aligned title.
+Page pattern: the route file exports `Route` with a `loader` that reads through a server function (`createServerFn` → `@/server/panel-client.ts`); `loaderDeps` feeds it the validated search params, so filtering never happens in the browser. `validateSearch` is a passthrough (`search as SearchParams`) and the loader parses with `load*SearchParams` — parsing inside `validateSearch` makes the router canonicalise the URL and 307 every plain visit. `pendingComponent` renders `table-loading.tsx` (never a blank frame) and `errorComponent` the route error. The component renders one `<section aria-labelledby>` with `h2 text-xl font-semibold tracking-tight` + a `text-sm text-muted-foreground` description, then the `DataTable` island; left-aligned with the content column — never a second `h1`, never a centered form under a left-aligned title.
 
 Section pattern: `SettingsSection` (or the same shape) — `h2#headingId` + `text-sm text-muted-foreground` description + children, `gap-6` / `gap-1.5`. The five settings pages must read as one product.
 
@@ -150,14 +150,13 @@ Don't: raw Tailwind colors (`bg-blue-500`, `text-red-600`, `text-emerald-600`, `
 
 ## Known Gaps
 
-- `_components/empty-state.tsx` is a custom dashed-border div, not the shadcn `Empty` primitive. Grandfathered; `DataTable` now renders `Empty` for zero rows, and replacement of this file is an approved follow-up.
 - No `Chart` usage yet; no toast standard pinned for the panel (`toast` Base UI vs `sonner`). Do not invent one per page — pick once when the first need lands.
 - Dark `.dark` ramp is derived from the neutral brand, not from product mockups. Call it out when touching dark surfaces.
 
 ## Iteration Guide
 
-New dashboard page: synchronous `page.tsx` exporting `instant = true` and returning one `<Suspense fallback={<TableLoading label="Carregando …" />}>`; an async child does the panel read (`Promise.all` on `params`/`searchParams`/`panelClient()`); plus `loading.tsx` (same `TableLoading`) and a `*-table.tsx` island (columns, `Badge` variants, `formatBrl`, export columns) + labels in `panel-labels.ts` if a new enum appears. `'use cache: private'` only for a read with a same-route mutation (model: `.agents/skills/menuza/engineering/route-stages.md`).
+New dashboard page: a route under `src/routes/dashboard/$storeSlug/**` exporting `Route` with `validateSearch` passthrough, `loaderDeps`, a `loader` that parses `load*SearchParams` and calls the feature's server function, `pendingComponent: () => <TableLoading label="Carregando …" />`, and a component with the section heading plus a `DataTable` island (`ColumnDef` columns, `Badge` variants, `formatBrl`, export columns) — labels in `panel-labels.ts` if a new enum appears.
 
-New form route: synchronous `page.tsx` exporting `instant = true` and returning one `<Suspense fallback={<SimpleLoading … />}>` around the heading + description and a `*-form.tsx` island (`@tanstack/react-form` + the shared Valibot schema, `FieldGroup`/`Field`, submit-aware field errors, `Alert` for server errors, `Spinner` on the submit button, `ToggleGroup` for small option sets), plus `loading.tsx` with the same `SimpleLoading`.
+New form route: a route file whose component renders the heading + description and a `*-form.tsx` island (`@tanstack/react-form` + the shared Valibot schema, `FieldGroup`/`Field`, submit-aware field errors, `Alert` for server errors, `Spinner` on the submit button, `ToggleGroup` for small option sets); writes are oRPC calls followed by `void router.invalidate()`.
 
 Then run `bun run design:check`, `bun run typecheck`, `bun run lint`. No new tokens, no new shadow tiers, no new motion curves without updating this file first.

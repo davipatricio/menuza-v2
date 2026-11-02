@@ -1,8 +1,6 @@
-"use client";
-
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { drainQueue } from "../offline";
+import { drainQueue } from "@/offline/index.ts";
 
 /**
  * Bridges three drain triggers into the React tree:

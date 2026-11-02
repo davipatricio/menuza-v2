@@ -20,6 +20,7 @@ const api = (app: string) => ({
 
 const procs = [
   { name: "web", cmd: ["bun", "--filter", "@menuza/web", "dev"], cwd: root },
+  { name: "web", cmd: ["bun", "--filter", "@menuza/web", "dev"], cwd: root },
   api("commerce"),
   api("tenant"),
   api("worker"),

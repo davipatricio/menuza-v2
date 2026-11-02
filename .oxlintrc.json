@@ -76,17 +76,17 @@
     }
   },
   "ignorePatterns": [
+    "**/.serwist/**",
     "**/node_modules/**",
-    "**/.next/**",
     "**/out/**",
     "**/dist/**",
     "**/.turbo/**",
     "packages/db/prisma/generated/**",
     "packages/db/migrations/**",
-    "apps/web/.next/**",
     "**/*.tsbuildinfo",
     "**/*.min.*",
     "apps/web/.shadcn-cache/**",
+    "apps/web/src/routeTree.gen.ts",
     ".bun/**",
     "**/.bun/**",
     ".agent/**",
@@ -114,7 +114,7 @@
   ],
   "overrides": [
     {
-      "files": ["apps/web/**"],
+      "files": ["apps/web/**", "apps/web/**"],
       "env": {
         "browser": true
       }
@@ -135,7 +135,24 @@
       }
     },
     {
-      "files": ["apps/web/src/components/ui/**"],
+      // apps/web is TanStack Start, not Next: its document shell renders
+      // <head> directly (HeadContent), so the Next-only rule does not apply.
+      "files": ["apps/web/**"],
+      "rules": {
+        "nextjs/no-head-element": "off"
+      }
+    },
+    {
+      // The shared jsx-a11y `Link → a` mapping is for Next's `<Link href>`. TanStack
+      // Router's `Link` takes `to` and renders the href itself, so the rule can only
+      // ever see an anchor with no href — off here instead of per-line disables.
+      "files": ["apps/web/**"],
+      "rules": {
+        "jsx-a11y/anchor-is-valid": "off"
+      }
+    },
+    {
+      "files": ["apps/web/src/components/ui/**", "apps/web/src/components/ui/**"],
       "rules": {
         "jsx-a11y/label-has-associated-control": "off"
       }
@@ -145,20 +162,22 @@
       // first-party style rules. Correctness and accessibility rules stay on.
       "files": [
         "apps/web/src/components/ui/**",
-        "apps/web/src/components/ecomcn/**",
-        "apps/web/src/components/smoothui/**",
-        "apps/web/src/components/reui/**",
         "apps/web/src/components/assistant-ui/**",
-        "apps/web/src/lib/smoothui-data/**",
         "apps/web/src/lib/address-format.ts",
         "apps/web/src/lib/filter-params.ts",
         "apps/web/src/lib/tracking-events.ts",
         "apps/web/src/hooks/use-mobile.ts",
-        "apps/web/src/hooks/use-file-upload.ts",
         "apps/web/src/hooks/use-copy-to-clipboard.ts",
         "apps/web/src/hooks/use-attachment-src.ts",
-        "apps/web/src/hooks/use-filter-params.ts",
-        "apps/web/src/hooks/use-order-totals.ts"
+        "apps/web/src/components/ui/**",
+        "apps/web/src/components/assistant-ui/**",
+        "apps/web/src/components/nutrition/**",
+        "apps/web/src/lib/address-format.ts",
+        "apps/web/src/lib/filter-params.ts",
+        "apps/web/src/lib/tracking-events.ts",
+        "apps/web/src/hooks/use-mobile.ts",
+        "apps/web/src/hooks/use-copy-to-clipboard.ts",
+        "apps/web/src/hooks/use-attachment-src.ts"
       ],
       "rules": {
         "jsx-a11y/click-events-have-key-events": "off",
@@ -176,18 +195,19 @@
       // vendored tree. Behaviour is covered by `bun check`; the accessibility
       // and correctness rules above stay on.
       "files": [
-        "apps/web/src/components/reui/**",
         "apps/web/src/components/assistant-ui/**",
-        "apps/web/src/components/smoothui/**",
-        "apps/web/src/components/ui/motion-primitives/**",
-        "apps/web/src/components/ui/magicui/**",
-        "apps/web/src/components/ui/aceternity/**",
-        "apps/web/src/components/ui/cult-ui/**",
-        "apps/web/src/lib/smoothui-data/**",
         "apps/web/src/lib/address-format.ts",
         "apps/web/src/lib/filter-params.ts",
         "apps/web/src/lib/tracking-events.ts",
-        "apps/web/src/hooks/use-file-upload.ts",
+        "apps/web/src/hooks/use-copy-to-clipboard.ts",
+        "apps/web/src/hooks/use-attachment-src.ts",
+        "apps/web/src/components/ui/**",
+        "apps/web/src/components/assistant-ui/**",
+        "apps/web/src/components/nutrition/**",
+        "apps/web/src/lib/address-format.ts",
+        "apps/web/src/lib/filter-params.ts",
+        "apps/web/src/lib/tracking-events.ts",
+        "apps/web/src/hooks/use-mobile.ts",
         "apps/web/src/hooks/use-copy-to-clipboard.ts",
         "apps/web/src/hooks/use-attachment-src.ts"
       ],
@@ -214,20 +234,18 @@
     },
     {
       // Vendored marketing blocks point at runtime image URLs (avatars, stock
-      // backdrops) that next/image cannot size without a remote allowlist.
-      "files": [
-        "apps/web/src/components/smoothui/**",
-        "apps/web/src/components/ui/magicui/**",
-        "apps/web/src/components/ui/aceternity/**",
-        "apps/web/src/components/ui/cult-ui/**"
-      ],
+      // backdrops) that a framework image component cannot size without a remote allowlist.
+      "files": [],
       "rules": {
         "nextjs/no-img-element": "off"
       }
     },
     {
       // assistant-ui vendored tree: upstream false positives (dynamic children) and intentional autoFocus/media/promise patterns — see D12.
-      "files": ["apps/web/src/components/assistant-ui/**"],
+      "files": [
+        "apps/web/src/components/assistant-ui/**",
+        "apps/web/src/components/assistant-ui/**"
+      ],
       "rules": {
         "jsx-a11y/anchor-has-content": "off",
         "jsx-a11y/heading-has-content": "off",
@@ -239,6 +257,8 @@
     {
       "files": [
         "apps/web/src/components/ui/theme-toggle.tsx",
+        "apps/web/src/components/push-notifications-card.tsx",
+        "apps/web/src/hooks/use-mobile.ts",
         "apps/web/src/components/push-notifications-card.tsx",
         "apps/web/src/hooks/use-mobile.ts"
       ],
@@ -265,6 +285,55 @@
       },
       "rules": {
         "typescript/no-explicit-any": "off"
+      }
+    },
+    {
+      // The import boundary of the TanStack app: a route renders on both sides,
+      // so it may not reach into server-only modules. Server route handlers
+      // (`export.ts`, `*.server.ts`) are the documented exception below.
+      "files": ["apps/web/src/routes/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/server/*"],
+                "message": "Routes render in the browser too: call a createServerFn instead of importing @/server/*."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      // Server route handlers only run on the server, so they may hold a client.
+      "files": ["apps/web/src/routes/**/export.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      // Nothing in the web app talks to the database or the API servers directly.
+      "files": ["apps/web/src/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@menuza/db",
+                  "@menuza/db/*",
+                  "@menuza/orpc-server",
+                  "@menuza/orpc-server/*",
+                  "@prisma/*"
+                ],
+                "message": "The web app reaches the APIs over oRPC; it never imports the database or the server packages."
+              }
+            ]
+          }
+        ]
       }
     },
     {

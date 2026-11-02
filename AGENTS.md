@@ -3,10 +3,12 @@
 ## Architecture
 
 - Monorepo with Bun workspaces (`apps/*`, `packages/*`).
-- One Next.js app (`apps/web`) with three route groups (`apps/web/src/app/`):
-  - `(marketing)` (`/`, `/about`, `/pricing`, `/contact`) — marketing site
-  - `(storefront)` (`/store/*`, plus `/menu/*`, `/cart`, `/checkout`) — buyer-facing store
-  - `(dashboard)` (`/dashboard`, `/dashboard/[storeSlug]`) — store admin on the main
+- One TanStack Start app (`apps/web`, Start + Router + Query on Vite) with three
+  pathless route groups under `apps/web/src/routes/`:
+  - `_marketing` (`/`, `/about`, `/pricing`, `/contact`) — marketing site, static
+  - `_storefront` (`/store`, `/menu`, `/menu/$productId`) — buyer-facing store on
+    the tenant host, resolved server-side from the request host
+  - `dashboard` (`/dashboard`, `/dashboard/$storeSlug`) — store admin on the main
     domain only (see ADR-0005; tenant hosts serve the storefront only)
 - Two Bun.serve APIs (`apps/commerce`, `apps/tenant`) are thin shells; the actual
   router implementations live in `@menuza/api-commerce` and `@menuza/api-tenant`
@@ -23,7 +25,7 @@
 
 - Bun canary channel — the moving `canary` release (workspaces, package manager, runner, test runner; `bun check` for type checking). No immutable 1.4.4 build exists to pin. Pinned in `devEngines.packageManager`, `.github/workflows/ci.yml` (`env.BUN_VERSION`) and the `oven/bun:canary` image tags.
 - TypeScript 7.0.2 only. No TS 5/6 fallback.
-- Next `16.4.2` (stable) with `experimental.useTypeScriptCli: true`.
+- TanStack Start 1.169.4, TanStack Router 1.170.46, TanStack Query 5.104.4, Vite 8.3.5 (`@vitejs/plugin-react` 6.2.1). No Next.js in the repo.
 - React 19.3.1, React DOM 19.3.1.
 - Valibot 1.5.0 (catalog; Standard Schema for all oRPC `.input`/`.output`/error
   `data` schemas). No Zod in first-party code — transitive Zod remains via
@@ -40,10 +42,10 @@
 - Turborepo 2.11.9 (task DAG + local cache; no remote cache).
 - OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.12.0 / 0.223.0) and
   `bullmq-otel` 2.0.1.
-- Sentry Bun 11.8.0 (APIs) + Sentry Next.js 11.8.0 (web); init is a no-op
-  without the DSN. LGPD PII scrubbing lives in `@menuza/shared/sentry-privacy`.
-- TanStack Query 5.104.4 (provider shell; queries used by the coupons screens).
-- Serwist 9.5.13 (`@serwist/next`, `@serwist/turbopack`; SW compiled by esbuild and served at `/serwist/sw.js`).
+- Sentry Bun 11.8.0 (APIs) + `@sentry/react`/`@sentry/node` 11.8.0 (web, no
+  framework integration); init is a no-op without the DSN. LGPD PII scrubbing lives in `@menuza/shared/sentry-privacy`.
+- TanStack Query 5.104.4 (`QueryProvider` in the root route, persisted to IndexedDB; `staleTime: 30_000` only for the product editor/create taxonomy).
+- Serwist 9.5.13 (`serwist` runtime + `@serwist/build` used by the first-party `serwistWorker()` Vite plugin; SW emitted to `dist/client/serwist/sw.js`).
 - esbuild 0.28.2 (Serwist SW bundler).
 - `@tanstack/query-persist-client-core` 5.104.4, `@tanstack/react-query-persist-client` 5.104.4, `idb-keyval` 6.3.0 (offline persister).
 - GitHub Actions: `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel.
@@ -66,7 +68,7 @@
 
 - One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Builds go through `bun run scripts/docker-build.ts <app>`; the context is the pruned monorepo, not the repo root.
 - Bun services (commerce, tenant, worker) ship as `bun build --compile` binaries — no tsdown, no node_modules in the runtime layer (`debian:bookworm-slim` + binary + ca-certificates).
-- Web ships Next `output: "standalone"` and runs `server.js` on Bun (`oven/bun:canary-slim`; every image builds on `oven/bun:canary`).
+- Web ships the Vite `dist/` tree and runs `dist/server/server.js` on Bun (`oven/bun:canary-slim`; every image builds on `oven/bun:canary`).
 - Images are hermetic from env: scripts use `--env-file-if-exists`, so builds work without `.env`; runtime config is env-only. Never bake `.env`.
 - API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
 - CI compiles the binaries in the `build` job. No image pipeline, no deploy.
@@ -82,7 +84,7 @@
 - `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `db:generate` and `typegen`).
 - `bun test` — workspace-policy + unit tests (no infra).
 - `bun run test:integration` — infra-backed checks.
-- `bun run build` — Prisma generate, Next typegen, Next build with type checking.
+- `bun run build` — Prisma generate, app typegen, Vite production build (`vite build`).
 - `bun run lint` / `bun run fmt:check` — oxlint + oxfmt via turbo.
 - `bun run db:generate` (contract emit) / `db:migrate` (migration plan) / `db:deploy` (db migrate) — Prisma 8 lifecycle.
 - `bun run infra:up` / `infra:down` — Postgres + Redis + Jaeger.
@@ -209,7 +211,7 @@ Bias toward caution over speed. For trivial tasks, use judgment.
   `bun build --compile` binary embeds its map and Sentry cannot symbolicate a
   compiled executable; the `--sourcemap` flag stays for Bun-native traces.
 - **TanStack Query**: `QueryProvider` in `apps/web` root layout (persisted via IndexedDB). The coupons screens are the first consumers (`useQuery`/`useMutation` in `coupons-table.tsx` / `coupon-form.tsx`); the offline mutation queue in `apps/web/src/offline` drains it.
-- **Serwist (PWA)**: `next.config.ts` wrapped with `withSerwist`; service worker at `/serwist/sw.js`; manifest at `/manifest.webmanifest`; `SerwistProvider` in root layout. Background Sync drain wired.
+- **Serwist (PWA)**: first-party `serwistWorker()` plugin in `apps/web/vite.config.ts` bundles `src/sw.ts` (Vite lib, iife) and injects the precache manifest with `@serwist/build`; worker at `/serwist/sw.js`; manifest at `/manifest.webmanifest`; `OfflineListener` mounted in the root route. Background Sync drain wired.
 - **Web Push**: VAPID, implemented end to end — sender and dispatcher in `apps/worker` (`src/push-sender.ts`, `src/push-dispatcher.ts`), subscription/preference routes in the `@menuza/api-tenant` push subdomain, contract in `@menuza/shared/push`. `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` are declared in `.env.example`; leaving any empty disables push.
 - **GitHub Actions**: `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel. No image pipeline, no deploy.
 

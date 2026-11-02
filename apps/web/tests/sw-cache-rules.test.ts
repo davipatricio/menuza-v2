@@ -39,9 +39,7 @@ function createReq(
 describe("sw-cache-rules", () => {
   describe("isStaticAssetRequest", () => {
     test("matches Next static assets and favicon", () => {
-      expect(
-        isStaticAssetRequest(createReq("https://app.menuza.com/_next/static/chunks/main.js")),
-      ).toBe(true);
+      expect(isStaticAssetRequest(createReq("https://app.menuza.com/assets/main.js"))).toBe(true);
       expect(isStaticAssetRequest(createReq("https://app.menuza.com/favicon.ico"))).toBe(true);
       expect(isStaticAssetRequest(createReq("https://app.menuza.com/manifest.webmanifest"))).toBe(
         true,
@@ -52,16 +50,18 @@ describe("sw-cache-rules", () => {
     test("ignores non-GET", () => {
       expect(
         isStaticAssetRequest(
-          createReq("https://app.menuza.com/_next/static/test.js", { method: "POST" }),
+          createReq("https://app.menuza.com/assets/test.js", { method: "POST" }),
         ),
       ).toBe(false);
     });
   });
 
   describe("isPublicImageRequest", () => {
-    test("matches same-origin image formats and /_next/image", () => {
+    test("matches same-origin image formats", () => {
       expect(
-        isPublicImageRequest(createReq("https://app.menuza.com/_next/image?url=%2Flogo.png")),
+        isPublicImageRequest(
+          createReq("https://app.menuza.com/products/logo.png", { destination: "image" }),
+        ),
       ).toBe(true);
       expect(isPublicImageRequest(createReq("https://app.menuza.com/banner.webp"))).toBe(true);
       expect(

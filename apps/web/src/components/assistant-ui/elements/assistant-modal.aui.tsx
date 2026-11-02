@@ -1,5 +1,3 @@
-"use client";
-
 import { BotIcon, ChevronDownIcon, HistoryIcon, PlusIcon, XIcon } from "lucide-react";
 
 import {

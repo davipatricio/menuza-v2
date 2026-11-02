@@ -1,5 +1,6 @@
-# Web (Next.js) image. Built via scripts/docker-build.ts (turbo prune --docker).
-# Next standalone output runs on Bun. Type checking stays enabled.
+# Web (TanStack Start on Vite) image. Built via scripts/docker-build.ts
+# (turbo prune --docker). The Vite build emits dist/client (assets + service
+# worker) and dist/server/server.js, which Bun serves as the Start handler.
 # Bun canary channel: there is no immutable 1.4.4 build; canary is the only resolvable pin.
 FROM docker.io/oven/bun:canary AS build
 WORKDIR /app
@@ -17,10 +18,11 @@ FROM docker.io/oven/bun:canary-slim
 WORKDIR /app
 USER bun
 ENV NODE_ENV=production \
-  HOSTNAME=0.0.0.0 \
+  HOST=0.0.0.0 \
   PORT=3000
-COPY --from=build /app/apps/web/.next/standalone ./
-COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/web/package.json ./apps/web/package.json
+COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/apps/web/public ./apps/web/public
 EXPOSE 3000
-CMD ["bun", "apps/web/server.js"]
+CMD ["bun", "apps/web/dist/server/server.js"]

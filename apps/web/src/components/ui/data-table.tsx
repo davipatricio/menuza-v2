@@ -1,8 +1,6 @@
-"use client";
-
 /* eslint-disable react/incompatible-library */
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import {
   type ColumnDef,
   type ColumnFilter,
@@ -348,7 +346,7 @@ export function DataTable<TData extends object>({
   onRowClick,
   pageSize = 8,
 }: DataTableProps<TData>) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [columnFilters, setColumnFilters] = React.useState<ColumnFilter[]>([]);
@@ -480,7 +478,7 @@ export function DataTable<TData extends object>({
                 const handleClick = href
                   ? (event: React.MouseEvent) => {
                       if (shouldNavigateFromRowClick(event, href)) {
-                        router.push(href);
+                        navigate({ href, resetScroll: false });
                       }
                     }
                   : onRowClick

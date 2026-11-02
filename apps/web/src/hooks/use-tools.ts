@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useToolRegistry } from "@/lib/tools/registry.ts";
 import type { ToolDefinition, ToolInput, ToolResult } from "@/lib/tools/registry.ts";

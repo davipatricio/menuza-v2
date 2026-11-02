@@ -1,5 +1,3 @@
-"use client";
-
 import { type PropsWithChildren, useState, type FC, isValidElement } from "react";
 import { XIcon, PlusIcon, FileText, Loader2Icon, AlertCircleIcon } from "lucide-react";
 import {

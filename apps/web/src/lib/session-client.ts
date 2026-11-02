@@ -1,11 +1,11 @@
 /**
  * Browser-side staff session client.
  *
- * Same-origin calls to `/tenant/rpc` (rewritten to the loopback tenant API by
- * `next.config.ts`). `session.login`/`session.register` respond with a
- * `menuza_tenant_sid` `Set-Cookie`, which the browser applies to this origin, so
- * the dashboard's server components pick the session up on the next request.
- * Client only.
+ * Same-origin calls to `/tenant/rpc` (proxied to the loopback tenant API by the
+ * Vite dev server and the built app's server). `session.login`/`session.register`
+ * respond with a `menuza_tenant_sid` `Set-Cookie`, which the browser applies to
+ * this origin, so the dashboard's route loaders pick the session up on the next
+ * request. Client only.
  */
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";

@@ -1,5 +1,3 @@
-"use client";
-
 import { type KeyboardEvent, type PointerEvent, type RefObject, useRef, useState } from "react";
 
 export type ModalView = "thread" | "list";

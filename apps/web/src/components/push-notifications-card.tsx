@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
 import { PUSH_EVENTS, type PushEvent } from "@menuza/shared/push";
 import { Button } from "@/components/ui/button.tsx";

@@ -66,6 +66,7 @@ const problems: string[] = [];
 // Explicit canonical workspace allowlist: blocks accidental or speculative packages
 const ALLOWED_WORKSPACES = new Set([
   "apps/web",
+  "apps/web",
   "apps/commerce",
   "apps/tenant",
   "apps/worker",
