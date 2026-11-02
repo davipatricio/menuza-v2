@@ -16,6 +16,7 @@ import { AppSidebar } from "./app-sidebar.tsx";
 import { CrumbLabelsProvider } from "./crumb-labels.tsx";
 import { GlobalSearch } from "./global-search.tsx";
 import { HeaderActions } from "./header-actions.tsx";
+import { SessionHeartbeat } from "./session-heartbeat.tsx";
 import { StoreBreadcrumb } from "./store-breadcrumb.tsx";
 
 export function StoreShell({
@@ -55,6 +56,7 @@ export function StoreShell({
           </header>
           <div className="flex min-w-0 flex-1 flex-col gap-6 p-4 md:p-8">{children}</div>
         </SidebarInset>
+        <SessionHeartbeat />
         <KomiAssistant />
       </SidebarProvider>
     </CrumbLabelsProvider>

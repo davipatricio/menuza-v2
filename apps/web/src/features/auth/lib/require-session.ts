@@ -7,16 +7,27 @@
  */
 import { redirect } from "@tanstack/react-router";
 import type { PanelSession } from "@/features/auth/server/session-client.ts";
-import { getSessionFn } from "@/features/shell/server/store.functions.ts";
+import { getSessionStateFn } from "@/features/shell/server/store.functions.ts";
 
 /**
  * The current session, or a redirect to login carrying `href` (the current
  * `location.href`) as its `returnTo` search param.
  */
 export async function requireSession(href: string): Promise<PanelSession> {
-  const session = await getSessionFn().catch(() => null);
+  let state = await getSessionStateFn();
 
-  if (!session) throw redirect({ to: "/dashboard/login", search: { returnTo: href } });
+  // One retry absorbs a restarting tenant API before we treat it as an outage.
+  if (state.status === "unavailable") {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    state = await getSessionStateFn();
+  }
 
-  return session;
+  if (state.status === "ok") return state.session;
+
+  if (state.status === "unauthenticated") {
+    throw redirect({ to: "/dashboard/login", search: { returnTo: href } });
+  }
+
+  // The API could not answer: surface a retryable error instead of signing out.
+  throw new Error("Não foi possível verificar sua sessão. Tente novamente.");
 }

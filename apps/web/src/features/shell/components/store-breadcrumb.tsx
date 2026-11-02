@@ -1,17 +1,18 @@
 /**
- * The dashboard breadcrumb: one crumb per path segment under `/dashboard`.
+ * The dashboard breadcrumb: `Dashboard > <section> > <detail>`.
  *
- * The slug segment renders the store's display name instead of the URL slug;
- * deeper segments use the pt-BR map in `crumb-labels.ts` and anything that looks
- * like an id collapses to `…` so a UUID never reaches the header.
+ * The store is the context of every page here, so its slug is not repeated as a
+ * crumb (it only appears as the current page on the store overview). Route
+ * groups such as `catalog` are implementation detail and are skipped, and a
+ * detail page publishes the row's name for its id segment so a UUID never
+ * reaches the header.
  */
 import { Fragment } from "react";
-import { Link, useLocation } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 import { LayoutDashboard } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -21,6 +22,9 @@ import { crumbLabel, useCrumbLabels } from "./crumb-labels.tsx";
 
 const UUID_LIKE =
   /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{24,})$/i;
+
+/** Route groups that structure the file tree but add nothing for the reader. */
+const GROUP_SEGMENTS = new Set(["catalog"]);
 
 function segmentLabel(segment: string, labels: Record<string, string>): string {
   // A detail page publishes the row's name for its id segment, so the crumb
@@ -33,7 +37,7 @@ export function StoreBreadcrumb({ store }: { store: PanelStore }) {
   const labels = useCrumbLabels();
   const segments = pathname.split("/").filter(Boolean);
   // `segments[0]` is always "dashboard" (this component only renders under it).
-  const trailing = segments.slice(2);
+  const trailing = segments.slice(2).filter((segment) => !GROUP_SEGMENTS.has(segment));
 
   return (
     <Breadcrumb className="min-w-0">
@@ -50,37 +54,22 @@ export function StoreBreadcrumb({ store }: { store: PanelStore }) {
             <BreadcrumbPage className="truncate">{store.tenantName}</BreadcrumbPage>
           </BreadcrumbItem>
         ) : (
-          <>
-            <BreadcrumbItem>
-              <BreadcrumbLink
-                render={
-                  <Link
-                    to="/dashboard/$storeSlug"
-                    params={{ storeSlug: store.tenantSlug }}
-                    aria-label={store.tenantName}
-                  />
-                }
-              >
-                {store.tenantName}
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            {trailing.map((segment, index) => (
-              <Fragment key={`${segment}-${index}`}>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  {index === trailing.length - 1 ? (
-                    <BreadcrumbPage className="truncate">
-                      {segmentLabel(segment, labels)}
-                    </BreadcrumbPage>
-                  ) : (
-                    <span className="truncate text-muted-foreground">
-                      {segmentLabel(segment, labels)}
-                    </span>
-                  )}
-                </BreadcrumbItem>
-              </Fragment>
-            ))}
-          </>
+          trailing.map((segment, index) => (
+            <Fragment key={`${segment}-${index}`}>
+              {index > 0 ? <BreadcrumbSeparator /> : null}
+              <BreadcrumbItem>
+                {index === trailing.length - 1 ? (
+                  <BreadcrumbPage className="truncate">
+                    {segmentLabel(segment, labels)}
+                  </BreadcrumbPage>
+                ) : (
+                  <span className="truncate text-muted-foreground">
+                    {segmentLabel(segment, labels)}
+                  </span>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          ))
         )}
       </BreadcrumbList>
     </Breadcrumb>

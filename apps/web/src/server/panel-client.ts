@@ -7,10 +7,11 @@
  * requests.
  */
 import { getRequest } from "@tanstack/react-start/server";
-import { createORPCClient } from "@orpc/client";
+import { createORPCClient, ORPCError } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterContractClient } from "@orpc/contract";
 import type { tenantContractObject } from "@menuza/shared/tenant";
+import * as v from "valibot";
 
 const TENANT_SESSION_COOKIE = "menuza_tenant_sid";
 
@@ -57,18 +58,53 @@ export async function panelClient(): Promise<TenantClient | null> {
 }
 
 /**
+ * What the frontend may conclude from a session read.
+ *
+ * `unavailable` is deliberately not `unauthenticated`: a restarting or
+ * unreachable tenant API must not sign the user out, so callers redirect only
+ * on a definitive `unauthenticated` answer.
+ */
+export type PanelSessionState =
+  | { status: "ok"; session: PanelSession }
+  | { status: "unauthenticated" }
+  | { status: "unavailable" };
+
+/** The only HTTP statuses that prove the session itself was refused. */
+const DeniedStatusSchema = v.object({ status: v.picklist([401, 403]) });
+
+/** A rejected call that proves the session is gone (and not that the API is down). */
+function isUnauthenticated(error: Error): boolean {
+  if (error instanceof ORPCError) {
+    return error.code === "UNAUTHORIZED" || error.code === "FORBIDDEN";
+  }
+
+  return v.is(DeniedStatusSchema, error);
+}
+
+/**
+ * Reads the session for the current request and says which of the three states
+ * it is in: signed in, signed out, or the API could not be asked.
+ */
+export async function readPanelSession(): Promise<PanelSessionState> {
+  const client = await panelClient();
+
+  if (!client) return { status: "unauthenticated" };
+
+  try {
+    return { status: "ok", session: await client.session.current() };
+  } catch (cause) {
+    const error = cause instanceof Error ? cause : new Error("Falha ao ler a sessão.");
+
+    return isUnauthenticated(error) ? { status: "unauthenticated" } : { status: "unavailable" };
+  }
+}
+
+/**
  * Returns the authenticated panel session for the current request, or `null`
  * when there is no usable `menuza_tenant_sid` cookie.
  */
 export async function getPanelSession(): Promise<PanelSession | null> {
-  const client = await panelClient();
+  const state = await readPanelSession();
 
-  if (!client) return null;
-
-  try {
-    return await client.session.current();
-  } catch {
-    // Expired, revoked or unknown cookie: treat as signed out.
-    return null;
-  }
+  return state.status === "ok" ? state.session : null;
 }

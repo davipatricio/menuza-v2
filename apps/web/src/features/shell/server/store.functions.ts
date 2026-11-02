@@ -6,7 +6,13 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { GetStoreInputSchema } from "@menuza/shared/tenant";
-import { getPanelSession, panelClient, type PanelSession } from "@/server/panel-client.ts";
+import {
+  getPanelSession,
+  panelClient,
+  readPanelSession,
+  type PanelSession,
+  type PanelSessionState,
+} from "@/server/panel-client.ts";
 
 /**
  * The store a slug resolves to, or `null` when the caller may not open it.
@@ -33,6 +39,21 @@ export const getStoreFn = createServerFn({ method: "GET" })
 export const getSessionFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<PanelSession | null> => getPanelSession(),
 );
+
+/**
+ * The session read with its failure mode preserved: the guards redirect only on
+ * `unauthenticated`, so a tenant API hiccup cannot sign someone out.
+ */
+export const getSessionStateFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PanelSessionState> => readPanelSession(),
+);
+
+/** Keeps the server-side idle window open while a signed-in tab is in use. */
+export const touchSessionFn = createServerFn({ method: "POST" }).handler(async () => {
+  const state = await readPanelSession();
+
+  return state.status;
+});
 
 /** The store payload the shell renders, with `null` already ruled out. */
 export type PanelStore = NonNullable<Awaited<ReturnType<typeof getStoreFn>>>;
