@@ -16,11 +16,17 @@ out/
 dist/
 .serwist/
 
-# Husky generated hooks
+# Husky generated hooks and local-only hook scripts
 .husky/_/
+.husky/post-commit
+.husky/post-merge
 
-# Prisma generated client
-packages/db/prisma/generated/
+# CodeGraph index (binary, rebuilt by the MCP server)
+.codegraph/
+
+# Scratch plan boards for other tasks
+.opencode/plan/headroom-9router-opencode2.md
+.opencode/plan/remove-headroom-slim-agents.md
 
 # shadcn registry cache
 apps/web/.shadcn-cache/
