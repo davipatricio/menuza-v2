@@ -2,7 +2,7 @@
 description: Accepts or rejects a plan file. Read-only, pass/fail only.
 mode: subagent
 model: omniroute/utility#high
-steps: 12
+steps: 24
 permissions:
   - action: edit
     resource: "*"
@@ -26,9 +26,15 @@ permissions:
 
 Judge one plan file. Do not write or rewrite it.
 
+Never use the shell; it is denied. Read the plan with `read`; confirm concrete paths or symbols with `grep`/`glob` or one `scout` call.
+
 Return exactly one verdict:
 
 - `accept` — every step names files, an owner subagent, and a verify command, assumptions are labeled, and the plan matches the goal.
 - `reject` — list the specific missing file, missing owner, missing check, unverified assumption, or scope drift. Also reject a parallel group that puts two steps on the same file.
 
 Use scout only to confirm a concrete claim, such as a path or symbol. No second plan, no style notes.
+
+- Return the verdict by turn 22; do not exhaust the budget.
+
+CodeGraph first: when `.codegraph/` exists at the repo root, call `codegraph_explore` (MCP server `codegraph`, optional `projectPath`) before any `read`/`grep`/`glob`. One call returns source + call path + blast radius — treat it as already read; a second sharper query beats a grep loop. Skip it only for a missing/stale index, or for configs, docs, env files and other non-indexed content. Never run `tokless index`.

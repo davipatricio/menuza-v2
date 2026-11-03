@@ -1,0 +1,21 @@
+default_job = "check"
+
+[jobs.check]
+command = ["cargo", "check", "--workspace"]
+need_stdout = false
+
+[jobs.test]
+command = ["cargo", "test", "--workspace"]
+need_stdout = false
+
+[jobs.commerce]
+command = ["cargo", "run", "-p", "api-commerce"]
+need_stdout = true
+
+[jobs.tenant]
+command = ["cargo", "run", "-p", "api-tenant"]
+need_stdout = true
+
+[jobs.worker]
+command = ["cargo", "run", "-p", "worker"]
+need_stdout = true
