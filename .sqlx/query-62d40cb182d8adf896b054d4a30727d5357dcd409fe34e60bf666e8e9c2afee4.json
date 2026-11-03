@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE public.\"Variation\"\n            SET \"stockQty\" = $3\n            WHERE \"tenantId\" = $1 AND id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Int4"]
+    },
+    "nullable": []
+  },
+  "hash": "62d40cb182d8adf896b054d4a30727d5357dcd409fe34e60bf666e8e9c2afee4"
+}

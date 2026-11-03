@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE public.\"Order\"\n                SET \"financialStatus\" = $3, \"updatedAt\" = $4\n                WHERE \"tenantId\" = $1 AND id = $2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "23e0ff328a24927e6c81d071a6d532f1b31d892545cb771d5b02b791d77a189e"
+}

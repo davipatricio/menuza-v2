@@ -19,7 +19,8 @@ Shared presentational pieces. Product-domain components stay in
 
 ## Invariants
 
-- Components here never import `@/server/**` or `@menuza/db`.
+- Components here never import `@/server/**` or the generated `@/lib/api/**`
+  clients; every read and write goes through a `createServerFn`.
 - Overlays always render a `Title`; icons are `aria-hidden` next to a label.
 - Use semantic tokens (`bg-background`, `text-muted-foreground`), never raw
   palette classes.

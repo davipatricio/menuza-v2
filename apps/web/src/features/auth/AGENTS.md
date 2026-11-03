@@ -14,7 +14,7 @@ authorization helpers.
 
 ## Invariants
 
-- Login and signup call same-origin `/tenant/rpc` through
+- Login and signup call the same-origin `/tenant/session/*` REST routes through
   `src/lib/session-client.ts`; the session cookie is httpOnly and set by the API.
 - After login, `void router.invalidate()` and navigate to the sanitised
   `returnTo` (never an absolute URL off-site).
@@ -24,7 +24,7 @@ authorization helpers.
 
 ## Forbidden
 
-Next.js imports, `@menuza/db`, `@prisma/*`, `@menuza/orpc-server`.
+Next.js imports, direct calls to the Rust APIs (`@/lib/api/**`).
 
 ## Verify
 

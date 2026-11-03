@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id\n        FROM public.\"Product\"\n        WHERE \"tenantId\" = $1 AND available = true AND archived = false\n          AND hidden = false AND \"private\" = false\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Product\"",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [false]
+  },
+  "hash": "3acb177456da1b94ae0df525e9531809458f6e17b7135fd8db771515957c7548"
+}

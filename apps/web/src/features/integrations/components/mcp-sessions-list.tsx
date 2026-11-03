@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useRouter } from "@tanstack/react-router";
-import { tenantContractObject, type PanelMcpSession } from "@menuza/shared/tenant";
+import type { PanelMcpSession } from "@menuza/shared/tenant";
 import { Button } from "@/components/ui/button.tsx";
 import { formatDateTime } from "@/lib/format.ts";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client(): ContractClient {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
+import { revokeMcpSessionFn } from "../server/integrations.functions.ts";
 
 /**
  * The connected clients. Several members — and one member on several machines —
@@ -36,7 +28,9 @@ export function McpSessionsList({
     setError(null);
 
     try {
-      await client().panel.revokeMcpSession({ storeSlug, sessionId: session.id });
+      const result = await revokeMcpSessionFn({ data: { storeSlug, sessionId: session.id } });
+
+      if (result.status !== "ok") throw new Error(result.status);
 
       await router.invalidate();
     } catch {

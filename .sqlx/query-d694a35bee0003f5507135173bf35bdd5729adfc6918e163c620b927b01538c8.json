@@ -1,0 +1,57 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"usageCount\" AS usage_count, \"usageLimit\" AS usage_limit,\n                   \"perCustomerLimit\" AS per_customer_limit,\n                   \"firstPurchaseOnly\" AS first_purchase_only\n            FROM public.\"Coupon\"\n            WHERE \"tenantId\" = $1 AND id = $2 AND \"deletedAt\" IS NULL\n            FOR UPDATE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "usage_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "usageCount"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "usage_limit",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "usageLimit"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "per_customer_limit",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "perCustomerLimit"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "first_purchase_only",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "firstPurchaseOnly"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, true, true, false]
+  },
+  "hash": "d694a35bee0003f5507135173bf35bdd5729adfc6918e163c620b927b01538c8"
+}

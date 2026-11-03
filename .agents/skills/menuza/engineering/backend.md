@@ -5,59 +5,63 @@ How a request actually flows and where each backend concern lives. Workspace lay
 ## Topology
 
 ```
-browser ──same-origin──► apps/web (Next)
-                            │  src/proxy.ts          host → mode; storefront host → tenantId
-                            │  next.config.ts         internal rewrite
+browser ──same-origin──► apps/web (TanStack Start, :3003)
+                            │  src/server.ts           host → mode; storefront host → tenantId
+                            │  src/server/proxy-upstream.ts
                             ▼
-             /commerce/rpc|/openapi ──► apps/commerce ──► packages/api-commerce ─┐
-             /tenant/rpc|/openapi   ──► apps/tenant   ──► packages/api-tenant   ─┼─► packages/db ─► Postgres
-                                                                                 │
-             apps/worker ◄── BullMQ (Redis) ── jobs: Pix expiry, retries, fan-out, exports
+             /commerce/* ──► crates/api-commerce (:3001) ─┐
+             /tenant/*   ──► crates/api-tenant   (:3002) ─┼─► crates/persistence ─► Postgres
+             /oauth/*, /.well-known/*, /mcp ──► api-tenant│
+                                                           │
+             crates/worker ◄── River (same Postgres) ──────┘
 ```
 
-- The two API apps are **loopback-bound in dev** and reachable in production **only via internal rewrite from `apps/web`**. They never trust client-supplied `tenantId` / `Host` / forwarded headers.
-- `apps/orpc-server` is a library (no listening process); the router implementations live in `packages/api-commerce` / `packages/api-tenant`.
+- One Cargo workspace, six crates (ADR-0007): `contract` (DTOs, `utoipa` schemas, error catalog), `domain` (argon2, sessions, cents), `persistence` (every SQL string), `menuza-http` in `crates/http` (the tower stack and the extractors), the two binaries, `worker` (ADR-0008) and `openapi` (schema emit).
+- The two APIs are **loopback-bound in dev** and reachable in production **only via the web app's proxy**. They never trust a client-supplied tenant id or `Host`.
+- `/rpc` is retired per service. The wire is REST paths under `/commerce` and `/tenant`, typed from the committed OpenAPI documents.
 
 ## Request path
 
-1. `Bun.serve` (`apps/commerce` / `apps/tenant`) boots the process; `initSentry({ service })` + `initOtel({ service })` run at startup, `registerShutdown` flushes on exit.
-2. The same router is mounted twice: `/rpc` (RPC protocol) and `/openapi` (REST/OpenAPI, always `no-store`), both built by `@menuza/orpc-server`.
-3. `buildRequestFetch` gives every request the request-id echo, an OTel span that **continues an inbound `traceparent`**, structured logs, and the 4xx/5xx Sentry split (`isFourXxCode`). `RequestHeadersHandlerPlugin`/`ResponseHeadersHandlerPlugin` expose `context.reqHeaders`/`resHeaders` — `session.login`/`session.logout` set/clear the `menuza_tenant_sid` cookie through them.
-4. Middlewares (`@menuza/orpc-server/*`): `tenantMiddleware` wraps execution in `@menuza/db/scope`; `authMiddleware` resolves the member/session; `internalTokenMiddleware` gates service-to-service procedures by the `INTERNAL_API_SECRET` shared token (always sent as `x-menuza-internal-token`, reads env at call time, **fails closed when unset**).
-5. The procedure validates input/output with Valibot, then queries through `@menuza/db`.
-6. `/livez` (200 on boot) and `/readyz` (200 when the DB answers `SELECT 1`, else 503) are the probes.
+1. `apps/web/src/server.ts` resolves the request host to a mode and, for a storefront host, to a tenant (via the tenant API's internal resolution). It drops the client's `x-menuza-tenant-id`, `x-menuza-mode` and `x-menuza-host` and writes its own.
+2. `proxy-upstream.ts` forwards `/commerce/*` → commerce and `/tenant/*` → tenant with the mount prefix stripped; `/oauth/token`, `/oauth/revoke`, `/.well-known/oauth-authorization-server` and `/mcp` pass through to tenant under the same path. Every other path is left to the app; the proxy is not an open relay.
+3. `crates/http` layers run outside-in: request id → catch panic → 30 s timeout → 1 MiB body limit → compression → trace → access log. One chain, mounted by both binaries.
+4. Extractors prove the caller: `SessionToken`/`CommerceSession` turn a cookie into its SHA-256 digest, `TenantScope` accepts `x-menuza-tenant-id` only from a trusted hop, `InternalToken` compares `x-menuza-internal-token` against `INTERNAL_API_SECRET` in constant time.
+5. The handler reads a `contract` DTO, runs the capability check next to the query it protects, and calls `persistence`. Handlers never see a `PgRow`; a tenant-scoped function takes `&TenantId` as its first parameter.
+6. The response is the `contract` DTO serialized by axum; a failure is an `ApiErrorBody` from the closed code catalog. `/livez` and `/readyz` are the probes.
 
-## Two APIs, one contract-first split
+## Two APIs, one contract
 
-- **commerce** = buyer-facing store (`packages/api-commerce`, contracts `@menuza/shared/commerce`).
-- **tenant** = management/panel/admin (`packages/api-tenant`, contracts `@menuza/shared/tenant`).
-- Shapes are defined in the contract first; implementations consume them (ADR-0002). Every leaf procedure carries `.meta(openapi({ method, path, ... }))` on the contract.
-- The OpenAPI documents are **committed** at `apps/orpc-server/openapi/{commerce,tenant}.json` and regenerated by `bun run openapi:generate`; `test/openapi.test.ts` fails on drift. A route change without regeneration is a review error.
-- Error codes are a global catalog: spread the **raw** `sharedErrorCodes` object into a contract (`oc.errors({ ...sharedErrorCodes, ...local })`) — never spread an oRPC builder.
+- **commerce** = buyer storefront plus orders, wallet and payments (`crates/api-commerce`).
+- **tenant** = panel, sessions, accounts, profiles, push, internal host resolution, OAuth2 and MCP (`crates/api-tenant`).
+- Shapes are Rust DTOs in `crates/contract`, deriving `utoipa::ToSchema`; `cargo run -p openapi` writes `crates/openapi/{commerce,tenant}.json` and `--check` fails on drift (CI runs it).
+- orval generates the web client from those two files (`apps/web`, `bun run api:generate`): `operation_id` is the client function name, so renaming one breaks every caller.
+- Error codes are one closed catalog in `crates/contract`; a new code is added there, never minted at a call site.
+- OAuth2, `/mcp` and `/webhooks/*` are protocol surfaces: mounted by `router()` and deliberately absent from `openapi()`.
 
 ## Auth, sessions, tenancy (the load-bearing part)
 
-- Passwords: **argon2id**. Sessions are server-side; `Session.id` is the **SHA-256 digest of the bearer token** — a digest echoed by a client is already the storage key and is never hashed twice. `changePassword` revokes every other session.
-- Dashboard staff auth: `menuza_tenant_sid` cookie over `session.*` + `account.*` + `panel.*` + `profile.*`. Management routes are deny-by-default — only the health probe and VAPID public key are anonymous.
-- `panel.*` takes `storeSlug` (never a tenant header); unknown slug and non-member are both `NOT_FOUND`. `account.*` is **member-level** (spans stores) and must never grow a `storeSlug`.
-- Tenant scoping is `withTenant`/`unscoped` (AsyncLocalStorage) from `@menuza/db/scope`. The Prisma `tenantIsolationMiddleware()` is **fail-closed**: a tenant-scoped model queried/mutated without `tenantId` throws `TenantIsolationError`. Scope is the **second line of defence** — every query still carries an explicit `where.tenantId`.
-- The only intentionally global lookup is storefront `host → tenant` (`internal.resolveHost`, token-gated, `unscoped()`); `apps/web` never reads `Domain` directly (ADR-0005).
-- Data details (`packages/db`): `Int` cents (ADR-0006), `Timestamp(3)` ⇄ `Temporal.PlainDateTime`, enum-ish columns are `text` + CHECK over ASCII slugs with pt-BR labels in the UI only, `TENANT_SCOPED_MODELS` is derived from the contract (not hand-listed).
-- Panel writes are **partial**: `updateProduct`/`saveSeo` treat an omitted key as untouched and `null` as clear/inherit (create stays fully required). Prisma 8 RC.17 drops non-unique predicates from `update`/`delete` (`where({ tenantId, id })` compiles to `WHERE id = …`), which the isolation guard rejects; tenant-scoped writes by id use `updateAll`/`deleteAll` (or `updateAndCount` when only the count matters).
+- Passwords: **argon2id** in `crates/domain`. Sessions are server-side; the row key is the **SHA-256 digest of the bearer token**, so a digest echoed by a client is already the storage key and is never hashed twice.
+- Dashboard staff auth uses `menuza_tenant_sid`; commerce buyers use `menuza_commerce_sid`. Management routes are deny-by-default.
+- `panel.*` takes `storeSlug`, never a tenant header; unknown slug and non-member are both `NOT_FOUND`. The account surface is **member-level** (spans stores) and must never grow a `storeSlug`.
+- Tenant scope is app-layer: every tenant-scoped query binds `tenant_id`, and `Scope::unscoped(reason)` is the only cross-tenant path (host resolution, worker scans). RLS is not enabled in this cut (ADR-0001).
+- Capability checks run in the handler, next to the query they protect, against the store's plan. The router stays a routing table; a path-based policy middleware is rejected in review.
+- The only intentionally global lookup is storefront `host → tenant` (token-gated, unscoped); `apps/web` never reads the database (ADR-0005).
 
-## Worker, Redis and async work
+## Worker and async work
 
-- One BullMQ worker process (`apps/worker`); Redis via Bun's built-in `RedisClient` (`createBunRedisClient`), `REDIS_URL` default `redis://127.0.0.1:6379`.
-- **Jobs must be idempotent** — a retry never duplicates a side effect (Pix expiry, retries, notification fan-out, exports).
-- Redis keys are namespaced: tenant data under `tenant:<tenantId>:*`, operational keys under `ops:*`; cross-app invalidation is explicit and audited. No business handlers exist yet (only a disposable `smoke` queue).
+- `crates/worker` is a **River** consumer over the same Postgres: no Redis client, no listening port, no HTTP (ADR-0008).
+- Three queues, one module each: `orders_expiry`, `payment_events`, `push_dispatch`. Queue names live in `queue.rs`, never inline in a handler.
+- **Jobs must be idempotent** — a retry never duplicates a side effect (Pix expiry, payment application, notification fan-out). Uniqueness is River's `by_args` over `tenant_id` plus the identifying field, not a caller-supplied job id.
+- A job is enqueued in the same transaction as the business write; the worker never writes SQL itself, it calls `persistence`.
 
 ## Observability
 
-- **OpenTelemetry** traces: `initOtel`/`shutdownOtel` in `apps/orpc-server/otel.ts`; `buildRpcFetch` continues inbound traces; `packages/db` emits one CLIENT span per query (statement truncated, bound params never recorded); BullMQ carries `BullMQOtel`. **No-op unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set.**
-- **Sentry**: `initSentry({ service })` per service; 4xx codes are classified out of Sentry. **No-op without `SENTRY_DSN`.** LGPD scrubbing is shared from `@menuza/shared/sentry-privacy`; the web Sentry tunnel is intentionally off.
-- **Pino** structured logs; business audit is a dedicated table, not only logs (`features/stores-and-teams/audit.md`).
+- `tracing` + `tracing-subscriber`: one span per request carrying method, path and status; JSON logs in production, `DEBUG` access log in development. Logs never carry a cookie, an `authorization` header or the database URL.
+- `/docs` is Scalar over the generated document and is mounted only when `MENUZA_ENV=development`; production serves no spec route.
+- Sentry is web-only (`@sentry/react`/`@sentry/node`); the Rust binaries do not report to it.
+- Business audit is a dedicated table, not only logs (`features/stores-and-teams/audit.md`).
 
 ## Checks
 
-- `bun run typecheck`, `bun test` (workspace-policy + unit), `bun run lint`, `bun run fmt:check`, `bun run build` — see `checks.md`.
-- The openapi drift test and the workspace-policy test are part of `bun test`; a backend change that moves a route or a package must update the committed OpenAPI doc and the workspace allowlist.
+- `cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo run -p openapi -- --check`, plus the Bun side — see `checks.md`.
+- A matter of SQL means `cargo sqlx prepare --workspace` in the same change; CI builds from the committed `.sqlx` cache with `SQLX_OFFLINE=true`.

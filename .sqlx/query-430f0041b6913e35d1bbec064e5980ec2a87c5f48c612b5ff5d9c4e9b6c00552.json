@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT badge.id AS id, badge.name AS name, badge.\"imageUrl\" AS image_url\n        FROM public.\"ProductBadge\" AS product_badge\n        JOIN public.\"Badge\" AS badge\n          ON badge.id = product_badge.\"badgeId\" AND badge.\"tenantId\" = product_badge.\"tenantId\"\n        WHERE product_badge.\"tenantId\" = $1 AND product_badge.\"productId\" = $2\n          AND badge.\"isActive\" = true\n        ORDER BY badge.\"sortOrder\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Badge\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Badge\"",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "image_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Badge\"",
+            "name": "imageUrl"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false, false]
+  },
+  "hash": "430f0041b6913e35d1bbec064e5980ec2a87c5f48c612b5ff5d9c4e9b6c00552"
+}

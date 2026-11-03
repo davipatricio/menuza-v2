@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, type AS event_type, \"fromValue\" AS from_value,\n               \"toValue\" AS to_value, reason, \"createdAt\" AS created_at\n        FROM public.\"OrderEvent\"\n        WHERE \"tenantId\" = $1 AND \"orderId\" = $2\n        ORDER BY \"createdAt\" ASC, id ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "event_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "from_value",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "fromValue"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "to_value",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "toValue"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "createdAt"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false, true, true, true, false]
+  },
+  "hash": "5d8503dac17f20822177b173c9703168c531867ff0d183a68e64a66d1d4a4fa1"
+}

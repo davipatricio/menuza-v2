@@ -1,0 +1,11 @@
+[package]
+name = "openapi"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+api-commerce = { path = "../api-commerce" }
+api-tenant = { path = "../api-tenant" }
+serde_json.workspace = true

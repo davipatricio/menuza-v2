@@ -6,9 +6,9 @@ helpers. Parent doc: `../../AGENTS.md`.
 Nothing here may be imported by a route file, a component or a loader. Routes
 render in the browser as well, so their module graph is shipped to the client and
 evaluated there; `.oxlintrc.json` enforces the boundary with
-`no-restricted-imports` on `apps/web/src/routes/**` and on every file
-under `apps/web/src/**` for `@menuza/db`, `@menuza/orpc-server` and
-`@prisma/*`.
+`no-restricted-imports` on `apps/web/src/routes/**` for `@/server/*`. The
+generated clients in `src/lib/api/**` are called from here and from
+`*.functions.ts`, never from a route or a component.
 
 ## What lives here
 

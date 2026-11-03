@@ -3,10 +3,6 @@ import { useMemo, useState, useTransition } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 
 import { Search, X } from "lucide-react";
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryStates } from "nuqs";
 
@@ -20,16 +16,11 @@ import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import { TaxonomyRowActions } from "@/features/catalog/components/taxonomy-dialog.tsx";
 import { tagSearchParams } from "@/features/catalog/schemas/tags-search.ts";
+import { updateTagFn } from "../server/taxonomy-mutations.functions.ts";
 
 type TagRow = { id: string; name: string; itemsCount: number; isActive: boolean };
 
 type StatusFilter = "all" | "active" | "inactive";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 function matchesStatus(status: StatusFilter, isActive: boolean) {
   if (status === "active") return isActive;
@@ -94,22 +85,25 @@ export function TagsTable({ tags, storeSlug }: { tags: TagRow[]; storeSlug: stri
 
   const activeMutation = useMutation({
     mutationFn: ({ tagId, name, isActive }: { tagId: string; name: string; isActive: boolean }) =>
-      client().panel.updateTag({ storeSlug, tagId, name, isActive }),
+      updateTagFn({ data: { storeSlug, tagId, name, isActive } }),
     onMutate: ({ tagId, isActive }) => {
       setActiveOverrides((current) => ({ ...current, [tagId]: isActive }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { tagId }) => {
+      if (result.status !== "ok") {
+        setActiveOverrides((current) => {
+          const next = { ...current };
+          delete next[tagId];
+
+          return next;
+        });
+        setSwitchError("Não foi possível alterar a tag. Tente novamente.");
+
+        return;
+      }
+
       setSwitchError(null);
       void router.invalidate();
-    },
-    onError: (_error, { tagId }) => {
-      setActiveOverrides((current) => {
-        const next = { ...current };
-        delete next[tagId];
-
-        return next;
-      });
-      setSwitchError("Não foi possível alterar a tag. Tente novamente.");
     },
   });
 

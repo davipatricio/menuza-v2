@@ -21,8 +21,6 @@
     "**/dist/**",
     "**/.serwist/**",
     "**/.turbo/**",
-    "packages/db/prisma/generated/**",
-    "apps/orpc-server/openapi/**",
     "apps/web/src/routeTree.gen.ts",
     "**/*.tsbuildinfo",
     "**/*.min.*",

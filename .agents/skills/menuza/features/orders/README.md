@@ -19,9 +19,10 @@ Fixed or percentage discount; free shipping; first purchase; minimum value; elig
 
 ## Code entry points
 
-- Models `Order`, `Coupon`, `Customer`, `AuditLog` (`packages/db`); panel reads `panel.listOrders`, `panel.getOrder` (by human order code), `panel.listCustomers`, `panel.getCustomer`, `panel.listCoupons`, `panel.listAuditLogs`.
-- Panel UI under `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/{orders,customers,coupons}/`; tables are client islands fed rows as props.
-- Async work (Pix expiry, retries, notification fan-out) runs in `apps/worker` on BullMQ.
+- Schema `crates/persistence/migrations/0001_baseline.sql` (`Order`, `Coupon`, `Customer`, `AuditLog`; every table carries `tenantId`, money is `Int` cents), all SQL in `crates/persistence` (`commerce/orders.rs`, `tenant/panel/orders.rs`, `tenant/panel/coupons.rs`).
+- Panel API in `crates/api-tenant` (:3002), `crates/api-tenant/src/domains/tenant/subdomains/panel/`: `listPanelOrders`, `getPanelOrder` (by human order code), `listPanelCustomers`, `getPanelCustomer`, `listPanelCoupons`, `listPanelAuditLogs`, `transitionPanelOrder`, `recordPanelOrderPayment`.
+- Panel UI under `apps/web/src/routes/dashboard/$storeSlug/{orders,customers,coupons}/` (TanStack file routes); tables are client islands fed rows as props.
+- Async work runs in `crates/worker` on River/Postgres (ADR-0008). Only `orders-expiry` has a producer (`persistence::commerce::orders::create` enqueues before commit); `payment-events` and `push-notifications` have no producer yet.
 
 ## Checks
 

@@ -1,9 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { PanelCouponSummary } from "@menuza/shared/tenant";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useMemo, useState, useTransition } from "react";
@@ -31,15 +27,14 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import { formatBrl, formatDateTime, formatInteger } from "@/lib/format.ts";
 import { COUPON_STATUS_LABELS, DISCOUNT_TYPE_LABELS } from "@/lib/panel-labels.ts";
 import { couponSearchParams } from "@/features/coupons/schemas/coupon-search.ts";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
+import {
+  bulkDeleteCouponsFn,
+  setCouponStatusFn,
+  type CouponMutationFailure,
+} from "../server/coupon-mutations.functions.ts";
 
 /** The switch writes the stored status; `expired` is derived on read. */
 type CouponWriteStatus = "active" | "disabled";
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 /** One scale for screen and CSV: percent coupons read as "15%", fixed ones as BRL. */
 function formatDiscount(coupon: PanelCouponSummary): string {
@@ -60,27 +55,30 @@ function usageLabel(coupon: PanelCouponSummary): string {
     : `${formatInteger(coupon.redemptionCount)} / ${formatInteger(coupon.usageLimit)}`;
 }
 
-function deleteMessage(error: Error): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "FORBIDDEN") return "Você não tem permissão para excluir cupons nesta loja.";
+function deleteMessage(failure: CouponMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "FORBIDDEN")
+      return "Você não tem permissão para excluir cupons nesta loja.";
 
-    if (error.code === "NOT_FOUND") return "Um ou mais cupons não existem mais. Atualize a lista.";
+    if (failure.code === "NOT_FOUND")
+      return "Um ou mais cupons não existem mais. Atualize a lista.";
   }
 
-  return error.message || "Não foi possível excluir os cupons.";
+  return "Não foi possível excluir os cupons.";
 }
 
-function statusMessage(error: Error): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "FORBIDDEN") return "Você não tem permissão para alterar cupons nesta loja.";
+function statusMessage(failure: CouponMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "FORBIDDEN")
+      return "Você não tem permissão para alterar cupons nesta loja.";
 
-    if (error.code === "NOT_FOUND") return "Este cupom não existe mais. Atualize a lista.";
+    if (failure.code === "NOT_FOUND") return "Este cupom não existe mais. Atualize a lista.";
 
     // Activating a coupon whose window already closed is refused by the server.
-    if (error.code === "VALIDATION_FAILED") return error.message;
+    if (failure.code === "VALIDATION_FAILED") return failure.message;
   }
 
-  return error.message || "Não foi possível alterar o status do cupom.";
+  return "Não foi possível alterar o status do cupom.";
 }
 
 /** Reports both bulk outcomes: archived rows keep their usage history. */
@@ -144,39 +142,45 @@ export function CouponsTable({
 
   const statusMutation = useMutation({
     mutationFn: ({ couponId, status }: { couponId: string; status: CouponWriteStatus }) =>
-      client().panel.setCouponStatus({ storeSlug, couponId, status }),
+      setCouponStatusFn({ data: { storeSlug, couponId, status } }),
     onMutate: ({ couponId, status }) => {
       setStatusOverrides((current) => ({ ...current, [couponId]: status }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { couponId }) => {
+      if (result.status !== "ok") {
+        setStatusOverrides((current) => {
+          const next = { ...current };
+          delete next[couponId];
+
+          return next;
+        });
+        setFailure(statusMessage(result));
+
+        return;
+      }
+
       setFailure(null);
       router.invalidate();
-    },
-    onError: (error, { couponId }) => {
-      setStatusOverrides((current) => {
-        const next = { ...current };
-        delete next[couponId];
-
-        return next;
-      });
-      setFailure(statusMessage(error));
     },
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: () => client().panel.bulkDeleteCoupons({ storeSlug, couponIds: activeSelectedIds }),
-    onSuccess: ({ deleted, archived }) => {
+    mutationFn: () => bulkDeleteCouponsFn({ data: { storeSlug, couponIds: activeSelectedIds } }),
+    onSuccess: (result) => {
+      // The dialog is modal, so an error left behind it is invisible. Close it
+      // first and let the Alert on the page carry the message.
+      if (result.status !== "ok") {
+        setBulkDeleteOpen(false);
+        setFailure(deleteMessage(result));
+
+        return;
+      }
+
       setFailure(null);
-      setNotice(bulkDeleteNotice(deleted, archived));
+      setNotice(bulkDeleteNotice(result.data.deleted, result.data.archived));
       setBulkDeleteOpen(false);
       setSelectedIds([]);
       router.invalidate();
-    },
-    onError: (error) => {
-      // The dialog is modal, so an error left behind it is invisible. Close it
-      // first and let the Alert on the page carry the message.
-      setBulkDeleteOpen(false);
-      setFailure(deleteMessage(error));
     },
   });
 

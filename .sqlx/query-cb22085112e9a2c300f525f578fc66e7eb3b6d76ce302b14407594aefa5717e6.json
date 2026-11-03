@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id\n            FROM public.\"Wallet\"\n            WHERE \"tenantId\" = $1 AND \"customerId\" = $2\n            FOR UPDATE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Wallet\"",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false]
+  },
+  "hash": "cb22085112e9a2c300f525f578fc66e7eb3b6d76ce302b14407594aefa5717e6"
+}

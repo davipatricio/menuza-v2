@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO public.\"Order\" (\n                id, \"tenantId\", code, \"customerId\", \"subtotalCents\", \"discountCents\",\n                \"shippingCents\", \"walletAppliedCents\", \"cashbackCents\", \"totalCents\",\n                \"financialStatus\", \"fulfilmentStatus\", \"paymentMethod\", \"expiresAt\",\n                \"couponId\", \"createdAt\", \"updatedAt\"\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,\n                $16, $17\n            )\n            ON CONFLICT (\"tenantId\", code) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp",
+        "Text",
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e06d8a8720d87d8d2f8dd9c674586c33f7dbd15f83e1b9a96417150458eefea2"
+}

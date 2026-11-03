@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, kind, \"amountCents\" AS amount_cents, \"orderId\" AS order_id,\n               reason, \"createdAt\" AS created_at\n        FROM public.\"WalletTransaction\"\n        WHERE \"tenantId\" = $1 AND \"walletId\" = $2\n        ORDER BY \"createdAt\" DESC, id DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "amount_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "amountCents"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "order_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "orderId"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "createdAt"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false, false, true, true, false]
+  },
+  "hash": "b2065c25754640c40dc405470b0c26e127b39b1c9e20f3676eb31837a2f5638d"
+}

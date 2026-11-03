@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \"seoTitleTemplate\" AS seo_title_template,\n               \"seoDescriptionTemplate\" AS seo_description_template,\n               \"seoSocialImageUrl\" AS seo_social_image_url\n        FROM public.\"StoreSettings\"\n        WHERE \"tenantId\" = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "seo_title_template",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"StoreSettings\"",
+            "name": "seoTitleTemplate"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "seo_description_template",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"StoreSettings\"",
+            "name": "seoDescriptionTemplate"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "seo_social_image_url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"StoreSettings\"",
+            "name": "seoSocialImageUrl"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [true, true, true]
+  },
+  "hash": "55ff8f2325249ef12a2f2e65776e6633cce9c1df0274155036d1fd73d8c076ca"
+}

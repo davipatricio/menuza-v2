@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO public.\"WalletTransaction\" (\n            id, \"tenantId\", \"walletId\", \"orderId\", kind, \"amountCents\",\n            \"actorMemberId\", reason, \"createdAt\"\n        )\n        VALUES ($1, $2, $3, $4, 'cashback_credit', $5, $6, $7, $8)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text", "Int4", "Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "cd1c3973ac095f126001f58c4de033f43ddfd0b08fe12ccc0d20fe538cf30e8b"
+}

@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT product_tag.\"productId\" AS product_id, tag.name AS name\n        FROM public.\"ProductTag\" AS product_tag\n        JOIN public.\"Tag\" AS tag\n          ON tag.id = product_tag.\"tagId\" AND tag.\"tenantId\" = product_tag.\"tenantId\"\n        WHERE product_tag.\"tenantId\" = $1 AND tag.\"isActive\" = true\n        ORDER BY tag.name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "product_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"ProductTag\"",
+            "name": "productId"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Tag\"",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [false, false]
+  },
+  "hash": "204132b9bf94688e8cf14b353775795c868a6c2530f55e3ffbfb21ae86d007cf"
+}

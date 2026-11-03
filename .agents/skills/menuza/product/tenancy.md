@@ -12,10 +12,10 @@
 ## Where isolation is enforced
 
 - Schema: one Postgres schema, **no Row-Level Security**. Isolation is by `tenantId` on every business table plus an application guard (ADR-0001).
-- Runtime scope: `withTenant` / `unscoped` / `getActiveTenantId` / `isUnscoped` from `@menuza/db/scope` (re-exported on `@menuza/db`). Deliberately global reads (storefront host resolution) use `unscoped()`.
-- Prisma middleware (`packages/db`): `tenantIsolationMiddleware()` is **fail-closed** — a tenant-scoped model queried or mutated without `tenantId` throws `TenantIsolationError`.
-- oRPC: `tenantMiddleware` from `@menuza/orpc-server/tenant` builds the typed tenant context; `authMiddleware` from `@menuza/orpc-server/auth` resolves the member.
+- Runtime scope: `TenantScope` (`crates/http/src/extract.rs`) accepts `x-menuza-tenant-id` only from a loopback peer or a trusted proxy hop, then hands the resolved tenant to the handler. Deliberately global reads (storefront host resolution) use the explicit `Scope::unscoped` exception in `crates/persistence/src/tenant.rs`.
+- No RLS and no Prisma middleware: isolation is fail-closed by construction — every tenant-scoped statement in `crates/persistence` binds `tenantId` through its scoped helper.
+- Auth/sessions: `crates/domain/src/{password,session}.rs` (argon2, cookie, token digest) plus the routes in `crates/api-tenant/src/domains/tenant/subdomains/{account,session}`; there is no `authMiddleware`.
 - Management surface: every `panel.*` takes `storeSlug` (never a tenant header); the server resolves slug → tenant, checks membership, and returns `NOT_FOUND` for both an unknown slug and a non-member, without leaking existence (MEN-225).
-- Storefront host → tenant: `internal.resolveHost` in the tenant API, gated by the shared internal token; `apps/web` never reads `Domain` directly (ADR-0005).
+- Storefront host → tenant: `GET /internal/resolve-host` in `crates/api-tenant/src/domains/tenant/subdomains/internal/resolve_host.rs`, gated by `x-menuza-internal-token` against `INTERNAL_API_SECRET`; `apps/web` never reads the `Domain` table directly (ADR-0005).
 
-Commerce domain models (all carry `tenantId` + `@@index([tenantId])`): `Category`, `Product`, `Variation`, `Kit`, `KitItem`, `Customer`, `Order`, `Coupon`, `AuditLog`, `MealSubscription`. Identity models: `Tenant`, `Domain`, `Member`, `MemberIdentity`, `Session`, `TenantMembership`, `PushSubscription`, `PushPreference`, `MemberOnboarding`.
+Commerce domain tables (all carry `tenantId` + a `tenantId` index): `Category`, `Product`, `Variation`, `Kit`, `KitItem`, `Customer`, `Order`, `Coupon`, `AuditLog`, `MealSubscription`. Identity tables: `Tenant`, `Domain`, `Member`, `MemberIdentity`, `Session`, `TenantMembership`, `PushSubscription`, `PushPreference`, `MemberOnboarding`.

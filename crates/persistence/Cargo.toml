@@ -1,0 +1,19 @@
+[package]
+name = "persistence"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+contract = { path = "../contract" }
+domain = { path = "../domain" }
+sqlx.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+riverqueue.workspace = true
+aes-gcm.workspace = true
+base64.workspace = true
+thiserror.workspace = true

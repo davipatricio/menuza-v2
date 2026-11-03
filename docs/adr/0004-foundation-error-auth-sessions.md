@@ -1,5 +1,7 @@
 # Foundation: error contract, tenant context, multi-tenant auth sessions
 
+> Superseded by ADR-0007 for the Bun/Prisma API layer: errors, tenant scope and sessions now live in `crates/contract`, `crates/http` and `crates/domain`. The recorded history below is unchanged.
+
 Three orthogonal concerns locked in one place because they share the same lifecycle (foundation, blocks every feature):
 
 **Errors.** A global catalog in `@menuza/shared/errors` defines the closed set of RPC error codes both APIs return (`TENANT_NOT_RESOLVED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`, `RATE_LIMITED`, `INTERNAL`). Each app extends with service-specific codes. Envelope is the oRPC default `{ code, message, data }`, messages in PT-BR (single locale, matches the glossary). 4xx codes emit a structured log line only; 5xx codes additionally capture to Sentry with tags `service` and `requestId`. Reversing the Sentry split requires re-labelling every existing incident, so we record it.
@@ -36,6 +38,7 @@ originally recorded.
 ## Amendment — 2026-09-25
 
 Consolidated library packages:
+
 - `@menuza/tenant-context` was eliminated: AsyncLocalStorage scoping (`withTenant`, `unscoped`)
   moved directly into `@menuza/db/scope` (and re-exported by `@menuza/db`), while `tenantMiddleware`
   moved into `@menuza/orpc-server/tenant`.
@@ -43,7 +46,7 @@ Consolidated library packages:
   and `authMiddleware` moved into `@menuza/orpc-server/auth`.
 - `@menuza/offline` was eliminated: browser-only offline mutation queue and IndexedDB persister
   moved directly into `apps/web/src/offline`.
-All semantics, isolation rules, and security boundaries remain identical.
+  All semantics, isolation rules, and security boundaries remain identical.
 
 ## Amendment — 2026-09-25 (tenant host resolution moves behind the tenant API)
 

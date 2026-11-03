@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \"integrationId\" AS integration_id\n        FROM public.\"PaymentMethodAssignment\"\n        WHERE \"tenantId\" = $1 AND method = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "integration_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"PaymentMethodAssignment\"",
+            "name": "integrationId"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false]
+  },
+  "hash": "e79aeaa4eaa5e0a1038af51a0d53fc12ae0e96dc5111e2a7e661a019662ad906"
+}

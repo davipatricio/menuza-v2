@@ -3,10 +3,10 @@
  * the list page and the server-ordered rows, so the file matches the table.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { ORPCError } from "@orpc/client";
 import { serializeProductsCsv } from "@/features/catalog/lib/product-csv.ts";
 import { filterProducts } from "@/features/catalog/lib/product-filter.ts";
 import { loadProductSearchParams } from "@/features/catalog/schemas/product-search.ts";
+import { ApiError } from "@/lib/api-error";
 import { panelClient } from "@/server/panel-client.ts";
 
 export const Route = createFileRoute("/dashboard/$storeSlug/catalog/products/export")({
@@ -39,11 +39,11 @@ export const Route = createFileRoute("/dashboard/$storeSlug/catalog/products/exp
             },
           });
         } catch (error) {
-          if (error instanceof ORPCError && error.code === "NOT_FOUND") {
+          if (error instanceof ApiError && error.code === "NOT_FOUND") {
             return new Response("Loja não encontrada.", { status: 404 });
           }
 
-          if (error instanceof ORPCError && error.code === "FORBIDDEN") {
+          if (error instanceof ApiError && error.code === "FORBIDDEN") {
             return new Response("Sem permissão para exportar os produtos.", { status: 403 });
           }
 

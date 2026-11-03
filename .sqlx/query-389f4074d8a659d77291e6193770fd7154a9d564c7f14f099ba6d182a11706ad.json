@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"productId\" AS product_id, \"priceCents\" AS price_cents\n            FROM public.\"Variation\"\n            WHERE \"tenantId\" = $1 AND id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "product_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "productId"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "price_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "priceCents"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false]
+  },
+  "hash": "389f4074d8a659d77291e6193770fd7154a9d564c7f14f099ba6d182a11706ad"
+}

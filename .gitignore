@@ -36,3 +36,10 @@ Thumbs.db
 
 # Local infra data (Compose volumes are outside repo, but ignore host volume mounts if used)
 .podman-data/
+
+# Rust build artifacts
+/target
+.projectmem/events.jsonl
+.projectmem/watch.pid
+.projectmem/watch.log
+.projectmem/structure.json

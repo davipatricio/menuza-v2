@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO public.\"OrderEvent\" (\n                id, \"tenantId\", \"orderId\", type, \"fromValue\", \"toValue\",\n                \"actorMemberId\", reason, \"createdAt\"\n            )\n            VALUES ($1, $2, $3, 'cashback_credited', NULL, $4, $5, NULL, $6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "2562c59fdd39546b59b3b65633d99e2ba5e838744a75d5c313c75502415dbb9b"
+}

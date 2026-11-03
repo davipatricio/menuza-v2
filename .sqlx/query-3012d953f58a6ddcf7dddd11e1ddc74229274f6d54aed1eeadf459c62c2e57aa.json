@@ -1,0 +1,194 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT o.id, o.code, o.\"customerId\" AS customer_id,\n               o.\"subtotalCents\" AS subtotal_cents,\n               o.\"discountCents\" AS discount_cents,\n               o.\"shippingCents\" AS shipping_cents,\n               o.\"walletAppliedCents\" AS wallet_applied_cents,\n               o.\"cashbackCents\" AS cashback_cents,\n               o.\"totalCents\" AS total_cents,\n               o.\"financialStatus\" AS financial_status,\n               o.\"fulfilmentStatus\" AS fulfilment_status,\n               o.\"paymentMethod\" AS payment_method,\n               o.\"paidAt\" AS paid_at,\n               o.\"expiresAt\" AS expires_at,\n               c.code AS coupon_code\n        FROM public.\"Order\" o\n        LEFT JOIN public.\"Coupon\" c\n            ON c.\"tenantId\" = o.\"tenantId\" AND c.id = o.\"couponId\"\n        WHERE o.\"tenantId\" = $1 AND o.code = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "customer_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "customerId"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "subtotal_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "subtotalCents"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "discount_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "discountCents"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "shipping_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "shippingCents"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "wallet_applied_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "walletAppliedCents"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "cashback_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "cashbackCents"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "total_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "totalCents"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "financial_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "financialStatus"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "fulfilment_status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "fulfilmentStatus"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "payment_method",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "paymentMethod"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "paid_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "paidAt"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "expires_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"Order\"",
+            "name": "expiresAt"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "coupon_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "code"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "3012d953f58a6ddcf7dddd11e1ddc74229274f6d54aed1eeadf459c62c2e57aa"
+}

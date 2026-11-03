@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, \"unitPriceCents\" AS unit_price_cents, quantity,\n               \"lineTotalCents\" AS line_total_cents,\n               \"optionsLabel\" AS options_label\n        FROM public.\"OrderItem\"\n        WHERE \"tenantId\" = $1 AND \"orderId\" = $2\n        ORDER BY name ASC, id ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderItem\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderItem\"",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "unit_price_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"OrderItem\"",
+            "name": "unitPriceCents"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "quantity",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"OrderItem\"",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "line_total_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"OrderItem\"",
+            "name": "lineTotalCents"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "options_label",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderItem\"",
+            "name": "optionsLabel"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false, false, false, false, true]
+  },
+  "hash": "e41489bad71fedd8e95baca163c8a82415fb144f171ecfcb8e9bb975ee3eb19c"
+}

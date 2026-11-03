@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, provider, type AS event_type,\n               \"orderCode\" AS order_code,\n               \"amountCents\" AS amount_cents,\n               status\n        FROM public.\"GatewayEvent\"\n        WHERE \"tenantId\" = $1 AND id = $2\n        FOR UPDATE\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"GatewayEvent\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "provider",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"GatewayEvent\"",
+            "name": "provider"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "event_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"GatewayEvent\"",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "order_code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"GatewayEvent\"",
+            "name": "orderCode"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "amount_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"GatewayEvent\"",
+            "name": "amountCents"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"GatewayEvent\"",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false, false, true, true, false]
+  },
+  "hash": "4b3db99104ac9f02a1218b9e5908b7e3f3fe6bcac75081aefc97c592a0fdf44c"
+}

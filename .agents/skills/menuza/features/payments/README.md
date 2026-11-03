@@ -30,9 +30,10 @@
 
 ## Code entry points
 
-- Models `Order`, `Coupon`, `Customer`, `AuditLog` in `packages/db` (tenant-scoped, `Int` cents).
-- Commerce procedures in `packages/api-commerce/src/domains/...`; gateway webhooks enter through `apps/commerce` and are drained by `apps/worker`.
-- Money helpers: `formatBrl` takes cents (ADR-0006).
+- Schema: `crates/persistence/migrations/0001_baseline.sql`; every table carries `tenantId`, money is `Int` cents, and all SQL lives in `crates/persistence` (`commerce/orders.rs`, `commerce/payments.rs`, `commerce/wallet.rs`). `packages/db/` is a historical record only.
+- Commerce API: `crates/api-commerce` (:3001) — orders, wallet, payments, public. Panel payment settings: `crates/api-tenant` (:3002), `crates/api-tenant/src/domains/tenant/subdomains/panel/`. DTOs in `crates/contract`.
+- Gateway events would enter through the internal `applyGatewayEvent` route (`.../commerce/subdomains/payments/apply.rs`) into the `payment-events` queue; that queue has **no producer yet** — the Pagar.me webhook receiver was not ported. `orders-expiry` does have one (`persistence::commerce::orders::create`) and is drained by `crates/worker` (River/Postgres, ADR-0008).
+- Money helpers: `formatBrl` in `apps/web/src/lib/format.ts` takes cents (ADR-0006).
 
 ## Checks
 

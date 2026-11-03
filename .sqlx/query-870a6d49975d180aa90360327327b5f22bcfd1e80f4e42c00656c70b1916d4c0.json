@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT kind, \"amountCents\" AS amount_cents\n                FROM public.\"WalletTransaction\"\n                WHERE \"tenantId\" = $1 AND \"walletId\" = $2 AND \"orderId\" = $3\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "amount_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"WalletTransaction\"",
+            "name": "amountCents"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text", "Text"]
+    },
+    "nullable": [false, false]
+  },
+  "hash": "870a6d49975d180aa90360327327b5f22bcfd1e80f4e42c00656c70b1916d4c0"
+}

@@ -1,0 +1,266 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT basis, \"labelFormat\" AS label_format, \"source\" AS source,\n               \"referenceAt\" AS reference_at, \"energyKcal\" AS energy_kcal,\n               \"carbsMg\" AS carbs_mg, \"totalSugarsMg\" AS total_sugars_mg,\n               \"addedSugarsMg\" AS added_sugars_mg, \"proteinMg\" AS protein_mg,\n               \"totalFatMg\" AS total_fat_mg, \"saturatedFatMg\" AS saturated_fat_mg,\n               \"transFatMg\" AS trans_fat_mg, \"fiberMg\" AS fiber_mg,\n               \"sodiumMg\" AS sodium_mg, \"portionMilli\" AS portion_milli,\n               \"householdMeasure\" AS household_measure,\n               \"servingsPerPack\" AS servings_per_pack,\n               \"showHighAddedSugar\" AS show_high_added_sugar,\n               \"showHighSatFat\" AS show_high_sat_fat,\n               \"showHighSodium\" AS show_high_sodium,\n               \"updatedAt\" AS updated_at\n        FROM public.\"ProductNutrition\"\n        WHERE \"tenantId\" = $1 AND \"productId\" = $2 AND published = true\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "basis",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "basis"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "label_format",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "labelFormat"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "source",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reference_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "referenceAt"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "energy_kcal",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "energyKcal"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "carbs_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "carbsMg"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "total_sugars_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "totalSugarsMg"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "added_sugars_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "addedSugarsMg"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "protein_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "proteinMg"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "total_fat_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "totalFatMg"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "saturated_fat_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "saturatedFatMg"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "trans_fat_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "transFatMg"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "fiber_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "fiberMg"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "sodium_mg",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "sodiumMg"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "portion_milli",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "portionMilli"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "household_measure",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "householdMeasure"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "servings_per_pack",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "servingsPerPack"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "show_high_added_sugar",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "showHighAddedSugar"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "show_high_sat_fat",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "showHighSatFat"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "show_high_sodium",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "showHighSodium"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "updated_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"ProductNutrition\"",
+            "name": "updatedAt"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bcb6307d71be67c18c5a69e35a41870ae99324fa0f37a2d39f3314a9e3c47531"
+}

@@ -87,7 +87,7 @@ function matchUpstream(pathname: string): Upstream | null {
  * The client headers minus the ones that belong to this hop and the resolved
  * host headers, plus the resolved values `src/server.ts` computed and the
  * forwarded origin/protocol the APIs use to build absolute redirect URLs (see
- * `apps/tenant/src/oauth.ts`).
+ * `crates/api-tenant/src/oauth/`).
  */
 function upstreamHeaders(request: Request, url: URL, resolved: ResolvedHost): Headers {
   const headers = new Headers();

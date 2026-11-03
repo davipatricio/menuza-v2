@@ -23,8 +23,13 @@ Domain code. One folder per product area; routes stay thin and import from here.
 
 - `server/*.functions.ts` — `createServerFn` reads/writes. This is the only place
   that talks to the APIs.
-- `components/` — route pieces and client islands. An island owns its oRPC client
-  and calls `void router.invalidate()` after a write.
+- `components/` — route pieces and client islands. An island calls the
+  `createServerFn` functions from `server/*.functions.ts` through a TanStack
+  Query mutation and calls `void router.invalidate()` after a write. Browser code
+  never builds its own API client: `server/*.functions.ts` reach the Rust APIs
+  through `panelClient()` (`@/server/panel-client.ts`) against `/tenant/...`
+  REST. The only browser-side exceptions are `@/lib/session-client.ts` and
+  `@/lib/push-client.ts`, which call `/tenant/...` same-origin.
 - `lib/` — pure helpers, no React, no server imports.
 - `schemas/` — valibot schemas shared by forms and server functions.
 

@@ -35,12 +35,8 @@
  * header is honored, so client-supplied headers from arbitrary IPs cannot spoof
  * the host.
  */
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import type { tenantContractObject } from "@menuza/shared/tenant";
-
-type TenantClient = RouterContractClient<typeof tenantContractObject>;
+import type { ResolveHostOutput } from "@/lib/api/model/resolveHostOutput.ts";
+import { getResolveTenantByStorefrontHostUrl } from "@/lib/api/tenant.ts";
 
 type Mode = "main" | "storefront";
 
@@ -122,24 +118,23 @@ export function invalidateTenantCache(host?: string): void {
   else tenantCache.clear();
 }
 
-/** Fresh, per-request client bound to the tenant API's internal surface. */
-function newTenantClient(origin: string): TenantClient {
-  const link = new RPCLink({
-    origin,
-    url: "/rpc",
-    headers: { "x-menuza-internal-token": process.env.INTERNAL_API_SECRET ?? "" },
-  });
-
-  return createORPCClient<TenantClient>(link);
-}
-
+/** Resolves one host against the tenant API's internal route; throws when it fails. */
 async function resolveTenantId(host: string): Promise<string | null> {
   const cached = tenantCache.get(host);
 
   if (cached !== undefined) return cached;
 
   const origin = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002";
-  const { tenantId } = await newTenantClient(origin).internal.resolveHost({ host });
+
+  const res = await fetch(`${origin}${getResolveTenantByStorefrontHostUrl({ host })}`, {
+    headers: { "x-menuza-internal-token": process.env.INTERNAL_API_SECRET ?? "" },
+  });
+
+  if (!res.ok) throw new Error(`tenant ${res.status}`);
+
+  // SAFETY: the route and the contract document the same Rust DTO, whose only
+  // field is `tenantId`.
+  const { tenantId } = (await res.json()) as ResolveHostOutput;
 
   tenantCache.set(host, tenantId);
 

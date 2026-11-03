@@ -18,10 +18,6 @@ import {
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { debounce, useQueryStates } from "nuqs";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import type { PanelProductList } from "@menuza/shared/tenant";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
@@ -84,15 +80,15 @@ import {
 import { productSearchParams } from "@/features/catalog/schemas/product-search.ts";
 import { TagCombobox } from "./tag-combobox.tsx";
 import { TaxonomyCombobox } from "./taxonomy-combobox.tsx";
+import {
+  bulkDeleteProductsFn,
+  bulkUpdateProductsFn,
+  updateProductFn,
+  type MutationFailure,
+} from "../server/product-mutations.functions.ts";
 
 /** The explicit "no value" row both taxonomy selects need. */
 const NO_SELECTION = "none";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 type BulkDialog = "tags" | "subcategory" | "delete" | null;
 
@@ -102,21 +98,19 @@ type BulkUpdateInput = {
   subcategoryId?: string | null;
 };
 
-function bulkMessage(error: Error): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "FORBIDDEN")
+function bulkMessage(failure: MutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "FORBIDDEN")
       return "Você não tem permissão para gerenciar o catálogo nesta loja.";
 
-    if (error.code === "NOT_FOUND")
+    if (failure.code === "NOT_FOUND")
       return "Um ou mais produtos não existem mais. Atualize a lista e tente novamente.";
 
-    if (error.code === "CONFLICT") return error.message;
-
-    if (error.code === "VALIDATION_FAILED" || error.code === "INVALID_INPUT")
+    if (failure.code === "VALIDATION_FAILED" || failure.code === "INVALID_INPUT")
       return "Revise a seleção e tente novamente.";
   }
 
-  return error.message || "Não foi possível concluir a ação.";
+  return "Não foi possível concluir a ação.";
 }
 
 function priceLabel(product: PanelProductList): string | null {
@@ -389,46 +383,64 @@ export function ProductsTable({
 
   const availabilityMutation = useMutation({
     mutationFn: ({ productId, available }: { productId: string; available: boolean }) =>
-      client().panel.updateProduct({ storeSlug, productId, available }),
+      updateProductFn({ data: { storeSlug, productId, available } }),
     onMutate: ({ productId, available }) => {
       setAvailabilityOverrides((current) => ({ ...current, [productId]: available }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { productId }) => {
+      if (result.status !== "ok") {
+        setAvailabilityOverrides((current) => {
+          const next = { ...current };
+          delete next[productId];
+
+          return next;
+        });
+        setBulkError(bulkMessage(result));
+
+        return;
+      }
+
       setBulkError(null);
       void router.invalidate();
-    },
-    onError: (error, { productId }) => {
-      setAvailabilityOverrides((current) => {
-        const next = { ...current };
-        delete next[productId];
-
-        return next;
-      });
-      setBulkError(bulkMessage(error));
     },
   });
 
   const bulkUpdateMutation = useMutation({
     mutationFn: (input: BulkUpdateInput) =>
-      client().panel.bulkUpdateProducts({
-        storeSlug,
-        productIds: activeSelectedIds,
-        ...input,
+      bulkUpdateProductsFn({
+        data: {
+          storeSlug,
+          productIds: activeSelectedIds,
+          ...input,
+        },
       }),
-    onSuccess: ({ updated }) => {
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setBulkError(bulkMessage(result));
+
+        return;
+      }
+
+      const { updated } = result.data;
+
       setBulkError(null);
       setBulkStatus(`${updated} ${updated === 1 ? "produto atualizado" : "produtos atualizados"}.`);
       setBulkDialog(null);
       setSelectedIds([]);
       void router.invalidate();
     },
-    onError: (error) => setBulkError(bulkMessage(error)),
   });
 
   const bulkDeleteMutation = useMutation({
-    mutationFn: () =>
-      client().panel.bulkDeleteProducts({ storeSlug, productIds: activeSelectedIds }),
-    onSuccess: ({ deleted, skipped }) => {
+    mutationFn: () => bulkDeleteProductsFn({ data: { storeSlug, productIds: activeSelectedIds } }),
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setBulkError(bulkMessage(result));
+
+        return;
+      }
+
+      const { deleted, skipped } = result.data;
       const names = skipped.slice(0, 5).map((item) => item.name);
       const extra = skipped.length > names.length ? ` e mais ${skipped.length - names.length}` : "";
 
@@ -445,7 +457,6 @@ export function ProductsTable({
       setSelectedIds([]);
       void router.invalidate();
     },
-    onError: (error) => setBulkError(bulkMessage(error)),
   });
 
   const toggleRow = (id: string, checked: boolean) => {
@@ -482,12 +493,17 @@ export function ProductsTable({
 
   const reorderMutation = useMutation({
     mutationFn: ({ productId, sortOrder }: { productId: string; sortOrder: number }) =>
-      client().panel.updateProduct({ storeSlug, productId, sortOrder }),
-    onSuccess: () => {
+      updateProductFn({ data: { storeSlug, productId, sortOrder } }),
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setBulkError(bulkMessage(result));
+
+        return;
+      }
+
       setBulkError(null);
       void router.invalidate();
     },
-    onError: (error) => setBulkError(bulkMessage(error)),
   });
 
   const handleReorder = useCallback(

@@ -17,13 +17,13 @@ Order board (fulfilment columns, URL-driven filters) and order detail.
   route loader from `loaderDeps`; a hand-edited value falls back to no filter.
 - A transition that requires a reason opens the dialog; the API rejects the call
   without one.
-- Error copy maps oRPC codes to pt-BR (`ORDER_TRANSITION_INVALID`,
+- Error copy maps `ApiError` codes to pt-BR (`ORDER_TRANSITION_INVALID`,
   `REASON_REQUIRED`, `FORBIDDEN`, `NOT_FOUND`, `CONFLICT`).
 - Status labels and badge tones come from `@/lib/panel-labels.ts` only.
 
 ## Forbidden
 
-Next.js imports, `@menuza/db`, `@prisma/*`, `@menuza/orpc-server`.
+Next.js imports, direct calls to the Rust APIs (`@/lib/api/**`).
 
 ## Verify
 

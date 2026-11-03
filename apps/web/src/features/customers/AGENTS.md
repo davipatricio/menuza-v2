@@ -18,7 +18,7 @@ Customer list and detail (contact card, order history).
 
 ## Forbidden
 
-Next.js imports, `@menuza/db`, `@prisma/*`, `@menuza/orpc-server`.
+Next.js imports, direct calls to the Rust APIs (`@/lib/api/**`).
 
 ## Verify
 

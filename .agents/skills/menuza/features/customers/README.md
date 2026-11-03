@@ -28,8 +28,8 @@ The store's relationship with its own buyers: the customer record, favorites and
 
 ## Code entry points
 
-- `Customer` model (`packages/db`, tenant-scoped). Panel reads `panel.listCustomers`, `panel.getCustomer`; exports run as jobs in `apps/worker`.
-- Dashboard UI: `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/customers/` and the store home KPIs.
+- `Customer` table in `crates/persistence/migrations/0001_baseline.sql` (tenant-scoped). Panel REST routes in `crates/api-tenant/src/domains/tenant/subdomains/panel/customers.rs`, SQL in `crates/persistence/src/tenant/panel/customers.rs`. Exports are not implemented.
+- Dashboard UI: `apps/web/src/routes/dashboard/$storeSlug/customers/` and `apps/web/src/features/customers/`; KPIs on `apps/web/src/routes/dashboard/$storeSlug/index.tsx`.
 
 ## Checks
 

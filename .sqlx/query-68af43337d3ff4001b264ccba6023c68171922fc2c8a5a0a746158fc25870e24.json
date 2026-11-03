@@ -1,0 +1,57 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, name, \"categoryId\" AS category_id, \"sortOrder\" AS sort_order\n        FROM public.\"Subcategory\"\n        WHERE \"tenantId\" = $1 AND active = true\n        ORDER BY \"sortOrder\", name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Subcategory\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Subcategory\"",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "category_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Subcategory\"",
+            "name": "categoryId"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sort_order",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Subcategory\"",
+            "name": "sortOrder"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [false, false, false, false]
+  },
+  "hash": "68af43337d3ff4001b264ccba6023c68171922fc2c8a5a0a746158fc25870e24"
+}

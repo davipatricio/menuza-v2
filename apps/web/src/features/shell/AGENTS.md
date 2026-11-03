@@ -23,7 +23,8 @@ Dashboard chrome: sidebar, navigation config, overview cards, query provider.
 
 ## Forbidden
 
-Next.js imports, `@menuza/db`, `@prisma/*`, `@menuza/orpc-server`.
+Next.js imports, direct browser calls to the Rust APIs (data goes through
+`server/*.functions.ts`), `@/server/**` outside those functions.
 
 ## Verify
 

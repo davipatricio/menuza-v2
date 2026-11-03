@@ -29,7 +29,8 @@ Documented by capability, not by final UI names; the options can coexist:
 
 ## Code entry points
 
-- Commerce domain procedures in `packages/api-commerce/src/domains/...`; export jobs and scheduled work in `apps/worker` (BullMQ).
+- Commerce reads/writes live in `crates/api-commerce` (:3001, `crates/api-commerce/src/domains/commerce/`); store settings in `crates/api-tenant` (:3002, `.../subdomains/panel/stores.rs`); DTOs in `crates/contract`. No freight/coverage handler exists yet.
+- Export and scheduled work belongs to `crates/worker` (River/Postgres, ADR-0008); `orders-expiry` is the only queue with a producer today.
 - External calls: Spoke client in the commerce integration layer; address/geocode via BrasilAPI (CEP) + Nominatim.
 - Scheduled-order timing is data, not a cron side effect: keep the order's date/shift authoritative.
 

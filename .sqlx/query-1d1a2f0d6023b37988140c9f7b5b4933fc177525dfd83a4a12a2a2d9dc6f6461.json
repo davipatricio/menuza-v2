@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO public.\"OrderEvent\" (\n            id, \"tenantId\", \"orderId\", type, \"fromValue\", \"toValue\", \"createdAt\"\n        )\n        VALUES ($1, $2, $3, 'financial_changed', $4, 'expired', $5)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "1d1a2f0d6023b37988140c9f7b5b4933fc177525dfd83a4a12a2a2d9dc6f6461"
+}

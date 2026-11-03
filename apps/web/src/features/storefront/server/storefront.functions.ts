@@ -27,7 +27,7 @@ export const loadStorefrontStoreFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<StorefrontStore | null> => {
     const client = await storefrontClient();
 
-    return client ? await client.public.getStore({}) : null;
+    return client ? await client.public.getStore() : null;
   },
 );
 
@@ -43,7 +43,7 @@ export const loadStorefrontMenuFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<StorefrontMenu | null> => {
     const client = await storefrontClient();
 
-    return client ? await client.public.listMenu({}) : null;
+    return client ? await client.public.listMenu() : null;
   },
 );
 

@@ -3,10 +3,6 @@ import { useMemo, useState, useTransition } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 
 import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 import { debounce, useQueryStates } from "nuqs";
 
@@ -34,6 +30,10 @@ import {
   TaxonomyRowActions,
 } from "@/features/catalog/components/taxonomy-dialog.tsx";
 import { departmentSearchParams } from "@/features/catalog/schemas/department-search.ts";
+import {
+  updateDepartmentFn,
+  type TaxonomyMutationFailure,
+} from "../server/taxonomy-mutations.functions.ts";
 
 export type DepartmentRow = {
   id: string;
@@ -43,26 +43,21 @@ export type DepartmentRow = {
   updatedAt: string;
 };
 
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
-
 const SORT_OPTIONS = [
   { label: "Nome", value: "name" },
   { label: "Itens", value: "itemsCount" },
   { label: "Última edição", value: "updatedAt" },
 ] as const;
 
-function switchError(error: Error): string {
-  if (error instanceof ORPCError && error.code === "CONFLICT") return error.message;
+function switchError(failure: TaxonomyMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "CONFLICT") return "Já existe um departamento com este nome.";
 
-  if (error instanceof ORPCError && error.code === "FORBIDDEN")
-    return "Você não tem permissão para editar o catálogo desta loja.";
+    if (failure.code === "FORBIDDEN")
+      return "Você não tem permissão para editar o catálogo desta loja.";
 
-  if (error instanceof ORPCError && error.code === "NOT_FOUND")
-    return "Departamento não encontrado nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Departamento não encontrado nesta loja.";
+  }
 
   return "Não foi possível alterar o departamento. Tente novamente.";
 }
@@ -119,22 +114,25 @@ export function DepartmentsTable({
       departmentId: string;
       name: string;
       active: boolean;
-    }) => client().panel.updateDepartment({ storeSlug, departmentId, name, active }),
+    }) => updateDepartmentFn({ data: { storeSlug, departmentId, name, active } }),
     onMutate: ({ departmentId, active }) => {
       setActiveOverrides((current) => ({ ...current, [departmentId]: active }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { departmentId }) => {
+      if (result.status !== "ok") {
+        setActiveOverrides((current) => {
+          const next = { ...current };
+          delete next[departmentId];
+
+          return next;
+        });
+        setError(switchError(result));
+
+        return;
+      }
+
       setError(null);
       void router.invalidate();
-    },
-    onError: (mutationError, { departmentId }) => {
-      setActiveOverrides((current) => {
-        const next = { ...current };
-        delete next[departmentId];
-
-        return next;
-      });
-      setError(switchError(mutationError));
     },
   });
 

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT provider\n        FROM public.\"PaymentIntegration\"\n        WHERE \"tenantId\" = $1 AND id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "provider",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"PaymentIntegration\"",
+            "name": "provider"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false]
+  },
+  "hash": "9c97dc986a75e7ffae43d8c17a9ed377b6b47aaffd16ef66f287bcd50a07554a"
+}

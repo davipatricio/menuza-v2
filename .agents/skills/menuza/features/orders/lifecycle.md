@@ -25,9 +25,10 @@ The final state machine and the permissions for payment, cancellation and refund
 
 ## Code entry points
 
-- `Order` model (`packages/db`, tenant-scoped, `Int` cents). Panel reads `panel.listOrders`, `panel.getOrder` by human order code.
-- Transition side effects (write-off, commission, cashback, dispatch, notifications) are idempotent and run through the order service + `apps/worker`.
-- UI under `apps/web/src/app/(dashboard)/dashboard/[storeSlug]/orders/`.
+- `Order` table in `crates/persistence/migrations/0001_baseline.sql` (tenant-scoped, `Int` cents). Panel reads `listPanelOrders`, `getPanelOrder` by human order code, `getPanelOrderTransitions`.
+- Transitions run in `crates/api-tenant/src/domains/tenant/subdomains/panel/orders.rs` + `crates/persistence/src/tenant/panel/orders.rs`; side effects (write-off, commission, cashback, dispatch, notifications) must stay idempotent.
+- Accepted delta: the panel transition does **not** release stock/coupons nor claw back cashback.
+- UI under `apps/web/src/routes/dashboard/$storeSlug/orders/`.
 
 ## Checks
 

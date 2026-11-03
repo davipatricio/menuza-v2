@@ -26,8 +26,8 @@ This is the internal Menuza surface — the platform operator, not a store's pan
 ## Code entry points
 
 - Admin/support procedures live on the tenant (management) surface, gated by an internal/admin capability; never exposed anonymously.
-- `AuditLog` records support and admin actions (`../stores-and-teams/audit.md`).
-- SaaS billing integration: Asaas client in the appropriate API; webhooks drained in `apps/worker` (MEN-181).
+- `AuditLog` records support and admin actions — table in `crates/persistence/migrations/0001_baseline.sql`; admin/support handlers under `crates/api-tenant/src/domains/tenant/subdomains/panel/` (`../stores-and-teams/audit.md`).
+- SaaS billing integration: Asaas client in the appropriate API; webhooks drained in `crates/worker` (`payment-events` queue on River/Postgres, ADR-0008). No producer exists yet — the Asaas/Pagar.me webhook receiver was not ported (MEN-181).
 
 ## Checks
 

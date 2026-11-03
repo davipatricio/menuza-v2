@@ -12,8 +12,7 @@ surfaces:
 - `src/routes/dashboard/**` — store admin (`/dashboard`, `/dashboard/login`,
   `/dashboard/[storeSlug]/**`). This is the bulk of the app.
 
-The Next.js app in `apps/web` is the migration reference; it is deleted at
-cutover. Nothing added here may import from it or from Next.js imports.
+Nothing added here may import from Next.js; the app is TanStack Start on Vite.
 
 Parent rules: `/AGENTS.md` (repo-wide) and `src/routes/AGENTS.md` (route file
 conventions). Dashboard visual rules: `DESIGN.md` in this folder.
@@ -45,10 +44,10 @@ conventions). Dashboard visual rules: `DESIGN.md` in this folder.
   result (`{ status: "ok" | "unauthenticated" | "not-found" }`). The route loader
   maps `unauthenticated` to `throw redirect({ href: "/dashboard/login" })` and
   `not-found` to `notFound()`.
-- Writes: client islands own their oRPC client
-  (`createORPCClient<RouterContractClient<typeof tenantContractObject>>(new RPCLink({ url: "/tenant/rpc" }))`),
-  use TanStack Query mutations, then `await router.invalidate()` so the loader
-  re-runs. There is no `revalidatePath` and no server action.
+- Writes: islands call a `createServerFn({ method: "POST" })` from
+  `src/features/<domain>/server/*.functions.ts` through a TanStack Query
+  mutation, then `await router.invalidate()` so the loader re-runs. There is no
+  `revalidatePath` and no server action.
 - Client components never fetch on mount: the loader already read the data and
   hands it down as typed props.
 - `staleTime` is only set for the product editor and the product-create
@@ -119,7 +118,7 @@ branch or export adapters. `animate-in`/`fade-in-0`/`zoom-in-95` are inert here
 ## Auth
 
 `/dashboard/login` and `/dashboard/signup/*` (conta → perfil → escolha →
-loja | convite) call the same-origin `/tenant/rpc` through
+loja | convite) call the same-origin `/tenant/...` REST routes through
 `src/lib/session-client.ts`. The session cookie is httpOnly; the client never
 reads it. Every dashboard layout loader redirects to `/dashboard/login` when
 `panelClient()` returns `null`.
@@ -139,5 +138,7 @@ reads it. Every dashboard layout loader redirects to `/dashboard/login` when
 - Repo-wide `bun run lint` still shows warn-only sonarjs complexity findings;
   judge by the touched paths.
 - Server-only rule (enforced by `.oxlintrc.json` `no-restricted-imports`):
-  routes may not import `@/server/*`, and nothing here imports `@menuza/db`,
-  `@menuza/orpc-server` or `@prisma/*`.
+  routes may not import `@/server/*`. The browser reaches the Rust APIs only
+  through `createServerFn` in `src/features/<domain>/server/*.functions.ts`; the
+  generated clients in `src/lib/api/**` are called from those functions and from
+  `src/server/**`, never from a route or component.

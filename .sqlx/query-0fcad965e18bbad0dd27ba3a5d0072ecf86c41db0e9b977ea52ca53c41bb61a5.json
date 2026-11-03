@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO public.\"Wallet\" (\n                    id, \"tenantId\", \"customerId\", \"balanceCents\", \"createdAt\", \"updatedAt\"\n                )\n                VALUES ($1, $2, $3, 0, $4, $4)\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "0fcad965e18bbad0dd27ba3a5d0072ecf86c41db0e9b977ea52ca53c41bb61a5"
+}

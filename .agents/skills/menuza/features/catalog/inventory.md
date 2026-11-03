@@ -15,7 +15,7 @@ Stock is per product or variation, controlled or unlimited. The hard requirement
 
 ## Code entry points
 
-- `Product` / `Variation` stock columns (`packages/db`); the write-off runs in the order-flow path and async jobs in `apps/worker`.
+- `Product` / `Variation` stock columns in `crates/persistence/migrations/0001_baseline.sql`; the write-off runs in the order-flow path (`crates/api-commerce`) and the reservation expiry drains from `crates/worker` (`orders_expiry.rs`, River/Postgres).
 - Concurrency safety comes from the database (transaction/conditional update), not from an in-process cache.
 
 ## Checks

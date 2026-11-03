@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO public.\"CouponRedemption\" (\n                id, \"tenantId\", \"couponId\", \"orderId\", \"customerId\", \"discountCents\"\n            )\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text", "Text", "Int4"]
+    },
+    "nullable": []
+  },
+  "hash": "aad925becf250a931bf5571704a66d4cb88d7393170e55fe55e192b51b2e36b4"
+}

@@ -1,6 +1,9 @@
 # @menuza/shared
 
-- Browser-safe contract package. NO server-only imports, NO env reads, NO database access.
+- Browser-safe types plus legacy Valibot/oRPC contracts (`@orpc/contract` types
+  only). NO server-only imports, NO env reads, NO database access. This package is
+  not the runtime contract: that is the Rust OpenAPI pair in
+  `crates/openapi/{commerce,tenant}.json`.
 - Subpath entrypoints only (no root export, no `src/index.ts`): `@menuza/shared/commerce`,
   `@menuza/shared/tenant`, `@menuza/shared/errors`, `@menuza/shared/push`,
   `@menuza/shared/sentry-privacy`.
@@ -41,10 +44,10 @@
   **digest** of the bearer token, so a `sessionId` on the wire is safe to display
   and to send back — it is never a usable credential. `changePassword` revokes
   every session but the caller's.
-- The tenant contract's `internal.resolveHost` procedure is service-to-service only:
-  it backs the web proxy's storefront host → tenant lookup and is gated by the
-  `INTERNAL_API_SECRET` shared token (`@menuza/orpc-server/internal`), never a browser
-  session or a public caller.
+- Host resolution is the tenant API's `GET /tenant/internal/resolve-host` route,
+  service-to-service only: it backs the web proxy's storefront host → tenant
+  lookup and is gated by the `x-menuza-internal-token` header against
+  `INTERNAL_API_SECRET`, never a browser session or a public caller.
 
 ## OpenAPI routes
 

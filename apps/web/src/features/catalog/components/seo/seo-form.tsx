@@ -1,11 +1,7 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useMutation } from "@tanstack/react-query";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { SaveSeoInputSchema } from "@menuza/shared/tenant";
 import type { PanelSeo, SeoEntityType, SeoFields, SeoSource } from "@menuza/shared/tenant";
 import { analyzeJsonLd, buildProductJsonLd } from "@menuza/shared/seo";
@@ -44,12 +40,7 @@ import { useDirtySection } from "@/features/catalog/components/product-editor-gu
 import { JsonLdField } from "./json-ld/json-ld-field.tsx";
 import type { JsonLdPreviewContext } from "./json-ld/json-ld-preview.tsx";
 import { SeoPreviewCard } from "./seo-preview-card.tsx";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
+import { revertSeoFn, saveSeoFn, type SeoMutationFailure } from "../../server/seo.functions.ts";
 
 const GENERIC_SAVE_ERROR = "Não foi possível salvar o SEO. Tente novamente.";
 
@@ -99,19 +90,20 @@ const SOURCE_LABELS: Record<SeoSource, string> = {
   default: "Padrão",
 };
 
-function serverMessage(error: Error, fallback: string): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "FORBIDDEN") return "Você não tem permissão para editar o SEO nesta loja.";
+/** The server never sends user copy, so codes map to pt-BR here. */
+function serverMessage(failure: SeoMutationFailure, fallback: string): string {
+  if (failure.status === "error") {
+    if (failure.code === "FORBIDDEN") return "Você não tem permissão para editar o SEO nesta loja.";
 
-    if (error.code === "NOT_FOUND") return "Entidade não encontrada nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Entidade não encontrada nesta loja.";
 
-    if (error.code === "BAD_REQUEST" || error.code === "VALIDATION_FAILED")
+    if (failure.code === "BAD_REQUEST" || failure.code === "VALIDATION_FAILED")
       return "Revise os campos destacados e tente novamente.";
 
     return fallback;
   }
 
-  return error.message || fallback;
+  return fallback;
 }
 
 /**
@@ -150,7 +142,7 @@ export function SeoForm({
 
       if (Object.keys(patch).length === 0) return null;
 
-      return client().panel.saveSeo({ storeSlug, entityType, entityId, ...patch });
+      return saveSeoFn({ data: { storeSlug, entityType, entityId, ...patch } });
     },
     onSuccess: (result) => {
       if (!result) {
@@ -159,29 +151,44 @@ export function SeoForm({
         return;
       }
 
-      setData(result);
+      if (result.status !== "ok") {
+        setStatus(null);
+        setServerError(serverMessage(result, GENERIC_SAVE_ERROR));
+
+        return;
+      }
+
+      setData(result.data);
       setStatus("SEO salvo.");
-    },
-    onError: (error) => {
-      setStatus(null);
-      setServerError(serverMessage(error, GENERIC_SAVE_ERROR));
     },
   });
 
   const revertFieldMutation = useMutation({
     mutationFn: async (field: keyof SeoFields) =>
-      client().panel.saveSeo({ storeSlug, entityType, entityId, [field]: null }),
+      saveSeoFn({ data: { storeSlug, entityType, entityId, [field]: null } }),
     onSuccess: (result) => {
-      setData(result);
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result, GENERIC_REVERT_ERROR));
+
+        return;
+      }
+
+      setData(result.data);
       setServerError(null);
     },
-    onError: (error) => setServerError(serverMessage(error, GENERIC_REVERT_ERROR)),
   });
 
   const revertAllMutation = useMutation({
-    mutationFn: async () => client().panel.revertSeo({ storeSlug, entityType, entityId }),
+    mutationFn: async () => revertSeoFn({ data: { storeSlug, entityType, entityId } }),
     onSuccess: (result) => {
-      setData(result);
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result, GENERIC_REVERT_ERROR));
+        setConfirmingRevert(false);
+
+        return;
+      }
+
+      setData(result.data);
       form.reset({
         storeSlug,
         entityType,
@@ -194,10 +201,6 @@ export function SeoForm({
       });
       setServerError(null);
       setStatus(null);
-      setConfirmingRevert(false);
-    },
-    onError: (error) => {
-      setServerError(serverMessage(error, GENERIC_REVERT_ERROR));
       setConfirmingRevert(false);
     },
   });

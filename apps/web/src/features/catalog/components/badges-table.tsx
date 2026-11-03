@@ -4,10 +4,6 @@ import { useRouter } from "@tanstack/react-router";
 
 import { useId, useState } from "react";
 import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 
 import {
@@ -43,6 +39,12 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
+import {
+  createBadgeFn,
+  deleteBadgeFn,
+  updateBadgeFn,
+  type TaxonomyMutationFailure,
+} from "../server/taxonomy-mutations.functions.ts";
 
 type BadgeRow = {
   id: string;
@@ -54,12 +56,6 @@ type BadgeRow = {
 };
 
 type StatusFilter = "all" | "active" | "inactive";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 const NAME_MAX = 64;
 
@@ -91,17 +87,16 @@ function validateImageUrl(imageUrl: string) {
 }
 
 /** The server never sends user copy, so codes map to pt-BR here. */
-function serverMessage(error: Error, action: "save" | "delete"): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "CONFLICT") return "Já existe uma etiqueta com este nome.";
+function serverMessage(failure: TaxonomyMutationFailure, action: "save" | "delete"): string {
+  if (failure.status === "error") {
+    if (failure.code === "CONFLICT") return "Já existe uma etiqueta com este nome.";
 
-    if (error.code === "FORBIDDEN")
+    if (failure.code === "FORBIDDEN")
       return "Você não tem permissão para editar o catálogo desta loja.";
 
-    if (error.code === "NOT_FOUND") return "Etiqueta não encontrada nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Etiqueta não encontrada nesta loja.";
 
-    if (error.code === "VALIDATION_FAILED" || error.code === "INVALID_INPUT")
-      return "Revise os campos destacados e tente novamente.";
+    if (failure.code === "BAD_REQUEST") return "Revise os campos destacados e tente novamente.";
   }
 
   return action === "delete"
@@ -170,29 +165,37 @@ function BadgeFormDialog({
 
   const mutation = useMutation({
     mutationFn: () => {
-      const panel = client().panel;
       const trimmedUrl = imageUrl.trim();
 
       return row
-        ? panel.updateBadge({
-            storeSlug,
-            badgeId: row.id,
-            name: name.trim(),
-            imageUrl: trimmedUrl,
-            isActive: active,
+        ? updateBadgeFn({
+            data: {
+              storeSlug,
+              badgeId: row.id,
+              name: name.trim(),
+              imageUrl: trimmedUrl,
+              isActive: active,
+            },
           })
-        : panel.createBadge({
-            storeSlug,
-            name: name.trim(),
-            imageUrl: trimmedUrl,
-            isActive: active,
+        : createBadgeFn({
+            data: {
+              storeSlug,
+              name: name.trim(),
+              imageUrl: trimmedUrl,
+              isActive: active,
+            },
           });
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result, "save"));
+
+        return;
+      }
+
       void router.invalidate();
       onClose();
     },
-    onError: (mutationError) => setServerError(serverMessage(mutationError, "save")),
   });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -336,12 +339,17 @@ function BadgeDeleteDialog({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () => client().panel.deleteBadge({ storeSlug, badgeId: row.id }),
-    onSuccess: () => {
+    mutationFn: () => deleteBadgeFn({ data: { storeSlug, badgeId: row.id } }),
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setDeleteError(serverMessage(result, "delete"));
+
+        return;
+      }
+
       void router.invalidate();
       onClose();
     },
-    onError: (error) => setDeleteError(serverMessage(error, "delete")),
   });
 
   return (
@@ -420,22 +428,25 @@ export function BadgesTable({ badges, storeSlug }: { badges: BadgeRow[]; storeSl
 
   const activeMutation = useMutation({
     mutationFn: ({ badgeId, isActive }: { badgeId: string; isActive: boolean }) =>
-      client().panel.updateBadge({ storeSlug, badgeId, isActive }),
+      updateBadgeFn({ data: { storeSlug, badgeId, isActive } }),
     onMutate: ({ badgeId, isActive }) => {
       setActiveOverrides((current) => ({ ...current, [badgeId]: isActive }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { badgeId }) => {
+      if (result.status !== "ok") {
+        setActiveOverrides((current) => {
+          const next = { ...current };
+          delete next[badgeId];
+
+          return next;
+        });
+        setSwitchError("Não foi possível alterar a etiqueta. Tente novamente.");
+
+        return;
+      }
+
       setSwitchError(null);
       void router.invalidate();
-    },
-    onError: (_error, { badgeId }) => {
-      setActiveOverrides((current) => {
-        const next = { ...current };
-        delete next[badgeId];
-
-        return next;
-      });
-      setSwitchError("Não foi possível alterar a etiqueta. Tente novamente.");
     },
   });
 

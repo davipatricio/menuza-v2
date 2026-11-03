@@ -2,10 +2,6 @@ import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import { tenantContractObject } from "@menuza/shared/tenant";
-import type { RouterContractClient } from "@orpc/contract";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
@@ -40,6 +36,11 @@ import { formatBrlInput, maskBrlInput, maskIntegerInput, parseBrlToCents } from 
 import { CreateCouponInputSchema, UpdateCouponInputSchema } from "@menuza/shared/tenant";
 import type { PanelCouponSummary } from "@menuza/shared/tenant";
 import { CouponProductPicker, type ProductOption } from "./coupon-product-picker.tsx";
+import {
+  createCouponFn,
+  updateCouponFn,
+  type CouponMutationFailure,
+} from "../server/coupon-mutations.functions.ts";
 
 type PanelCouponType = PanelCouponSummary;
 
@@ -60,29 +61,21 @@ const updateCouponSchema: any = UpdateCouponInputSchema;
 /**
  * Maps the API's error codes to pt-BR. The contract never sends user copy, so
  * an unmapped code falls back to the generic sentence rather than leaking the
- * English `ORPCError.message`.
+ * English `ApiError.message`.
  */
-function serverMessage(error: Error, fallback: string): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "CONFLICT") return "Já existe um cupom com esse código.";
+function serverMessage(failure: CouponMutationFailure, fallback: string): string {
+  if (failure.status === "error") {
+    if (failure.code === "CONFLICT") return "Já existe um cupom com esse código.";
 
-    if (error.code === "FORBIDDEN")
+    if (failure.code === "FORBIDDEN")
       return "Você não tem permissão para gerenciar cupons nesta loja.";
 
-    if (error.code === "NOT_FOUND") return "Loja não encontrada.";
+    if (failure.code === "NOT_FOUND") return "Loja não encontrada.";
 
-    if (error.code === "BAD_REQUEST") return "Revise os campos destacados e tente novamente.";
-
-    return fallback;
+    if (failure.code === "BAD_REQUEST") return "Revise os campos destacados e tente novamente.";
   }
 
-  return error.message || fallback;
-}
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
+  return fallback;
 }
 
 function FormSection({
@@ -788,13 +781,18 @@ export function CouponCreateForm({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (values: any) => client().panel.createCoupon(values),
-    onSuccess: () => {
+    mutationFn: async (values: any) => createCouponFn({ data: values }),
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result, GENERIC_CREATE_ERROR));
+
+        return;
+      }
+
       void queryClient.invalidateQueries({ queryKey: ["tenant", storeSlug, "coupons"] });
       void router.invalidate();
       void navigate({ href: `/dashboard/${storeSlug}/coupons` });
     },
-    onError: (error) => setServerError(serverMessage(error, GENERIC_CREATE_ERROR)),
   });
 
   const form = useForm({
@@ -876,21 +874,28 @@ export function CouponEditForm({
 
   const mutation = useMutation({
     mutationFn: async (values: any) =>
-      client().panel.updateCoupon({
-        ...values,
-        storeSlug,
-        couponId: coupon.id,
-        // Empty limit is an explicit "ilimitado", not an omitted key: the update
-        // schema is optional-nullable, so send null.
-        usageLimit: values.usageLimit ?? null,
-        perCustomerLimit: values.perCustomerLimit ?? null,
+      updateCouponFn({
+        data: {
+          ...values,
+          storeSlug,
+          couponId: coupon.id,
+          // Empty limit is an explicit "ilimitado", not an omitted key: the update
+          // schema is optional-nullable, so send null.
+          usageLimit: values.usageLimit ?? null,
+          perCustomerLimit: values.perCustomerLimit ?? null,
+        },
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result, GENERIC_UPDATE_ERROR));
+
+        return;
+      }
+
       void queryClient.invalidateQueries({ queryKey: ["tenant", storeSlug, "coupons"] });
       void router.invalidate();
       void navigate({ href: `/dashboard/${storeSlug}/coupons` });
     },
-    onError: (error) => setServerError(serverMessage(error, GENERIC_UPDATE_ERROR)),
   });
 
   const form = useForm({

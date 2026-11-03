@@ -2,12 +2,8 @@ import type { FormEvent, ReactNode } from "react";
 import { useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useForm, useStore } from "@tanstack/react-form";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useMutation } from "@tanstack/react-query";
 import { Award, Plus, Tag, Trash2, CircleHelp } from "lucide-react";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { CreateProductInputSchema, UpdateProductInputSchema } from "@menuza/shared/tenant";
 import type { PanelProductDetail, StockMode } from "@menuza/shared/tenant";
 
@@ -62,16 +58,16 @@ import {
 import { fieldErrors } from "@/lib/form-errors.ts";
 import { formatBrlInput, maskIntegerInput } from "@/lib/format.ts";
 import { STOCK_MODE_LABELS } from "@/lib/panel-labels.ts";
+import {
+  createProductFn,
+  deleteProductFn,
+  updateProductFn,
+  type MutationFailure,
+} from "../server/product-mutations.functions.ts";
 import { useDirtySection, useLeaveGuard } from "./product-editor-guard.tsx";
 import { useProductWebMcp } from "./product-webmcp.ts";
 import { TagCombobox } from "./tag-combobox.tsx";
 import { ProductTaxonomySelect, type SubcategoryOption } from "./product-taxonomy-select.tsx";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 /** `controlled` needs a quantity, `unlimited` must not carry one (contract rule). */
 const STOCK_MODES: StockMode[] = ["controlled", "unlimited"];
@@ -221,33 +217,30 @@ type SubcategoryItem = SubcategoryOption;
 
 /**
  * Maps the API's error codes to pt-BR. The contract never sends user copy, so
- * an unmapped code falls back to the generic sentence rather than leaking the
- * English `ORPCError.message`.
+ * an unmapped code falls back to the generic sentence.
  */
-function serverMessage(error: Error, fallback: string): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "CONFLICT") return "Já existe uma variação com este nome neste produto.";
+function serverMessage(failure: MutationFailure, fallback: string): string {
+  if (failure.status === "error") {
+    if (failure.code === "CONFLICT") return "Já existe uma variação com este nome neste produto.";
 
-    if (error.code === "FORBIDDEN")
+    if (failure.code === "FORBIDDEN")
       return "Você não tem permissão para gerenciar o catálogo nesta loja.";
 
-    if (error.code === "NOT_FOUND") return "Produto não encontrado nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Produto não encontrado nesta loja.";
 
-    if (error.code === "VALIDATION_FAILED" || error.code === "INVALID_INPUT")
+    if (failure.code === "VALIDATION_FAILED" || failure.code === "INVALID_INPUT")
       return "Revise os campos destacados e tente novamente.";
-
-    return fallback;
   }
 
-  return error.message || fallback;
+  return fallback;
 }
 
 /** Deleting refuses a product an order or a kit still points at. */
-function deleteMessage(error: Error): string {
-  if (error instanceof ORPCError && error.code === "CONFLICT")
+function deleteMessage(failure: MutationFailure): string {
+  if (failure.status === "error" && failure.code === "CONFLICT")
     return "Este produto faz parte de um pedido ou kit e não pode ser excluído.";
 
-  return serverMessage(error, GENERIC_DELETE_ERROR);
+  return serverMessage(failure, GENERIC_DELETE_ERROR);
 }
 
 function FormSection({
@@ -859,16 +852,19 @@ export function DeleteProductButton({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async () => client().panel.deleteProduct({ storeSlug, productId }),
-    onSuccess: () => {
+    mutationFn: () => deleteProductFn({ data: { storeSlug, productId } }),
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(deleteMessage(result));
+        setConfirming(false);
+
+        return;
+      }
+
       // The list route re-reads on navigation; invalidate first so a back
       // navigation does not render the deleted row from a stale entry.
       void router.invalidate();
       void navigate({ href: `/dashboard/${storeSlug}/catalog/products` });
-    },
-    onError: (error) => {
-      setServerError(deleteMessage(error));
-      setConfirming(false);
     },
   });
 
@@ -973,25 +969,26 @@ export function ProductForm({
 
         if (Object.keys(patch).length === 0) return null;
 
-        const { product: updated } = await client().panel.updateProduct({
-          storeSlug,
-          productId: product.id,
-          ...patch,
-        });
-
-        return updated;
+        return updateProductFn({ data: { storeSlug, productId: product.id, ...patch } });
       }
 
-      const { product: created } = await client().panel.createProduct({
-        ...values,
-        description: values.description.trim() === "" ? null : values.description,
+      return createProductFn({
+        data: {
+          ...values,
+          description: values.description.trim() === "" ? null : values.description,
+        },
       });
-
-      return created;
     },
     onSuccess: (result, values) => {
-      if (!result) {
+      if (result === null) {
         setStatus("Nenhuma alteração para salvar.");
+
+        return;
+      }
+
+      if (result.status !== "ok") {
+        setStatus(null);
+        setServerError(serverMessage(result, product ? GENERIC_SAVE_ERROR : GENERIC_CREATE_ERROR));
 
         return;
       }
@@ -1006,12 +1003,8 @@ export function ProductForm({
 
       // The note lives on the edit page, so it survives the navigation.
       void navigate({
-        href: `/dashboard/${storeSlug}/catalog/products/${result.id}?created=1`,
+        href: `/dashboard/${storeSlug}/catalog/products/${result.data.id}?created=1`,
       });
-    },
-    onError: (error) => {
-      setStatus(null);
-      setServerError(serverMessage(error, product ? GENERIC_SAVE_ERROR : GENERIC_CREATE_ERROR));
     },
   });
 

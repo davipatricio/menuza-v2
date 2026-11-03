@@ -24,22 +24,22 @@ The MVP is done when the 12 acceptance scenarios pass, not when the cards are Do
 
 ## Module map
 
-| Area | Code home | Tickets |
-| --- | --- | --- |
-| Tenant isolation | `packages/db/scope`, `@menuza/orpc-server/tenant` | MEN-69, MEN-180 |
-| Auth/sessions | `@menuza/orpc-server/auth`, `@menuza/shared/tenant` | MEN-75, MEN-167, MEN-213..216 |
-| Store, team, audit | `@menuza/api-tenant` panel/account | MEN-70..74, MEN-106/107 |
-| Storefront | `apps/web` `(storefront)` | MEN-77..79 |
-| Catalog/kits/stock | `@menuza/api-commerce`, `packages/db` | MEN-80..83 |
-| Cart/checkout | `@menuza/api-commerce` | MEN-84/85, MEN-113/114 |
-| Coverage/freight | `@menuza/api-commerce` | MEN-86/87, MEN-115 |
-| Scheduling/pickup/dispatch | `@menuza/api-commerce` | MEN-88/89, MEN-99 |
-| Payments | `@menuza/api-commerce`, `apps/worker` | MEN-90..94, MEN-168 |
-| Wallet | `packages/db`, order flow | MEN-95/96 |
-| Orders | `packages/db`, order service | MEN-93 |
-| Notifications | `apps/worker`, `Mailer` | MEN-100/101 |
-| Customers/metrics | panel + exports | MEN-102..105 |
-| Admin/SaaS billing | `@menuza/api-tenant` admin | MEN-106/107, MEN-110..112 |
-| Infra/platform | `apps/*`, `packages/*` | MEN-160..229 |
+| Area                       | Code home                                                                                                                               | Tickets                       |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Tenant isolation           | `crates/http/src/extract.rs`, `crates/persistence/src/tenant.rs`                                                                        | MEN-69, MEN-180               |
+| Auth/sessions              | `crates/domain/src/{password,session}.rs`, `crates/api-tenant/src/domains/tenant/subdomains/{account,session}`, `@menuza/shared/tenant` | MEN-75, MEN-167, MEN-213..216 |
+| Store, team, audit         | `crates/api-tenant` `panel`/`account` subdomains                                                                                        | MEN-70..74, MEN-106/107       |
+| Storefront                 | `apps/web` `_storefront` routes                                                                                                         | MEN-77..79                    |
+| Catalog/kits/stock         | `crates/api-commerce`, `crates/persistence`                                                                                             | MEN-80..83                    |
+| Cart/checkout              | `crates/api-commerce`                                                                                                                   | MEN-84/85, MEN-113/114        |
+| Coverage/freight           | `crates/api-commerce`                                                                                                                   | MEN-86/87, MEN-115            |
+| Scheduling/pickup/dispatch | `crates/api-commerce`                                                                                                                   | MEN-88/89, MEN-99             |
+| Payments                   | `crates/api-commerce`, `crates/worker`                                                                                                  | MEN-90..94, MEN-168           |
+| Wallet                     | `crates/persistence`, order flow                                                                                                        | MEN-95/96                     |
+| Orders                     | `crates/persistence`, `crates/api-commerce` orders                                                                                      | MEN-93                        |
+| Notifications              | `crates/worker` (push sender/dispatch), `crates/api-tenant` push                                                                        | MEN-100/101                   |
+| Customers/metrics          | panel + exports                                                                                                                         | MEN-102..105                  |
+| Admin/SaaS billing         | `crates/api-tenant` panel (no admin module yet)                                                                                         | MEN-106/107, MEN-110..112     |
+| Infra/platform             | `apps/*`, `crates/*`, `packages/*`                                                                                                      | MEN-160..229                  |
 
 The map above cites ids only, to point at the code home. Status, priority, ordering and what is next come from Linear.

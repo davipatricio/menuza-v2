@@ -1,0 +1,79 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, \"productId\" AS product_id, name, \"priceCents\" AS price_cents,\n               \"stockMode\" AS stock_mode, \"stockQty\" AS stock_qty\n        FROM public.\"Variation\"\n        WHERE \"tenantId\" = $1\n        ORDER BY name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "product_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "productId"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "price_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "priceCents"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "stock_mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "stockMode"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "stock_qty",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "stockQty"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [false, false, false, false, false, true]
+  },
+  "hash": "7ba62fd619665388717bcca96eb3da990d8ba04486575db6edafc894e735e525"
+}

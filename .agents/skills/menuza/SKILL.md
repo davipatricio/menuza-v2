@@ -6,12 +6,12 @@ description: >
   teams, storefronts, catalog and kits, checkout and payments, wallet and cashback,
   delivery and freight, orders and notifications, or integrations — when a task
   cites a MEN- ticket or PRODUCT.md, or when deciding where a change belongs across
-  apps/web, apps/commerce, apps/tenant, and packages/*.
+  apps/web, crates/*, and packages/*.
 ---
 
 # Menuza
 
-Multi-tenant SaaS giving each food store (`loja`) its own ecommerce: storefront, catalog, checkout, payments, delivery, and a management panel. Not a marketplace, and no global store directory for buyers. Node + Bun; oRPC contracts; Prisma 8; Next 16 in `apps/web`.
+Multi-tenant SaaS giving each food store (`loja`) its own ecommerce: storefront, catalog, checkout, payments, delivery, and a management panel. Not a marketplace, and no global store directory for buyers. Bun + Rust (axum) on Postgres; OpenAPI contract; TanStack Start in `apps/web`.
 
 Two sources of truth: `PRODUCT.md` (product, numbered sections) and Linear (team `Menuza`, ids `MEN-###`; `MEN-63` = MVP, `MEN-64` = post-MVP backlog, `MEN-65` = future). This skill maps those onto the code and the checks. It does not replace either — cite the section or ticket when a rule matters.
 
@@ -52,11 +52,11 @@ Load only the file the task needs. Every folder has an `INDEX.md` with a keyword
 
 Every change holds these, whatever the feature:
 
-- **Tenant isolation is server-side and fail-closed.** Every tenant-scoped query carries an explicit `where.tenantId`; a known resource ID never grants cross-tenant access. Scope is `withTenant` / `unscoped` from `@menuza/db/scope`; the enforcement points are the oRPC tenant middleware and the Prisma runtime middleware (ADR-0001; MEN-180, MEN-69).
-- **Contracts first.** Shapes live in `@menuza/shared/commerce` and `@menuza/shared/tenant` (Valibot, Standard Schema); implementations consume them (ADR-0002). Change contract → server, never the reverse.
-- **`apps/web` never reads the database.** It calls `apps/commerce` / `apps/tenant` over oRPC with a member session or the internal token. See `apps/web/AGENTS.md`.
+- **Tenant isolation is server-side and fail-closed.** Every tenant-scoped statement in `crates/persistence` binds `tenantId`; a known resource ID never grants cross-tenant access. `TenantScope` (`crates/http/src/extract.rs`) accepts the tenant header only from a loopback peer or a trusted proxy hop, and no RLS sits behind it (ADR-0001; MEN-180, MEN-69).
+- **Contracts first.** The runtime contract is OpenAPI (`crates/openapi/{commerce,tenant}.json`), emitted from the `utoipa` schemas in `crates/contract`; orval generates `apps/web/src/lib/api/*` from it. `packages/shared` keeps the legacy Valibot/oRPC shapes as types only (ADR-0002). Change contract → server, never the reverse.
+- **`apps/web` never reads the database.** It calls `crates/api-commerce` (:3001) / `crates/api-tenant` (:3002) over OpenAPI with a member session or the internal token. See `apps/web/AGENTS.md`.
 - **Money is validated on the server and stored as integer cents.** `formatBrl` takes cents (ADR-0006); authorization and amounts are never trusted from the client.
-- **Retrieval keeps its home.** Commerce procedures in `@menuza/api-commerce`, management in `@menuza/api-tenant`, each with the `domains/<domain>/subdomains/<subdomain>/<name>.impl.ts` layout its AGENTS.md defines.
+- **Retrieval keeps its home.** Commerce handlers in `crates/api-commerce`, management in `crates/api-tenant`, each with the `domains/<domain>/subdomains/<subdomain>/<name>.rs` layout its AGENTS.md defines.
 - **`pt-BR` is the user-facing language.** ASCII slugs live in code; translated labels only in the UI (`src/lib/panel-labels.ts` in the panel).
 - **No secret reaches the client.** Per-tenant credentials are encrypted at rest; `NEXT_PUBLIC_*` carries none.
 

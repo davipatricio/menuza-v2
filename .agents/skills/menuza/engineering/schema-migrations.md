@@ -1,45 +1,59 @@
 # Schema migrations
 
-Prisma 8 (`@menuza/db`) migration runbook. The contract is the source; migrations are
-explicit, committed packages under `packages/db/migrations/`. Mechanics live in
-`packages/db/AGENTS.md`; this page is the loop and its failure modes.
+sqlx 0.9 migration runbook. SQL is the source: migrations are append-only files under
+`crates/persistence/migrations/`, and the schema the APIs compile against is that tree.
+Crate mechanics live in `crates/persistence/AGENTS.md`; this page is the loop and its
+failure modes.
 
 ## Loop
 
-1. Edit `packages/db/prisma/contract.prisma`.
-2. `bun run db:generate` (= `prisma contract emit`) — writes `contract.json` /
-   `contract.d.ts` into the gitignored `prisma/generated/client/`.
-3. `prisma migration plan --name <slug>` — inspect the planned package. **One real
-   change = one migration package.** A plan with dozens of operations is wrong.
-4. `prisma db migrate` — applies the edges. Then `prisma db migrate --advance-ref db`.
-5. `prisma migration status` — must read "Up to date", with the new package listing
-   `db` among its refs.
-6. Commit the package **and** `migrations/snapshots/<hash>/` together, plus
-   `migrations/app/refs/db.json`.
+1. Add a migration file in `crates/persistence/migrations/` (`<timestamp>_<slug>.sql`).
+   `0001_baseline.sql` is the baseline and `0002_river_jobs.sql` is River's tables.
+   **Never edit an applied file** — its checksum changes and sqlx refuses to run.
+2. Change the statements that read the schema in `crates/persistence/src/**`. They use
+   `query!`/`query_as!`, so a stale statement fails the build.
+3. `bun run db:migrate` (= `cargo sqlx migrate run --source crates/persistence/migrations`)
+   against the local Postgres.
+4. `cargo sqlx prepare --workspace` (or `bun run db:deploy`) to refresh the committed
+   `.sqlx` cache. Without this, CI (`SQLX_OFFLINE=true`) cannot compile the change.
+5. `cargo test --workspace` and `cargo clippy --workspace --all-targets -- -D warnings`.
+6. Commit the migration and `.sqlx` together.
 
-Then regenerate anything downstream of the contract: `bun run typegen`,
-`apps/orpc-server/openapi/tenant.json` (its test asserts the file), and the panel
-schemas in `packages/shared/src/panel/contracts.ts` when a field is exposed.
+Then regenerate anything downstream of a shape: `cargo run -p openapi`, and
+`bun run api:generate` in `apps/web` when a field the client reads moved.
 
-## Failure modes (each one is a wrong origin, not a broken database)
+`packages/db/prisma/contract.prisma` is the historical contract the baseline was derived
+from. Read it; do not edit it, and do not add models there.
 
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| `migration plan` reports far too many operations and warns that the default origin ref `db` "already has a migration leading to … Planning from it forks the migration graph" | `migrations/app/refs/db.json` is stale | Make it equal the `currentContract` from `prisma migration status`, then re-plan |
-| `MIGRATION.REF_NOT_FOUND` | `--to <hash>` was passed for the freshly emitted contract | Pass `--from <hash>` only; a contract becomes a graph node only once a migration carries it |
-| `MIGRATION.PATH_UNREACHABLE` on `prisma db migrate` | no edge joins the database's state to the target | Re-plan from the correct origin — migrate replays edges, it never invents one |
-| the next plan forks again | the ref was not advanced | `prisma db migrate --advance-ref db` after every apply |
+## Deploy
+
+- `sqlx migrate run` is a deploy step **before** either binary or the worker starts;
+  neither migrates on boot.
+- The run takes a Postgres advisory lock and sets `lock_timeout`, so a second deploy fails
+  fast instead of queueing behind the first.
+- Changes are expand/contract: add columns and tables first, backfill, drop in a later
+  release. A migration that requires the old code to stop first is wrong.
+- River appends its own tables per release (`0002_river_jobs.sql` today); re-check that
+  table set on every `riverqueue` upgrade.
+
+## Failure modes
+
+| Symptom                                                 | Cause                                               | Fix                                                            |
+| ------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `cargo check` fails on a `query!` with "no cached data" | the statement changed and `.sqlx` was not refreshed | `cargo sqlx prepare --workspace` with the migrated database up |
+| sqlx refuses to run a migration (checksum mismatch)     | an applied file was edited                          | restore the file byte-for-byte and add a new migration instead |
+| the deploy hangs on the migration lock                  | another deploy holds the advisory lock              | wait it out or kill the stuck session; never remove the lock   |
+| compiles locally but not in CI                          | CI has no database                                  | commit the `.sqlx` entry; a missing one is a missing prepare   |
 
 ## Data rules
 
-- Money is `Int` cents (ADR-0006); `Coupon.value` is cents for a fixed discount and a
-  whole percent for a percentage one, disambiguated by `discountType`. UI converts at
-  the edge (`apps/web/src/lib/format.ts`), never the contract.
-- Enum-ish columns are `@@type("pg/text@1")` with generated CHECKs over lowercase
-  ASCII slugs; pt-BR labels live only in the UI.
-- `@@check` expressions must quote camelCase identifiers (`"priceCents" >= 0`).
-- Every commerce model carries `tenantId` and `@@index([tenantId])`;
-  `TENANT_SCOPED_MODELS` is derived from the contract, not hand-listed.
-- A nullable column added for a new UI affordance (e.g.
-  `Coupon.shippingDiscountPercent Int?`) keeps existing rows valid without a backfill;
-  treat `null` as "not offered", not as `0`.
+- Money is `Int` cents / `int4` (ADR-0006); the UI converts at the edge
+  (`apps/web/src/lib/format.ts`), never the contract.
+- Enum-ish columns are `text` with a CHECK over lowercase ASCII slugs; pt-BR labels live
+  only in the UI.
+- Timestamps are `Timestamp(3)`, UTC-naive in the row and re-attached at the edge.
+- Every commerce table carries `tenantId`, and every tenant-scoped statement binds
+  `tenant_id` (app-layer, ADR-0001). `Scope::unscoped(reason)` is the only exception.
+- A nullable column added for a new UI affordance keeps existing rows valid without a
+  backfill; treat `null` as "not offered", not as `0`.
+- Identifier case matters: a camelCase column needs double quotes in SQL (`"priceCents"`).

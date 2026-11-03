@@ -1,0 +1,99 @@
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.95"
+license = "UNLICENSED"
+publish = false
+
+# Pre-1.0 crates are pinned exactly: a caret range is a breaking change waiting
+# for the next `cargo update`. See ADR-0007.
+[workspace.dependencies]
+axum = { version = "=0.8.9" }
+tokio = { version = "=1.54.1", features = [
+  "rt-multi-thread",
+  "macros",
+  "signal",
+  "net",
+  "time",
+] }
+tower = { version = "=0.5.3" }
+tower-http = { version = "=0.7.1", features = [
+  "trace",
+  "compression-full",
+  "timeout",
+  "limit",
+  "request-id",
+  "catch-panic",
+  "cors",
+  "util",
+] }
+# sqlx 0.9 replaced `runtime-tokio-rustls` with `runtime-tokio` + a `tls-*` feature.
+sqlx = { version = "=0.9.0", default-features = false, features = [
+  "runtime-tokio",
+  "tls-rustls-ring",
+  "postgres",
+  "chrono",
+  "uuid",
+  "json",
+  "macros",
+  "migrate",
+] }
+utoipa = { version = "=6.0.0", features = [
+  "axum_extras",
+  "chrono",
+  "uuid",
+  "preserve_path_order",
+] }
+utoipa-scalar = { version = "=0.4.0" }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.154" }
+thiserror = { version = "=2.0.21" }
+tracing = { version = "=0.1.44" }
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
+chrono = { version = "=0.4.45", features = ["serde"] }
+uuid = { version = "=1.29.0", features = ["v4", "serde"] }
+argon2 = { version = "=0.6.0" }
+# AES-256-GCM seals the payment credential envelope; base64 carries its parts.
+aes-gcm = { version = "=0.11.1" }
+base64 = { version = "=0.23.1" }
+sha2 = { version = "=0.11.1" }
+# Web Push: P-256 does the ECDH and the ES256 VAPID JWT, HKDF and AES-128-GCM
+# frame the aes128gcm body, reqwest posts it. `web-push` is not used: 0.4.2 is
+# tokio 0.1 + hyper 0.12 + rust-crypto, and 0.11 is hyper 0.14.
+p256 = { version = "=0.14.0", default-features = false, features = [
+  "ecdsa",
+  "ecdh",
+  "getrandom",
+] }
+hkdf = { version = "=0.13.0" }
+# `rustls-no-provider`: the ring provider is already in the tree via sqlx, and
+# aws-lc-rs wants cmake. `push_sender` installs ring before it builds a client.
+reqwest = { version = "=0.13.5", default-features = false, features = [
+  "rustls-no-provider",
+  "charset",
+] }
+rustls = { version = "=0.23.46", default-features = false, features = [
+  "ring",
+  "std",
+  "tls12",
+] }
+getrandom = { version = "=0.4.3" }
+riverqueue = { version = "=0.4.0" }
+# Streamable HTTP for the tenant `/mcp` endpoint. `server` pulls the tool
+# protocol and schemars; the transport feature brings the tower service. Macro
+# and client features stay off until a caller needs them.
+rmcp = { version = "=3.8.0", default-features = false, features = [
+  "server",
+  "transport-streamable-http-server",
+] }
+redis = { version = "=1.8.1" }
+
+# `panic = "abort"` is applied per binary, never here: library tests need unwind.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+strip = "symbols"

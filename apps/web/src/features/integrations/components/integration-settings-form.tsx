@@ -1,19 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useRouter } from "@tanstack/react-router";
-import { tenantContractObject, type IntegrationSetting } from "@menuza/shared/tenant";
+import type { IntegrationSetting } from "@menuza/shared/tenant";
 import { Button } from "@/components/ui/button.tsx";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client(): ContractClient {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
+import { saveIntegrationFn } from "../server/integrations.functions.ts";
 
 /**
  * The detail page's settings block, driven by the catalog's field descriptors.
@@ -49,7 +41,11 @@ export function IntegrationSettingsForm({
     setPending(true);
 
     try {
-      await client().panel.saveIntegration({ storeSlug, integrationId, config: values });
+      const result = await saveIntegrationFn({
+        data: { storeSlug, integrationId, config: values },
+      });
+
+      if (result.status !== "ok") throw new Error(result.status);
 
       setMessage({ ok: true, text: "Configurações salvas." });
       await router.invalidate();

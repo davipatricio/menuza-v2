@@ -16,12 +16,12 @@ Menuza runs its **own** auth: argon2 password hashing and server-side sessions w
 - `account.changePassword` and `account.revokeOtherSessions` revoke every **other** session; `account.revokeSession` revokes one.
 - The storefront sends a tenant header; the tenant **management** surface never does — every `panel.*` takes `storeSlug` and the server resolves it (ADR-0005, MEN-225).
 - An unknown slug and a non-member are both `NOT_FOUND`, so existence never leaks.
-- No anonymous management operation beyond the health probe and the VAPID public key (`packages/api-tenant/AGENTS.md`).
+- No anonymous management operation beyond the health probe and the VAPID public key (`crates/api-tenant/AGENTS.md`).
 
 ## Code entry points
 
-- Session plumbing and `authMiddleware` in `@menuza/orpc-server/auth`; contracts in `@menuza/shared/tenant`; panel/session client in `apps/web/src/lib/session-client.ts`.
-- Models `Member`, `MemberIdentity`, `Session`, `TenantMembership` (`packages/db`).
+- Session plumbing in `crates/domain/src/{password,session}.rs` (argon2, cookie serialization, token digest) and the `account`/`session` routes in `crates/api-tenant/src/domains/tenant/subdomains/{account,session}`; contracts in `@menuza/shared/tenant` (legacy types, runtime OpenAPI in `crates/contract`); panel/session client in `apps/web/src/lib/session-client.ts`.
+- Tables `Member`, `MemberIdentity`, `Session`, `TenantMembership` (`crates/persistence/migrations`).
 
 ## Checks
 

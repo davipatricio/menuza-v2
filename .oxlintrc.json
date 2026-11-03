@@ -87,6 +87,7 @@
     "**/*.min.*",
     "apps/web/.shadcn-cache/**",
     "apps/web/src/routeTree.gen.ts",
+    "apps/web/src/lib/api/**",
     ".bun/**",
     "**/.bun/**",
     ".agent/**",
@@ -120,15 +121,7 @@
       }
     },
     {
-      "files": [
-        "apps/commerce/**",
-        "apps/tenant/**",
-        "apps/worker/**",
-        "packages/db/**",
-        "packages/api-commerce/**",
-        "packages/api-tenant/**",
-        "apps/orpc-server/**"
-      ],
+      "files": ["packages/db/**"],
       "env": {
         "node": true,
         "builtin": true
@@ -311,29 +304,6 @@
       "files": ["apps/web/src/routes/**/export.ts"],
       "rules": {
         "no-restricted-imports": "off"
-      }
-    },
-    {
-      // Nothing in the web app talks to the database or the API servers directly.
-      "files": ["apps/web/src/**"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              {
-                "group": [
-                  "@menuza/db",
-                  "@menuza/db/*",
-                  "@menuza/orpc-server",
-                  "@menuza/orpc-server/*",
-                  "@prisma/*"
-                ],
-                "message": "The web app reaches the APIs over oRPC; it never imports the database or the server packages."
-              }
-            ]
-          }
-        ]
       }
     },
     {

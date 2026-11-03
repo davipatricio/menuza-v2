@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { ORPCError } from "@orpc/client";
 import { Loader2 } from "lucide-react";
 import { CreateStoreInputSchema } from "@menuza/shared/tenant";
 import { Button } from "@/components/ui/button.tsx";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { createStore } from "@/features/auth/server/session-client.ts";
+import { ApiError } from "@/lib/api-error";
 import { slugify } from "@/lib/slug.ts";
 import { fieldErrors } from "./form-errors.ts";
 
@@ -50,7 +50,7 @@ export function StoreForm() {
         window.location.assign("/dashboard");
       } catch (error) {
         setServerError(
-          error instanceof ORPCError && error.code === "CONFLICT" ? CONFLICT_ERROR : GENERIC_ERROR,
+          error instanceof ApiError && error.code === "CONFLICT" ? CONFLICT_ERROR : GENERIC_ERROR,
         );
       }
     },

@@ -4,8 +4,9 @@ Run these before calling a Menuza feature done. The commands and the 12 scenario
 
 ## Every change
 
-- `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `db:generate` + `typegen`).
-- `bun test` — workspace-policy + unit tests (no infra).
+- `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `typegen`).
+- `cargo test --workspace` and `bun test` — unit tests, no infra.
+- `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --all --check`.
 - `bun run lint` and `bun run fmt:check` — oxlint + oxfmt via turbo. Both are green
   repo-wide today. Still lint your own paths first (`bunx oxfmt <paths>` then
   `bunx oxlint <paths>`): the pre-commit hook only checks staged files, so an unstaged
@@ -13,13 +14,14 @@ Run these before calling a Menuza feature done. The commands and the 12 scenario
   `anti-slop/require-readable-spacing` autofixes (`bunx oxlint --fix <paths>`); re-run the
   formatter afterwards and confirm a second pass changes nothing. Every `as` needs a
   `SAFETY:` comment, no `unknown` parameter, no runtime `typeof` narrowing (`anti-slop`).
-- Contract changed? Follow `schema-migrations.md`, then regenerate `typegen` and
-  `apps/orpc-server/openapi/tenant.json`.
+- Contract changed? Follow `schema-migrations.md`, then `cargo run -p openapi` (and
+  `cargo run -p openapi -- --check`) and `bun run api:generate` in `apps/web`.
 - `/dashboard` UI changed? `bun run design:check` (a root script; checks the dashboard
   against `apps/web/DESIGN.md`).
-- `bun run build` — Prisma generate, Next typegen, Next build with type checking (never `ignoreBuildErrors`).
+- `bun run build` — Vite production build with type checking; the Rust side builds with
+  `cargo build --workspace --release` (never `ignoreBuildErrors`).
 - If the change touched a route in `apps/web`, read the build's route table against `route-stages.md`.
-- No secret in `NEXT_PUBLIC_*`; tenant-scoped queries carry an explicit `where.tenantId`; user-facing copy is `pt-BR`.
+- No secret in `NEXT_PUBLIC_*`; tenant-scoped SQL binds `tenant_id`; user-facing copy is `pt-BR`.
 
 ## The 12 acceptance scenarios (`PRODUCT.md` §24)
 

@@ -16,7 +16,7 @@
 
 ## Code
 
-- Capability predicate `can` from `@menuza/orpc-server/auth`; the HTTP-facing wrapper is `requireCapability` in `packages/api-tenant/src/domains/panel/support.ts`, which turns a failed check into `FORBIDDEN`.
+- Capability predicate `can` in `crates/api-tenant/src/domains/tenant/support.rs`; the HTTP-facing wrapper is `require_capability` in the same module, which turns a failed check into `FORBIDDEN` (panel wrapper: `crates/api-tenant/src/domains/tenant/subdomains/panel/support.rs`).
 - Do not hand-roll role checks elsewhere: extend the capability map, keep one source of truth, and keep it server-side.
 - `panel.listTeamMembers` is the reference caller: gated on `team:read`, so `staff` is refused and the web renders it as the read-only notice.
 - Admin/support access (MEN-107, MEN-216) is a distinct, audited capability — not a role.

@@ -10,9 +10,6 @@
  */
 import { useState, type FormEvent } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useMutation } from "@tanstack/react-query";
 import { CircleHelp, TriangleAlert } from "lucide-react";
 import * as v from "valibot";
@@ -38,7 +35,6 @@ import {
   NutritionBasisSchema,
   NutritionLabelFormatSchema,
   NutritionSourceSchema,
-  tenantContractObject,
 } from "@menuza/shared/tenant";
 import type {
   NutritionBasis,
@@ -85,13 +81,11 @@ import {
   NUTRITION_SOURCE_LABELS,
 } from "@/lib/panel-labels.ts";
 import { fieldErrors } from "@/lib/form-errors.ts";
+import {
+  saveProductNutritionFn,
+  type MutationFailure,
+} from "../server/product-mutations.functions.ts";
 import { useDirtySection } from "./product-editor-guard.tsx";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 const GENERIC_SAVE_ERROR = "Não foi possível salvar a tabela nutricional. Tente novamente.";
 
@@ -582,24 +576,22 @@ function frontOfPackStatus(rule: FrontOfPackRule, input: NutritionInput): string
   return `Atual: ${thresholdText(rule, value)} por 100 ${unit} · limite de ${limit}`;
 }
 
-function serverMessage(error: Error): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "FORBIDDEN") {
+function serverMessage(failure: MutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "FORBIDDEN") {
       return "Você não tem permissão para editar a tabela nutricional nesta loja.";
     }
 
-    if (error.code === "NOT_FOUND") return "Produto não encontrado nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Produto não encontrado nesta loja.";
 
-    // The rules of the table (publishing checklist, sugar/fat ordering) answer
-    // with the sentence that names the fix, so show it instead of a generic one.
-    if (error.code === "BAD_REQUEST" || error.code === "VALIDATION_FAILED") {
-      return error.message || "Revise os campos destacados e tente novamente.";
+    // The rules of the table (publishing checklist, sugar/fat ordering) reject
+    // the patch as a whole, so the fields are what the person has to revise.
+    if (failure.code === "BAD_REQUEST" || failure.code === "VALIDATION_FAILED") {
+      return "Revise os campos destacados e tente novamente.";
     }
-
-    return GENERIC_SAVE_ERROR;
   }
 
-  return error.message || GENERIC_SAVE_ERROR;
+  return GENERIC_SAVE_ERROR;
 }
 
 /** Bloqueia a validação nativa e foca o primeiro campo inválido após o submit. */
@@ -1151,27 +1143,24 @@ export function ProductNutrition({
 
       if (Object.keys(patch).length === 0) return null;
 
-      const { product } = await client().panel.saveProductNutrition({
-        storeSlug,
-        productId,
-        ...patch,
-      });
-
-      return product;
+      return saveProductNutritionFn({ data: { storeSlug, productId, ...patch } });
     },
-    onSuccess: (product) => {
-      if (!product) {
+    onSuccess: (result) => {
+      if (result === null) {
         setStatus("Nenhuma alteração para salvar.");
 
         return;
       }
 
-      setBaseline(valuesFrom(product.nutrition));
+      if (result.status !== "ok") {
+        setStatus(null);
+        setServerError(serverMessage(result));
+
+        return;
+      }
+
+      setBaseline(valuesFrom(result.data.nutrition));
       setStatus("Tabela nutricional salva.");
-    },
-    onError: (error) => {
-      setStatus(null);
-      setServerError(serverMessage(error));
     },
   });
 

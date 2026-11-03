@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT COUNT(*) AS \"count!\"\n                FROM public.\"CouponRedemption\"\n                WHERE \"tenantId\" = $1 AND \"couponId\" = $2 AND \"customerId\" = $3\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text", "Text"]
+    },
+    "nullable": [null]
+  },
+  "hash": "cf0a1898d50d8e682149b87e8b6b804ce1e325bf0ec8eeb737932aeb256afca5"
+}

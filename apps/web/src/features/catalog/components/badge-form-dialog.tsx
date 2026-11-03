@@ -1,10 +1,6 @@
 import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { Button } from "@/components/ui/button.tsx";
 import {
   Dialog,
@@ -18,14 +14,20 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import type { BadgeRow } from "@/features/catalog/lib/taxonomy-types.ts";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
+import {
+  createBadgeFn,
+  updateBadgeFn,
+  type TaxonomyMutationFailure,
+} from "../server/taxonomy-mutations.functions.ts";
 
 const IMAGE_URL = /^https?:\/\/.+/i;
+
+/** The server never sends user copy, so codes map to pt-BR here. */
+function serverMessage(failure: TaxonomyMutationFailure): string {
+  if (failure.status === "error" && failure.code === "CONFLICT") return failure.message;
+
+  return "Não foi possível salvar a etiqueta. Tente novamente.";
+}
 
 /**
  * Create/edit form for a store badge. Badges are the one taxonomy row with an
@@ -68,21 +70,18 @@ export function BadgeFormDialog({
       };
 
       return row
-        ? client().panel.updateBadge({ ...input, badgeId: row.id })
-        : client().panel.createBadge(input);
+        ? updateBadgeFn({ data: { ...input, badgeId: row.id } })
+        : createBadgeFn({ data: input });
     },
-    onSuccess: () => {
-      void router.invalidate();
-      onClose();
-    },
-    onError: (error) => {
-      if (error instanceof ORPCError && error.code === "CONFLICT") {
-        setServerError(error.message);
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result));
 
         return;
       }
 
-      setServerError("Não foi possível salvar a etiqueta. Tente novamente.");
+      void router.invalidate();
+      onClose();
     },
   });
 

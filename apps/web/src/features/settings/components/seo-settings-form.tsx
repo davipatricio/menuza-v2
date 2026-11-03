@@ -1,11 +1,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useMutation } from "@tanstack/react-query";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { SaveStoreSeoSettingsInputSchema } from "@menuza/shared/tenant";
 import type { PanelStoreSeo, StoreSeoSettings } from "@menuza/shared/tenant";
 import { applySeoTokens } from "@menuza/shared/seo";
@@ -29,24 +25,22 @@ import {
 import { Input } from "@/components/ui/input.tsx";
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { fieldErrors } from "@/lib/form-errors.ts";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
+import {
+  saveStoreSeoFn,
+  type SeoMutationFailure,
+} from "@/features/catalog/server/seo.functions.ts";
 
 const GENERIC_ERROR = "Não foi possível salvar o SEO da loja. Tente novamente.";
 
 const seoSchema: any = SaveStoreSeoSettingsInputSchema;
 
-function serverMessage(error: Error): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "FORBIDDEN") return "Você não tem permissão para editar o SEO desta loja.";
+function serverMessage(failure: SeoMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "FORBIDDEN") return "Você não tem permissão para editar o SEO desta loja.";
 
-    if (error.code === "NOT_FOUND") return "Loja não encontrada.";
+    if (failure.code === "NOT_FOUND") return "Loja não encontrada.";
 
-    if (error.code === "BAD_REQUEST" || error.code === "VALIDATION_FAILED")
+    if (failure.code === "BAD_REQUEST" || failure.code === "VALIDATION_FAILED")
       return "Revise os campos destacados e tente novamente.";
   }
 
@@ -75,9 +69,16 @@ export function SeoSettingsForm({
 
   const mutation = useMutation({
     mutationFn: async (values: StoreSeoSettings) =>
-      client().panel.saveStoreSeo({ storeSlug, ...values }),
-    onSuccess: () => setSaved(true),
-    onError: (error) => setServerError(serverMessage(error)),
+      saveStoreSeoFn({ data: { storeSlug, ...values } }),
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result));
+
+        return;
+      }
+
+      setSaved(true);
+    },
   });
 
   const form = useForm({

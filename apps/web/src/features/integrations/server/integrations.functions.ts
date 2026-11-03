@@ -9,6 +9,8 @@ import { createServerFn } from "@tanstack/react-start";
 import * as v from "valibot";
 import {
   findIntegration,
+  RevokeMcpSessionInputSchema,
+  SaveIntegrationInputSchema,
   type PanelIntegration,
   type PanelMcpSession,
 } from "@menuza/shared/tenant";
@@ -74,6 +76,33 @@ export const loadIntegrationFn = createServerFn({ method: "GET" })
       : [];
 
     return { status: "ok", integration, sessions, serverUrl: mcpUrl() };
+  });
+
+export type IntegrationWriteResult = { status: "ok" } | { status: "unauthenticated" };
+
+/** The switch and the settings form both write through this one door. */
+export const saveIntegrationFn = createServerFn({ method: "POST" })
+  .validator(SaveIntegrationInputSchema)
+  .handler(async ({ data }): Promise<IntegrationWriteResult> => {
+    const client = await panelClient();
+
+    if (!client) return { status: "unauthenticated" };
+
+    await client.panel.saveIntegration(data);
+
+    return { status: "ok" };
+  });
+
+export const revokeMcpSessionFn = createServerFn({ method: "POST" })
+  .validator(RevokeMcpSessionInputSchema)
+  .handler(async ({ data }): Promise<IntegrationWriteResult> => {
+    const client = await panelClient();
+
+    if (!client) return { status: "unauthenticated" };
+
+    await client.panel.revokeMcpSession(data);
+
+    return { status: "ok" };
   });
 
 /**

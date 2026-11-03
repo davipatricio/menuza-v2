@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { ORPCError } from "@orpc/client";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { ApiError } from "@/lib/api-error";
 import { changePassword } from "@/lib/session-client.ts";
 
 const GENERIC_ERROR = "Não foi possível trocar a senha. Tente novamente.";
@@ -54,7 +54,7 @@ export function ChangePasswordForm() {
       void router.invalidate();
     } catch (err) {
       setError(
-        err instanceof ORPCError && err.code === "UNAUTHORIZED"
+        err instanceof ApiError && err.code === "UNAUTHORIZED"
           ? "Senha atual incorreta."
           : GENERIC_ERROR,
       );

@@ -2,10 +2,6 @@ import type { FormEvent } from "react";
 import { useId, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 
 import {
@@ -48,6 +44,21 @@ import {
 import { Spinner } from "@/components/ui/spinner.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
+import {
+  createCategoryFn,
+  createDepartmentFn,
+  createSubcategoryFn,
+  createTagFn,
+  deleteCategoryFn,
+  deleteDepartmentFn,
+  deleteSubcategoryFn,
+  deleteTagFn,
+  updateCategoryFn,
+  updateDepartmentFn,
+  updateSubcategoryFn,
+  updateTagFn,
+  type TaxonomyMutationFailure,
+} from "../server/taxonomy-mutations.functions.ts";
 
 export type TaxonomyEntity = "category" | "department" | "subcategory" | "tag";
 
@@ -66,12 +77,6 @@ export type TaxonomyOption = { id: string; name: string };
 
 /** A category the deactivation dialog may move products into. */
 export type MoveCategoryOption = { id: string; name: string; departmentIds: string[] };
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
 
 type TaxonomyWriteInput =
   | {
@@ -160,111 +165,126 @@ const ACTIVE_COPY: Record<TaxonomyEntity, { label: string; description: string }
   },
 };
 
-async function createEntity(input: TaxonomyWriteInput) {
-  const panel = client().panel;
-
+function createEntity(input: TaxonomyWriteInput) {
   switch (input.entity) {
     case "category":
-      return panel.createCategory({
-        storeSlug: input.storeSlug,
-        name: input.name,
-        sortOrder: input.sortOrder,
-        active: input.active,
-        departmentIds: input.departmentIds,
+      return createCategoryFn({
+        data: {
+          storeSlug: input.storeSlug,
+          name: input.name,
+          sortOrder: input.sortOrder,
+          active: input.active,
+          departmentIds: input.departmentIds,
+        },
       });
 
     case "subcategory":
-      return panel.createSubcategory({
-        storeSlug: input.storeSlug,
-        name: input.name,
-        categoryId: input.categoryId,
-        sortOrder: input.sortOrder,
-        active: input.active,
+      return createSubcategoryFn({
+        data: {
+          storeSlug: input.storeSlug,
+          name: input.name,
+          categoryId: input.categoryId,
+          sortOrder: input.sortOrder,
+          active: input.active,
+        },
       });
 
     case "department":
-      return panel.createDepartment({
-        storeSlug: input.storeSlug,
-        name: input.name,
-        active: input.active,
+      return createDepartmentFn({
+        data: {
+          storeSlug: input.storeSlug,
+          name: input.name,
+          active: input.active,
+        },
       });
 
     case "tag":
-      return panel.createTag({
-        storeSlug: input.storeSlug,
-        name: input.name,
-        isActive: input.isActive,
+      return createTagFn({
+        data: {
+          storeSlug: input.storeSlug,
+          name: input.name,
+          isActive: input.isActive,
+        },
       });
   }
 }
 
-async function updateEntity(id: string, input: TaxonomyWriteInput) {
-  const panel = client().panel;
-
+function updateEntity(id: string, input: TaxonomyWriteInput) {
   switch (input.entity) {
     case "category":
-      return panel.updateCategory({
-        storeSlug: input.storeSlug,
-        categoryId: id,
-        name: input.name,
-        sortOrder: input.sortOrder,
-        active: input.active,
-        departmentIds: input.departmentIds,
+      return updateCategoryFn({
+        data: {
+          storeSlug: input.storeSlug,
+          categoryId: id,
+          name: input.name,
+          sortOrder: input.sortOrder,
+          active: input.active,
+          departmentIds: input.departmentIds,
+        },
       });
 
     case "subcategory":
-      return panel.updateSubcategory({
-        storeSlug: input.storeSlug,
-        subcategoryId: id,
-        name: input.name,
-        categoryId: input.categoryId,
-        sortOrder: input.sortOrder,
-        active: input.active,
+      return updateSubcategoryFn({
+        data: {
+          storeSlug: input.storeSlug,
+          subcategoryId: id,
+          name: input.name,
+          categoryId: input.categoryId,
+          sortOrder: input.sortOrder,
+          active: input.active,
+        },
       });
 
     case "department":
-      return panel.updateDepartment({
-        storeSlug: input.storeSlug,
-        departmentId: id,
-        name: input.name,
-        active: input.active,
+      return updateDepartmentFn({
+        data: {
+          storeSlug: input.storeSlug,
+          departmentId: id,
+          name: input.name,
+          active: input.active,
+        },
       });
 
     case "tag":
-      return panel.updateTag({
-        storeSlug: input.storeSlug,
-        tagId: id,
-        name: input.name,
-        isActive: input.isActive,
+      return updateTagFn({
+        data: {
+          storeSlug: input.storeSlug,
+          tagId: id,
+          name: input.name,
+          isActive: input.isActive,
+        },
       });
   }
 }
 
-async function deleteEntity(entity: TaxonomyEntity, storeSlug: string, id: string) {
-  const panel = client().panel;
-
+function deleteEntity(entity: TaxonomyEntity, storeSlug: string, id: string) {
   switch (entity) {
     case "category":
-      return panel.deleteCategory({ storeSlug, categoryId: id });
+      return deleteCategoryFn({ data: { storeSlug, categoryId: id } });
     case "subcategory":
-      return panel.deleteSubcategory({ storeSlug, subcategoryId: id });
+      return deleteSubcategoryFn({ data: { storeSlug, subcategoryId: id } });
     case "department":
-      return panel.deleteDepartment({ storeSlug, departmentId: id });
+      return deleteDepartmentFn({ data: { storeSlug, departmentId: id } });
     case "tag":
-      return panel.deleteTag({ storeSlug, tagId: id });
+      return deleteTagFn({ data: { storeSlug, tagId: id } });
   }
 }
 
-function serverMessage(error: Error, entity: TaxonomyEntity, action: "save" | "delete"): string {
-  if (error instanceof ORPCError) {
+/** The server never sends user copy, so codes map to pt-BR here. */
+function serverMessage(
+  failure: TaxonomyMutationFailure,
+  entity: TaxonomyEntity,
+  action: "save" | "delete",
+): string {
+  if (failure.status === "error") {
     const labels = TAXONOMY[entity];
 
-    if (error.code === "CONFLICT") return action === "delete" ? labels.inUse : labels.duplicate;
+    if (failure.code === "CONFLICT") return action === "delete" ? labels.inUse : labels.duplicate;
 
-    if (error.code === "FORBIDDEN")
+    if (failure.code === "FORBIDDEN")
       return "Você não tem permissão para editar o catálogo desta loja.";
 
-    if (error.code === "NOT_FOUND") return labels.notFound;
+    if (failure.code === "NOT_FOUND") return labels.notFound;
   }
 
   return action === "delete"
@@ -406,11 +426,16 @@ export function TaxonomyFormDialog({
   const mutation = useMutation({
     mutationFn: (input: TaxonomyWriteInput) =>
       row ? updateEntity(row.id, input) : createEntity(input),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setServerError(serverMessage(result, entity, "save"));
+
+        return;
+      }
+
       void router.invalidate();
       onClose();
     },
-    onError: (error) => setServerError(serverMessage(error, entity, "save")),
   });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -615,11 +640,16 @@ export function TaxonomyDeleteDialog({
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteEntity(entity, storeSlug, row.id),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setDeleteError(serverMessage(result, entity, "delete"));
+
+        return;
+      }
+
       void router.invalidate();
       onClose();
     },
-    onError: (error) => setDeleteError(serverMessage(error, entity, "delete")),
   });
 
   return (
@@ -768,25 +798,28 @@ export function DepartmentMoveDialog({
 
   const mutation = useMutation({
     mutationFn: () =>
-      client().panel.updateDepartment({
-        storeSlug,
-        departmentId: department.id,
-        name: department.name,
-        active: false,
-        moveProductsToCategoryId: targetId,
+      updateDepartmentFn({
+        data: {
+          storeSlug,
+          departmentId: department.id,
+          name: department.name,
+          active: false,
+          moveProductsToCategoryId: targetId,
+        },
       }),
-    onSuccess: () => {
-      void router.invalidate();
-      onClose();
-    },
-    onError: (mutationError) => {
-      if (mutationError instanceof ORPCError && mutationError.code === "CONFLICT") {
-        setError(mutationError.message);
+    onSuccess: (result) => {
+      if (result.status !== "ok") {
+        setError(
+          result.status === "error" && result.code === "CONFLICT"
+            ? result.message
+            : "Não foi possível desativar. Tente novamente.",
+        );
 
         return;
       }
 
-      setError("Não foi possível desativar. Tente novamente.");
+      void router.invalidate();
+      onClose();
     },
   });
 

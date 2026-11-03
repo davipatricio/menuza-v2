@@ -1,0 +1,1793 @@
+{
+  "components": {
+    "schemas": {
+      "AdjustWalletInput": {
+        "additionalProperties": false,
+        "description": "`POST /wallet/adjust` body: an operator correction. The sign is the\ncaller's, so the same body covers a store credit and a clawback.",
+        "properties": {
+          "amountCents": {
+            "description": "Signed cents as stored: a credit is positive, a debit negative.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["customerId", "amountCents", "reason"],
+        "type": "object"
+      },
+      "AdjustWalletOutput": {
+        "description": "`POST /wallet/adjust` answer: the balance the correction left behind.",
+        "properties": {
+          "balanceCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["balanceCents"],
+        "type": "object"
+      },
+      "ApiErrorBody": {
+        "description": "The JSON body of every API failure: `code`, a human message, optional data.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "data": {},
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "message"],
+        "type": "object"
+      },
+      "ApplyGatewayEventInput": {
+        "additionalProperties": false,
+        "description": "`POST /payments/gateway-events/{gatewayEventId}/apply` body: the id of the\nalready-persisted event.",
+        "properties": {
+          "gatewayEventId": {
+            "type": "string"
+          }
+        },
+        "required": ["gatewayEventId"],
+        "type": "object"
+      },
+      "ApplyGatewayEventOutput": {
+        "description": "`POST /payments/gateway-events/{gatewayEventId}/apply` answer.",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/GatewayEventOutcome"
+          }
+        },
+        "required": ["status"],
+        "type": "object"
+      },
+      "ChangeFrequency": {
+        "enum": ["daily", "weekly", "monthly"],
+        "type": "string"
+      },
+      "CreateOrderInput": {
+        "additionalProperties": false,
+        "description": "`POST /orders` body, exactly the Bun checkout input: the customer, the\nlines, the coupon codes typed by the buyer and the chosen method.",
+        "properties": {
+          "code": {
+            "description": "Absent: the server generates a six-character code.",
+            "type": ["string", "null"]
+          },
+          "couponCodes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CreateOrderLine"
+            },
+            "type": "array"
+          },
+          "paymentMethod": {
+            "type": ["string", "null"]
+          },
+          "shippingCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "walletRequestedCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["customerId", "shippingCents", "walletRequestedCents", "lines", "couponCodes"],
+        "type": "object"
+      },
+      "CreateOrderLine": {
+        "additionalProperties": false,
+        "description": "One line of a checkout: the catalog ids it names and the price the cart\nquoted for it.",
+        "properties": {
+          "catalogDiscountCents": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "kitId": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "productId": {
+            "type": ["string", "null"]
+          },
+          "quantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "unitPriceCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "variationId": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["name", "unitPriceCents", "quantity"],
+        "type": "object"
+      },
+      "CreateOrderOutput": {
+        "description": "`POST /orders` answer, exactly the Bun checkout return: the money, both status\naxes, the payment window and the coupons that lost.",
+        "properties": {
+          "cashbackCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "discountCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "expiresAt": {
+            "description": "RFC 3339 with milliseconds and a trailing `Z`.",
+            "type": ["string", "null"]
+          },
+          "financialStatus": {
+            "type": "string"
+          },
+          "fulfilmentStatus": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "rejectedCoupons": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedCoupon"
+            },
+            "type": "array"
+          },
+          "shippingCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "subtotalCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "walletAppliedCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "subtotalCents",
+          "discountCents",
+          "shippingCents",
+          "walletAppliedCents",
+          "cashbackCents",
+          "totalCents",
+          "financialStatus",
+          "fulfilmentStatus",
+          "rejectedCoupons"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "description": "The eight error codes the TypeScript backend exposed. The wire strings and\ntheir PT-BR messages are verbatim, and are not ours to improve: a client\nalready switches on them.",
+        "enum": [
+          "TENANT_NOT_RESOLVED",
+          "UNAUTHORIZED",
+          "FORBIDDEN",
+          "NOT_FOUND",
+          "CONFLICT",
+          "VALIDATION_FAILED",
+          "RATE_LIMITED",
+          "INTERNAL"
+        ],
+        "type": "string"
+      },
+      "ExpireOrderOutput": {
+        "description": "`POST /orders/{code}/expire` answer: the financial axis after the attempt.",
+        "properties": {
+          "financialStatus": {
+            "type": "string"
+          }
+        },
+        "required": ["financialStatus"],
+        "type": "object"
+      },
+      "GatewayEventOutcome": {
+        "description": "What applying one event did, the same picklist the Bun contract returns:\n`applied`, `ignored`, `rejected` or `missing`.",
+        "enum": ["applied", "ignored", "rejected", "missing"],
+        "type": "string"
+      },
+      "GetWalletInput": {
+        "additionalProperties": false,
+        "description": "`GET /wallet` query: whose wallet to read.",
+        "properties": {
+          "customerId": {
+            "type": "string"
+          }
+        },
+        "required": ["customerId"],
+        "type": "object"
+      },
+      "Health": {
+        "description": "`{\"status\":\"ok\",\"service\":\"commerce\",\"timestamp\":\"<ISO-8601 ms Z>\"}`, exactly\nthe shape the retired endpoint returned.",
+        "properties": {
+          "service": {
+            "$ref": "#/components/schemas/ServiceName"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "timestamp": {
+            "description": "RFC 3339 with milliseconds and a trailing Z.",
+            "type": "string"
+          }
+        },
+        "required": ["status", "service", "timestamp"],
+        "type": "object"
+      },
+      "HealthStatus": {
+        "enum": ["ok"],
+        "type": "string"
+      },
+      "NutritionBasis": {
+        "enum": ["solid", "liquid"],
+        "type": "string"
+      },
+      "NutritionLabelFormat": {
+        "enum": ["vertical", "simplified"],
+        "type": "string"
+      },
+      "NutritionSource": {
+        "enum": ["manual", "lab", "supplier_label", "database", "estimate"],
+        "type": "string"
+      },
+      "Order": {
+        "description": "The dashboard's order page: money, both axes, lines, events and the moves the\ncaller may perform.",
+        "properties": {
+          "allowedNextTransitions": {
+            "$ref": "#/components/schemas/OrderTransitions"
+          },
+          "cashbackCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "couponCode": {
+            "type": ["string", "null"]
+          },
+          "customerId": {
+            "type": "string"
+          },
+          "discountCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/OrderEvent"
+            },
+            "type": "array"
+          },
+          "expiresAt": {
+            "type": ["string", "null"]
+          },
+          "financialStatus": {
+            "type": "string"
+          },
+          "fulfilmentStatus": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OrderItem"
+            },
+            "type": "array"
+          },
+          "paidAt": {
+            "type": ["string", "null"]
+          },
+          "paymentMethod": {
+            "type": ["string", "null"]
+          },
+          "rejectedCoupons": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedCoupon"
+            },
+            "type": "array"
+          },
+          "shippingCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "subtotalCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "totalCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "walletAppliedCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "customerId",
+          "subtotalCents",
+          "discountCents",
+          "shippingCents",
+          "walletAppliedCents",
+          "cashbackCents",
+          "totalCents",
+          "financialStatus",
+          "fulfilmentStatus",
+          "rejectedCoupons",
+          "items",
+          "events",
+          "allowedNextTransitions"
+        ],
+        "type": "object"
+      },
+      "OrderAxis": {
+        "description": "Which axis of an order a transition moves.",
+        "enum": ["financial", "fulfilment"],
+        "type": "string"
+      },
+      "OrderCodeInput": {
+        "additionalProperties": false,
+        "description": "`GET /orders/{code}`, `POST /orders/{code}/transition` and\n`POST /orders/{code}/expire`: an order is addressed by its human code, never\nits id.",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": ["code"],
+        "type": "object"
+      },
+      "OrderEvent": {
+        "description": "One entry of the append-only event trail. `fromValue`/`toValue` hold either a\nstatus slug or a signed-cent amount as text, depending on `type`.",
+        "properties": {
+          "createdAt": {
+            "description": "RFC 3339 with milliseconds and a trailing `Z`.",
+            "type": "string"
+          },
+          "fromValue": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "toValue": {
+            "type": ["string", "null"]
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "type", "createdAt"],
+        "type": "object"
+      },
+      "OrderItem": {
+        "description": "One line of the order.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "lineTotalCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "optionsLabel": {
+            "type": ["string", "null"]
+          },
+          "quantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "unitPriceCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name", "unitPriceCents", "quantity", "lineTotalCents"],
+        "type": "object"
+      },
+      "OrderTransition": {
+        "description": "What the caller may do next on one axis.",
+        "properties": {
+          "axis": {
+            "$ref": "#/components/schemas/OrderAxis"
+          },
+          "capability": {
+            "type": "string"
+          },
+          "requiresReason": {
+            "type": "boolean"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": ["axis", "to", "capability", "requiresReason"],
+        "type": "object"
+      },
+      "OrderTransitions": {
+        "description": "Every move available to the caller at the current pair of statuses.",
+        "items": {
+          "$ref": "#/components/schemas/OrderTransition"
+        },
+        "type": "array"
+      },
+      "ProductResponse": {
+        "description": "The TS contract's `{ product: <detail> | null }` output, which is not a\nshared shape: only this read answers it.",
+        "properties": {
+          "product": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicProductDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "PublicBadge": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "imageUrl"],
+        "type": "object"
+      },
+      "PublicCategory": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "subcategories": {
+            "items": {
+              "$ref": "#/components/schemas/PublicSubcategory"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["id", "name", "sortOrder", "subcategories"],
+        "type": "object"
+      },
+      "PublicDepartment": {
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/PublicCategory"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "categories"],
+        "type": "object"
+      },
+      "PublicMenu": {
+        "description": "The storefront menu is nested three levels deep: department > category >\nsubcategory, with the products last. Departments are ordered by name (they\nhave no `sortOrder` column); categories and subcategories by `sortOrder`,\nthen name. Inactive levels and empty groups are dropped server-side.",
+        "properties": {
+          "departments": {
+            "items": {
+              "$ref": "#/components/schemas/PublicDepartment"
+            },
+            "type": "array"
+          },
+          "uncategorized": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProduct"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["departments", "uncategorized"],
+        "type": "object"
+      },
+      "PublicNutrition": {
+        "description": "A published nutrition label. `published` itself never crosses the wire: only\na complete, intentionally published row reaches the browser. Measures follow\nthe panel contract: kcal for energy, mg for the rest, thousandths of a\ngram/mL for the portion.",
+        "properties": {
+          "addedSugarsMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "basis": {
+            "$ref": "#/components/schemas/NutritionBasis"
+          },
+          "carbsMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "energyKcal": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "fiberMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "householdMeasure": {
+            "type": ["string", "null"]
+          },
+          "labelFormat": {
+            "$ref": "#/components/schemas/NutritionLabelFormat"
+          },
+          "portionMilli": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "proteinMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "referenceAt": {
+            "type": ["string", "null"]
+          },
+          "saturatedFatMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "servingsPerPack": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "showHighAddedSugar": {
+            "type": "boolean"
+          },
+          "showHighSatFat": {
+            "type": "boolean"
+          },
+          "showHighSodium": {
+            "type": "boolean"
+          },
+          "sodiumMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "source": {
+            "$ref": "#/components/schemas/NutritionSource"
+          },
+          "totalFatMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "totalSugarsMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "transFatMg": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "basis",
+          "labelFormat",
+          "source",
+          "showHighAddedSugar",
+          "showHighSatFat",
+          "showHighSodium",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PublicProduct": {
+        "description": "One sellable product as the menu renders it. No stock, no cost, no hidden rows.",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/PublicBadge"
+            },
+            "type": "array"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "fromPriceCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "variations": {
+            "items": {
+              "$ref": "#/components/schemas/PublicVariation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "available",
+          "archived",
+          "sortOrder",
+          "fromPriceCents",
+          "variations",
+          "tags",
+          "badges"
+        ],
+        "type": "object"
+      },
+      "PublicProductDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PublicProduct"
+          },
+          {
+            "properties": {
+              "nutrition": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/PublicNutrition"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "seo": {
+                "$ref": "#/components/schemas/PublicSeo"
+              }
+            },
+            "required": ["seo"],
+            "type": "object"
+          }
+        ],
+        "description": "The direct-URL product adds the label and its own SEO; the menu listing stays\nlean, because a card never renders the structured data of its item."
+      },
+      "PublicSeo": {
+        "description": "The resolved SEO of one page: an entity's own override, the store's row and\nthe store templates behind it.",
+        "properties": {
+          "canonicalUrl": {
+            "type": ["string", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "jsonLd": {
+            "type": ["string", "null"]
+          },
+          "socialImageUrl": {
+            "type": ["string", "null"]
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": ["title"],
+        "type": "object"
+      },
+      "PublicSitemap": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/PublicSitemapEntry"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["entries"],
+        "type": "object"
+      },
+      "PublicSitemapEntry": {
+        "properties": {
+          "changeFrequency": {
+            "$ref": "#/components/schemas/ChangeFrequency"
+          },
+          "lastModified": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "priority": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": ["path", "lastModified", "changeFrequency", "priority"],
+        "type": "object"
+      },
+      "PublicStore": {
+        "properties": {
+          "displayName": {
+            "type": "string"
+          },
+          "seo": {
+            "$ref": "#/components/schemas/PublicSeo"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "tenantId": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["slug", "displayName", "seo"],
+        "type": "object"
+      },
+      "PublicSubcategory": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/PublicProduct"
+            },
+            "type": "array"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name", "sortOrder", "products"],
+        "type": "object"
+      },
+      "PublicVariation": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priceCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name", "priceCents", "available"],
+        "type": "object"
+      },
+      "RecordPaymentOutput": {
+        "description": "`POST /orders/{code}/payment` answer: the financial axis after the attempt\nand the cashback the order's wallet credit is worth.",
+        "properties": {
+          "cashbackCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "financialStatus": {
+            "type": "string"
+          }
+        },
+        "required": ["financialStatus", "cashbackCents"],
+        "type": "object"
+      },
+      "RejectedCoupon": {
+        "description": "One coupon checkout refused, and why.",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "reason"],
+        "type": "object"
+      },
+      "ServiceName": {
+        "enum": ["commerce"],
+        "type": "string"
+      },
+      "TransitionOrderInput": {
+        "additionalProperties": false,
+        "description": "`POST /orders/{code}/transition` body: move one axis to `to`, optionally\nsaying why. Whether the tuple is legal, and whether the reason is required,\nis the state machine's call.",
+        "properties": {
+          "axis": {
+            "$ref": "#/components/schemas/OrderAxis"
+          },
+          "code": {
+            "type": "string"
+          },
+          "reason": {
+            "type": ["string", "null"]
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": ["code", "axis", "to"],
+        "type": "object"
+      },
+      "TransitionOrderOutput": {
+        "description": "`POST /orders/{code}/transition` answer: both axes after the move.",
+        "properties": {
+          "financialStatus": {
+            "type": "string"
+          },
+          "fulfilmentStatus": {
+            "type": "string"
+          }
+        },
+        "required": ["financialStatus", "fulfilmentStatus"],
+        "type": "object"
+      },
+      "Wallet": {
+        "description": "A customer's wallet: the stored balance and the whole signed ledger behind\nit, newest first.",
+        "properties": {
+          "balanceCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/WalletTransaction"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["balanceCents", "transactions"],
+        "type": "object"
+      },
+      "WalletTransaction": {
+        "description": "One ledger entry. `amountCents` is signed: a credit is positive, a\nreserve/spend/reversal negative.",
+        "properties": {
+          "amountCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "createdAt": {
+            "description": "RFC 3339 with milliseconds and a trailing `Z`.",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": ["string", "null"]
+          },
+          "reason": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "kind", "amountCents", "createdAt"],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "",
+    "license": {
+      "name": ""
+    },
+    "title": "api-commerce",
+    "version": "0.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getCommerceHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The shape the retired endpoint returned, unchanged.",
+        "tags": ["public"]
+      }
+    },
+    "/menu": {
+      "get": {
+        "operationId": "listPublicMenu",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicMenu"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["public"]
+      }
+    },
+    "/orders": {
+      "post": {
+        "operationId": "createOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOrderOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["orders"]
+      }
+    },
+    "/orders/{code}": {
+      "get": {
+        "operationId": "getOrder",
+        "parameters": [
+          {
+            "description": "Order code.",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["orders"]
+      }
+    },
+    "/orders/{code}/expire": {
+      "post": {
+        "operationId": "expireOrder",
+        "parameters": [
+          {
+            "description": "Order code.",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/OrderCodeInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpireOrderOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["orders"]
+      }
+    },
+    "/orders/{code}/payment": {
+      "post": {
+        "operationId": "recordOrderPayment",
+        "parameters": [
+          {
+            "description": "Order code.",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCodeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordPaymentOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["orders"]
+      }
+    },
+    "/orders/{code}/transition": {
+      "post": {
+        "operationId": "transitionOrder",
+        "parameters": [
+          {
+            "description": "Order code.",
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionOrderInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransitionOrderOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["orders"]
+      }
+    },
+    "/payments/gateway-events/{gatewayEventId}/apply": {
+      "post": {
+        "operationId": "applyGatewayEvent",
+        "parameters": [
+          {
+            "description": "Id of the already-persisted gateway event.",
+            "in": "path",
+            "name": "gatewayEventId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyGatewayEventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyGatewayEventOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["payments"]
+      }
+    },
+    "/products/{productId}": {
+      "get": {
+        "operationId": "getPublicProduct",
+        "parameters": [
+          {
+            "description": "Product id.",
+            "in": "path",
+            "name": "productId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["public"]
+      }
+    },
+    "/sitemap": {
+      "get": {
+        "operationId": "listPublicSitemap",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSitemap"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["public"]
+      }
+    },
+    "/store": {
+      "get": {
+        "operationId": "getPublicStore",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStore"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["public"]
+      }
+    },
+    "/wallet": {
+      "get": {
+        "operationId": "getWallet",
+        "parameters": [
+          {
+            "description": "Customer whose wallet to read.",
+            "in": "query",
+            "name": "customerId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Wallet"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["wallet"]
+      }
+    },
+    "/wallet/adjust": {
+      "post": {
+        "operationId": "adjustWallet",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustWalletInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdjustWalletOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["wallet"]
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/openapi"
+    }
+  ]
+}

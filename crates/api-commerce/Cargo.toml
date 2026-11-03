@@ -1,0 +1,23 @@
+[package]
+name = "api-commerce"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+menuza-http = { path = "../http" }
+contract = { path = "../contract" }
+persistence = { path = "../persistence" }
+domain = { path = "../domain" }
+axum.workspace = true
+riverqueue.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+utoipa.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

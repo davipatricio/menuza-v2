@@ -24,8 +24,8 @@ The wallet holds cashback and store-added credits. It is **per tenant** and ever
 
 ## Code entry points
 
-- Wallet and movement models (`packages/db`, tenant-scoped, `Int` cents); reads on the commerce side, adjustments on the management side with a capability check.
-- Mixed-payment and reversal logic runs in the order/payment flow and async jobs in `apps/worker`.
+- Wallet and movement tables in `crates/persistence/migrations/0001_baseline.sql` (tenant-scoped, `Int` cents); reads on the commerce side (`crates/api-commerce`, `crates/persistence/src/commerce/wallet.rs`), adjustments on the management side (`crates/api-tenant` panel subdomain) with a capability check.
+- Mixed-payment and reversal logic runs in the order/payment handlers; async follow-ups belong to `crates/worker` (River/Postgres, ADR-0008), where `payment-events` still has no producer.
 
 ## Checks
 

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
-import { ORPCError } from "@orpc/client";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { loginSession } from "@/features/auth/server/session-client.ts";
+import { ApiError } from "@/lib/api-error";
 import { safeReturnTo } from "@/lib/return-to.ts";
 
 const GENERIC_ERROR = "Não foi possível entrar. Tente novamente.";
@@ -40,7 +40,7 @@ export function LoginForm({ returnTo }: { returnTo?: string | string[] }) {
       }
     } catch (err) {
       setError(
-        err instanceof ORPCError && err.code === "UNAUTHORIZED"
+        err instanceof ApiError && err.code === "UNAUTHORIZED"
           ? "E-mail ou senha incorretos."
           : GENERIC_ERROR,
       );

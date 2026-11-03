@@ -1,0 +1,227 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT c.id, c.code, c.\"discountType\" AS discount_type, c.value,\n                   c.\"minimumOrderCents\" AS minimum_order_cents,\n                   c.\"maximumDiscountCents\" AS maximum_discount_cents,\n                   c.\"shippingDiscountPercent\" AS shipping_discount_percent,\n                   c.\"startsAt\" AS starts_at, c.\"endsAt\" AS ends_at,\n                   c.stackable, c.\"firstPurchaseOnly\" AS first_purchase_only,\n                   c.\"usageLimit\" AS usage_limit,\n                   c.\"perCustomerLimit\" AS per_customer_limit,\n                   c.\"usageCount\" AS usage_count, c.status,\n                   c.\"productScopeMode\" AS product_scope_mode,\n                   (\n                       SELECT COUNT(*)\n                       FROM public.\"CouponRedemption\" r\n                       WHERE r.\"tenantId\" = c.\"tenantId\"\n                         AND r.\"couponId\" = c.id\n                         AND r.\"customerId\" = $3\n                   ) AS \"customer_redemption_count!\",\n                   (\n                       SELECT COUNT(*)\n                       FROM public.\"Order\" o\n                       WHERE o.\"tenantId\" = c.\"tenantId\"\n                         AND o.\"customerId\" = $3\n                   ) AS \"customer_order_count!\",\n                   ARRAY(\n                       SELECT cp.\"productId\"\n                       FROM public.\"CouponProduct\" cp\n                       WHERE cp.\"tenantId\" = c.\"tenantId\" AND cp.\"couponId\" = c.id\n                   ) AS \"product_ids!\"\n            FROM public.\"Coupon\" c\n            WHERE c.\"tenantId\" = $1 AND c.code = $2 AND c.status = 'active'\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "discount_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "discountType"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "value",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "value"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "minimum_order_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "minimumOrderCents"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "maximum_discount_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "maximumDiscountCents"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "shipping_discount_percent",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "shippingDiscountPercent"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "starts_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "startsAt"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "ends_at",
+        "type_info": "Timestamp",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "endsAt"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "stackable",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "stackable"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "first_purchase_only",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "firstPurchaseOnly"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "usage_limit",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "usageLimit"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "per_customer_limit",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "perCustomerLimit"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "usage_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "usageCount"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "product_scope_mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Coupon\"",
+            "name": "productScopeMode"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "customer_redemption_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 17,
+        "name": "customer_order_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 18,
+        "name": "product_ids!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text", "Text"]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0e46ea8413b72be700899c41893738087abbf2af0ace2a254cadccb91359ef4e"
+}

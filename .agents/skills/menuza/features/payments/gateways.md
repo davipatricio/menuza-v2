@@ -18,7 +18,7 @@
 
 - Repeated confirmations, retries and duplicate gateway webhooks must **not** duplicate charge, write-off, commission or cashback.
 - **Never trust the browser return as payment confirmation.** Confirm from the gateway webhook/notification, idempotent by provider key + HMAC signature (MEN-168).
-- Webhooks enter through `apps/commerce` and are drained by `apps/worker`.
+- Webhooks are meant to enter through the commerce API and be drained by the worker; neither end is ported yet (see Code entry points).
 
 ## Pix specifics
 
@@ -32,23 +32,26 @@
 
 ## Code entry points
 
-- **Per-store configuration** — `PaymentIntegration` + `PaymentMethodAssignment` in
-  `packages/db/prisma/contract.prisma`; the panel procedures are
-  `packages/api-tenant/src/domains/tenant/subdomains/panel/paymentSupport.ts` and the four
-  `*Payment*` impls next to it. The provider secret is AES-256-GCM ciphertext written by
-  `@menuza/orpc-server/crypto` and never returned by any read.
+- **Per-store configuration** — `PaymentIntegration` + `PaymentMethodAssignment` in the live
+  schema (`crates/persistence/migrations/0001_baseline.sql`; `packages/db/prisma/contract.prisma`
+  is the historical contract). The panel handlers are
+  `crates/api-tenant/src/domains/tenant/subdomains/panel/payments.rs`; the queries are
+  `crates/persistence/src/tenant/panel/payments.rs`. The provider secret is AES-256-GCM
+  ciphertext keyed by `INTEGRATION_SECRET_KEY` and never returned by any read.
 - **One provider per method** — the unique on `(tenantId, method)` is the routing rule; there
   is no fallback between providers of the same method. A method bound to the `offline`
   provider creates the order with no expiry window (the store reconciles it); anything else
   keeps the 24 h window.
-- **Pagar.me client and callback** —
-  `@menuza/pagarme-api-client` (`packages/pagarme-api-client/`) owns the Core API v5
-  outbound transport (`pagarMeRequest`), credential parsing, webhook envelope decoding,
-  Basic-auth verification, and event → action mapping (re-exported by
-  `packages/api-commerce/src/domains/commerce/subdomains/payments/pagarme.ts`). The receiver
-  is `receive.ts` (authenticate, record, enqueue) and `applyGatewayEvent.impl.ts` (apply to the
-  order). The producer is `apps/commerce/src/payment-webhook.ts` (plain route, own redacted
-  log — the token is in the URL); the drain is `apps/worker/src/payment-events.ts`.
+- **Pagar.me** — the Rust half is `apply_gateway_event` in
+  `crates/persistence/src/commerce/payments.rs`, with the DTOs in
+  `crates/contract/src/commerce/payments.rs` (`crates/contract/src/tenant/panel/payments.rs`
+  holds the provider enum and panel shapes). It consumes a `GatewayEvent` row that a receiver
+  has already persisted, maps the provider event type (`map_pagar_me_event_type`) and applies
+  it to the order in one transaction; a replayed event is answered from the row.
+- **The receiver is not ported.** The panel mints `webhook_path: /webhooks/pagarme/<token>`
+  and `apps/web` proxies `/webhooks/*`, but no Rust route authenticates, records or applies a
+  callback: there is no HMAC or Basic-auth verification yet, and `payment_events` has no
+  producer. Do not assume the webhook path works end to end.
 - **Only `paid` moves an order.** Declines are recorded and leave the order awaiting (retry is
   allowed), and refunds, chargebacks and provider cancellations are recorded and ignored —
   those touch stock and wallet money the store owns through the panel.

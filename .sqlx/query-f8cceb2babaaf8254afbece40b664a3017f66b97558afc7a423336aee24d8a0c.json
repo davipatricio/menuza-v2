@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id\n        FROM public.\"OrderEvent\"\n        WHERE \"tenantId\" = $1 AND \"orderId\" = $2 AND type = 'cashback_credited'\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"OrderEvent\"",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false]
+  },
+  "hash": "f8cceb2babaaf8254afbece40b664a3017f66b97558afc7a423336aee24d8a0c"
+}

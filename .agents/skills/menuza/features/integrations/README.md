@@ -28,7 +28,8 @@ integrations plugs into, and it ships ahead of them: the catalog is complete, on
 wired.
 
 - **The catalog is code, not a table.** `INTEGRATIONS` in
-  `packages/shared/src/panel/integrations.ts` lists the entries, their section (`scripts`,
+  `crates/contract/src/tenant/panel/integrations.rs` (legacy TS mirror in
+  `packages/shared/src/panel/integrations.ts`) lists the entries, their section (`scripts`,
   `connections`, `payments`), copy, author, logo, typed settings (`switch` | `text`) and
   capabilities (`connect`, `sessions`, `sync`, `logs`). Adding Lalamove or Merchant Center
   is one entry plus whatever server module implements it — the list page, the cards and the
@@ -36,7 +37,7 @@ wired.
 - **Per-store state is a row, not the definition.** `StoreIntegration` holds `status`
   (`enabled` | `disabled` | `paused` | `error`), an opaque `config` JSON string and
   `enabledAt`. A store with no row has never touched the integration: it reads as
-  `disabled` with the catalog's own defaults, never as an error. `parseConfig` validates the
+  `disabled` with the catalog's own defaults, never as an error. `parse_config` validates the
   blob against a `string | boolean` record, so a key an older catalog wrote is dropped
   rather than crashing the page.
 - **`mock: true` is honest.** Every integration except `mcp-dashboard` says so on its detail
@@ -68,17 +69,19 @@ wired.
   does not exist yet.
 - The connect block copies `claude mcp add --transport http menuza <url>`, the Codex
   equivalent and the raw URL, with links to the Claude Code MCP quickstart and OpenAI's
-  remote-MCP page. The default OAuth client (`menuza-dashboard`, name "Menuza") is seeded by
-  `packages/db/prisma/seed.ts`.
+  remote-MCP page. The default OAuth client (`menuza-dashboard`, name "Menuza") is an
+  `OAuthClient` row; no seed script ships — it is inserted into the database directly.
 
 ## Code entry points
 
-- Commerce-side integrations under `packages/api-commerce/src/domains/...`; management/account integrations on the tenant side; long-running jobs and webhook drains in `apps/worker`.
-- The `internal.resolveHost` procedure is the only cross-service host lookup and is token-gated (`@menuza/orpc-server/internal`).
-- Catalog and per-store state: `packages/shared/src/panel/integrations.ts`,
-  `packages/api-tenant/.../panel/{list,save}Integration*`, `.../panel/{list,revoke}McpSession*`.
-- MCP server: `apps/tenant/src/mcp/{server,tools}.ts`, reached through the web rewrite at
-  `/mcp`; OAuth in `apps/tenant/src/oauth.ts` + `apps/orpc-server/src/auth/oauth.ts`.
+- Commerce-side integrations under `crates/api-commerce/src/domains/commerce/...`; management/account integrations under `crates/api-tenant/src/domains/tenant/...`; long-running jobs and webhook drains in `crates/worker`.
+- `GET /internal/resolve-host` (`crates/api-tenant/src/domains/tenant/subdomains/internal/resolve_host.rs`) is the only cross-service host lookup, gated by `x-menuza-internal-token` against `INTERNAL_API_SECRET`.
+- Catalog and per-store state: `crates/contract/src/tenant/panel/integrations.rs`,
+  `crates/persistence/src/tenant/panel/integrations.rs`, and
+  `crates/api-tenant/src/domains/tenant/subdomains/panel/integrations.rs` (`{list,save}_integration`,
+  `{list,revoke}_mcp_session`).
+- MCP server: `crates/api-tenant/src/mcp/{server,tools}.rs`, reached through the web rewrite at
+  `/mcp`; OAuth in `crates/api-tenant/src/oauth/`.
 
 ## Checks
 

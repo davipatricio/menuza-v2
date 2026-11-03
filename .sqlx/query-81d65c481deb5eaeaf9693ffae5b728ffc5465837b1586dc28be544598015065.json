@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE public.\"Wallet\"\n                    SET \"balanceCents\" = \"balanceCents\" + $3, \"updatedAt\" = $4\n                    WHERE \"tenantId\" = $1 AND id = $2\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Int4", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "81d65c481deb5eaeaf9693ffae5b728ffc5465837b1586dc28be544598015065"
+}

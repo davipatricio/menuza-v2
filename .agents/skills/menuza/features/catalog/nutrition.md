@@ -13,7 +13,7 @@ Status: implemented in the product editor and on the storefront. Linear is the o
 
 ## Data model
 
-`ProductNutrition` is one row per product (`productId @unique`), tenant-scoped.
+`ProductNutrition` is one row per product (unique `productId`), tenant-scoped.
 
 | Field                                                                                                                                       | Meaning                                              |
 | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -78,29 +78,29 @@ Defined once in `packages/shared/src/nutrition/nutrients.ts` and `label.ts`:
 
 - `panel.getProduct` includes `nutrition` (nullable); no extra read. `createProduct`/`updateProduct` return the same detail.
 - `panel.saveProductNutrition` is a partial `PUT` (`/panel/stores/{storeSlug}/products/{productId}/nutrition`): omitted = keep, `null` = clear. It returns the full `PanelProductDetail`.
-- Public `getProduct` returns `PublicProductDetailSchema` with `nutrition` only when `published`; `toPublicNutrition` gates again in the mapper.
-- Tenant-scoped writes use `create` or `where({ tenantId, productId }).updateAll(...)` (Prisma 8 RC.17 drops the tenant predicate from `update`).
-- `ProductNutrition` has `tenantId`, so the isolation guard covers it automatically; the pinned isolation test includes it.
+- Public `getProduct` returns `PublicProductDetailSchema` with `nutrition` only when `published`; `toPublicNutrition` gates again in the mapper (`crates/api-commerce/src/domains/commerce/subdomains/public/get_product.rs`).
+- Tenant-scoped writes go through `crates/persistence/src/tenant/panel/products.rs` (`product_nutrition_save`) with a `TenantScope`-bound `tenantId`.
+- `product_nutrition` has `tenantId`, so every statement in `crates/persistence` binds it through `TenantScope`; a nutrition query without a tenant fails closed.
 
 ## Code entry points
 
-| Layer                           | Path                                                                                             |
-| ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Pure calculations + label model | `packages/shared/src/nutrition/{nutrients,label}.ts`; tests in `label.test.ts`                   |
-| Contracts                       | `packages/shared/src/panel/contracts.ts`, `packages/shared/src/commerce/contract.ts`             |
-| DB                              | `packages/db/prisma/contract.prisma`; migration `20261024T1608_product_nutrition`                |
-| Panel API                       | `packages/api-tenant/.../panel/saveProductNutrition.impl.ts`, `catalog.ts`, `router.ts`          |
-| Public API                      | `packages/api-commerce/.../public/support.ts`, `getProduct.impl.ts`                              |
-| Dashboard                       | `apps/web/.../[productId]/product-nutrition.tsx`, `product-tabs.tsx`, `product-editor-guard.tsx` |
-| Shared renderer                 | `apps/web/src/components/nutrition/nutrition-label.tsx`                                          |
-| Storefront                      | `apps/web/src/app/(storefront)/menu/[productId]/page.tsx`, `_lib/storefront-data.ts`             |
+| Layer                           | Path                                                                                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Pure calculations + label model | `packages/shared/src/nutrition/{nutrients,label}.ts`; tests in `label.test.ts`                                                          |
+| Contracts                       | `crates/contract`; generated client `apps/web/src/lib/api/{commerce,tenant}.ts`, models in `apps/web/src/lib/api/model/`                |
+| DB                              | `crates/persistence/migrations/0001_baseline.sql` (table `product_nutrition`); SQL in `crates/persistence/src/tenant/panel/products.rs` |
+| Panel API                       | `crates/api-tenant/src/domains/tenant/subdomains/panel/products.rs` (`save_product_nutrition`, `product_nutrition_save`)                |
+| Public API                      | `crates/api-commerce/src/domains/commerce/subdomains/public/get_product.rs`                                                             |
+| Dashboard                       | `apps/web/src/routes/dashboard/$storeSlug/catalog/products/$productId.tsx`; `apps/web/src/features/catalog/components/product-*.tsx`    |
+| Shared renderer                 | `apps/web/src/components/nutrition/nutrition-label.tsx`                                                                                 |
+| Storefront                      | `apps/web/src/routes/_storefront/menu/$productId.tsx`; data in `apps/web/src/features/storefront/server/storefront.functions.ts`        |
 
 ## Checks
 
 - `bun test` covers the Anexo III bands, %VD, kJ, non-significant values, the three lupa thresholds at the boundary, the simplified sentence and missing fields (`packages/shared/src/nutrition/label.test.ts`).
-- `packages/api-tenant/test/catalog.test.ts`: getProduct carries nutrition; first save creates; partial merge keeps; `null` clears; unknown/foreign product → `NOT_FOUND`; published incomplete → `VALIDATION_FAILED`.
-- `packages/api-commerce/test/public-support.test.ts`: unpublished/missing → `null`; the public object ships only the contract fields.
-- `packages/db/test/tenantIsolation.test.ts`: a nutrition query without `where.tenantId` fails closed.
+- `cargo test --workspace` pins the tenant scope (`crates/persistence/tests/tenant_guard.rs`); every nutrition statement binds `tenantId` through `TenantScope`.
+- Panel save path (`save_product_nutrition` + `product_nutrition_save`): getProduct carries nutrition; first save creates; partial merge keeps; `null` clears; unknown/foreign product → `NOT_FOUND`; published incomplete → `VALIDATION_FAILED`. No dedicated automated test file yet — verify here.
+- Public gate in `crates/api-commerce/.../public/get_product.rs`: unpublished/missing → `null`; the public object ships only the contract fields.
 - `bun run design:check`, `bun run typecheck`, `bun run lint`, `bun run fmt:check`, `bun run build`.
 - Manual: 375 px and 1280 px; the 4-column label does not overflow; the tab strip has no vertical scrollbar; publishing an incomplete label is refused; an unpublished label does not appear on the storefront; %VD is not persisted.
 

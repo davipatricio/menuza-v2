@@ -3,10 +3,6 @@ import { useMemo, useState, useTransition } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 
 import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 import { debounce, useQueryStates } from "nuqs";
 
@@ -33,6 +29,10 @@ import {
   TaxonomyRowActions,
 } from "@/features/catalog/components/taxonomy-dialog.tsx";
 import { subcategorySearchParams } from "@/features/catalog/schemas/subcategory-search.ts";
+import {
+  updateSubcategoryFn,
+  type TaxonomyMutationFailure,
+} from "../server/taxonomy-mutations.functions.ts";
 
 export type SubcategoryRow = {
   id: string;
@@ -45,12 +45,6 @@ export type SubcategoryRow = {
   updatedAt: string;
 };
 
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
-
 const NO_SELECTION = "none";
 
 const SORT_OPTIONS = [
@@ -60,14 +54,15 @@ const SORT_OPTIONS = [
   { label: "Última edição", value: "updatedAt" },
 ] as const;
 
-function switchError(error: Error): string {
-  if (error instanceof ORPCError && error.code === "CONFLICT") return error.message;
+function switchError(failure: TaxonomyMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "CONFLICT") return "Já existe uma subcategoria com este nome.";
 
-  if (error instanceof ORPCError && error.code === "FORBIDDEN")
-    return "Você não tem permissão para editar o catálogo desta loja.";
+    if (failure.code === "FORBIDDEN")
+      return "Você não tem permissão para editar o catálogo desta loja.";
 
-  if (error instanceof ORPCError && error.code === "NOT_FOUND")
-    return "Subcategoria não encontrada nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Subcategoria não encontrada nesta loja.";
+  }
 
   return "Não foi possível alterar a subcategoria. Tente novamente.";
 }
@@ -117,29 +112,34 @@ export function SubcategoriesTable({
 
   const activeMutation = useMutation({
     mutationFn: ({ row, active }: { row: SubcategoryRow; active: boolean }) =>
-      client().panel.updateSubcategory({
-        storeSlug,
-        subcategoryId: row.id,
-        name: row.name,
-        categoryId: row.categoryId,
-        sortOrder: row.sortOrder,
-        active,
+      updateSubcategoryFn({
+        data: {
+          storeSlug,
+          subcategoryId: row.id,
+          name: row.name,
+          categoryId: row.categoryId,
+          sortOrder: row.sortOrder,
+          active,
+        },
       }),
     onMutate: ({ row, active }) => {
       setActiveOverrides((current) => ({ ...current, [row.id]: active }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { row }) => {
+      if (result.status !== "ok") {
+        setActiveOverrides((current) => {
+          const next = { ...current };
+          delete next[row.id];
+
+          return next;
+        });
+        setError(switchError(result));
+
+        return;
+      }
+
       setError(null);
       void router.invalidate();
-    },
-    onError: (mutationError, { row }) => {
-      setActiveOverrides((current) => {
-        const next = { ...current };
-        delete next[row.id];
-
-        return next;
-      });
-      setError(switchError(mutationError));
     },
   });
 

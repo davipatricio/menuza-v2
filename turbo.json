@@ -24,7 +24,7 @@
   "tasks": {
     // Per-workspace turbo.json overrides the outputs that differ (.next, prisma/generated).
     "build": {
-      "dependsOn": ["^build", "db:generate", "typegen"],
+      "dependsOn": ["^build", "typegen"],
       "outputs": ["dist/**"],
       "env": [
         "SENTRY_AUTH_TOKEN",
@@ -39,7 +39,7 @@
       ]
     },
     "typecheck": {
-      "dependsOn": ["db:generate", "typegen"],
+      "dependsOn": ["typegen"],
       "outputs": []
     },
     "lint": {
@@ -56,7 +56,6 @@
       "dependsOn": [],
       "outputs": []
     },
-    "db:generate": {},
     "typegen": {
       "cache": false
     }

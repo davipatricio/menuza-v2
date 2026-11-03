@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE public.\"Coupon\"\n            SET \"usageCount\" = $3\n            WHERE \"tenantId\" = $1 AND id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Int4"]
+    },
+    "nullable": []
+  },
+  "hash": "3b3e2ffa96f2cfe1530acc6b994c684ce67fced8f3b1a5cc3521051ceba836dc"
+}

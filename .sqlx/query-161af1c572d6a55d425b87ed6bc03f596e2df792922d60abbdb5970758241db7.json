@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"stockMode\" AS stock_mode, \"stockQty\" AS stock_qty\n            FROM public.\"Variation\"\n            WHERE \"tenantId\" = $1 AND id = $2\n            FOR UPDATE\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stock_mode",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "stockMode"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "stock_qty",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Variation\"",
+            "name": "stockQty"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, true]
+  },
+  "hash": "161af1c572d6a55d425b87ed6bc03f596e2df792922d60abbdb5970758241db7"
+}

@@ -8,11 +8,7 @@
  */
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import type { FinancialStatus, PanelOrderTransition } from "@menuza/shared/tenant";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { CardContent, CardFooter } from "@/components/ui/card.tsx";
@@ -32,28 +28,31 @@ import {
   FULFILMENT_TRANSITION_LABELS,
   orderLabel,
 } from "@/lib/panel-labels.ts";
+import {
+  recordOrderPaymentFn,
+  transitionOrderFn,
+  type OrderMutationFailure,
+  type OrderMutationResult,
+} from "../server/order-mutations.functions.ts";
 
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
+const GENERIC_ERROR = "Não foi possível concluir a ação. Tente novamente.";
 
-function client(): ContractClient {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
-
-function serverMessage(error: Error): string {
-  if (error instanceof ORPCError) {
-    if (error.code === "ORDER_TRANSITION_INVALID")
+function serverMessage(failure: OrderMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "ORDER_TRANSITION_INVALID")
       return "Este pedido já mudou. Recarregue a página para ver o estado atual.";
 
-    if (error.code === "REASON_REQUIRED") return "Informe o motivo da mudança.";
+    if (failure.code === "REASON_REQUIRED") return "Informe o motivo da mudança.";
 
-    if (error.code === "FORBIDDEN") return "Você não tem permissão para essa mudança neste pedido.";
+    if (failure.code === "FORBIDDEN")
+      return "Você não tem permissão para essa mudança neste pedido.";
 
-    if (error.code === "NOT_FOUND") return "Pedido não encontrado nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Pedido não encontrado nesta loja.";
 
-    if (error.code === "CONFLICT") return "A carteira do cliente não permitiu concluir a ação.";
+    if (failure.code === "CONFLICT") return "A carteira do cliente não permitiu concluir a ação.";
   }
 
-  return "Não foi possível concluir a ação. Tente novamente.";
+  return GENERIC_ERROR;
 }
 
 function transitionLabel(transition: PanelOrderTransition): string {
@@ -84,7 +83,10 @@ export function OrderActions({
   const isPaymentButton = (transition: PanelOrderTransition) =>
     recordPayment && transition.axis === "financial" && transition.to === "paid";
 
-  async function applyTransition(transition: PanelOrderTransition, why?: string): Promise<void> {
+  async function applyTransition(
+    transition: PanelOrderTransition,
+    why?: string,
+  ): Promise<OrderMutationResult> {
     const input = {
       storeSlug,
       orderCode,
@@ -93,29 +95,35 @@ export function OrderActions({
     };
 
     if (why !== undefined) {
-      await client().panel.transitionOrder({ ...input, reason: why });
-
-      return;
+      return transitionOrderFn({ data: { ...input, reason: why } });
     }
 
-    await client().panel.transitionOrder(input);
+    return transitionOrderFn({ data: input });
   }
 
-  async function applyPayment(): Promise<void> {
-    await client().panel.recordOrderPayment({ storeSlug, orderCode });
+  async function applyPayment(): Promise<OrderMutationResult> {
+    return recordOrderPaymentFn({ data: { storeSlug, orderCode } });
   }
 
-  async function run(key: string, action: () => Promise<void>) {
+  async function run(key: string, action: () => Promise<OrderMutationResult>) {
     setBusy(key);
     setError(null);
 
     try {
-      await action();
+      const result = await action();
+
+      if (result.status !== "ok") {
+        setError(serverMessage(result));
+
+        return;
+      }
+
       setPending(null);
       setReason("");
       void router.invalidate();
-    } catch (caught) {
-      setError(serverMessage(caught instanceof Error ? caught : new Error()));
+    } catch {
+      // A transport failure reads the same as an unmapped code.
+      setError(GENERIC_ERROR);
     } finally {
       setBusy(null);
     }

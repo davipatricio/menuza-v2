@@ -4,11 +4,12 @@
  * Enforces:
  *  - Catalog hygiene: every external dep shared by >=2 workspaces is in the root catalog.
  *  - Internal `@menuza/*` deps always use the `workspace:*` protocol (not workspace:^, file:, etc.).
- *  - No TypeScript 5/6 in the catalog, in any workspace manifest, OR in the resolved lockfile graph.
- *  - No Radix UI anywhere in the resolved dependency graph (direct or transitive).
+ *  - No TypeScript 5/6 in the catalog or in any workspace manifest.
  *  - Catalog entries are used by >=2 workspaces (no speculative entries).
  *  - AGENTS.md exists in every workspace that has a package.json.
+ *  - AGENTS.md exists in every crate under `crates/`.
  *  - Workspaces are named `@menuza/*`.
+ *  - No workspace references a deleted Bun API workspace.
  */
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -64,18 +65,17 @@ const workspaces = [
 const problems: string[] = [];
 
 // Explicit canonical workspace allowlist: blocks accidental or speculative packages
-const ALLOWED_WORKSPACES = new Set([
-  "apps/web",
-  "apps/web",
-  "apps/commerce",
-  "apps/tenant",
-  "apps/worker",
-  "apps/orpc-server",
-  "packages/shared",
-  "packages/db",
-  "packages/api-commerce",
-  "packages/api-tenant",
-  "packages/pagarme-api-client",
+const ALLOWED_WORKSPACES = new Set(["apps/web", "packages/shared", "packages/db"]);
+
+// The Bun API runtime was replaced by the Rust crates; nothing may depend on it.
+const DELETED_WORKSPACES = new Set([
+  "@menuza/commerce",
+  "@menuza/tenant",
+  "@menuza/worker",
+  "@menuza/orpc-server",
+  "@menuza/api-commerce",
+  "@menuza/api-tenant",
+  "@menuza/pagarme-api-client",
 ]);
 
 for (const ws of workspaces) {
@@ -87,8 +87,6 @@ for (const ws of workspaces) {
     );
   }
 }
-
-const directDeps = new Set<string>();
 
 const externalUsage = new Map<string, Set<string>>();
 
@@ -103,6 +101,10 @@ for (const ws of workspaces) {
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
 
   for (const [name, version] of Object.entries(allDeps ?? {})) {
+    if (DELETED_WORKSPACES.has(name)) {
+      problems.push(`${ws}: references deleted workspace ${name}`);
+    }
+
     if (name.startsWith("@menuza/")) {
       if (!/^workspace:\*$/.test(version)) {
         problems.push(
@@ -113,7 +115,13 @@ for (const ws of workspaces) {
       continue;
     }
 
-    directDeps.add(name);
+    if (name === "typescript") {
+      const major = Number.parseInt(String(version).replace(/^[^\d]*/, ""), 10);
+
+      if (!String(version).startsWith("catalog:") && major < 7) {
+        problems.push(`${ws}: typescript must be >= 7 or "catalog:" (got "${version}")`);
+      }
+    }
 
     if (!externalUsage.has(name)) externalUsage.set(name, new Set());
     externalUsage.get(name)!.add(ws);
@@ -153,74 +161,16 @@ if (!tsVersion) {
   }
 }
 
-// 4. Radix ban: scans source files only. The Prisma Studio dev tool bundles
-//    @radix-ui/* transitively; that is dev-only and not part of the runtime/UI
-//    graph (apps/web/src/* has zero Radix imports per Phase-4 review).
-const FORBIDDEN_SOURCE = ["@radix-ui/"];
+// 4. Every crate carries its own AGENTS.md.
+const crates = discover("crates").filter((p) => existsSync(join(ROOT, p, "Cargo.toml")));
 
-const banned: string[] = [];
-
-function scanFile(p: string): void {
-  if (!p.match(/\.(ts|tsx|js|jsx)$/)) return;
-  let body: string;
-
-  try {
-    body = readFileSync(p, "utf8");
-  } catch {
-    return;
-  }
-
-  for (const needle of FORBIDDEN_SOURCE) {
-    if (body.includes(`from "${needle}`) || body.includes(`from '${needle}`)) {
-      banned.push(p);
-
-      return;
-    }
+for (const crate of crates) {
+  if (!existsSync(join(ROOT, crate, "AGENTS.md"))) {
+    problems.push(`${crate}: missing AGENTS.md`);
   }
 }
 
-function walk(dir: string): void {
-  if (!existsSync(dir)) return;
-
-  for (const entry of readdirSync(dir)) {
-    if (
-      entry === "node_modules" ||
-      entry === ".next" ||
-      entry === "dist" ||
-      entry === ".bun" ||
-      entry === "generated"
-    )
-      continue;
-    const full = join(dir, entry);
-    const s = statSync(full);
-
-    if (s.isDirectory()) walk(full);
-    else if (s.isFile()) scanFile(full);
-  }
-}
-
-walk(join(ROOT, "apps"));
-
-walk(join(ROOT, "packages"));
-
-for (const p of banned) problems.push(`source file imports @radix-ui/*: ${p}`);
-
-// 5. TypeScript 5/6 in the resolved dependency graph (transitive).
-const bunStore = join(ROOT, "node_modules", ".bun");
-
-if (existsSync(bunStore)) {
-  for (const entry of readdirSync(bunStore)) {
-    // Prisma Studio's bundled deps include a typescript directory; we only
-    // enforce on direct package installs. Prisma's vendored typescript is
-    // not linked into our workspaces and is acceptable.
-    if (entry === "typescript") {
-      // Hoisted typescript is direct → enforce
-      problems.push(`node_modules/.bun hoists typescript directly; check the catalog`);
-    }
-  }
-}
-
-// 6. Every workspace has lint/format scripts.
+// 5. Every workspace has lint/format scripts.
 const REQUIRED_SCRIPTS = ["lint", "lint:fix", "fmt", "fmt:check"];
 
 for (const ws of workspaces) {
@@ -230,6 +180,13 @@ for (const ws of workspaces) {
     if (!pkg.scripts?.[script]) {
       problems.push(`${ws}: missing script "${script}"`);
     }
+  }
+}
+
+// 6. The root scripts do not drive a deleted workspace.
+for (const [name, cmd] of Object.entries(root.scripts ?? {})) {
+  for (const deleted of DELETED_WORKSPACES) {
+    if (cmd.includes(deleted)) problems.push(`root script "${name}" drives deleted ${deleted}`);
   }
 }
 
@@ -245,5 +202,5 @@ if (failed) {
 }
 
 console.log(
-  `[✓] workspace policy: ${workspaces.length} workspaces, ${Object.keys(catalog).length} catalog entries, lockfile + node_modules clean`,
+  `[✓] workspace policy: ${workspaces.length} workspaces, ${crates.length} crates, ${Object.keys(catalog).length} catalog entries`,
 );

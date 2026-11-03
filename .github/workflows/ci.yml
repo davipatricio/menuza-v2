@@ -15,7 +15,7 @@ permissions:
 
 env:
   # One source of truth for the Bun toolchain. `canary` is the moving
-  # pre-release channel: there is no immutable 1.4.4 build to pin, so never
+  # pre-release channel: there is no immutable build to pin, so never
   # hardcode a canary build number in a step.
   BUN_VERSION: canary
 
@@ -59,21 +59,11 @@ jobs:
             bun-${{ runner.os }}-
       - name: Frozen install
         run: bun install --frozen-lockfile
-      - name: Prisma contract emit
-        run: bun run db:generate
-      - name: Next types
-        run: bun run typegen
       - name: bun check
         run: bun run typecheck
 
   test:
     runs-on: ubuntu-latest
-    env:
-      # `@menuza/db` refuses to import without a URL. The unit tests never
-      # connect — the client opens its pool lazily on the first query, and the
-      # panel/auth suites replace the ORM with fakes — so this only satisfies
-      # the import-time guard. Integration tests run separately, with infra.
-      DATABASE_URL: postgres://menuza:menuza@127.0.0.1:5432/menuza
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
@@ -87,10 +77,6 @@ jobs:
             bun-${{ runner.os }}-
       - name: Frozen install
         run: bun install --frozen-lockfile
-      # The generated client is gitignored, so a bare checkout has no contract
-      # for `@menuza/db` to import; the typecheck job already emits it.
-      - name: Prisma contract emit
-        run: bun run db:generate
       - name: Unit tests (no infra)
         run: bun test
 
@@ -146,18 +132,109 @@ jobs:
             bun-${{ runner.os }}-
       - name: Frozen install
         run: bun install --frozen-lockfile
-      - name: Prisma contract emit
-        run: bun run db:generate
-      - name: Next build (type checking enabled)
+      - name: Web build (type checking enabled)
         run: bun run build
-        env:
-          # Build-time Sentry upload is push-only: pull_request builds never see these.
-          SENTRY_AUTH_TOKEN: ${{ github.event_name == 'push' && secrets.SENTRY_AUTH_TOKEN || '' }}
-          SENTRY_ORG: ${{ github.event_name == 'push' && secrets.SENTRY_ORG || '' }}
-          SENTRY_PROJECT: ${{ github.event_name == 'push' && secrets.SENTRY_PROJECT || '' }}
-          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-      - name: Compile Bun services
-        run: |
-          bun run --filter '@menuza/commerce' build
-          bun run --filter '@menuza/tenant' build
-          bun run --filter '@menuza/worker' build
+
+  rust-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # rustup is preinstalled on the runner; `rustup show` reads
+      # `rust-toolchain.toml` and installs the pinned release with rustfmt and clippy.
+      - name: Rust toolchain
+        run: rustup show
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+      - name: Rustfmt
+        run: cargo fmt --all --check
+
+  rust-clippy:
+    runs-on: ubuntu-latest
+    # Queries are checked against the committed `.sqlx` data, so the job needs
+    # no database.
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Rust toolchain
+        run: rustup show
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  rust-test:
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Rust toolchain
+        run: rustup show
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+      - name: Unit tests (no infra)
+        run: cargo test --workspace
+
+  rust-build:
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Rust toolchain
+        run: rustup show
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+      - name: Release build
+        run: cargo build --workspace --release
+
+  rust-schema:
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Rust toolchain
+        run: rustup show
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-
+      # `openapi --check` regenerates both documents in memory and fails when a
+      # committed file differs; it never connects, so it runs offline.
+      - name: OpenAPI documents
+        run: cargo run -q -p openapi -- --check

@@ -19,7 +19,7 @@ Komi, the dashboard assistant. Mock only: canned pt-BR replies, no model call.
 
 ## Forbidden
 
-Next.js imports, `@menuza/db`, `@prisma/*`, `@menuza/orpc-server`, any model SDK.
+Next.js imports, direct calls to the Rust APIs (`@/lib/api/**`), any model SDK.
 
 ## Verify
 

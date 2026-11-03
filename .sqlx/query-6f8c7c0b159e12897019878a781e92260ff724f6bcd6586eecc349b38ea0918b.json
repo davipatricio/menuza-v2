@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT COUNT(*) AS \"count!\"\n                FROM public.\"Order\"\n                WHERE \"tenantId\" = $1 AND \"customerId\" = $2\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [null]
+  },
+  "hash": "6f8c7c0b159e12897019878a781e92260ff724f6bcd6586eecc349b38ea0918b"
+}

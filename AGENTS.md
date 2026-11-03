@@ -2,302 +2,235 @@
 
 ## Architecture
 
-- Monorepo with Bun workspaces (`apps/*`, `packages/*`).
-- One TanStack Start app (`apps/web`, Start + Router + Query on Vite) with three
-  pathless route groups under `apps/web/src/routes/`:
-  - `_marketing` (`/`, `/about`, `/pricing`, `/contact`) — marketing site, static
-  - `_storefront` (`/store`, `/menu`, `/menu/$productId`) — buyer-facing store on
-    the tenant host, resolved server-side from the request host
-  - `dashboard` (`/dashboard`, `/dashboard/$storeSlug`) — store admin on the main
-    domain only (see ADR-0005; tenant hosts serve the storefront only)
-- Two Bun.serve APIs (`apps/commerce`, `apps/tenant`) are thin shells; the actual
-  router implementations live in `@menuza/api-commerce` and `@menuza/api-tenant`
-  (layout documented in those workspaces' AGENTS.md).
-- Shared contracts in `@menuza/shared` (`/commerce`, `/tenant` entrypoints).
-- Shared server and auth/tenant procedure plumbing in `@menuza/orpc-server` (`/fetch`, `/tenant`, `/auth`, `/internal`).
-- Browser-side offline support directly in `apps/web/src/offline` (IndexedDB persister, mutation queue, Background Sync drain).
-- Database in `@menuza/db` (Prisma 8 + `@prisma/orm-postgres`, contract-based, owns async tenant scoping).
-- Pagar.me client and webhook adapter in `@menuza/pagarme-api-client` (outbound transport, credential parsing, webhook validation).
-- One BullMQ worker process (`apps/worker`).
-- Local infrastructure: Postgres + Redis + Jaeger via Podman Compose (`infra/compose.yaml`).
+- Bun workspaces monorepo (`apps/*`, `packages/*`) plus one Cargo workspace (`crates/*`).
+- One TanStack Start app (`apps/web`; Start + Router + Query on Vite), three pathless route groups in `apps/web/src/routes/`:
+  - `_marketing` (`/`, `/about`, `/pricing`, `/contact`) — static.
+  - `_storefront` (`/store`, `/menu`, `/menu/$productId`) — buyer store, tenant host resolved server-side.
+  - `dashboard` (`/dashboard`, `/dashboard/$storeSlug`) — admin, main domain only (ADR-0005; tenant hosts serve storefront only).
+- The backend is six Rust crates on one Cargo workspace, two of them listening binaries (ADR-0007):
+  - `crates/api-commerce` — axum binary on `:3001`: storefront, orders, wallet, payments.
+  - `crates/api-tenant` — axum binary on `:3002`: panel, sessions, accounts, OAuth2 and MCP (`rmcp`).
+  - `crates/contract` — DTOs, `utoipa` schemas and the closed error-code catalog. No IO.
+  - `crates/persistence` — every SQL string, tenant-scoped query helpers, `migrations/`.
+  - `crates/domain` — argon2, sessions, money as cents. No HTTP, no axum, no sqlx.
+  - `crates/http` (package `menuza-http`) — the one tower stack and the extractors both binaries mount.
+  - `crates/worker` — River consumer over the same Postgres pool. No listening port (ADR-0008).
+  - `crates/openapi` — emit binary → `crates/openapi/{commerce,tenant}.json`.
+- `packages/shared`: browser-safe types (`/commerce`, `/tenant`, `/push`, `/errors`); its Valibot/oRPC contracts are legacy, the runtime contract is OpenAPI.
+- `packages/db`: historical husk — `prisma/contract.prisma` and the Prisma migration history only; the live schema is `crates/persistence/migrations/`.
+- `apps/web/src/offline`: IndexedDB persister, mutation queue, Background Sync drain.
+- `infra/compose.yaml`: Postgres + Redis + Jaeger via Podman Compose.
+
+### Docs map
+
+- `crates/AGENTS.md` is the workspace rule set; each crate carries its own (`contract`, `persistence`, `domain`, `http`, `api-commerce`, `api-tenant`, `worker`, `openapi`).
+- Nested `src/**/AGENTS.md` files state what is wrong or misleading one folder up: both `domains/` trees, the tenant subdomains (`panel`, `account`, `session`, `profile`, `push`, `public`, `internal`), `mcp/` and `oauth/`.
+- Per-workspace rules: `apps/web/AGENTS.md`, `packages/shared/AGENTS.md`, `packages/db/AGENTS.md`.
 
 ## Versions (locked)
 
-- Bun canary channel — the moving `canary` release (workspaces, package manager, runner, test runner; `bun check` for type checking). No immutable 1.4.4 build exists to pin. Pinned in `devEngines.packageManager`, `.github/workflows/ci.yml` (`env.BUN_VERSION`) and the `oven/bun:canary` image tags.
-- TypeScript 7.0.2 only. No TS 5/6 fallback.
-- TanStack Start 1.169.4, TanStack Router 1.170.46, TanStack Query 5.104.4, Vite 8.3.5 (`@vitejs/plugin-react` 6.2.1). No Next.js in the repo.
+- Bun canary channel — moving `canary` release (workspaces, package manager, runner, test runner; `bun check` type-checks). No immutable 1.4.4 build to pin. Pinned in `devEngines.packageManager`, `.github/workflows/ci.yml` (`env.BUN_VERSION`), `oven/bun:canary` image tags.
+- TypeScript 7.0.2 only; no TS 5/6 fallback.
+- Rust 1.95.0 from `rust-toolchain.toml` (rustfmt + clippy, edition 2024); 1.95 is River's MSRV and sqlx 0.9 needs 1.94. Do not lower it and do not add a nightly feature.
+- axum 0.8.9, sqlx 0.9.0, utoipa 6.0.0 + `utoipa-scalar` 0.4.0, `rmcp` 3.8.0, `riverqueue` 0.4.0 — all pre-1.0, so every one is pinned with `=` in the workspace `Cargo.toml`.
+- TanStack Start 1.169.4, TanStack Router 1.170.46, TanStack Query 5.104.4, Vite 8.3.5 (`@vitejs/plugin-react` 6.2.1); no Next.js in the repo.
 - React 19.3.1, React DOM 19.3.1.
-- Valibot 1.5.0 (catalog; Standard Schema for all oRPC `.input`/`.output`/error
-  `data` schemas). No Zod in first-party code — transitive Zod remains via
-  `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
-- Tailwind 4.3.3 + `@tailwindcss/postcss` 4.3.3.
+- Valibot 1.5.0 and oRPC 2.0.0-beta.35 (`@orpc/contract`, `@orpc/openapi`) — legacy contracts in `packages/shared` only; the web app is typed from the Rust OpenAPI documents. No Zod in first-party code; transitive Zod via `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
+- Tailwind 4.3.3 + `@tailwindcss/vite` 4.3.3.
 - shadcn (Base UI variant on `@base-ui/react` 1.9.0; components in `apps/web/src/components/ui/`).
-- oRPC 2.0.0-beta.35 (`@orpc/server`, `@orpc/client`, `@orpc/contract`,
-  `@orpc/openapi`). v2 wire
-  format is incompatible with v1 — server and client deploy together.
-- Prisma CLI `8.0.0-rc.27`, `@prisma/orm-postgres` `8.0.0-rc.20` (RC pin; bump CLI and
-  ORM package together — wire/marker formats are versioned together). rc.27 requires
-  `@@check(expression: sql`...`)` — a quoted string is refused.
-- BullMQ 6.3.14 over Bun's built-in `RedisClient` (adapter; ioredis removed).
+- orval 8.46.0 generates `apps/web/src/lib/api/{commerce,tenant}.ts` from `crates/openapi/*.json` (`bun run api:generate` in `apps/web`); operation ids are the API, so renaming one breaks every caller.
 - Turborepo 2.11.9 (task DAG + local cache; no remote cache).
-- OpenTelemetry API 1.9.1; trace SDK + OTLP HTTP exporter (2.12.0 / 0.223.0) and
-  `bullmq-otel` 2.0.1.
-- Sentry Bun 11.8.0 (APIs) + `@sentry/react`/`@sentry/node` 11.8.0 (web, no
-  framework integration); init is a no-op without the DSN. LGPD PII scrubbing lives in `@menuza/shared/sentry-privacy`.
+- Sentry `@sentry/react`/`@sentry/node` 11.8.0 (web only, no framework integration); init no-op without DSN; LGPD PII scrubbing in `@menuza/shared/sentry-privacy`.
 - TanStack Query 5.104.4 (`QueryProvider` in the root route, persisted to IndexedDB; `staleTime: 30_000` only for the product editor/create taxonomy).
 - Serwist 9.5.13 (`serwist` runtime + `@serwist/build` used by the first-party `serwistWorker()` Vite plugin; SW emitted to `dist/client/serwist/sw.js`).
-- esbuild 0.28.2 (Serwist SW bundler).
 - `@tanstack/query-persist-client-core` 5.104.4, `@tanstack/react-query-persist-client` 5.104.4, `idb-keyval` 6.3.0 (offline persister).
-- GitHub Actions: `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel.
+- GitHub Actions: `.github/workflows/ci.yml` — eleven jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`, `rust-fmt`, `rust-clippy`, `rust-test`, `rust-build`, `rust-schema`), actions pinned by commit SHA, Bun from the `canary` channel and Rust from `rustup show`.
 
 ## Bun/catalog rules
 
 - Internal packages: `workspace:*`.
-- External deps shared by ≥2 workspaces: in root `workspaces.catalog`, consumed via `catalog:`.
+- Deps shared by ≥2 workspaces: root `workspaces.catalog`, consumed via `catalog:`.
 - Single-consumer deps stay local.
-- Bun lockfile is the only lockfile; CI uses `bun install --frozen-lockfile`.
-- Tool/runtime versions are pinned in `package.json` and documented here.
+- Bun lockfile only; CI uses `bun install --frozen-lockfile`.
+- Tool/runtime versions pinned in `package.json`, documented here.
 
 ## Local Podman (Windows)
 
-- This machine uses Podman **inside WSL2** (Debian). The Docker Compose plugin in WSL is broken on this image, so `scripts/infra-up.ts` and `scripts/infra-down.ts` invoke `podman-compose` directly.
-- Bring infrastructure up: `bun run infra:up`. Down (preserves volumes): `bun run infra:down`.
-- If running on a host without WSL, install `podman-compose` standalone and call `podman-compose -f infra/compose.yaml up -d` from the repo root.
+- Podman **inside WSL2** (Debian); the WSL Docker Compose plugin is broken, so `scripts/infra-up.ts` / `scripts/infra-down.ts` call `podman-compose` directly.
+- Up: `bun run infra:up`; down (volumes kept): `bun run infra:down`.
+- No WSL: install `podman-compose` standalone, run `podman-compose -f infra/compose.yaml up -d` from the repo root.
 
 ## Container images
 
-- One `Containerfile` per service (`apps/{web,commerce,tenant,worker}/Containerfile`). Builds go through `bun run scripts/docker-build.ts <app>`; the context is the pruned monorepo, not the repo root.
-- Bun services (commerce, tenant, worker) ship as `bun build --compile` binaries — no tsdown, no node_modules in the runtime layer (`debian:bookworm-slim` + binary + ca-certificates).
-- Web ships the Vite `dist/` tree and runs `dist/server/server.js` on Bun (`oven/bun:canary-slim`; every image builds on `oven/bun:canary`).
-- Images are hermetic from env: scripts use `--env-file-if-exists`, so builds work without `.env`; runtime config is env-only. Never bake `.env`.
-- API images bind `HOST=0.0.0.0` (env baked in image); local dev stays loopback (default `127.0.0.1`).
-- CI compiles the binaries in the `build` job. No image pipeline, no deploy.
-
-### Build pipeline: turbo prune + bytecode
-
-- **Builds go through `bun run scripts/docker-build.ts <app>`** — runs `turbo prune <app> --docker` into `.turbo/prune/<app>` (json/ = pruned manifests + lockfile, full/ = source), then builds `apps/<app>/Containerfile` with the pruned dir as context. Context is tiny and install layers are per-service (worker: 84 pkgs). Prune output is gitignored.
-- **Bytecode is on** (`--compile --bytecode --format=esm --minify --sourcemap` in the three Bun `build` scripts). ESM bytecode requires `--compile` + `--format=esm`; without `--format=esm` the CJS default fails on top-level `await`. Bytecode is tied to the exact Bun version — images bake the moving `oven/bun:canary` tag, so bytecode regenerates on every image build. Never commit `.jsc`/embedded bytecode as a release artifact outside images.
+- One `Containerfile` per service; today only `apps/web/Containerfile` exists. The Rust binaries deploy as `cargo build --workspace --release` artifacts, not images.
+- Web: Vite `dist/` tree, `dist/server/server.js` on Bun (`oven/bun:canary-slim`; the build stage is `oven/bun:canary`).
+- Hermetic from env: `--env-file-if-exists`, so builds need no `.env`; runtime config env-only; never bake `.env`.
+- The image sets `HOST=0.0.0.0`; local dev stays loopback (`127.0.0.1`).
+- CI compiles web and Rust; no image pipeline, no deploy.
 
 ## Commands
 
-- `bun run dev` — concurrent runnable app processes.
-- `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces (after `db:generate` and `typegen`).
-- `bun test` — workspace-policy + unit tests (no infra).
+- `bun run dev` — `apps/web` on Vite (`:3003`); the Rust binaries are separate processes.
+- `cargo run -p api-commerce` / `-p api-tenant` / `-p worker` — one process each. Cargo lives in `~/.cargo/bin`: `export PATH="$HOME/.cargo/bin:$PATH"` in a fresh shell.
+- `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces, after `typegen`.
+- `cargo test --workspace` / `bun test` — unit tests (no infra).
 - `bun run test:integration` — infra-backed checks.
-- `bun run build` — Prisma generate, app typegen, Vite production build (`vite build`).
-- `bun run lint` / `bun run fmt:check` — oxlint + oxfmt via turbo.
-- `bun run db:generate` (contract emit) / `db:migrate` (migration plan) / `db:deploy` (db migrate) — Prisma 8 lifecycle.
+- `bun run build` — typegen then the Vite production build; Rust builds with `cargo build --workspace --release`.
+- `bun run lint` / `bun run fmt:check` — oxlint + oxfmt via turbo (`@menuza/*`); Rust uses `cargo clippy --workspace --all-targets -- -D warnings` and `cargo fmt --all --check`.
+- `bun run db:migrate` (`cargo sqlx migrate run --source crates/persistence/migrations`) / `db:deploy` (`cargo sqlx prepare --workspace -- --all-targets`) — the sqlx lifecycle.
+- `cargo run -p openapi` / `cargo run -p openapi -- --check` — regenerate / drift-check `crates/openapi/{commerce,tenant}.json`.
 - `bun run infra:up` / `infra:down` — Postgres + Redis + Jaeger.
 - `bunx turbo run <task>` — Turborepo task DAG with local cache (e.g. `turbo run build`, `turbo run typecheck`).
 
 ### Lint/format baselines
 
-- Repo-wide `bun run lint` / `bun run fmt:check` go through turbo; check your own
-  paths instead of trusting a repo-wide exit code: `bunx oxfmt <paths>` then
-  `bunx oxlint <paths>`.
-- `anti-slop/require-readable-spacing` is autofixable (`bunx oxlint --fix <paths>`);
-  re-run the formatter and lint afterwards and confirm a second pass changes nothing.
-- Format only the files a change touches — a package-wide `bun run fmt` rewrites
-  unrelated files.
+- Repo-wide `bun run lint` / `bun run fmt:check` go through turbo; check own paths: `bunx oxfmt <paths>` then `bunx oxlint <paths>`.
+- `anti-slop/require-readable-spacing` is autofixable (`bunx oxlint --fix <paths>`); re-run formatter + lint, second pass must change nothing.
+- Format touched files only; package-wide `bun run fmt` rewrites unrelated files.
 
 ## Git hooks
 
-- Husky 9 + lint-staged 17. `prepare: husky` in root `package.json`; hook at
-  `.husky/pre-commit` (plain POSIX script, no `husky.sh` sourcing) runs
-  `bunx lint-staged`.
-- `.lintstagedrc.json`: staged `*.{ts,tsx,js,jsx,mjs,cjs}` get `bunx oxfmt` then
-  `bunx oxlint --fix`; staged `*.{json,jsonc,md,css}` get `bunx oxfmt` only.
-- The hook only sees staged files. CI remains the repo-wide gate.
-- Never bypass with `--no-verify` unless the user explicitly asks.
-- `.husky/_/` is generated and gitignored; `.husky/pre-commit` is tracked.
+- Husky 9 + lint-staged 17; `prepare: husky` in root `package.json`; `.husky/pre-commit` (plain POSIX, no `husky.sh` sourcing) runs `bunx lint-staged`.
+- `.lintstagedrc.json`: staged `*.{ts,tsx,js,jsx,mjs,cjs}` → `bunx oxfmt` then `bunx oxlint --fix`; `*.{json,jsonc,md,css}` → `bunx oxfmt`.
+- Hook sees staged files only; CI is the repo-wide gate.
+- No `--no-verify` unless the user explicitly asks.
+- `.husky/_/` generated + gitignored; `.husky/pre-commit` tracked.
 
 ## Definition of done
 
-Run the canonical checks in this order, and report the result of each:
-
-1. `bun run design:check` — dashboard UI only (`apps/web/DESIGN.md`).
-2. `bun run typecheck`
-3. `bun test`
-4. `bun run lint`
-5. `bun run fmt:check`
-6. `bun run build`
+Run in this order, report each result: `bun run design:check` (dashboard UI only, `apps/web/DESIGN.md`), `bun run typecheck`, `cargo test --workspace`, `bun test`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo run -p openapi -- --check`, `bun run lint`, `bun run fmt:check`, `bun run build`.
 
 ## Security
 
-- No secrets in `.env`/tracked files. Only `.env.example`.
-- Tenant resolution lives server-side (`proxy.ts` host→mode map). Client `tenantId`/`Host` are never trusted.
-- APIs loopback-bound; production reverse proxy is explicitly out of scope for this foundation.
-- `NEXT_PUBLIC_*` variables never carry secrets.
-- Management endpoints are deny-by-default.
+- No secrets in `.env`/tracked files; only `.env.example`.
+- Tenant resolution server-side (`proxy.ts` host→mode map); the proxy writes `x-menuza-tenant-id` after resolving the host and drops the client's copy.
+- Tenant scope is app-layer: every tenant-scoped query binds `tenant_id`. `TenantScope` accepts the header only from a loopback peer or a trusted proxy hop (`TRUSTED_PROXY_HOPS`, `TRUSTED_PROXY_HOP_IPS` and `x-forwarded-host` together); a forwarded header alone never grants trust.
+- Internal calls carry `x-menuza-internal-token`, compared in constant time against `INTERNAL_API_SECRET`; an unset secret fails closed.
+- `/mcp` answers only Hosts in `MCP_ALLOWED_HOSTS` (loopback default, never empty and never disabled) and only stores that enabled the integration.
+- APIs loopback-bound; the image sets `HOST=0.0.0.0`; production reverse proxy explicitly out of scope for this foundation.
+- `NEXT_PUBLIC_*` never carries secrets.
+- Management endpoints deny-by-default; capability checks run in the handler next to the query they protect.
 
 ## Testing
 
-- Bun test runner only. No Vitest or Playwright.
-- Unit tests must not need infrastructure. Integration tests are labeled separately.
-- `scripts/workspace-policy.test.ts` enforces catalog hygiene, internal dep protocol, TS 5/6 absence, AGENTS.md coverage.
+- Bun test runner for TypeScript, `cargo test --workspace` for Rust; both are unit tests needing no infrastructure. No Vitest or Playwright.
+- The `.sqlx` offline cache is committed; CI sets `SQLX_OFFLINE=true`, so compile and test need no database.
+- Integration tests are labelled separately.
+- `scripts/workspace-policy.test.ts` enforces catalog hygiene, internal dep protocol, TS 5/6 absence, and an `AGENTS.md` per workspace and per crate.
 
 ## Working agreements
 
-Bias toward caution over speed. For trivial tasks, use judgment.
+Bias toward caution over speed; trivial tasks use judgment.
 
 ### Think before coding
 
-- State assumptions explicitly. If uncertain, ask.
-- Multiple interpretations? Present them — don't pick silently.
-- Simpler approach exists? Say so. Push back when warranted.
-- Something unclear? Stop. Name what's confusing. Ask.
+- State assumptions; uncertain? ask.
+- Multiple interpretations? Present them, don't pick silently.
+- Simpler approach? Say so, push back when warranted.
+- Unclear? Stop, name the confusion, ask.
 
 ### Flag better options
 
-- Assume the user can be wrong. When a request has a materially better, cheaper, faster, or more
-  accessible alternative — model, provider, service, free tier, algorithm, UI, accessibility — name
-  it with the tradeoff and recommend it. A line or two, not a lecture.
-- Don't silently substitute or block the user: surface the alternative, ask whether to continue as
-  asked, then do what the user decides.
-- In full-autonomous mode, skip the round-trip and take the better option, stating the choice made.
+- User can be wrong. A materially better/cheaper/faster/more accessible alternative (model, provider, service, free tier, algorithm, UI, accessibility) gets the tradeoff and a recommendation; a line or two, not a lecture.
+- Don't silently substitute or block: surface it, ask, follow the user's decision.
+- Full-autonomous mode: skip the round-trip, take the better option, state the choice.
 
 ### Surgical changes
 
-- Touch only what the request requires. Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor what isn't broken. Match existing style even if you'd do it differently.
-- Unrelated dead code noticed? Mention it — don't delete it.
-- Remove only orphans YOUR changes created (imports/variables/functions now unused).
-- Test: every changed line traces directly to the request.
+- Touch only what the request requires; no "improving" adjacent code, comments, formatting.
+- Don't refactor what isn't broken; match existing style.
+- Unrelated dead code: mention it, don't delete it.
+- Remove only orphans YOUR changes created (imports/variables/functions).
+- Every changed line traces to the request.
 
 ### Goal-driven execution
 
-- Turn tasks into verifiable goals ("fix bug" → "write failing repro, then make it pass").
-- Multi-step tasks: brief plan with a verify check per step.
-- Loop until verified against the criteria.
+- Task → verifiable goal ("fix bug" → "failing repro, then green").
+- Multi-step: plan with a verify check per step; loop until verified.
 
 ### Version control
 
-- Don't `git commit` or `git push` unless the user explicitly asks for it. Completing a task is not
-  permission to commit.
-- Don't stage, amend, or otherwise "tidy up" the working tree either; leave it as the user left it.
-- Only force-push, rebase, `reset --hard`, or delete branches when the user asks.
+- No `git commit` / `git push` unless the user explicitly asks; completing a task is not permission to commit.
+- Don't stage, amend, or "tidy up" the tree; leave it as the user left it.
+- Force-push, rebase, `reset --hard`, branch deletion only when asked.
 
 ## Anti-patterns
 
 - No empty abstraction packages ("for later").
-- No single-consumer packages: code consumed by only one app lives directly in that app (e.g. offline queue in `apps/web/src/offline`).
-- No micro-packages for middleware or utilities: shared server middleware/auth lives in `@menuza/orpc-server/*` or `@menuza/db/scope`, not in separate `packages/auth-core` or `packages/tenant-context`.
-- New packages require explicit justification and must be registered in `scripts/workspace-policy.test.ts` allowlist.
-- No factory/config abstractions around a single value.
-- No features, flexibility, or configurability beyond what was asked.
+- No single-consumer packages: one-app code stays in that app (offline queue in `apps/web/src/offline`).
+- No middleware/utility micro-packages: shared server middleware/auth lives in `menuza-http` or `domain`, not in `packages/auth-core` / `packages/tenant-context`.
+- New packages or crates: explicit justification + `scripts/workspace-policy.test.ts` allowlist entry.
+- No factory/config abstraction around a single value.
+- No features, flexibility, configurability beyond the ask.
 - No error handling for impossible scenarios.
-- No shared UI package — one frontend consumer.
+- No shared UI package (one frontend consumer).
 - No `tsdown`.
+- No SQL outside `crates/persistence`; no `axum` type in `crates/domain`; no IO in `crates/contract`.
 - No `ignoreBuildErrors: true`, no silenced compiler checks.
+
+## Code search
+
+- The global `AGENTS.md` CodeGraph rule applies here: `codegraph_explore` before any `read`/`grep`/`glob` for structure, flows, callers, blast radius; treat the result as already read.
+- Skip it for a missing/stale index and for non-indexed content (configs, docs, env files); plain tools there.
+- Never run `tokless index`.
 
 ## Tooling state
 
-- **Turborepo**: local cache only; wraps existing scripts. No remote cache.
-- **OpenTelemetry**: manual SDK wiring in `@menuza/orpc-server`
-  (`initOtel`/`shutdownOtel`) — `TracerProvider` + `BatchSpanProcessor` + OTLP HTTP
-  exporter, W3C `traceparent` propagation, `AsyncLocalStorageContextManager`. Child
-  spans for RPC requests (continuing an inbound trace), Prisma queries (`packages/db`),
-  BullMQ jobs (`bullmq-otel`), and outbound `fetch`. **No-op unless
-  `OTEL_EXPORTER_OTLP_ENDPOINT` is set.** No metrics/logs SDK, no browser tracing. A local
-  Jaeger collector (OTLP HTTP + UI) ships in `infra/compose.yaml`.
-- **Sentry**: `@sentry/bun` initialized in commerce/tenant/worker and
-  `@sentry/nextjs` in `apps/web` (client + server + edge). **No-op without the
-  DSN** (`SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`). Never commit a DSN. Tracing
-  samples 10% by default (`SENTRY_TRACES_SAMPLE_RATE`); set `0` to rely on
-  OpenTelemetry only. All SDKs
-  share the LGPD lock-down in `@menuza/shared/sentry-privacy` (`dataCollection`
-  off + `beforeSend` scrubber). Web source maps upload only when
-  `SENTRY_AUTH_TOKEN` is set. **API source maps are not uploaded**: the
-  `bun build --compile` binary embeds its map and Sentry cannot symbolicate a
-  compiled executable; the `--sourcemap` flag stays for Bun-native traces.
-- **TanStack Query**: `QueryProvider` in `apps/web` root layout (persisted via IndexedDB). The coupons screens are the first consumers (`useQuery`/`useMutation` in `coupons-table.tsx` / `coupon-form.tsx`); the offline mutation queue in `apps/web/src/offline` drains it.
-- **Serwist (PWA)**: first-party `serwistWorker()` plugin in `apps/web/vite.config.ts` bundles `src/sw.ts` (Vite lib, iife) and injects the precache manifest with `@serwist/build`; worker at `/serwist/sw.js`; manifest at `/manifest.webmanifest`; `OfflineListener` mounted in the root route. Background Sync drain wired.
-- **Web Push**: VAPID, implemented end to end — sender and dispatcher in `apps/worker` (`src/push-sender.ts`, `src/push-dispatcher.ts`), subscription/preference routes in the `@menuza/api-tenant` push subdomain, contract in `@menuza/shared/push`. `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` are declared in `.env.example`; leaving any empty disables push.
-- **GitHub Actions**: `.github/workflows/ci.yml` — six jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`), actions pinned by commit SHA, Bun from the `canary` channel. No image pipeline, no deploy.
+- **Turborepo**: local cache only, wraps the `@menuza/*` scripts; no remote cache.
+- **Cargo workspace**: six crates, two listening binaries (`:3001`, `:3002`), one River worker and one OpenAPI emit binary; every pre-1.0 dependency pinned with `=`.
+- **sqlx**: hand-written SQL in `crates/persistence`, checked at compile time by `query!`/`query_as!`; the committed `.sqlx` cache is what CI builds against (`SQLX_OFFLINE=true`), so no database is needed for a build.
+- **River**: `riverqueue` 0.4 over the same Postgres (ADR-0008); three queues (`orders-expiry`, `payment-events`, `push-notifications`), each idempotent, each drained by one module in `crates/worker`. Redis stays in `infra/compose.yaml` with no application consumer.
+- **OpenAPI**: `crates/openapi` emits `commerce.json` / `tenant.json`; `--check` fails on drift; orval generates the web client from them. `/docs` (Scalar) is mounted only when `MENUZA_ENV=development`.
+- **TanStack Query**: `QueryProvider` in root layout, IndexedDB-persisted; coupons screens first consumers (`useQuery`/`useMutation` in `coupons-table.tsx` / `coupon-form.tsx`); `apps/web/src/offline` queue drains it.
+- **Serwist (PWA)**: first-party `serwistWorker()` in `apps/web/vite.config.ts` bundles `src/sw.ts` (Vite lib, iife), injects precache manifest via `@serwist/build`; worker `/serwist/sw.js`; manifest `/manifest.webmanifest`; `OfflineListener` in root route; Background Sync drain wired.
+- **Web Push**: VAPID end to end; sender and dispatcher in `crates/worker` (`push_sender.rs`, `push_dispatch.rs`); subscription/preference routes in the `api-tenant` push subdomain; contract `@menuza/shared/push`; `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` in `.env.example`, any empty disables push. No producer enqueues `push-notifications` yet.
+- **Sentry**: `@sentry/react`/`@sentry/node` in `apps/web` (client + server); no-op without `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`; never commit a DSN; 10% traces (`SENTRY_TRACES_SAMPLE_RATE`, `0` disables tracing); LGPD lock-down from `@menuza/shared/sentry-privacy` (`dataCollection` off + `beforeSend` scrubber). The Rust binaries log through `tracing` and have no Sentry integration.
+- **GitHub Actions**: eleven jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`, `rust-fmt`, `rust-clippy`, `rust-test`, `rust-build`, `rust-schema`), SHA-pinned actions, Bun `canary`, `SQLX_OFFLINE=true` for the Rust jobs; no image pipeline, no deploy.
 
 ## Agent skills
 
 ### Menuza product skill
 
-Product meaning, features, technical decisions and the checks every change must pass live in the
-`menuza` skill (`.agents/skills/menuza/`). Load it when a task touches a Menuza feature or a
-`MEN-` ticket.
+Product meaning, features, technical decisions and per-change checks live in the `menuza` skill (`.agents/skills/menuza/`); load it for any Menuza feature or `MEN-` ticket.
 
-- Entry point: `.agents/skills/menuza/SKILL.md` — the router (always-true invariants + topic table).
-- Only know a word, not a topic? `.agents/skills/menuza/INDEX.md` is the flat keyword → file map.
-- Every folder and subfolder has its own `INDEX.md` with a keyword table:
-  - `product/` — vision, tenancy, MVP scope, open decisions, glossary.
-  - `features/` — `stores-and-teams/`, `storefronts/`, `catalog/`, `payments/`, `delivery/`,
-    `orders/`, `customers/`, `notifications/`, `admin/`, `integrations/`.
-  - `engineering/` — stack and ADRs, the monorepo map, the backend request path, route
-    rendering stages, checks, follow-ups.
-  - `tickets/` — how to query Linear, the roadmap epics, the ticket → module map.
-- `PRODUCT.md` (root, numbered sections) and Linear stay authoritative; the skill distils and maps
-  them onto the code. Before calling a feature done, run `engineering/checks.md`.
+- Entry `.agents/skills/menuza/SKILL.md` — router (always-true invariants + topic table). Word without a topic: `.agents/skills/menuza/INDEX.md`, flat keyword → file map.
+- Each folder/subfolder has an `INDEX.md` keyword table: `product/` (vision, tenancy, MVP scope, open decisions, glossary); `features/` (`stores-and-teams/`, `storefronts/`, `catalog/`, `payments/`, `delivery/`, `orders/`, `customers/`, `notifications/`, `admin/`, `integrations/`); `engineering/` (stack, ADRs, monorepo map, request path, render stages, checks, follow-ups); `tickets/` (Linear queries, roadmap epics, ticket → module map).
+- `PRODUCT.md` (root, numbered) and Linear are authoritative; the skill maps them to code. Run `engineering/checks.md` before calling a feature done.
 
 ### Skill tiers
 
-Skills overlap, so load by tier — never all at once.
+Load by tier, never all at once.
 
-- **Tier 0 — always on for UI work:** `shadcn` (existing components first, semantic
-  tokens, `FieldGroup`+`Field`, `gap-*` not `space-*`, overlays with `Title`,
-  `Avatar` with `Fallback`) and `menuza` (invariants + checks). Dashboard work
-  additionally follows `apps/web/DESIGN.md`; verify with `bun run design:check`.
-- **Tier 1 — checkers, on demand:** `better-accessibility` (focus, ARIA, contrast),
-  `better-layout` (responsive, no page-level horizontal overflow). Housekeeping:
-  `housekeeping` (repo-wide pass: probe reality, record a temporary `FINDINGS.md`
-  checkbox board, parallel read-only audit lanes, parallel disjoint-file fix wave,
-  full verify chain; never commits, never stages) then `dead-code-auditor` (reports
-  only — six categories, evidence-backed, never deletes; ends by offering a `/plan`)
-  and `ai-slop-cleaner` (bounded to the calling task's changed files; behavior lock
-  and fallback classification first, passes 1–4, never masks architectural
-  blockers). All three respect Surgical changes: unrelated dead code is mentioned,
-  not deleted.
-- **Tier 2 — one generator at a time:** `frontend-design` for product UI xor
-  `design-taste-frontend` for marketing hero work. Never both on the same task.
-- **Tier 3 — do not auto-load:** `better-colors`, `better-typography`, `better-ui`,
-  `better-writing`, `better-interface`, `web-design-guidelines`,
-  `vercel-composition-patterns`, `vercel-react-best-practices`, `interface-review`,
-  `explain-interface`, `variant`. Invoke by name only when the task is exactly that slice.
-- Backend/tooling skills (`orpc*`, `prisma-8`, `next-*`, `install-anti-slop`, `break`)
-  are outside this tiering; load them by task as before.
+- **Tier 0 — always on for UI:** `shadcn` (existing components first, semantic tokens, `FieldGroup`+`Field`, `gap-*` not `space-*`, overlays with `Title`, `Avatar` with `Fallback`) + `menuza` (invariants + checks); dashboard work also follows `apps/web/DESIGN.md`, verified by `bun run design:check`.
+- **Tier 1 — checkers on demand:** `better-accessibility` (focus, ARIA, contrast), `better-layout` (responsive, no page-level horizontal overflow); `housekeeping` (probe reality, temporary `FINDINGS.md` board, parallel read-only audits, parallel disjoint-file fixes, full verify chain; never commits or stages), then `dead-code-auditor` (reports only: six categories, evidence-backed, never deletes, ends offering `/plan`) and `ai-slop-cleaner` (task's changed files only; behavior lock + fallback classification, passes 1–4, never masks architectural blockers). All three honour Surgical changes: unrelated dead code mentioned, not deleted.
+- **Tier 2 — one generator:** `frontend-design` (product UI) xor `design-taste-frontend` (marketing hero); never both.
+- **Tier 3 — never auto-load:** `better-colors`, `better-typography`, `better-ui`, `better-writing`, `better-interface`, `web-design-guidelines`, `vercel-composition-patterns`, `vercel-react-best-practices`, `interface-review`, `explain-interface`, `variant`; name-only, task exactly that slice.
+- Backend/tooling skills (`orpc*` for the legacy contracts, `prisma-8` for the historical schema, `next-*`, `install-anti-slop`, `break`) load by task.
 
 ### Issue tracker
 
-Issues live in Linear (workspace Menuza, team Menuza) via Linear MCP tools. See `docs/agents/issue-tracker.md`.
+Issues live in Linear (workspace Menuza, team Menuza) via Linear MCP tools; see `docs/agents/issue-tracker.md`.
 
-**Linear is the only ticket store.** No ticket list, status, priority or inventory is mirrored into this repo — not in docs, not in the skill, not in code comments. Cite a `MEN-###` to point at the tracker; never record its state locally.
+**Linear is the only ticket store.** No ticket list, status, priority or inventory mirrored into this repo — not in docs, not in the skill, not in code comments. Cite `MEN-###` to point at the tracker; never record its state locally.
 
 #### Querying Linear correctly
 
-Team selector is `team: "Menuza"` (key `MEN`); issue ids are `MEN-###` strings passed as `id`.
+Team selector `team: "Menuza"` (key `MEN`); ids are `MEN-###` strings passed as `id`.
 
-- `list_issues` `fields` is a closed whitelist. Valid, and the ones worth asking for: `id`, `title`,
-  `status`, `statusType`, `priority`, `estimate`, `labels`, `assignee`, `project`, `parentId`,
-  `createdAt`, `updatedAt`, `completedAt`, `canceledAt`, `url`. `identifier`, `state` and `relations`
-  are **not** fields — the `id` already is `MEN-###`, and state is `status` (display name) plus
-  `statusType` (`backlog | unstarted | started | completed | canceled | duplicate`).
-- `list_issues` **never returns relations**. Read blockers with one `get_issue({ id, includeRelations: true })`
-  per issue; the relations come back under `relations.blockedBy` / `relations.blocks` / `relations.relatedTo`.
-- Status names are custom (`Backlog`, `Todo`, `In Progress`, `In Review`, `Done`, `Canceled`,
-  `Duplicate`, `Anotações`). Filter on `statusType`, not the name — "Done" is `completed`, not `Completed`.
-- `limit` caps at 250 and pages via `hasNextPage` + `cursor`. One 250-item fetch of the whole team is
-  the cheap path: fetch once, filter in code, rather than paging per status or per parent.
-- Roadmap maps are parent issues — `MEN-63` (MVP), `MEN-64` (post-MVP immediate), `MEN-65` (future) —
-  and their tickets come back via `parentId`.
-- **Blocker and ordering live in ticket prose, not in relations** — the relations graph is barely used
-  here, so an empty `blockedBy` does not mean a ticket is ready. Read its description and
-  `list_comments` before judging what is next; "X must land before Y" is written in the body.
-- When writing Markdown to `save_comment` / `save_issue`, send real newlines; never escape sequences.
+- `list_issues` `fields` is a closed whitelist: `id`, `title`, `status`, `statusType`, `priority`, `estimate`, `labels`, `assignee`, `project`, `parentId`, `createdAt`, `updatedAt`, `completedAt`, `canceledAt`, `url`. `identifier`, `state`, `relations` are **not** fields — `id` already is `MEN-###`; state is `status` (display name) plus `statusType` (`backlog | unstarted | started | completed | canceled | duplicate`).
+- `list_issues` **never returns relations**. Blockers: one `get_issue({ id, includeRelations: true })` per issue, under `relations.blockedBy` / `relations.blocks` / `relations.relatedTo`.
+- Status names are custom (`Backlog`, `Todo`, `In Progress`, `In Review`, `Done`, `Canceled`, `Duplicate`, `Anotações`). Filter on `statusType`, not the name — "Done" is `completed`, not `Completed`.
+- `limit` caps at 250, pages via `hasNextPage` + `cursor`. One 250-item team fetch filtered in code beats paging per status/parent.
+- Roadmap maps are parent issues — `MEN-63` (MVP), `MEN-64` (post-MVP immediate), `MEN-65` (future); tickets come back via `parentId`.
+- **Blocker and ordering live in ticket prose, not relations** — the graph is barely used, so empty `blockedBy` does not mean ready. Read description and `list_comments` before judging what is next; "X must land before Y" is in the body.
+- Markdown in `save_comment` / `save_issue` needs real newlines, never escape sequences.
 
-When reporting on issues to the user, never cite an identifier alone (`MEN-179`): always pair it with the issue title
-(or a short summary of it), e.g. `MEN-179 — Next.js 16.4 canary + RSC + Cache Components`. Applies to lists, tables and
-prose. The identifier goes first so it stays copy-pasteable; the title makes it readable without opening Linear.
+When reporting issues, never cite an identifier alone (`MEN-179`): pair it with the title (or short summary), e.g. `MEN-179 — Next.js 16.4 canary + RSC + Cache Components`. Lists, tables, prose. Identifier first (copy-pasteable), title readable without opening Linear.
 
 ### Triage labels
 
-Default five canonical roles used as-is. See `docs/agents/triage-labels.md`.
+Default five canonical roles used as-is; see `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context layout. See `docs/agents/domain.md`.
+Single-context layout; see `docs/agents/domain.md`.

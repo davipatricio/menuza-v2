@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \"categoryId\" AS category_id, \"departmentId\" AS department_id\n        FROM public.\"CategoryDepartment\"\n        WHERE \"tenantId\" = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "category_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"CategoryDepartment\"",
+            "name": "categoryId"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "department_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"CategoryDepartment\"",
+            "name": "departmentId"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text"]
+    },
+    "nullable": [false, false]
+  },
+  "hash": "08baedd92a7594a6c4fa96916f4ebdf795938173417f2928b946b840066acbce"
+}

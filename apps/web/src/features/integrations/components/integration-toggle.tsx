@@ -1,16 +1,7 @@
 import { useState } from "react";
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
 import { useRouter } from "@tanstack/react-router";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { Switch } from "@/components/ui/switch.tsx";
-
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client(): ContractClient {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
+import { saveIntegrationFn } from "../server/integrations.functions.ts";
 
 /**
  * The card's switch. One panel write turns the integration on or off and the
@@ -37,11 +28,11 @@ export function IntegrationToggle({
     setPending(true);
 
     try {
-      await client().panel.saveIntegration({
-        storeSlug,
-        integrationId,
-        status: next ? "enabled" : "disabled",
+      const result = await saveIntegrationFn({
+        data: { storeSlug, integrationId, status: next ? "enabled" : "disabled" },
       });
+
+      if (result.status !== "ok") throw new Error(result.status);
 
       await router.invalidate();
     } catch {

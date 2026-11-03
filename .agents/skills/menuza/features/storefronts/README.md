@@ -16,9 +16,9 @@ The buyer-facing store, served on a tenant host. One shop per tenant, reached by
 
 ## Code entry points
 
-- `apps/web/src/app/(storefront)/` — the storefront route group; today `/store` only (`/menu`, `/cart`, `/checkout` are allowed by the proxy but not yet built).
-- Host → mode and tenant resolution: `apps/web/src/proxy.ts` (main vs storefront; injects `x-menuza-tenant-id`), never a direct `Domain` read.
-- The storefront reads commerce data through `apps/commerce`; it never touches the database. Route rendering stages: `../engineering/route-stages.md`.
+- `apps/web/src/routes/_storefront/` — the storefront route group; routes built today are `/store`, `/menu` and `/menu/$productId` (cart and checkout are not built).
+- Host → tenant resolution: `apps/web/src/server/tenant-resolve.ts` — server-side host → tenant lookup via the tenant internal REST endpoint with `x-menuza-internal-token`, then `x-menuza-tenant-id`; never a direct `Domain` read.
+- The storefront reads commerce data from `crates/api-commerce` (:3001) through the orval-generated `apps/web/src/lib/api/commerce.ts` and `apps/web/src/features/storefront/server/storefront.functions.ts`; it never touches the database. Route rendering stages: `../engineering/route-stages.md`.
 - Theme/offline shell: `ThemeToggle`, `SerwistProvider`, `QueryProvider`, `OfflineListener` in the root layout.
 
 ## Checks

@@ -6,9 +6,9 @@
  * without it still sees the section, as read-only.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { ORPCError } from "@orpc/client";
 import * as v from "valibot";
 import type { ActiveSession, TeamMember } from "@menuza/shared/tenant";
+import { ApiError } from "@/lib/api-error";
 import { panelClient } from "@/server/panel-client.ts";
 
 export type SessionsResult =
@@ -46,7 +46,7 @@ export const loadTeamFn = createServerFn({ method: "GET" })
     } catch (error) {
       // `team:read` is the only denial that means "read-only section". A dead
       // session, an unknown store or a transport failure must not render as one.
-      if (error instanceof ORPCError && error.code === "FORBIDDEN") return { status: "forbidden" };
+      if (error instanceof ApiError && error.code === "FORBIDDEN") return { status: "forbidden" };
 
       throw error;
     }

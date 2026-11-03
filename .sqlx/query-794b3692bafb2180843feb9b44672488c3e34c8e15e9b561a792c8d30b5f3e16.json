@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE public.\"GatewayEvent\"\n        SET status = $3, detail = $4, \"processedAt\" = $5\n        WHERE \"tenantId\" = $1 AND id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "794b3692bafb2180843feb9b44672488c3e34c8e15e9b561a792c8d30b5f3e16"
+}

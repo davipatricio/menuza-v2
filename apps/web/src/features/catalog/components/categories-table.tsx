@@ -3,10 +3,6 @@ import { useMemo, useState, useTransition } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 
 import { ArrowDown, ArrowUp, Search, X } from "lucide-react";
-import { createORPCClient, ORPCError } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterContractClient } from "@orpc/contract";
-import { tenantContractObject } from "@menuza/shared/tenant";
 import { useMutation } from "@tanstack/react-query";
 import { debounce, useQueryStates } from "nuqs";
 
@@ -34,6 +30,10 @@ import {
   TaxonomyRowActions,
 } from "@/features/catalog/components/taxonomy-dialog.tsx";
 import { categorySearchParams } from "@/features/catalog/schemas/category-search.ts";
+import {
+  updateCategoryFn,
+  type TaxonomyMutationFailure,
+} from "../server/taxonomy-mutations.functions.ts";
 
 export type CategoryRow = {
   id: string;
@@ -46,12 +46,6 @@ export type CategoryRow = {
   departmentNames: string[];
 };
 
-type ContractClient = RouterContractClient<typeof tenantContractObject>;
-
-function client() {
-  return createORPCClient<ContractClient>(new RPCLink({ url: "/tenant/rpc" }));
-}
-
 const NO_SELECTION = "none";
 
 const SORT_OPTIONS = [
@@ -61,14 +55,15 @@ const SORT_OPTIONS = [
   { label: "Última edição", value: "updatedAt" },
 ] as const;
 
-function switchError(error: Error): string {
-  if (error instanceof ORPCError && error.code === "CONFLICT") return error.message;
+function switchError(failure: TaxonomyMutationFailure): string {
+  if (failure.status === "error") {
+    if (failure.code === "CONFLICT") return "Já existe uma categoria com este nome.";
 
-  if (error instanceof ORPCError && error.code === "FORBIDDEN")
-    return "Você não tem permissão para editar o catálogo desta loja.";
+    if (failure.code === "FORBIDDEN")
+      return "Você não tem permissão para editar o catálogo desta loja.";
 
-  if (error instanceof ORPCError && error.code === "NOT_FOUND")
-    return "Categoria não encontrada nesta loja.";
+    if (failure.code === "NOT_FOUND") return "Categoria não encontrada nesta loja.";
+  }
 
   return "Não foi possível alterar a categoria. Tente novamente.";
 }
@@ -117,29 +112,34 @@ export function CategoriesTable({
 
   const activeMutation = useMutation({
     mutationFn: ({ row, active }: { row: CategoryRow; active: boolean }) =>
-      client().panel.updateCategory({
-        storeSlug,
-        categoryId: row.id,
-        name: row.name,
-        sortOrder: row.sortOrder,
-        active,
-        departmentIds: row.departmentIds,
+      updateCategoryFn({
+        data: {
+          storeSlug,
+          categoryId: row.id,
+          name: row.name,
+          sortOrder: row.sortOrder,
+          active,
+          departmentIds: row.departmentIds,
+        },
       }),
     onMutate: ({ row, active }) => {
       setActiveOverrides((current) => ({ ...current, [row.id]: active }));
     },
-    onSuccess: () => {
+    onSuccess: (result, { row }) => {
+      if (result.status !== "ok") {
+        setActiveOverrides((current) => {
+          const next = { ...current };
+          delete next[row.id];
+
+          return next;
+        });
+        setError(switchError(result));
+
+        return;
+      }
+
       setError(null);
       void router.invalidate();
-    },
-    onError: (mutationError, { row }) => {
-      setActiveOverrides((current) => {
-        const next = { ...current };
-        delete next[row.id];
-
-        return next;
-      });
-      setError(switchError(mutationError));
     },
   });
 

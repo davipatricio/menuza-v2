@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
-import { ORPCError } from "@orpc/client";
 import { Loader2 } from "lucide-react";
 import {
   RegisterBirthdateSchema,
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { registerAccount } from "@/features/auth/server/session-client.ts";
+import { ApiError } from "@/lib/api-error";
 import { DatePicker } from "./date-picker.tsx";
 import { fieldErrors } from "./form-errors.ts";
 
@@ -83,7 +83,7 @@ export function AccountForm() {
         void navigate({ to: "/dashboard/signup/perfil" });
       } catch (error) {
         setServerError(
-          error instanceof ORPCError && error.code === "CONFLICT" ? CONFLICT_ERROR : GENERIC_ERROR,
+          error instanceof ApiError && error.code === "CONFLICT" ? CONFLICT_ERROR : GENERIC_ERROR,
         );
       }
     },
