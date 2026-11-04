@@ -106,6 +106,11 @@ const PREFIXES = {
 // on any resolved host just like the API mounts.
 const API_PREFIXES = ["/commerce", "/tenant", "/webhooks", "/mcp"] as const;
 
+// TanStack Start posts server functions (mutations and client-side loader
+// calls) to this mount. It is same-origin RPC the app itself serves, so it must
+// pass for every *resolved* host like the API mounts above.
+const SERVER_FN_PREFIX = "/_serverFn";
+
 /**
  * Host -> tenantId lookup cache. The set of hosts is small and changes rarely,
  * so entries never expire. Callers that add/change a `Domain` row must call
@@ -118,6 +123,13 @@ export function invalidateTenantCache(host?: string): void {
   else tenantCache.clear();
 }
 
+// The generated URL carries the browser mount (`/tenant`); the internal origin serves the bare path.
+function stripTenantMount(path: string): string {
+  if (!path.startsWith("/tenant/")) return path;
+
+  return path.slice("/tenant".length);
+}
+
 /** Resolves one host against the tenant API's internal route; throws when it fails. */
 async function resolveTenantId(host: string): Promise<string | null> {
   const cached = tenantCache.get(host);
@@ -126,9 +138,12 @@ async function resolveTenantId(host: string): Promise<string | null> {
 
   const origin = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002";
 
-  const res = await fetch(`${origin}${getResolveTenantByStorefrontHostUrl({ host })}`, {
-    headers: { "x-menuza-internal-token": process.env.INTERNAL_API_SECRET ?? "" },
-  });
+  const res = await fetch(
+    `${origin}${stripTenantMount(getResolveTenantByStorefrontHostUrl({ host }))}`,
+    {
+      headers: { "x-menuza-internal-token": process.env.INTERNAL_API_SECRET ?? "" },
+    },
+  );
 
   if (!res.ok) throw new Error(`tenant ${res.status}`);
 
@@ -154,7 +169,7 @@ function isAlwaysAllowed(pathname: string): boolean {
 function isAllowed(mode: Mode, pathname: string): boolean {
   // The root is allowed for every mode.
   if (pathname === "/") return true;
-  const list = [...PREFIXES[mode], ...API_PREFIXES];
+  const list = [...PREFIXES[mode], ...API_PREFIXES, SERVER_FN_PREFIX];
 
   return list.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }

@@ -220,9 +220,16 @@ function statusError(status: number): Error {
   }
 }
 
+// The generated URLs carry the browser mount (`/tenant`); the internal origin serves the bare path.
+function stripTenantMount(path: string): string {
+  if (!path.startsWith("/tenant/")) return path;
+
+  return path.slice("/tenant".length);
+}
+
 /** One request against the absolute internal origin, throwing on a non-2xx answer. */
 async function request<T>(origin: string, path: string, init: RequestInit): Promise<T> {
-  const res = await fetch(`${origin}${path}`, init);
+  const res = await fetch(`${origin}${stripTenantMount(path)}`, init);
 
   if (!res.ok) throw statusError(res.status);
 
