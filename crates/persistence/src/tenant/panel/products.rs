@@ -305,7 +305,7 @@ pub async fn product_badges(
     tenant: &TenantId,
 ) -> Result<Vec<ProductBadgeRow>, sqlx::Error> {
     sqlx::query_as::<_, ProductBadgeRow>(
-        r#"SELECT pb."productId", b.id AS badge_id, b.name AS badge_name, b."imageUrl"
+        r#"SELECT pb."productId", b.id AS badge_id, b.name AS badge_name, b."imageUrl" AS image_url
              FROM "ProductBadge" pb
              JOIN "Badge" b ON b.id = pb."badgeId" AND b."tenantId" = pb."tenantId"
             WHERE pb."tenantId" = $1
@@ -399,7 +399,7 @@ pub async fn product_detail(
     .await?;
 
     let badges = sqlx::query_as::<_, ProductBadgeRow>(
-        r#"SELECT pb."productId", b.id AS badge_id, b.name AS badge_name, b."imageUrl"
+        r#"SELECT pb."productId", b.id AS badge_id, b.name AS badge_name, b."imageUrl" AS image_url
              FROM "ProductBadge" pb
              JOIN "Badge" b ON b.id = pb."badgeId" AND b."tenantId" = pb."tenantId"
             WHERE pb."tenantId" = $1 AND pb."productId" = $2

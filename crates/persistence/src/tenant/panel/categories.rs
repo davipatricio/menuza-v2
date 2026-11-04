@@ -53,7 +53,7 @@ pub async fn category_list(
     tenant: &TenantId,
     filter: &CategoryFilter<'_>,
 ) -> Result<Vec<CategoryRow>, sqlx::Error> {
-    type Row = (String, String, bool, i32, i64, NaiveDateTime);
+    type Row = (String, String, bool, i32, NaiveDateTime, i64);
 
     let sql = format!(
         r#"SELECT c.id, c.name, c.active, c."sortOrder", c."updatedAt",
@@ -94,8 +94,8 @@ pub async fn category_list(
             name: row.1,
             active: row.2,
             sort_order: row.3,
-            items_count: row.4,
-            updated_at: row.5,
+            updated_at: row.4,
+            items_count: row.5,
         })
         .collect())
 }

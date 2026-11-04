@@ -59,8 +59,8 @@ pub async fn subcategory_list(
         String,
         bool,
         i32,
-        i64,
         NaiveDateTime,
+        i64,
     );
 
     let sql = format!(
@@ -100,8 +100,8 @@ pub async fn subcategory_list(
             category_name: row.3,
             active: row.4,
             sort_order: row.5,
-            items_count: row.6,
-            updated_at: row.7,
+            updated_at: row.6,
+            items_count: row.7,
         })
         .collect())
 }

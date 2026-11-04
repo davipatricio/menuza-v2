@@ -42,7 +42,7 @@ pub async fn department_list(
     tenant: &TenantId,
     filter: &DepartmentFilter<'_>,
 ) -> Result<Vec<DepartmentRow>, sqlx::Error> {
-    type Row = (String, String, bool, i64, NaiveDateTime);
+    type Row = (String, String, bool, NaiveDateTime, i64);
 
     let sql = format!(
         r#"SELECT d.id, d.name, d.active, d."updatedAt",
@@ -77,8 +77,8 @@ pub async fn department_list(
             id: row.0,
             name: row.1,
             active: row.2,
-            items_count: row.3,
-            updated_at: row.4,
+            updated_at: row.3,
+            items_count: row.4,
         })
         .collect())
 }
