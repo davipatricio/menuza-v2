@@ -1,13 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import { Label } from "@/components/ui/label.tsx";
 import { loginSession } from "@/features/auth/server/session-client.ts";
-import { ApiError } from "@/lib/api-error";
+import { fieldErrors } from "@/lib/form-errors.ts";
 import { safeReturnTo } from "@/lib/return-to.ts";
-
-const GENERIC_ERROR = "Não foi possível entrar. Tente novamente.";
+import { LoginFormSchema, loginErrorMessage } from "../lib/form-schemas.ts";
 
 /**
  * Staff login form. Posts to `session.login` on the same-origin tenant API; the
@@ -15,91 +15,117 @@ const GENERIC_ERROR = "Não foi possível entrar. Tente novamente.";
  * already carries the new session.
  */
 export function LoginForm({ returnTo }: { returnTo?: string | string[] }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setPending(true);
+  const form = useForm({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    validators: {
+      onSubmit: LoginFormSchema,
+      onBlur: LoginFormSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setServerError(null);
 
-    try {
-      await loginSession({ email: email.trim(), password });
+      try {
+        await loginSession({ email: value.email.trim(), password: value.password });
 
-      const target = safeReturnTo(returnTo);
-
-      if (target === "/dashboard") {
-        // Typed routes cannot express "/dashboard" until its own route lands (S27), so the
-        // default destination is a document navigation.
-        window.location.assign("/dashboard");
-      } else {
-        // Typed routes cannot express a runtime path, so a return target is a document navigation.
-        window.location.assign(target);
+        // Typed routes cannot express a runtime path, so the destination is a document navigation.
+        window.location.assign(safeReturnTo(returnTo));
+      } catch (error) {
+        setServerError(loginErrorMessage(error));
       }
-    } catch (err) {
-      setError(
-        err instanceof ApiError && err.code === "UNAUTHORIZED"
-          ? "E-mail ou senha incorretos."
-          : GENERIC_ERROR,
-      );
-      setPending(false);
-    }
-  }
+    },
+  });
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={pending} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">E-mail</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="voce@exemplo.com"
-          required
-          value={email}
-          disabled={pending}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "login-error" : undefined}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Senha</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          disabled={pending}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? "login-error" : undefined}
-          onChange={(event) => setPassword(event.target.value)}
-        />
-      </div>
-
-      {error ? (
-        <p
-          id="login-error"
-          role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    <form.Subscribe selector={(state) => state.isSubmitting}>
+      {(isSubmitting) => (
+        <form
+          method="post"
+          noValidate
+          aria-busy={isSubmitting}
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void form.handleSubmit();
+          }}
+          className="flex flex-col gap-5"
         >
-          {error}
-        </p>
-      ) : null}
+          <form.Field name="email">
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
 
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending ? (
-          <Loader2 data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-        ) : null}
-        {pending ? "Entrando…" : "Entrar"}
-      </Button>
-    </form>
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>E-mail</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder="voce@exemplo.com"
+                    required
+                    value={field.state.value}
+                    disabled={isSubmitting}
+                    aria-invalid={isInvalid || Boolean(serverError)}
+                    aria-describedby={serverError ? "login-error" : undefined}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                  {isInvalid ? <FieldError errors={fieldErrors(field.state.meta.errors)} /> : null}
+                </Field>
+              );
+            }}
+          </form.Field>
+
+          <form.Field name="password">
+            {(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Senha</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={field.state.value}
+                    disabled={isSubmitting}
+                    aria-invalid={isInvalid || Boolean(serverError)}
+                    aria-describedby={serverError ? "login-error" : undefined}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                  {isInvalid ? <FieldError errors={fieldErrors(field.state.meta.errors)} /> : null}
+                </Field>
+              );
+            }}
+          </form.Field>
+
+          {serverError ? (
+            <p
+              id="login-error"
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {serverError}
+            </p>
+          ) : null}
+
+          <Button type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? (
+              <Loader2 data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+            ) : null}
+            {isSubmitting ? "Entrando…" : "Entrar"}
+          </Button>
+        </form>
+      )}
+    </form.Subscribe>
   );
 }

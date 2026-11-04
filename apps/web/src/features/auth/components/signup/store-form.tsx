@@ -58,6 +58,7 @@ export function StoreForm() {
 
   return (
     <form
+      method="post"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();

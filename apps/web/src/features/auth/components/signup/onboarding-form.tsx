@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useForm } from "@tanstack/react-form";
+import * as v from "valibot";
 import { Loader2 } from "lucide-react";
 import type { Onboarding } from "@menuza/shared/tenant";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button.tsx";
 import { saveOnboarding } from "@/features/auth/server/session-client.ts";
+import { OnboardingFormSchema, onboardingPayload } from "../../lib/form-schemas.ts";
 
 type Persona = Onboarding["persona"];
 
@@ -104,101 +107,141 @@ const PERSONA_REQUIRED = "Escolha uma opção para continuar.";
 export function OnboardingForm({ initial }: { initial: Onboarding | null }) {
   const navigate = useNavigate();
   const router = useRouter();
-  const [persona, setPersona] = useState<Persona | null>(initial?.persona ?? null);
-  const [segment, setSegment] = useState<Segment | null>(initial?.segment ?? null);
-  const [referral, setReferral] = useState<Referral | null>(initial?.referral ?? null);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  // The ghost button has no field to validate, so it records its intent here
+  // and submits the same form; `onSubmit` reads and resets the flag, which keeps
+  // one `isSubmitting` and one server-error banner for both buttons.
+  const skipOptionalRef = useRef(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  async function submit(skipOptional: boolean) {
-    if (!persona) {
-      setError(PERSONA_REQUIRED);
+  const initialAnswers: Partial<v.InferInput<typeof OnboardingFormSchema>> = {
+    persona: initial?.persona ?? undefined,
+    segment: initial?.segment ?? undefined,
+    referral: initial?.referral ?? undefined,
+  };
 
-      return;
-    }
+  const form = useForm({
+    defaultValues: initialAnswers,
+    validators: {
+      onSubmit: OnboardingFormSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setServerError(null);
 
-    setSubmitting(true);
-    setError(null);
+      const answers = v.parse(OnboardingFormSchema, value);
+      const skipOptional = skipOptionalRef.current;
+      skipOptionalRef.current = false;
 
-    try {
-      await saveOnboarding({
-        persona,
-        segment: skipOptional ? undefined : (segment ?? undefined),
-        referral: skipOptional ? undefined : (referral ?? undefined),
-      });
+      try {
+        await saveOnboarding(onboardingPayload(answers, skipOptional));
 
-      await router.invalidate();
-      void navigate({ to: "/dashboard/signup/escolha" });
-    } catch {
-      setError(SAVE_ERROR);
-    } finally {
-      setSubmitting(false);
-    }
-  }
+        await router.invalidate();
+        void navigate({ to: "/dashboard/signup/escolha" });
+      } catch {
+        setServerError(SAVE_ERROR);
+      }
+    },
+  });
 
   return (
     <form
+      method="post"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        void submit(false);
+        void form.handleSubmit();
       }}
     >
       <div className="flex flex-col gap-6">
-        <OptionGroup
-          name="persona"
-          legend="Qual é o seu perfil?"
-          value={persona}
-          onChange={setPersona}
-          options={PERSONAS}
-        />
-        <OptionGroup
-          name="segment"
-          legend="Que tipo de negócio?"
-          optional
-          value={segment}
-          onChange={setSegment}
-          options={SEGMENTS}
-        />
-        <OptionGroup
-          name="referral"
-          legend="Como conheceu o Menuza?"
-          optional
-          value={referral}
-          onChange={setReferral}
-          options={REFERRALS}
-        />
+        <form.Field name="persona">
+          {(field) => (
+            <OptionGroup
+              name="persona"
+              legend="Qual é o seu perfil?"
+              value={field.state.value ?? null}
+              onChange={(next) => field.handleChange(next)}
+              options={PERSONAS}
+            />
+          )}
+        </form.Field>
+        <form.Field name="segment">
+          {(field) => (
+            <OptionGroup
+              name="segment"
+              legend="Que tipo de negócio?"
+              optional
+              value={field.state.value ?? null}
+              onChange={(next) => field.handleChange(next)}
+              options={SEGMENTS}
+            />
+          )}
+        </form.Field>
+        <form.Field name="referral">
+          {(field) => (
+            <OptionGroup
+              name="referral"
+              legend="Como conheceu o Menuza?"
+              optional
+              value={field.state.value ?? null}
+              onChange={(next) => field.handleChange(next)}
+              options={REFERRALS}
+            />
+          )}
+        </form.Field>
       </div>
 
-      {error ? (
+      {serverError ? (
         <p
           role="alert"
           className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
-          {error}
+          {serverError}
         </p>
       ) : null}
 
-      <div className="mt-6 flex flex-col gap-2">
-        <Button type="submit" disabled={submitting} className="w-full">
-          {submitting ? (
-            <Loader2 data-icon="inline-start" aria-hidden="true" className="animate-spin" />
-          ) : null}
-          {submitting ? "Salvando…" : "Continuar"}
-        </Button>
-        {persona ? (
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={submitting}
-            className="w-full"
-            onClick={() => void submit(true)}
-          >
-            Pular perguntas opcionais
-          </Button>
-        ) : null}
-      </div>
+      <form.Subscribe selector={(state) => state.fieldMeta.persona}>
+        {(meta) =>
+          meta?.isTouched && !meta.isValid ? (
+            <p
+              role="alert"
+              className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {PERSONA_REQUIRED}
+            </p>
+          ) : null
+        }
+      </form.Subscribe>
+
+      <form.Subscribe selector={(state) => state.isSubmitting}>
+        {(isSubmitting) => (
+          <div className="mt-6 flex flex-col gap-2">
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? (
+                <Loader2 data-icon="inline-start" aria-hidden="true" className="animate-spin" />
+              ) : null}
+              {isSubmitting ? "Salvando…" : "Continuar"}
+            </Button>
+            <form.Subscribe selector={(state) => state.values.persona !== undefined}>
+              {(hasPersona) =>
+                hasPersona ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={isSubmitting}
+                    className="w-full"
+                    onClick={() => {
+                      skipOptionalRef.current = true;
+                      void form.handleSubmit();
+                    }}
+                  >
+                    Pular perguntas opcionais
+                  </Button>
+                ) : null
+              }
+            </form.Subscribe>
+          </div>
+        )}
+      </form.Subscribe>
     </form>
   );
 }

@@ -91,6 +91,7 @@ export function AccountForm() {
 
   return (
     <form
+      method="post"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();

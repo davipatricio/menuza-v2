@@ -64,7 +64,7 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} aria-busy={pending} className="flex flex-col gap-5">
+    <form method="post" onSubmit={handleSubmit} aria-busy={pending} className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
         <Label htmlFor="currentPassword">Senha atual</Label>
         <Input
