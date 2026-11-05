@@ -30,6 +30,7 @@ import { Route as DashboardStoreSlugCatalogRouteRouteImport } from './routes/das
 import { Route as DashboardStoreSlugSettingsRouteRouteImport } from './routes/dashboard/$storeSlug/settings/route'
 import { Route as DashboardSignupIndexRouteImport } from './routes/dashboard/signup/index'
 import { Route as DashboardSignupOnboardingRouteRouteImport } from './routes/dashboard/signup/_onboarding/route'
+import { Route as StorefrontMenuKitSlugRouteImport } from './routes/_storefront/menu/kit/$slug'
 import { Route as DashboardStoreSlugCouponsIndexRouteImport } from './routes/dashboard/$storeSlug/coupons/index'
 import { Route as DashboardStoreSlugCouponsCouponIdRouteImport } from './routes/dashboard/$storeSlug/coupons/$couponId'
 import { Route as DashboardStoreSlugCouponsNewRouteImport } from './routes/dashboard/$storeSlug/coupons/new'
@@ -48,6 +49,8 @@ import { Route as DashboardStoreSlugCatalogBadgesIndexRouteImport } from './rout
 import { Route as DashboardStoreSlugCatalogCategoriesIndexRouteImport } from './routes/dashboard/$storeSlug/catalog/categories/index'
 import { Route as DashboardStoreSlugCatalogDepartmentsIndexRouteImport } from './routes/dashboard/$storeSlug/catalog/departments/index'
 import { Route as DashboardStoreSlugCatalogKitsIndexRouteImport } from './routes/dashboard/$storeSlug/catalog/kits/index'
+import { Route as DashboardStoreSlugCatalogKitsKitIdRouteImport } from './routes/dashboard/$storeSlug/catalog/kits/$kitId'
+import { Route as DashboardStoreSlugCatalogKitsNewRouteImport } from './routes/dashboard/$storeSlug/catalog/kits/new'
 import { Route as DashboardStoreSlugCatalogProductsIndexRouteImport } from './routes/dashboard/$storeSlug/catalog/products/index'
 import { Route as DashboardStoreSlugCatalogProductsProductIdRouteImport } from './routes/dashboard/$storeSlug/catalog/products/$productId'
 import { Route as DashboardStoreSlugCatalogProductsExportRouteImport } from './routes/dashboard/$storeSlug/catalog/products/export'
@@ -166,6 +169,11 @@ const DashboardSignupOnboardingRouteRoute =
     id: '/_onboarding',
     getParentRoute: () => DashboardSignupRouteRoute,
   } as any)
+const StorefrontMenuKitSlugRoute = StorefrontMenuKitSlugRouteImport.update({
+  id: '/menu/kit/$slug',
+  path: '/menu/kit/$slug',
+  getParentRoute: () => StorefrontRouteRoute,
+} as any)
 const DashboardStoreSlugCouponsIndexRoute =
   DashboardStoreSlugCouponsIndexRouteImport.update({
     id: '/coupons/',
@@ -274,6 +282,18 @@ const DashboardStoreSlugCatalogKitsIndexRoute =
     path: '/kits/',
     getParentRoute: () => DashboardStoreSlugCatalogRouteRoute,
   } as any)
+const DashboardStoreSlugCatalogKitsKitIdRoute =
+  DashboardStoreSlugCatalogKitsKitIdRouteImport.update({
+    id: '/kits/$kitId',
+    path: '/kits/$kitId',
+    getParentRoute: () => DashboardStoreSlugCatalogRouteRoute,
+  } as any)
+const DashboardStoreSlugCatalogKitsNewRoute =
+  DashboardStoreSlugCatalogKitsNewRouteImport.update({
+    id: '/kits/new',
+    path: '/kits/new',
+    getParentRoute: () => DashboardStoreSlugCatalogRouteRoute,
+  } as any)
 const DashboardStoreSlugCatalogProductsIndexRoute =
   DashboardStoreSlugCatalogProductsIndexRouteImport.update({
     id: '/products/',
@@ -366,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/menu/': typeof StorefrontMenuIndexRoute
   '/dashboard/$storeSlug/': typeof DashboardStoreSlugIndexRoute
   '/dashboard/signup/': typeof DashboardSignupIndexRoute
+  '/menu/kit/$slug': typeof StorefrontMenuKitSlugRoute
   '/dashboard/$storeSlug/coupons/$couponId': typeof DashboardStoreSlugCouponsCouponIdRoute
   '/dashboard/$storeSlug/coupons/new': typeof DashboardStoreSlugCouponsNewRoute
   '/dashboard/$storeSlug/customers/$customerId': typeof DashboardStoreSlugCustomersCustomerIdRoute
@@ -380,6 +401,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/$storeSlug/integrations/': typeof DashboardStoreSlugIntegrationsIndexRoute
   '/dashboard/$storeSlug/orders/': typeof DashboardStoreSlugOrdersIndexRoute
   '/dashboard/$storeSlug/settings/': typeof DashboardStoreSlugSettingsIndexRoute
+  '/dashboard/$storeSlug/catalog/kits/$kitId': typeof DashboardStoreSlugCatalogKitsKitIdRoute
+  '/dashboard/$storeSlug/catalog/kits/new': typeof DashboardStoreSlugCatalogKitsNewRoute
   '/dashboard/$storeSlug/catalog/products/$productId': typeof DashboardStoreSlugCatalogProductsProductIdRoute
   '/dashboard/$storeSlug/catalog/products/export': typeof DashboardStoreSlugCatalogProductsExportRoute
   '/dashboard/$storeSlug/catalog/products/new': typeof DashboardStoreSlugCatalogProductsNewRoute
@@ -413,6 +436,7 @@ export interface FileRoutesByTo {
   '/dashboard/$storeSlug/audit': typeof DashboardStoreSlugAuditRoute
   '/menu': typeof StorefrontMenuIndexRoute
   '/dashboard/$storeSlug': typeof DashboardStoreSlugIndexRoute
+  '/menu/kit/$slug': typeof StorefrontMenuKitSlugRoute
   '/dashboard/$storeSlug/coupons/$couponId': typeof DashboardStoreSlugCouponsCouponIdRoute
   '/dashboard/$storeSlug/coupons/new': typeof DashboardStoreSlugCouponsNewRoute
   '/dashboard/$storeSlug/customers/$customerId': typeof DashboardStoreSlugCustomersCustomerIdRoute
@@ -427,6 +451,8 @@ export interface FileRoutesByTo {
   '/dashboard/$storeSlug/integrations': typeof DashboardStoreSlugIntegrationsIndexRoute
   '/dashboard/$storeSlug/orders': typeof DashboardStoreSlugOrdersIndexRoute
   '/dashboard/$storeSlug/settings': typeof DashboardStoreSlugSettingsIndexRoute
+  '/dashboard/$storeSlug/catalog/kits/$kitId': typeof DashboardStoreSlugCatalogKitsKitIdRoute
+  '/dashboard/$storeSlug/catalog/kits/new': typeof DashboardStoreSlugCatalogKitsNewRoute
   '/dashboard/$storeSlug/catalog/products/$productId': typeof DashboardStoreSlugCatalogProductsProductIdRoute
   '/dashboard/$storeSlug/catalog/products/export': typeof DashboardStoreSlugCatalogProductsExportRoute
   '/dashboard/$storeSlug/catalog/products/new': typeof DashboardStoreSlugCatalogProductsNewRoute
@@ -467,6 +493,7 @@ export interface FileRoutesById {
   '/_storefront/menu/': typeof StorefrontMenuIndexRoute
   '/dashboard/$storeSlug/': typeof DashboardStoreSlugIndexRoute
   '/dashboard/signup/': typeof DashboardSignupIndexRoute
+  '/_storefront/menu/kit/$slug': typeof StorefrontMenuKitSlugRoute
   '/dashboard/$storeSlug/coupons/$couponId': typeof DashboardStoreSlugCouponsCouponIdRoute
   '/dashboard/$storeSlug/coupons/new': typeof DashboardStoreSlugCouponsNewRoute
   '/dashboard/$storeSlug/customers/$customerId': typeof DashboardStoreSlugCustomersCustomerIdRoute
@@ -481,6 +508,8 @@ export interface FileRoutesById {
   '/dashboard/$storeSlug/integrations/': typeof DashboardStoreSlugIntegrationsIndexRoute
   '/dashboard/$storeSlug/orders/': typeof DashboardStoreSlugOrdersIndexRoute
   '/dashboard/$storeSlug/settings/': typeof DashboardStoreSlugSettingsIndexRoute
+  '/dashboard/$storeSlug/catalog/kits/$kitId': typeof DashboardStoreSlugCatalogKitsKitIdRoute
+  '/dashboard/$storeSlug/catalog/kits/new': typeof DashboardStoreSlugCatalogKitsNewRoute
   '/dashboard/$storeSlug/catalog/products/$productId': typeof DashboardStoreSlugCatalogProductsProductIdRoute
   '/dashboard/$storeSlug/catalog/products/export': typeof DashboardStoreSlugCatalogProductsExportRoute
   '/dashboard/$storeSlug/catalog/products/new': typeof DashboardStoreSlugCatalogProductsNewRoute
@@ -519,6 +548,7 @@ export interface FileRouteTypes {
     | '/menu/'
     | '/dashboard/$storeSlug/'
     | '/dashboard/signup/'
+    | '/menu/kit/$slug'
     | '/dashboard/$storeSlug/coupons/$couponId'
     | '/dashboard/$storeSlug/coupons/new'
     | '/dashboard/$storeSlug/customers/$customerId'
@@ -533,6 +563,8 @@ export interface FileRouteTypes {
     | '/dashboard/$storeSlug/integrations/'
     | '/dashboard/$storeSlug/orders/'
     | '/dashboard/$storeSlug/settings/'
+    | '/dashboard/$storeSlug/catalog/kits/$kitId'
+    | '/dashboard/$storeSlug/catalog/kits/new'
     | '/dashboard/$storeSlug/catalog/products/$productId'
     | '/dashboard/$storeSlug/catalog/products/export'
     | '/dashboard/$storeSlug/catalog/products/new'
@@ -566,6 +598,7 @@ export interface FileRouteTypes {
     | '/dashboard/$storeSlug/audit'
     | '/menu'
     | '/dashboard/$storeSlug'
+    | '/menu/kit/$slug'
     | '/dashboard/$storeSlug/coupons/$couponId'
     | '/dashboard/$storeSlug/coupons/new'
     | '/dashboard/$storeSlug/customers/$customerId'
@@ -580,6 +613,8 @@ export interface FileRouteTypes {
     | '/dashboard/$storeSlug/integrations'
     | '/dashboard/$storeSlug/orders'
     | '/dashboard/$storeSlug/settings'
+    | '/dashboard/$storeSlug/catalog/kits/$kitId'
+    | '/dashboard/$storeSlug/catalog/kits/new'
     | '/dashboard/$storeSlug/catalog/products/$productId'
     | '/dashboard/$storeSlug/catalog/products/export'
     | '/dashboard/$storeSlug/catalog/products/new'
@@ -619,6 +654,7 @@ export interface FileRouteTypes {
     | '/_storefront/menu/'
     | '/dashboard/$storeSlug/'
     | '/dashboard/signup/'
+    | '/_storefront/menu/kit/$slug'
     | '/dashboard/$storeSlug/coupons/$couponId'
     | '/dashboard/$storeSlug/coupons/new'
     | '/dashboard/$storeSlug/customers/$customerId'
@@ -633,6 +669,8 @@ export interface FileRouteTypes {
     | '/dashboard/$storeSlug/integrations/'
     | '/dashboard/$storeSlug/orders/'
     | '/dashboard/$storeSlug/settings/'
+    | '/dashboard/$storeSlug/catalog/kits/$kitId'
+    | '/dashboard/$storeSlug/catalog/kits/new'
     | '/dashboard/$storeSlug/catalog/products/$productId'
     | '/dashboard/$storeSlug/catalog/products/export'
     | '/dashboard/$storeSlug/catalog/products/new'
@@ -811,6 +849,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSignupOnboardingRouteRouteImport
       parentRoute: typeof DashboardSignupRouteRoute
     }
+    '/_storefront/menu/kit/$slug': {
+      id: '/_storefront/menu/kit/$slug'
+      path: '/menu/kit/$slug'
+      fullPath: '/menu/kit/$slug'
+      preLoaderRoute: typeof StorefrontMenuKitSlugRouteImport
+      parentRoute: typeof StorefrontRouteRoute
+    }
     '/dashboard/$storeSlug/coupons/': {
       id: '/dashboard/$storeSlug/coupons/'
       path: '/coupons'
@@ -937,6 +982,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStoreSlugCatalogKitsIndexRouteImport
       parentRoute: typeof DashboardStoreSlugCatalogRouteRoute
     }
+    '/dashboard/$storeSlug/catalog/kits/$kitId': {
+      id: '/dashboard/$storeSlug/catalog/kits/$kitId'
+      path: '/kits/$kitId'
+      fullPath: '/dashboard/$storeSlug/catalog/kits/$kitId'
+      preLoaderRoute: typeof DashboardStoreSlugCatalogKitsKitIdRouteImport
+      parentRoute: typeof DashboardStoreSlugCatalogRouteRoute
+    }
+    '/dashboard/$storeSlug/catalog/kits/new': {
+      id: '/dashboard/$storeSlug/catalog/kits/new'
+      path: '/kits/new'
+      fullPath: '/dashboard/$storeSlug/catalog/kits/new'
+      preLoaderRoute: typeof DashboardStoreSlugCatalogKitsNewRouteImport
+      parentRoute: typeof DashboardStoreSlugCatalogRouteRoute
+    }
     '/dashboard/$storeSlug/catalog/products/': {
       id: '/dashboard/$storeSlug/catalog/products/'
       path: '/products'
@@ -1046,12 +1105,14 @@ interface StorefrontRouteRouteChildren {
   StorefrontStoreRoute: typeof StorefrontStoreRoute
   StorefrontMenuProductIdRoute: typeof StorefrontMenuProductIdRoute
   StorefrontMenuIndexRoute: typeof StorefrontMenuIndexRoute
+  StorefrontMenuKitSlugRoute: typeof StorefrontMenuKitSlugRoute
 }
 
 const StorefrontRouteRouteChildren: StorefrontRouteRouteChildren = {
   StorefrontStoreRoute: StorefrontStoreRoute,
   StorefrontMenuProductIdRoute: StorefrontMenuProductIdRoute,
   StorefrontMenuIndexRoute: StorefrontMenuIndexRoute,
+  StorefrontMenuKitSlugRoute: StorefrontMenuKitSlugRoute,
 }
 
 const StorefrontRouteRouteWithChildren = StorefrontRouteRoute._addFileChildren(
@@ -1059,6 +1120,8 @@ const StorefrontRouteRouteWithChildren = StorefrontRouteRoute._addFileChildren(
 )
 
 interface DashboardStoreSlugCatalogRouteRouteChildren {
+  DashboardStoreSlugCatalogKitsKitIdRoute: typeof DashboardStoreSlugCatalogKitsKitIdRoute
+  DashboardStoreSlugCatalogKitsNewRoute: typeof DashboardStoreSlugCatalogKitsNewRoute
   DashboardStoreSlugCatalogProductsProductIdRoute: typeof DashboardStoreSlugCatalogProductsProductIdRoute
   DashboardStoreSlugCatalogProductsExportRoute: typeof DashboardStoreSlugCatalogProductsExportRoute
   DashboardStoreSlugCatalogProductsNewRoute: typeof DashboardStoreSlugCatalogProductsNewRoute
@@ -1073,6 +1136,10 @@ interface DashboardStoreSlugCatalogRouteRouteChildren {
 
 const DashboardStoreSlugCatalogRouteRouteChildren: DashboardStoreSlugCatalogRouteRouteChildren =
   {
+    DashboardStoreSlugCatalogKitsKitIdRoute:
+      DashboardStoreSlugCatalogKitsKitIdRoute,
+    DashboardStoreSlugCatalogKitsNewRoute:
+      DashboardStoreSlugCatalogKitsNewRoute,
     DashboardStoreSlugCatalogProductsProductIdRoute:
       DashboardStoreSlugCatalogProductsProductIdRoute,
     DashboardStoreSlugCatalogProductsExportRoute:

@@ -20,6 +20,8 @@ export interface CouponInput {
   /** @nullable */
   endsAt: string | null;
   firstPurchaseOnly: boolean;
+  /** Kits the scope covers, same `include`/`exclude` reading as products. */
+  kitIds?: string[];
   /** @nullable */
   maximumDiscountCents: number | null;
   /** @nullable */

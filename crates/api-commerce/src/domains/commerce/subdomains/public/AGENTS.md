@@ -20,3 +20,11 @@ can render its pause notice. The caller decides what to render.
 A tenant claim that is present but unparsable is different from a missing one:
 `tenant_of` returns `TENANT_NOT_RESOLVED`, a 400, and never a silent empty
 answer. Keep that distinction.
+
+`GET /kits` and `GET /kits/{slug}` joined the public reads with MEN-82. The
+availability they report is computed, never stored: a dish is available while
+its variation has stock, a dish whose `minQty` exceeds the stock makes the kit
+unreachable, and a kit whose reachable total cannot cover `minItems` is
+unavailable. `unavailableBehavior = hide` drops the kit from the list; `block`
+returns it with `available: false`. `get_kit` follows the `get_product`
+precedent and answers `{ "kit": null }`, never a 404.

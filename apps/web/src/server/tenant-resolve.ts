@@ -74,6 +74,10 @@ const MAIN_HOST = (process.env.WEB_MAIN_DOMAIN ?? "").trim().toLowerCase();
 // laptop's `localhost` never serves the main domain on a real deployment.
 const DEV_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
+// A quick Cloudflare tunnel (`cloudflared tunnel --url`) hands out a random
+// `*.trycloudflare.com` host. Development only, same as `DEV_HOSTS`.
+const DEV_TUNNEL_SUFFIX = ".trycloudflare.com";
+
 const TRUSTED_PROXY_HOPS = Math.max(0, Number(process.env.TRUSTED_PROXY_HOPS ?? 0));
 
 const TRUSTED_PROXY_IPS = (process.env.TRUSTED_PROXY_HOP_IPS ?? "")
@@ -182,7 +186,12 @@ function resolveMode(host: string): Mode | null {
   if (MAIN_HOST && host === MAIN_HOST) return "main";
 
   // Development hosts stay main only outside production.
-  if (process.env.NODE_ENV !== "production" && DEV_HOSTS.has(host)) return "main";
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (DEV_HOSTS.has(host) || host.endsWith(DEV_TUNNEL_SUFFIX))
+  ) {
+    return "main";
+  }
 
   return null;
 }

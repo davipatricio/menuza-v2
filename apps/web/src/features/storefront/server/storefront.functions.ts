@@ -13,6 +13,7 @@ import {
   PublicProductDetailSchema,
 } from "@menuza/shared/commerce";
 import type * as vv from "valibot";
+import type { PublicKit } from "@/lib/api/model";
 import { getCommerceStatus, storefrontClient } from "@/server/server-api.ts";
 import { absoluteUrl } from "@/server/seo/base-url.ts";
 
@@ -81,3 +82,30 @@ export function menuProducts(menu: StorefrontMenu) {
     ...menu.uncategorized,
   ];
 }
+
+/**
+ * Kits published by the store, including the ones blocked by composition.
+ * The API already hides the `unavailableBehavior: hide` kits.
+ */
+export const loadStorefrontKitsFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PublicKit[]> => {
+    const client = await storefrontClient();
+
+    return client ? (await client.public.listKits()).kits : [];
+  },
+);
+
+/** One kit by slug. `null` for unknown, archived and hidden kits. */
+export const loadStorefrontKitFn = createServerFn({ method: "GET" })
+  .validator(v.object({ slug: v.string() }))
+  .handler(async ({ data }) => {
+    const client = await storefrontClient();
+
+    if (!client) return null;
+
+    const { kit } = await client.public.getKit({ slug: data.slug });
+
+    if (!kit) return null;
+
+    return { kit, url: await absoluteUrl(`/menu/kit/${kit.slug}`) };
+  });

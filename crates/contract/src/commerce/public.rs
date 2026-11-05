@@ -182,3 +182,92 @@ pub enum ChangeFrequency {
     Weekly,
     Monthly,
 }
+
+/// One dish the buyer may put in a kit, with the variation the store locked and
+/// the ones it opened for swapping.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKitItem {
+    pub id: String,
+    pub product_id: String,
+    pub product_name: String,
+    pub variation_id: String,
+    pub variation_name: String,
+    /// Price of the locked variation; the composer shows it and the sum mode
+    /// adds it up.
+    pub price_cents: i32,
+    pub group_id: Option<String>,
+    /// The locked amount of a `fixed` kit; null for a composed one.
+    pub quantity: Option<i32>,
+    pub min_qty: Option<i32>,
+    pub max_qty: Option<i32>,
+    pub step: i32,
+    pub allow_swap: bool,
+    /// Variations the buyer may pick instead of the locked one, already
+    /// limited to what the manager allowed.
+    pub swap_variations: Vec<PublicKitSwap>,
+    /// False when the chosen variation has no stock left; the dish stays
+    /// visible and the composer blocks it.
+    pub available: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKitSwap {
+    pub id: String,
+    pub name: String,
+    pub price_cents: i32,
+    pub available: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKitGroup {
+    pub id: String,
+    pub name: String,
+    pub min_items: Option<i32>,
+    pub max_items: Option<i32>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKitBand {
+    pub min_quantity: i32,
+    pub percent: i32,
+}
+
+/// A kit as the storefront composes it. `base_cents` is what the card shows:
+/// the charged price for a fixed kit, the floor for a summed one.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKit {
+    pub id: String,
+    pub slug: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub image_url: String,
+    pub kind: String,
+    pub pricing_mode: String,
+    pub base_cents: i32,
+    pub percent_off: Option<i32>,
+    pub min_items: Option<i32>,
+    pub max_items: Option<i32>,
+    pub max_kits_per_order: Option<i32>,
+    /// False when the kit cannot reach its own minimums right now.
+    pub available: bool,
+    pub groups: Vec<PublicKitGroup>,
+    pub items: Vec<PublicKitItem>,
+    pub bands: Vec<PublicKitBand>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKitsOutput {
+    pub kits: Vec<PublicKit>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicKitOutput {
+    pub kit: Option<PublicKit>,
+}

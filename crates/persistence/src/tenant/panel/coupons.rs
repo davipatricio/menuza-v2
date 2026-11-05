@@ -78,6 +78,7 @@ pub struct CouponWrite<'a> {
     pub stackable: bool,
     pub first_purchase_only: bool,
     pub product_ids: &'a [String],
+    pub kit_ids: &'a [String],
 }
 
 /// One `(couponId, customerId)` grouped redemption row: a customer's uses of
@@ -196,6 +197,36 @@ pub async fn coupon_links(
         .collect())
 }
 
+/// The kit links of a set of coupons: `(couponId, kitId)`.
+pub async fn coupon_kit_links(
+    pool: &PgPool,
+    tenant: &TenantId,
+    coupon_ids: &[String],
+) -> Result<Vec<CouponLink>, sqlx::Error> {
+    if coupon_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let rows = sqlx::query_as::<_, (String, String)>(
+        r#"SELECT "couponId", "kitId"
+             FROM "CouponKit"
+            WHERE "tenantId" = $1 AND "couponId" = ANY($2)
+            ORDER BY "kitId" ASC"#,
+    )
+    .bind(tenant.as_str())
+    .bind(coupon_ids.to_vec())
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| CouponLink {
+            coupon_id: row.0,
+            product_id: row.1,
+        })
+        .collect())
+}
+
 /// The products a coupon is scoped to, by name.
 pub async fn coupon_products(
     pool: &PgPool,
@@ -238,6 +269,10 @@ pub async fn coupon_create(
         return Ok(false);
     }
 
+    if !kits_owned(&mut tx, tenant, write.kit_ids).await? {
+        return Ok(false);
+    }
+
     sqlx::query(
         r#"INSERT INTO "Coupon"
                (id, "tenantId", code, description, "discountType", value, status,
@@ -267,6 +302,7 @@ pub async fn coupon_create(
     .await?;
 
     link_products(&mut tx, tenant, coupon_id, write.product_ids).await?;
+    link_kits(&mut tx, tenant, coupon_id, write.kit_ids).await?;
 
     tx.commit().await?;
 
@@ -284,6 +320,10 @@ pub async fn coupon_update(
     let mut tx = begin_scoped(pool, tenant).await?;
 
     if !products_owned(&mut tx, tenant, write.product_ids).await? {
+        return Ok(false);
+    }
+
+    if !kits_owned(&mut tx, tenant, write.kit_ids).await? {
         return Ok(false);
     }
 
@@ -317,6 +357,12 @@ pub async fn coupon_update(
     .execute(&mut **tx)
     .await?;
 
+    sqlx::query(r#"DELETE FROM "CouponKit" WHERE "tenantId" = $1 AND "couponId" = $2"#)
+        .bind(tenant.as_str())
+        .bind(coupon_id)
+        .execute(&mut **tx)
+        .await?;
+
     sqlx::query(r#"DELETE FROM "CouponProduct" WHERE "tenantId" = $1 AND "couponId" = $2"#)
         .bind(tenant.as_str())
         .bind(coupon_id)
@@ -324,6 +370,7 @@ pub async fn coupon_update(
         .await?;
 
     link_products(&mut tx, tenant, coupon_id, write.product_ids).await?;
+    link_kits(&mut tx, tenant, coupon_id, write.kit_ids).await?;
 
     tx.commit().await?;
 
@@ -683,6 +730,50 @@ async fn products_owned(
     .await?;
 
     Ok(row.0 == product_ids.len() as i64)
+}
+
+/// Every id must name a kit of this store.
+async fn kits_owned(
+    conn: &mut PgConnection,
+    tenant: &TenantId,
+    kit_ids: &[String],
+) -> Result<bool, sqlx::Error> {
+    if kit_ids.is_empty() {
+        return Ok(true);
+    }
+
+    let row = sqlx::query_as::<_, (i64,)>(
+        r#"SELECT count(*) FROM "Kit" WHERE "tenantId" = $1 AND id = ANY($2)"#,
+    )
+    .bind(tenant.as_str())
+    .bind(kit_ids.to_vec())
+    .fetch_one(&mut *conn)
+    .await?;
+
+    Ok(row.0 == kit_ids.len() as i64)
+}
+
+/// Inserts one link per distinct kit.
+async fn link_kits(
+    conn: &mut PgConnection,
+    tenant: &TenantId,
+    coupon_id: &str,
+    kit_ids: &[String],
+) -> Result<(), sqlx::Error> {
+    for kit_id in kit_ids {
+        sqlx::query(
+            r#"INSERT INTO "CouponKit" ("tenantId", "couponId", "kitId")
+               VALUES ($1, $2, $3)
+               ON CONFLICT ("couponId", "kitId") DO NOTHING"#,
+        )
+        .bind(tenant.as_str())
+        .bind(coupon_id)
+        .bind(kit_id)
+        .execute(&mut *conn)
+        .await?;
+    }
+
+    Ok(())
 }
 
 /// Inserts one link per distinct product.

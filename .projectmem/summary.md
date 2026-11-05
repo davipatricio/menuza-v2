@@ -1,6 +1,6 @@
 # projectmem - menuza-v2
 
-_Last updated: 2026-11-02_
+_Last updated: 2026-11-04_
 
 ## Project purpose
 
@@ -16,8 +16,6 @@ Local development foundation for the Menuza product. Not the commerce product.
 
 ## Notes
 
-- feat(web,tenant): WebMCP dashboard tools, OAuth 2.1 consent, and admin MCP server (MEN-281)
-- feat(web,tenant): Integrações tab e sessões MCP revogáveis (MEN-282) (#69)
 - chore(opencode): refresh agent roster for v2, add reviewer and DCP plugin
 - feat(coupons): painel de cupons com histórico paginado e métricas (MEN-286) (#74)
 - feat(coupons): escopo por produto, soft delete e controle de status na lista (MEN-97)
@@ -26,6 +24,8 @@ Local development foundation for the Menuza product. Not the commerce product.
 - feat(web): migrate dashboard to TanStack Start and restore UI parity
 - chore(infra): run Valkey 9.1 instead of Redis 7.4
 - chore(agents): raise critic step budget to 12
+- New feature: feat(web): move login and onboarding to TanStack Form with Valibot [apps/web/src/features/auth/components/login-form.tsx]
+- Kit ordering UX: HTML5 drag-and-drop for desktop paired with 1-tap ChevronUp/ChevronDown buttons for mobile touch/accessibility; group header layout expands name input without gap
 
 ## Key files
 

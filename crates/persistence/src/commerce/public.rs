@@ -11,9 +11,9 @@ use std::collections::HashMap;
 use chrono::{NaiveDateTime, SecondsFormat};
 use contract::commerce::public::{
     ChangeFrequency, NutritionBasis, NutritionLabelFormat, NutritionSource, PublicBadge,
-    PublicCategory, PublicDepartment, PublicMenu, PublicNutrition, PublicProduct,
-    PublicProductDetail, PublicSeo, PublicSitemap, PublicSitemapEntry, PublicStore,
-    PublicSubcategory, PublicVariation,
+    PublicCategory, PublicDepartment, PublicKit, PublicKitBand, PublicKitGroup, PublicKitItem,
+    PublicKitSwap, PublicMenu, PublicNutrition, PublicProduct, PublicProductDetail, PublicSeo,
+    PublicSitemap, PublicSitemapEntry, PublicStore, PublicSubcategory, PublicVariation,
 };
 use domain::seo::{
     ResolvedSeo, SeoContext, SeoEntityType, SeoInput, SeoMetaRow, StoreSeoDefaults, resolve_seo,
@@ -841,4 +841,293 @@ pub async fn sitemap(pool: &sqlx::PgPool, tenant: &TenantId) -> Result<PublicSit
     );
 
     Ok(PublicSitemap { entries })
+}
+
+/// One kit row before its dishes, groups and bands are folded in.
+#[derive(sqlx::FromRow)]
+struct KitRow {
+    id: String,
+    slug: String,
+    name: String,
+    description: Option<String>,
+    image_url: String,
+    kind: String,
+    pricing_mode: String,
+    base_cents: i32,
+    percent_off: Option<i32>,
+    min_items: Option<i32>,
+    max_items: Option<i32>,
+    max_kits_per_order: Option<i32>,
+    unavailable_behavior: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct KitGroupRow {
+    id: String,
+    kit_id: String,
+    name: String,
+    min_items: Option<i32>,
+    max_items: Option<i32>,
+}
+
+#[derive(sqlx::FromRow)]
+struct KitItemRow {
+    id: String,
+    kit_id: String,
+    product_id: String,
+    product_name: String,
+    variation_id: String,
+    variation_name: String,
+    price_cents: i32,
+    group_id: Option<String>,
+    quantity: Option<i32>,
+    min_qty: Option<i32>,
+    max_qty: Option<i32>,
+    step: i32,
+    allow_swap: bool,
+    stock_mode: String,
+    stock_qty: Option<i32>,
+}
+
+#[derive(sqlx::FromRow)]
+struct KitSwapRow {
+    kit_item_id: String,
+    variation_id: String,
+    variation_name: String,
+    price_cents: i32,
+    stock_mode: String,
+    stock_qty: Option<i32>,
+}
+
+#[derive(sqlx::FromRow)]
+struct KitBandRow {
+    kit_id: String,
+    min_quantity: i32,
+    percent: i32,
+}
+
+/// The kits the storefront shows, in catalog order. An archived or switched-off
+/// kit is absent; one that cannot reach its minimums is either hidden or kept
+/// with `available = false`, per the kit's own choice.
+pub async fn kits(pool: &sqlx::PgPool, tenant: &TenantId) -> Result<Vec<PublicKit>, sqlx::Error> {
+    load_kits(pool, tenant, None).await
+}
+
+/// One kit by its URL slug, with the same availability rule as the listing.
+pub async fn kit(
+    pool: &sqlx::PgPool,
+    tenant: &TenantId,
+    slug: &str,
+) -> Result<Option<PublicKit>, sqlx::Error> {
+    Ok(load_kits(pool, tenant, Some(slug))
+        .await?
+        .into_iter()
+        .next())
+}
+
+async fn load_kits(
+    pool: &sqlx::PgPool,
+    tenant: &TenantId,
+    slug: Option<&str>,
+) -> Result<Vec<PublicKit>, sqlx::Error> {
+    let kits = sqlx::query_as::<_, KitRow>(
+        r#"
+        SELECT id, slug, name, description, "imageUrl" AS image_url, kind,
+               "pricingMode" AS pricing_mode, "baseCents" AS base_cents,
+               "percentOff" AS percent_off, "minItems" AS min_items,
+               "maxItems" AS max_items,
+               "maxKitsPerOrder" AS max_kits_per_order,
+               "unavailableBehavior" AS unavailable_behavior
+        FROM public."Kit"
+        WHERE "tenantId" = $1
+          AND archived = false
+          AND available = true
+          AND ($2::text IS NULL OR slug = $2)
+        ORDER BY "sortOrder", name, id
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(slug)
+    .fetch_all(pool)
+    .await?;
+
+    if kits.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let kit_ids: Vec<&str> = kits.iter().map(|kit| kit.id.as_str()).collect();
+
+    let groups = sqlx::query_as::<_, KitGroupRow>(
+        r#"
+        SELECT id, "kitId" AS kit_id, name, "minItems" AS min_items,
+               "maxItems" AS max_items
+        FROM public."KitGroup"
+        WHERE "tenantId" = $1 AND "kitId" = ANY($2)
+        ORDER BY "sortOrder", name, id
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&kit_ids as &[&str])
+    .fetch_all(pool)
+    .await?;
+
+    let items = sqlx::query_as::<_, KitItemRow>(
+        r#"
+        SELECT i.id, i."kitId" AS kit_id, i."productId" AS product_id,
+               p.name AS product_name, i."variationId" AS variation_id,
+               v.name AS variation_name, v."priceCents" AS price_cents,
+               i."groupId" AS group_id, i.quantity,
+               i."minQty" AS min_qty, i."maxQty" AS max_qty, i.step,
+               i."allowSwap" AS allow_swap,
+               v."stockMode" AS stock_mode, v."stockQty" AS stock_qty
+        FROM public."KitItem" i
+        JOIN public."Product" p
+          ON p.id = i."productId" AND p."tenantId" = i."tenantId"
+        JOIN public."Variation" v
+          ON v.id = i."variationId" AND v."tenantId" = i."tenantId"
+        WHERE i."tenantId" = $1 AND i."kitId" = ANY($2)
+          AND p.archived = false AND p.available = true AND p.hidden = false
+          AND p."private" = false
+        ORDER BY i."sortOrder", i.id
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&kit_ids as &[&str])
+    .fetch_all(pool)
+    .await?;
+
+    let swaps = sqlx::query_as::<_, KitSwapRow>(
+        r#"
+        SELECT s."kitItemId" AS kit_item_id, s."variationId" AS variation_id,
+               v.name AS variation_name, v."priceCents" AS price_cents,
+               v."stockMode" AS stock_mode, v."stockQty" AS stock_qty
+        FROM public."KitItemVariation" s
+        JOIN public."Variation" v
+          ON v.id = s."variationId" AND v."tenantId" = s."tenantId"
+        WHERE s."tenantId" = $1 AND s."kitItemId" = ANY($2)
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(
+        &items
+            .iter()
+            .map(|item| item.id.as_str())
+            .collect::<Vec<&str>>() as &[&str],
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let bands = sqlx::query_as::<_, KitBandRow>(
+        r#"
+        SELECT "kitId" AS kit_id, "minQuantity" AS min_quantity, percent
+        FROM public."KitDiscountBand"
+        WHERE "tenantId" = $1 AND "kitId" = ANY($2)
+        ORDER BY "minQuantity"
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&kit_ids as &[&str])
+    .fetch_all(pool)
+    .await?;
+
+    let mut out = Vec::with_capacity(kits.len());
+
+    for row in kits {
+        let kit_groups: Vec<PublicKitGroup> = groups
+            .iter()
+            .filter(|group| group.kit_id == row.id)
+            .map(|group| PublicKitGroup {
+                id: group.id.clone(),
+                name: group.name.clone(),
+                min_items: group.min_items,
+                max_items: group.max_items,
+            })
+            .collect();
+
+        let mut reachable: i32 = 0;
+        let mut mandatory = true;
+
+        let kit_items: Vec<PublicKitItem> = items
+            .iter()
+            .filter(|item| item.kit_id == row.id)
+            .map(|item| {
+                let stock = if item.stock_mode == "unlimited" {
+                    i32::MAX
+                } else {
+                    item.stock_qty.unwrap_or(0).max(0)
+                };
+
+                // A dish the buyer must include and cannot get makes the whole
+                // kit unreachable.
+                if item.min_qty.unwrap_or(0) > stock {
+                    mandatory = false;
+                }
+
+                let cap = item.max_qty.unwrap_or(stock).max(0);
+                reachable = reachable.saturating_add(stock.min(cap));
+
+                PublicKitItem {
+                    id: item.id.clone(),
+                    product_id: item.product_id.clone(),
+                    product_name: item.product_name.clone(),
+                    variation_id: item.variation_id.clone(),
+                    variation_name: item.variation_name.clone(),
+                    price_cents: item.price_cents,
+                    group_id: item.group_id.clone(),
+                    quantity: item.quantity,
+                    min_qty: item.min_qty,
+                    max_qty: item.max_qty,
+                    step: item.step,
+                    allow_swap: item.allow_swap,
+                    swap_variations: swaps
+                        .iter()
+                        .filter(|swap| swap.kit_item_id == item.id)
+                        .map(|swap| PublicKitSwap {
+                            id: swap.variation_id.clone(),
+                            name: swap.variation_name.clone(),
+                            price_cents: swap.price_cents,
+                            available: swap.stock_mode == "unlimited"
+                                || swap.stock_qty.unwrap_or(0) > 0,
+                        })
+                        .collect(),
+                    available: stock > 0,
+                }
+            })
+            .collect();
+
+        let reachable = row.min_items.is_none_or(|min| reachable >= min);
+        let available = mandatory && reachable && !kit_items.is_empty();
+
+        if !available && row.unavailable_behavior == "hide" {
+            continue;
+        }
+
+        out.push(PublicKit {
+            id: row.id.clone(),
+            slug: row.slug,
+            name: row.name,
+            description: row.description,
+            image_url: row.image_url,
+            kind: row.kind,
+            pricing_mode: row.pricing_mode,
+            base_cents: row.base_cents,
+            percent_off: row.percent_off,
+            min_items: row.min_items,
+            max_items: row.max_items,
+            max_kits_per_order: row.max_kits_per_order,
+            available,
+            groups: kit_groups,
+            items: kit_items,
+            bands: bands
+                .iter()
+                .filter(|band| band.kit_id == row.id)
+                .map(|band| PublicKitBand {
+                    min_quantity: band.min_quantity,
+                    percent: band.percent,
+                })
+                .collect(),
+        });
+    }
+
+    Ok(out)
 }

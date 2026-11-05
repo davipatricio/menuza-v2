@@ -108,6 +108,24 @@
         "required": ["customerId", "shippingCents", "walletRequestedCents", "lines", "couponCodes"],
         "type": "object"
       },
+      "CreateOrderKitItem": {
+        "additionalProperties": false,
+        "description": "One dish the buyer put in a composed kit: which catalog dish, which\nvariation of it and how many.",
+        "properties": {
+          "kitItemId": {
+            "type": "string"
+          },
+          "quantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "variationId": {
+            "type": "string"
+          }
+        },
+        "required": ["kitItemId", "variationId", "quantity"],
+        "type": "object"
+      },
       "CreateOrderLine": {
         "additionalProperties": false,
         "description": "One line of a checkout: the catalog ids it names and the price the cart\nquoted for it.",
@@ -118,6 +136,13 @@
           },
           "kitId": {
             "type": ["string", "null"]
+          },
+          "kitItems": {
+            "description": "The composition of a kit the buyer assembles. Absent for a product line\nand for a kit whose dishes the catalog locks.",
+            "items": {
+              "$ref": "#/components/schemas/CreateOrderKitItem"
+            },
+            "type": "array"
           },
           "name": {
             "type": "string"
@@ -538,6 +563,240 @@
           }
         },
         "required": ["id", "name", "categories"],
+        "type": "object"
+      },
+      "PublicKit": {
+        "description": "A kit as the storefront composes it. `base_cents` is what the card shows:\nthe charged price for a fixed kit, the floor for a summed one.",
+        "properties": {
+          "available": {
+            "description": "False when the kit cannot reach its own minimums right now.",
+            "type": "boolean"
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKitBand"
+            },
+            "type": "array"
+          },
+          "baseCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKitGroup"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKitItem"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "maxKitsPerOrder": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "pricingMode": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "imageUrl",
+          "kind",
+          "pricingMode",
+          "baseCents",
+          "available",
+          "groups",
+          "items",
+          "bands"
+        ],
+        "type": "object"
+      },
+      "PublicKitBand": {
+        "properties": {
+          "minQuantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "percent": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["minQuantity", "percent"],
+        "type": "object"
+      },
+      "PublicKitGroup": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "PublicKitItem": {
+        "description": "One dish the buyer may put in a kit, with the variation the store locked and\nthe ones it opened for swapping.",
+        "properties": {
+          "allowSwap": {
+            "type": "boolean"
+          },
+          "available": {
+            "description": "False when the chosen variation has no stock left; the dish stays\nvisible and the composer blocks it.",
+            "type": "boolean"
+          },
+          "groupId": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "maxQty": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minQty": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "priceCents": {
+            "description": "Price of the locked variation; the composer shows it and the sum mode\nadds it up.",
+            "format": "int32",
+            "type": "integer"
+          },
+          "productId": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "quantity": {
+            "description": "The locked amount of a `fixed` kit; null for a composed one.",
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "step": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "swapVariations": {
+            "description": "Variations the buyer may pick instead of the locked one, already\nlimited to what the manager allowed.",
+            "items": {
+              "$ref": "#/components/schemas/PublicKitSwap"
+            },
+            "type": "array"
+          },
+          "variationId": {
+            "type": "string"
+          },
+          "variationName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "productName",
+          "variationId",
+          "variationName",
+          "priceCents",
+          "step",
+          "allowSwap",
+          "swapVariations",
+          "available"
+        ],
+        "type": "object"
+      },
+      "PublicKitOutput": {
+        "properties": {
+          "kit": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicKit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "PublicKitSwap": {
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "priceCents": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name", "priceCents", "available"],
+        "type": "object"
+      },
+      "PublicKitsOutput": {
+        "properties": {
+          "kits": {
+            "items": {
+              "$ref": "#/components/schemas/PublicKit"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["kits"],
         "type": "object"
       },
       "PublicMenu": {
@@ -984,6 +1243,87 @@
           }
         },
         "summary": "The shape the retired endpoint returned, unchanged.",
+        "tags": ["public"]
+      }
+    },
+    "/kits": {
+      "get": {
+        "operationId": "listPublicKits",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicKitsOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["public"]
+      }
+    },
+    "/kits/{slug}": {
+      "get": {
+        "operationId": "getPublicKit",
+        "parameters": [
+          {
+            "description": "Kit slug.",
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicKitOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
         "tags": ["public"]
       }
     },

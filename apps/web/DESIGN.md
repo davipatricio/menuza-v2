@@ -121,6 +121,19 @@ Control heights move together. In this repo the 32px default lives in `button.ts
 - Publishing is a gate: the switch is disabled while the 10 constituents, portion, servings and household measure are incomplete; the server revalidates the merged row and refuses an incomplete published label.
 - Every numeric control references its description and, when invalid, its error id in `aria-describedby`.
 
+## Composition editors (nested collections)
+
+A parent the manager assembles from children — kit → groups → dishes, and any future combo → section → item — follows one shape.
+
+- **Tabs follow the three questions, not the schema.** `Identidade` (what it is), `Composição & Regras` (what the buyer builds), `Preço` (what it costs). A rule that changes fields in another tab lives at the top of that tab. A separate "Regras" tab hides cause from effect: the user changes the kind in one tab and has to hop back to see the fields it added.
+- **The parent owns its children on screen.** Each group is a card: header with the group's own settings (nome, mín./máx. de itens, remover), body with its dishes, footer with `Adicionar prato neste grupo`. Never two flat lists joined by a "Grupo" select — the manager would rebuild the tree in their head and orphan dishes would become invisible.
+- **Ungrouped children get their own section.** With groups present, `groupId = null` sits in `Pratos sem grupo`; with no groups, one plain `Pratos do kit` card. Leftovers stay editable, never silently dropped.
+- **Fields follow the variant, not the row.** Kit `fixed` shows the locked `Quantidade`; `custom_quantities` and `fixed_total` show `Mín./Máx./Passo`. Hide what the variant ignores, keep what it needs, and state the variant's effect in one `FieldDescription` line.
+- **A photo confirms the pick.** Every chosen child row shows a thumbnail (or `Utensils` placeholder) so the manager recognises it without re-reading the name.
+- **Open catalogs get a Combobox, not a Select.** Above ~a dozen options the picker is a searchable `Combobox` matching item _and_ category, with the category as a group hint, name, availability and `a partir de R$`. `Select` stays for closed sets (2–7 → `ToggleGroup`).
+- **Units sit inside the input.** `R$` and `%` are `InputGroupAddon`s (`inline-start` / `inline-end`), never a suffix in the label.
+- **Submit lands on the error's tab.** Map the first error key to its tab (`groups.*`/`items.*`/`kind`/`minItems`/`maxItems` → composição, `bands.*`/`baseCents`/`percentOff` → preço) so the user never hunts.
+
 ## Responsive
 
 Mobile-first. `p-4` → `md:p-8`. Member chip hides below `sm`. Sidebar collapses to icon rail, Sheet on mobile. `DataTable` scrolls internally; the page itself must never overflow: `document.documentElement.scrollWidth <= innerWidth` at 375px and 1280px. Display type clamps; tracking in `em`, never `px`.

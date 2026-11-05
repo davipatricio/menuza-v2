@@ -15,6 +15,7 @@ import type {
   CouponInput,
   CreateBadgeInput,
   CreateDepartmentInput,
+  CreateKitInput,
   CreateProductInput,
   CreateStoreInput,
   CurrentOutput,
@@ -55,6 +56,9 @@ import type {
   PanelDepartmentsOutput,
   PanelIntegrationOutput,
   PanelIntegrationsOutput,
+  PanelKitOptionsOutput,
+  PanelKitOutput,
+  PanelKitSuccess,
   PanelKitsOutput,
   PanelMcpRevokeOutput,
   PanelMcpSessionsOutput,
@@ -101,6 +105,7 @@ import type {
   TagInput,
   UpdateBadgeInput,
   UpdateDepartmentInput,
+  UpdateKitInput,
   UpdateProductInput,
 } from "./model";
 
@@ -2874,6 +2879,82 @@ export const savePanelIntegration = async (
   return { data, status: res.status, headers: res.headers } as savePanelIntegrationResponse;
 };
 
+export type listPanelKitOptionsResponse200 = {
+  data: PanelKitOptionsOutput;
+  status: 200;
+};
+
+export type listPanelKitOptionsResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type listPanelKitOptionsResponse401 = {
+  data: ApiErrorBody;
+  status: 401;
+};
+
+export type listPanelKitOptionsResponse403 = {
+  data: ApiErrorBody;
+  status: 403;
+};
+
+export type listPanelKitOptionsResponse404 = {
+  data: ApiErrorBody;
+  status: 404;
+};
+
+export type listPanelKitOptionsResponse409 = {
+  data: ApiErrorBody;
+  status: 409;
+};
+
+export type listPanelKitOptionsResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type listPanelKitOptionsResponseSuccess = listPanelKitOptionsResponse200 & {
+  headers: Headers;
+};
+export type listPanelKitOptionsResponseError = (
+  | listPanelKitOptionsResponse400
+  | listPanelKitOptionsResponse401
+  | listPanelKitOptionsResponse403
+  | listPanelKitOptionsResponse404
+  | listPanelKitOptionsResponse409
+  | listPanelKitOptionsResponse500
+) & {
+  headers: Headers;
+};
+
+export type listPanelKitOptionsResponse =
+  | listPanelKitOptionsResponseSuccess
+  | listPanelKitOptionsResponseError;
+
+export const getListPanelKitOptionsUrl = (storeSlug: string) => {
+  return `/tenant/panel/stores/${storeSlug}/kit-options`;
+};
+
+/**
+ * @summary The catalog the editor picks dishes from: every product with its
+variations, grouped here so the client does one request.
+ */
+export const listPanelKitOptions = async (
+  storeSlug: string,
+  options?: RequestInit,
+): Promise<listPanelKitOptionsResponse> => {
+  const res = await fetch(getListPanelKitOptionsUrl(storeSlug), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPanelKitOptionsResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as listPanelKitOptionsResponse;
+};
+
 export type listPanelKitsResponse200 = {
   data: PanelKitsOutput;
   status: 200;
@@ -2930,7 +3011,7 @@ export const getListPanelKitsUrl = (storeSlug: string) => {
 };
 
 /**
- * @summary Kits with their item counts, ordered by name.
+ * @summary Kits with their dish counts, ordered by `sortOrder` then name.
  */
 export const listPanelKits = async (
   storeSlug: string,
@@ -2945,6 +3026,346 @@ export const listPanelKits = async (
 
   const data: listPanelKitsResponse["data"] = body ? JSON.parse(body) : {};
   return { data, status: res.status, headers: res.headers } as listPanelKitsResponse;
+};
+
+export type createPanelKitResponse200 = {
+  data: PanelKitOutput;
+  status: 200;
+};
+
+export type createPanelKitResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type createPanelKitResponse401 = {
+  data: ApiErrorBody;
+  status: 401;
+};
+
+export type createPanelKitResponse403 = {
+  data: ApiErrorBody;
+  status: 403;
+};
+
+export type createPanelKitResponse404 = {
+  data: ApiErrorBody;
+  status: 404;
+};
+
+export type createPanelKitResponse409 = {
+  data: ApiErrorBody;
+  status: 409;
+};
+
+export type createPanelKitResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type createPanelKitResponseSuccess = createPanelKitResponse200 & {
+  headers: Headers;
+};
+export type createPanelKitResponseError = (
+  | createPanelKitResponse400
+  | createPanelKitResponse401
+  | createPanelKitResponse403
+  | createPanelKitResponse404
+  | createPanelKitResponse409
+  | createPanelKitResponse500
+) & {
+  headers: Headers;
+};
+
+export type createPanelKitResponse = createPanelKitResponseSuccess | createPanelKitResponseError;
+
+export const getCreatePanelKitUrl = (storeSlug: string) => {
+  return `/tenant/panel/stores/${storeSlug}/kits`;
+};
+
+/**
+ * @summary Creates a kit with its whole composition.
+ */
+export const createPanelKit = async (
+  storeSlug: string,
+  createKitInput: CreateKitInput,
+  options?: RequestInit,
+): Promise<createPanelKitResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getCreatePanelKitUrl(storeSlug), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(createKitInput),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: createPanelKitResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as createPanelKitResponse;
+};
+
+export type deletePanelKitResponse200 = {
+  data: PanelKitSuccess;
+  status: 200;
+};
+
+export type deletePanelKitResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type deletePanelKitResponse401 = {
+  data: ApiErrorBody;
+  status: 401;
+};
+
+export type deletePanelKitResponse403 = {
+  data: ApiErrorBody;
+  status: 403;
+};
+
+export type deletePanelKitResponse404 = {
+  data: ApiErrorBody;
+  status: 404;
+};
+
+export type deletePanelKitResponse409 = {
+  data: ApiErrorBody;
+  status: 409;
+};
+
+export type deletePanelKitResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type deletePanelKitResponseSuccess = deletePanelKitResponse200 & {
+  headers: Headers;
+};
+export type deletePanelKitResponseError = (
+  | deletePanelKitResponse400
+  | deletePanelKitResponse401
+  | deletePanelKitResponse403
+  | deletePanelKitResponse404
+  | deletePanelKitResponse409
+  | deletePanelKitResponse500
+) & {
+  headers: Headers;
+};
+
+export type deletePanelKitResponse = deletePanelKitResponseSuccess | deletePanelKitResponseError;
+
+export const getDeletePanelKitUrl = (storeSlug: string, kitId: string) => {
+  return `/tenant/panel/stores/${storeSlug}/kits/${kitId}`;
+};
+
+/**
+ * @summary Archives a kit. Dishes, groups and bands stay: an archived kit is history.
+ */
+export const deletePanelKit = async (
+  storeSlug: string,
+  kitId: string,
+  options?: RequestInit,
+): Promise<deletePanelKitResponse> => {
+  const res = await fetch(getDeletePanelKitUrl(storeSlug, kitId), {
+    ...options,
+    method: "DELETE",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deletePanelKitResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as deletePanelKitResponse;
+};
+
+export type getPanelKitResponse200 = {
+  data: PanelKitOutput;
+  status: 200;
+};
+
+export type getPanelKitResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type getPanelKitResponse401 = {
+  data: ApiErrorBody;
+  status: 401;
+};
+
+export type getPanelKitResponse403 = {
+  data: ApiErrorBody;
+  status: 403;
+};
+
+export type getPanelKitResponse404 = {
+  data: ApiErrorBody;
+  status: 404;
+};
+
+export type getPanelKitResponse409 = {
+  data: ApiErrorBody;
+  status: 409;
+};
+
+export type getPanelKitResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type getPanelKitResponseSuccess = getPanelKitResponse200 & {
+  headers: Headers;
+};
+export type getPanelKitResponseError = (
+  | getPanelKitResponse400
+  | getPanelKitResponse401
+  | getPanelKitResponse403
+  | getPanelKitResponse404
+  | getPanelKitResponse409
+  | getPanelKitResponse500
+) & {
+  headers: Headers;
+};
+
+export type getPanelKitResponse = getPanelKitResponseSuccess | getPanelKitResponseError;
+
+export const getGetPanelKitUrl = (storeSlug: string, kitId: string) => {
+  return `/tenant/panel/stores/${storeSlug}/kits/${kitId}`;
+};
+
+/**
+ * @summary One kit with its groups, dishes and bands.
+ */
+export const getPanelKit = async (
+  storeSlug: string,
+  kitId: string,
+  options?: RequestInit,
+): Promise<getPanelKitResponse> => {
+  const res = await fetch(getGetPanelKitUrl(storeSlug, kitId), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getPanelKitResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as getPanelKitResponse;
+};
+
+export type updatePanelKitResponse200 = {
+  data: PanelKitOutput;
+  status: 200;
+};
+
+export type updatePanelKitResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type updatePanelKitResponse401 = {
+  data: ApiErrorBody;
+  status: 401;
+};
+
+export type updatePanelKitResponse403 = {
+  data: ApiErrorBody;
+  status: 403;
+};
+
+export type updatePanelKitResponse404 = {
+  data: ApiErrorBody;
+  status: 404;
+};
+
+export type updatePanelKitResponse409 = {
+  data: ApiErrorBody;
+  status: 409;
+};
+
+export type updatePanelKitResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type updatePanelKitResponseSuccess = updatePanelKitResponse200 & {
+  headers: Headers;
+};
+export type updatePanelKitResponseError = (
+  | updatePanelKitResponse400
+  | updatePanelKitResponse401
+  | updatePanelKitResponse403
+  | updatePanelKitResponse404
+  | updatePanelKitResponse409
+  | updatePanelKitResponse500
+) & {
+  headers: Headers;
+};
+
+export type updatePanelKitResponse = updatePanelKitResponseSuccess | updatePanelKitResponseError;
+
+export const getUpdatePanelKitUrl = (storeSlug: string, kitId: string) => {
+  return `/tenant/panel/stores/${storeSlug}/kits/${kitId}`;
+};
+
+/**
+ * @summary Replaces a kit with its whole composition. An omitted field keeps the stored
+value; `null` clears a nullable one.
+ */
+export const updatePanelKit = async (
+  storeSlug: string,
+  kitId: string,
+  updateKitInput: UpdateKitInput,
+  options?: RequestInit,
+): Promise<updatePanelKitResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  const res = await fetch(getUpdatePanelKitUrl(storeSlug, kitId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateKitInput),
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: updatePanelKitResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as updatePanelKitResponse;
 };
 
 export type listPanelOrdersResponse200 = {

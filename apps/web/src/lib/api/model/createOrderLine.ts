@@ -4,6 +4,7 @@
  * api-commerce
  * OpenAPI spec version: 0.0.0
  */
+import type { CreateOrderKitItem } from "./createOrderKitItem.ts";
 
 /**
  * One line of a checkout: the catalog ids it names and the price the cart
@@ -14,6 +15,11 @@ export interface CreateOrderLine {
   catalogDiscountCents: number | null;
   /** @nullable */
   kitId: string | null;
+  /**
+   * The composition of a kit the buyer assembles. Absent for a product line
+   * and for a kit whose dishes the catalog locks.
+   */
+  kitItems?: CreateOrderKitItem[];
   name: string;
   /** @nullable */
   productId: string | null;

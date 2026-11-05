@@ -17,8 +17,8 @@ pub mod mcp;
 pub mod oauth;
 pub mod tenant;
 
-/// Embedded migration set: the baseline, then River's job tables. Append new
-/// files, never edit an applied one.
+/// Embedded migration set: the baseline, River's job tables, then the kit
+/// expansion. Append new files, never edit an applied one.
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 #[cfg(test)]
@@ -26,9 +26,9 @@ mod tests {
     use super::MIGRATOR;
 
     #[test]
-    fn baseline_then_river_jobs() {
+    fn baseline_then_river_jobs_then_kits_then_cleanups() {
         let versions: Vec<i64> = MIGRATOR.iter().map(|migration| migration.version).collect();
 
-        assert_eq!(versions, vec![1, 2]);
+        assert_eq!(versions, vec![1, 2, 3, 4, 5]);
     }
 }

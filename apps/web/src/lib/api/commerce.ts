@@ -18,6 +18,8 @@ import type {
   Order,
   OrderCodeInput,
   ProductResponse,
+  PublicKitOutput,
+  PublicKitsOutput,
   PublicMenu,
   PublicSitemap,
   PublicStore,
@@ -55,6 +57,92 @@ export const health = async (options?: RequestInit): Promise<healthResponse> => 
 
   const data: healthResponse["data"] = body ? JSON.parse(body) : {};
   return { data, status: res.status, headers: res.headers } as healthResponse;
+};
+
+export type listPublicKitsResponse200 = {
+  data: PublicKitsOutput;
+  status: 200;
+};
+
+export type listPublicKitsResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type listPublicKitsResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type listPublicKitsResponseSuccess = listPublicKitsResponse200 & {
+  headers: Headers;
+};
+export type listPublicKitsResponseError = (
+  | listPublicKitsResponse400
+  | listPublicKitsResponse500
+) & {
+  headers: Headers;
+};
+
+export type listPublicKitsResponse = listPublicKitsResponseSuccess | listPublicKitsResponseError;
+
+export const getListPublicKitsUrl = () => {
+  return `/commerce/kits`;
+};
+
+export const listPublicKits = async (options?: RequestInit): Promise<listPublicKitsResponse> => {
+  const res = await fetch(getListPublicKitsUrl(), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listPublicKitsResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as listPublicKitsResponse;
+};
+
+export type getPublicKitResponse200 = {
+  data: PublicKitOutput;
+  status: 200;
+};
+
+export type getPublicKitResponse400 = {
+  data: ApiErrorBody;
+  status: 400;
+};
+
+export type getPublicKitResponse500 = {
+  data: ApiErrorBody;
+  status: 500;
+};
+
+export type getPublicKitResponseSuccess = getPublicKitResponse200 & {
+  headers: Headers;
+};
+export type getPublicKitResponseError = (getPublicKitResponse400 | getPublicKitResponse500) & {
+  headers: Headers;
+};
+
+export type getPublicKitResponse = getPublicKitResponseSuccess | getPublicKitResponseError;
+
+export const getGetPublicKitUrl = (slug: string) => {
+  return `/commerce/kits/${slug}`;
+};
+
+export const getPublicKit = async (
+  slug: string,
+  options?: RequestInit,
+): Promise<getPublicKitResponse> => {
+  const res = await fetch(getGetPublicKitUrl(slug), {
+    ...options,
+    method: "GET",
+  });
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getPublicKitResponse["data"] = body ? JSON.parse(body) : {};
+  return { data, status: res.status, headers: res.headers } as getPublicKitResponse;
 };
 
 export type listMenuResponse200 = {

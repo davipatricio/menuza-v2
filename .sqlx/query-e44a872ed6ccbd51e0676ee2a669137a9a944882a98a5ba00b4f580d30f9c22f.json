@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"KitItemVariation\"\n                       (id, \"kitItemId\", \"tenantId\", \"variationId\")\n                   VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "e44a872ed6ccbd51e0676ee2a669137a9a944882a98a5ba00b4f580d30f9c22f"
+}

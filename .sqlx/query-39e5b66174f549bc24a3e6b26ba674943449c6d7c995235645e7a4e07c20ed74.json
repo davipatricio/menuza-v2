@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"KitItem\"\n                   (id, \"kitId\", \"tenantId\", \"variationId\", \"productId\",\n                    \"groupId\", quantity, \"minQty\", \"maxQty\", step, \"allowSwap\",\n                    \"sortOrder\")\n               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39e5b66174f549bc24a3e6b26ba674943449c6d7c995235645e7a4e07c20ed74"
+}

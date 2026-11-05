@@ -23,6 +23,7 @@ export interface PanelCouponSummary {
   endsAt: string | null;
   firstPurchaseOnly: boolean;
   id: string;
+  kitIds: string[];
   /** @nullable */
   lastRedeemedAt: string | null;
   /** @nullable */

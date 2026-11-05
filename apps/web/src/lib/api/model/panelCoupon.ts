@@ -20,6 +20,7 @@ export interface PanelCoupon {
   endsAt: string | null;
   firstPurchaseOnly: boolean;
   id: string;
+  kitIds: string[];
   /** @nullable */
   maximumDiscountCents: number | null;
   /** @nullable */

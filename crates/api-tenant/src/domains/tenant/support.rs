@@ -112,7 +112,8 @@ impl ApiError {
 
 /// A failed read is `INTERNAL`, never a missing row: a broken database must not
 /// read as a 404.
-pub fn db_error(_: sqlx::Error) -> ApiError {
+pub fn db_error(error: sqlx::Error) -> ApiError {
+    tracing::error!(?error, "database error");
     ApiError(ErrorCode::Internal)
 }
 

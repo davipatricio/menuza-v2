@@ -536,6 +536,9 @@ impl McpCreateCouponInput {
                 .product_scope_mode
                 .unwrap_or(CouponProductScopeMode::Include),
             product_ids: self.product_ids,
+            // Kit scope is a panel-only field for now; the MCP tool keeps the
+            // product scope it always had.
+            kit_ids: Vec::new(),
         }
     }
 }

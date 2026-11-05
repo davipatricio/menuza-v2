@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*) AS \"count!\"\n                 FROM \"Variation\" v\n                 JOIN \"Product\" p ON p.id = v.\"productId\" AND p.\"tenantId\" = v.\"tenantId\"\n                WHERE v.\"tenantId\" = $1 AND v.id = $2 AND v.\"productId\" = $3",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text", "Text"]
+    },
+    "nullable": [null]
+  },
+  "hash": "c5c3a44f4fca3ae5e1fdacccaec5278ca38120cb696a08c372b7d54f856e52d8"
+}

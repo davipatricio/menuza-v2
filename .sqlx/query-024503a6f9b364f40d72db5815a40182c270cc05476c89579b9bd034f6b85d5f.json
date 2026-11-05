@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM \"KitItem\" WHERE \"tenantId\" = $1 AND \"kitId\" = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": []
+  },
+  "hash": "024503a6f9b364f40d72db5815a40182c270cc05476c89579b9bd034f6b85d5f"
+}

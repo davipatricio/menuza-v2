@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT c.id, c.code, c.\"discountType\" AS discount_type, c.value,\n                   c.\"minimumOrderCents\" AS minimum_order_cents,\n                   c.\"maximumDiscountCents\" AS maximum_discount_cents,\n                   c.\"shippingDiscountPercent\" AS shipping_discount_percent,\n                   c.\"startsAt\" AS starts_at, c.\"endsAt\" AS ends_at,\n                   c.stackable, c.\"firstPurchaseOnly\" AS first_purchase_only,\n                   c.\"usageLimit\" AS usage_limit,\n                   c.\"perCustomerLimit\" AS per_customer_limit,\n                   c.\"usageCount\" AS usage_count, c.status,\n                   c.\"productScopeMode\" AS product_scope_mode,\n                   (\n                       SELECT COUNT(*)\n                       FROM public.\"CouponRedemption\" r\n                       WHERE r.\"tenantId\" = c.\"tenantId\"\n                         AND r.\"couponId\" = c.id\n                         AND r.\"customerId\" = $3\n                   ) AS \"customer_redemption_count!\",\n                   (\n                       SELECT COUNT(*)\n                       FROM public.\"Order\" o\n                       WHERE o.\"tenantId\" = c.\"tenantId\"\n                         AND o.\"customerId\" = $3\n                   ) AS \"customer_order_count!\",\n                   ARRAY(\n                       SELECT cp.\"productId\"\n                       FROM public.\"CouponProduct\" cp\n                       WHERE cp.\"tenantId\" = c.\"tenantId\" AND cp.\"couponId\" = c.id\n                   ) AS \"product_ids!\"\n            FROM public.\"Coupon\" c\n            WHERE c.\"tenantId\" = $1 AND c.code = $2 AND c.status = 'active'\n            ",
+  "query": "\n            SELECT c.id, c.code, c.\"discountType\" AS discount_type, c.value,\n                   c.\"minimumOrderCents\" AS minimum_order_cents,\n                   c.\"maximumDiscountCents\" AS maximum_discount_cents,\n                   c.\"shippingDiscountPercent\" AS shipping_discount_percent,\n                   c.\"startsAt\" AS starts_at, c.\"endsAt\" AS ends_at,\n                   c.stackable, c.\"firstPurchaseOnly\" AS first_purchase_only,\n                   c.\"usageLimit\" AS usage_limit,\n                   c.\"perCustomerLimit\" AS per_customer_limit,\n                   c.\"usageCount\" AS usage_count, c.status,\n                   c.\"productScopeMode\" AS product_scope_mode,\n                   (\n                       SELECT COUNT(*)\n                       FROM public.\"CouponRedemption\" r\n                       WHERE r.\"tenantId\" = c.\"tenantId\"\n                         AND r.\"couponId\" = c.id\n                         AND r.\"customerId\" = $3\n                   ) AS \"customer_redemption_count!\",\n                   (\n                       SELECT COUNT(*)\n                       FROM public.\"Order\" o\n                       WHERE o.\"tenantId\" = c.\"tenantId\"\n                         AND o.\"customerId\" = $3\n                   ) AS \"customer_order_count!\",\n                   ARRAY(\n                       SELECT cp.\"productId\"\n                       FROM public.\"CouponProduct\" cp\n                       WHERE cp.\"tenantId\" = c.\"tenantId\" AND cp.\"couponId\" = c.id\n                   ) AS \"product_ids!\",\n                   ARRAY(\n                       SELECT ck.\"kitId\"\n                       FROM public.\"CouponKit\" ck\n                       WHERE ck.\"tenantId\" = c.\"tenantId\" AND ck.\"couponId\" = c.id\n                   ) AS \"kit_ids!\"\n            FROM public.\"Coupon\" c\n            WHERE c.\"tenantId\" = $1 AND c.code = $2 AND c.status = 'active'\n            ",
   "describe": {
     "columns": [
       {
@@ -196,6 +196,12 @@
         "name": "product_ids!",
         "type_info": "TextArray",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 19,
+        "name": "kit_ids!",
+        "type_info": "TextArray",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -220,8 +226,9 @@
       false,
       null,
       null,
+      null,
       null
     ]
   },
-  "hash": "0e46ea8413b72be700899c41893738087abbf2af0ace2a254cadccb91359ef4e"
+  "hash": "4758e2dc0fdf2bd9e06892c977aae583d542be7c146c5d0b1c9530741a086537"
 }

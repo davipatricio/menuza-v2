@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE \"Kit\"\n              SET name = $3, slug = $4, description = $5, \"imageUrl\" = $6,\n                  kind = $7, \"pricingMode\" = $8, \"baseCents\" = $9,\n                  \"percentOff\" = $10, \"minItems\" = $11, \"maxItems\" = $12,\n                  \"maxKitsPerOrder\" = $13, \"unavailableBehavior\" = $14,\n                  \"couponStackable\" = $15, \"sortOrder\" = $16, available = $17,\n                  archived = $18, \"updatedAt\" = $19\n            WHERE \"tenantId\" = $1 AND id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text",
+        "Bool",
+        "Int4",
+        "Bool",
+        "Bool",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "858dfec77f3a4a6884fd11555d32161aea317b3078e80bb94d39bc4022508757"
+}

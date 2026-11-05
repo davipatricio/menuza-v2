@@ -20,6 +20,7 @@ import {
   getCreatePanelCategoryUrl,
   getCreatePanelCouponUrl,
   getCreatePanelDepartmentUrl,
+  getCreatePanelKitUrl,
   getCreatePanelProductUrl,
   getCreatePanelStoreUrl,
   getCreatePanelSubcategoryUrl,
@@ -28,12 +29,14 @@ import {
   getDeletePanelCategoryUrl,
   getDeletePanelCouponUrl,
   getDeletePanelDepartmentUrl,
+  getDeletePanelKitUrl,
   getDeletePanelPaymentIntegrationUrl,
   getDeletePanelProductUrl,
   getDeletePanelSubcategoryUrl,
   getDeletePanelTagUrl,
   getGetPanelCouponDetailUrl,
   getGetPanelCustomerUrl,
+  getGetPanelKitUrl,
   getGetPanelOrderTransitionsUrl,
   getGetPanelOrderUrl,
   getGetPanelPaymentSettingsUrl,
@@ -51,6 +54,7 @@ import {
   getListPanelCustomersUrl,
   getListPanelDepartmentsUrl,
   getListPanelIntegrationsUrl,
+  getListPanelKitOptionsUrl,
   getListPanelKitsUrl,
   getListPanelMcpSessionsUrl,
   getListPanelOrdersUrl,
@@ -80,15 +84,47 @@ import {
   getUpdatePanelCategoryUrl,
   getUpdatePanelCouponUrl,
   getUpdatePanelDepartmentUrl,
+  getUpdatePanelKitUrl,
   getUpdatePanelProductUrl,
   getUpdatePanelSubcategoryUrl,
   getUpdatePanelTagUrl,
 } from "@/lib/api/tenant.ts";
+import type { CreateKitInput } from "@/lib/api/model/createKitInput.ts";
+import type { PanelKitDetail } from "@/lib/api/model/panelKitDetail.ts";
+import type { PanelKitOptionsOutput } from "@/lib/api/model/panelKitOptionsOutput.ts";
+import type { PanelKitsOutput } from "@/lib/api/model/panelKitsOutput.ts";
+import type { UpdateKitInput } from "@/lib/api/model/updateKitInput.ts";
 import { ApiError } from "@/lib/api-error";
 
 const TENANT_SESSION_COOKIE = "menuza_tenant_sid";
 
 type ContractClient = RouterContractClient<typeof tenantContractObject>;
+
+/**
+ * Kits are panel-only: the legacy oRPC contract still describes `listKits` with
+ * the two-mode shape, so the kit methods are typed from the generated OpenAPI
+ * models instead of `Pick<ContractClient["panel"], …>`.
+ */
+type KitPanelMethods = {
+  listKits: (input: { storeSlug: string }) => Promise<PanelKitsOutput>;
+  getKit: (input: { storeSlug: string; kitId: string }) => Promise<{ kit: PanelKitDetail }>;
+  createKit: (input: CreateKitInput & { storeSlug: string }) => Promise<{ kit: PanelKitDetail }>;
+  updateKit: (
+    input: Omit<UpdateKitInput, "sortOrder"> & {
+      sortOrder?: number;
+      storeSlug: string;
+      kitId: string;
+    },
+  ) => Promise<{ kit: PanelKitDetail }>;
+  setKitAvailable: (input: {
+    storeSlug: string;
+    kitId: string;
+    available?: boolean;
+    archived?: boolean;
+  }) => Promise<{ kit: PanelKitDetail }>;
+  deleteKit: (input: { storeSlug: string; kitId: string }) => Promise<{ success: boolean }>;
+  listKitOptions: (input: { storeSlug: string }) => Promise<PanelKitOptionsOutput>;
+};
 
 /**
  * The procedures this file serves, typed from the oRPC contract so callers keep
@@ -139,7 +175,6 @@ export type TenantClient = {
     | "createBadge"
     | "updateBadge"
     | "deleteBadge"
-    | "listKits"
     | "listCoupons"
     | "listCouponSummaries"
     | "getCouponDetail"
@@ -165,7 +200,8 @@ export type TenantClient = {
     | "listAuditLogs"
     | "listTeamMembers"
     | "search"
-  >;
+  > &
+    KitPanelMethods;
 };
 
 /** The dashboard session payload, derived from `session.current`'s contract output. */
@@ -542,6 +578,41 @@ function createClient(origin: string, headers: HeadersInit): TenantClient {
         ),
       listKits: ({ storeSlug }) =>
         read<PanelResult<"listKits">>(origin, getListPanelKitsUrl(storeSlug), headers),
+      getKit: ({ storeSlug, kitId }) =>
+        read<{ kit: PanelKitDetail }>(origin, getGetPanelKitUrl(storeSlug, kitId), headers),
+      createKit: ({ storeSlug, ...input }) =>
+        write<{ kit: PanelKitDetail }, CreateKitInput>(
+          origin,
+          getCreatePanelKitUrl(storeSlug),
+          headers,
+          "POST",
+          input,
+        ),
+      updateKit: ({ storeSlug, kitId, ...input }) =>
+        write<{ kit: PanelKitDetail }>(
+          origin,
+          getUpdatePanelKitUrl(storeSlug, kitId),
+          headers,
+          "PUT",
+          input,
+        ),
+      setKitAvailable: ({ storeSlug, kitId, ...input }) =>
+        write<{ kit: PanelKitDetail }, { available?: boolean; archived?: boolean }>(
+          origin,
+          getUpdatePanelKitUrl(storeSlug, kitId),
+          headers,
+          "PUT",
+          input,
+        ),
+      deleteKit: ({ storeSlug, kitId }) =>
+        write<{ success: boolean }>(
+          origin,
+          getDeletePanelKitUrl(storeSlug, kitId),
+          headers,
+          "DELETE",
+        ),
+      listKitOptions: ({ storeSlug }) =>
+        read<PanelKitOptionsOutput>(origin, getListPanelKitOptionsUrl(storeSlug), headers),
       listCoupons: ({ storeSlug }) =>
         read<PanelResult<"listCoupons">>(origin, getListPanelCouponsUrl(storeSlug), headers),
       listCouponSummaries: ({ storeSlug }) =>

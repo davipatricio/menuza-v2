@@ -31,7 +31,7 @@ use domain::coupon::{
 };
 use persistence::tenant::panel::coupons::{
     CouponRow, CouponWrite, coupon_bulk_delete, coupon_code_taken, coupon_create, coupon_delete,
-    coupon_find, coupon_links, coupon_list, coupon_orders_total, coupon_products,
+    coupon_find, coupon_kit_links, coupon_links, coupon_list, coupon_orders_total, coupon_products,
     coupon_redemption_pairs, coupon_redemptions, coupon_redemptions_total, coupon_set_status,
     coupon_update, coupon_usage,
 };
@@ -150,11 +150,26 @@ pub async fn list_coupons(
     .await
     .map_err(db_error)?;
 
+    let kits = coupon_kit_links(
+        &state.pool,
+        &ctx.tenant,
+        &rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>(),
+    )
+    .await
+    .map_err(db_error)?;
+
     let mut product_ids = group_links(links);
+    let mut kit_ids = group_links(kits);
 
     let coupons = rows
         .into_iter()
-        .map(|row| panel_coupon(&row, product_ids.remove(&row.id).unwrap_or_default()))
+        .map(|row| {
+            panel_coupon(
+                &row,
+                product_ids.remove(&row.id).unwrap_or_default(),
+                kit_ids.remove(&row.id).unwrap_or_default(),
+            )
+        })
         .collect();
 
     Ok(Json(PanelCouponsOutput { coupons }))
@@ -193,9 +208,10 @@ pub async fn create_coupon(
     input.validate().map_err(ApiError)?;
 
     let product_ids = distinct(&input.product_ids);
+    let kit_ids = distinct(&input.kit_ids);
     let coupon_id = uuid::Uuid::new_v4().to_string();
     let code = input.code.trim().to_uppercase();
-    let write = prepare_write(&input, &code, &product_ids)?;
+    let write = prepare_write(&input, &code, &product_ids, &kit_ids)?;
 
     if coupon_code_taken(&state.pool, &ctx.tenant, write.code)
         .await
@@ -258,8 +274,9 @@ pub async fn update_coupon(
     };
 
     let product_ids = distinct(&input.product_ids);
+    let kit_ids = distinct(&input.kit_ids);
     let code = input.code.trim().to_uppercase();
-    let write = prepare_write(&input, &code, &product_ids)?;
+    let write = prepare_write(&input, &code, &product_ids, &kit_ids)?;
 
     if write.code != existing.code
         && coupon_code_taken(&state.pool, &ctx.tenant, write.code)
@@ -400,7 +417,12 @@ pub async fn list_coupon_summaries(
 
     let aggregates = redemption_aggregates(&state, &ctx.tenant, &ids).await?;
 
+    let kits = coupon_kit_links(&state.pool, &ctx.tenant, &ids)
+        .await
+        .map_err(db_error)?;
+
     let mut product_ids = group_links(links);
+    let mut kit_ids = group_links(kits);
     let now = plain(now());
 
     let coupons = rows
@@ -410,6 +432,7 @@ pub async fn list_coupon_summaries(
                 &row,
                 aggregates.get(&row.id),
                 product_ids.remove(&row.id).unwrap_or_default(),
+                kit_ids.remove(&row.id).unwrap_or_default(),
                 &now,
             )
         })
@@ -507,10 +530,18 @@ pub async fn get_coupon_detail(
         .map(|link| link.product_id)
         .collect::<Vec<_>>();
 
+    let kit_ids = coupon_kit_links(&state.pool, &ctx.tenant, std::slice::from_ref(&coupon_id))
+        .await
+        .map_err(db_error)?
+        .into_iter()
+        .map(|link| link.product_id)
+        .collect::<Vec<_>>();
+
     let coupon = panel_coupon_summary(
         &coupon,
         aggregates.get(&coupon.id),
         product_ids,
+        kit_ids,
         &plain(now()),
     )?;
 
@@ -618,7 +649,11 @@ pub async fn set_coupon_status(
 
 /// The row as the plain coupon schema carries it.
 /// MCP reuses this: the tool maps the same coupon rows.
-pub(crate) fn panel_coupon(row: &CouponRow, product_ids: Vec<String>) -> PanelCoupon {
+pub(crate) fn panel_coupon(
+    row: &CouponRow,
+    product_ids: Vec<String>,
+    kit_ids: Vec<String>,
+) -> PanelCoupon {
     let (value_cents, value_percent) = coupon_values(row);
 
     PanelCoupon {
@@ -641,6 +676,7 @@ pub(crate) fn panel_coupon(row: &CouponRow, product_ids: Vec<String>) -> PanelCo
         status: contract_status(stored_status(&row.status)),
         product_scope_mode: contract_scope_mode(&row.product_scope_mode),
         product_ids,
+        kit_ids,
     }
 }
 
@@ -649,6 +685,7 @@ fn panel_coupon_summary(
     row: &CouponRow,
     aggregate: Option<&RedemptionAggregate>,
     product_ids: Vec<String>,
+    kit_ids: Vec<String>,
     now: &str,
 ) -> Result<PanelCouponSummary, ApiError> {
     let (value_cents, value_percent) = coupon_values(row);
@@ -679,6 +716,7 @@ fn panel_coupon_summary(
         first_purchase_only: row.first_purchase_only,
         product_scope_mode: contract_scope_mode(&row.product_scope_mode),
         product_ids,
+        kit_ids,
         effective_status: contract_status(effective),
         redemption_count: aggregate.map_or(0, |totals| totals.redemptions),
         discount_cents: aggregate.map_or(0, |totals| totals.discount_cents),
@@ -752,7 +790,14 @@ async fn stored_coupon(
         .map(|link| link.product_id)
         .collect::<Vec<_>>();
 
-    Ok(panel_coupon(&row, product_ids))
+    let kit_ids = coupon_kit_links(&state.pool, tenant, &[coupon_id.to_owned()])
+        .await
+        .map_err(db_error)?
+        .into_iter()
+        .map(|link| link.product_id)
+        .collect::<Vec<_>>();
+
+    Ok(panel_coupon(&row, product_ids, kit_ids))
 }
 
 /// Widens the window and derives the status a write stores.
@@ -761,6 +806,7 @@ pub(crate) fn prepare_write<'a>(
     input: &'a CouponInput,
     code: &'a str,
     product_ids: &'a [String],
+    kit_ids: &'a [String],
 ) -> Result<CouponWrite<'a>, ApiError> {
     let window =
         domain::coupon::coupon_window(input.starts_at.as_deref(), input.ends_at.as_deref())
@@ -774,6 +820,7 @@ pub(crate) fn prepare_write<'a>(
     .map_err(|_| ApiError(ErrorCode::ValidationFailed))?;
 
     Ok(CouponWrite {
+        kit_ids,
         code,
         description: input.description.as_deref(),
         discount_type: match input.discount_type {

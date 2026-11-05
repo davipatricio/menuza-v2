@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"KitGroup\"\n                   (id, \"kitId\", \"tenantId\", name, \"minItems\", \"maxItems\", \"sortOrder\")\n               VALUES ($1, $2, $3, $4, $5, $6, $7)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Text", "Int4", "Int4", "Int4"]
+    },
+    "nullable": []
+  },
+  "hash": "0aeae0d531ea3e84865d2336672903988e078ea9071c0397089181cad433f07f"
+}

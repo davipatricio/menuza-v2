@@ -7,8 +7,10 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
+import { KitCard } from "@/features/storefront/components/kit-card.tsx";
 import { ProductCard } from "@/features/storefront/components/product-card.tsx";
 import {
+  loadStorefrontKitsFn,
   loadStorefrontMenuFn,
   loadStorefrontStoreFn,
   menuProducts,
@@ -16,11 +18,15 @@ import {
 
 export const Route = createFileRoute("/_storefront/menu/")({
   loader: async () => {
-    const [store, menu] = await Promise.all([loadStorefrontStoreFn(), loadStorefrontMenuFn()]);
+    const [store, menu, kits] = await Promise.all([
+      loadStorefrontStoreFn(),
+      loadStorefrontMenuFn(),
+      loadStorefrontKitsFn(),
+    ]);
 
     if (!store || !menu) throw notFound();
 
-    return { store, menu };
+    return { store, menu, kits };
   },
   head: ({ loaderData }) => ({
     // The storefront layout already 404s an unknown host; the fallback covers the
@@ -41,7 +47,7 @@ export const Route = createFileRoute("/_storefront/menu/")({
 });
 
 function MenuPage() {
-  const { menu } = Route.useLoaderData();
+  const { menu, kits } = Route.useLoaderData();
 
   // The server already drops empty groups, so an empty tree means no items.
   const isEmpty = menu.departments.length === 0 && menu.uncategorized.length === 0;
@@ -67,6 +73,21 @@ function MenuPage() {
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : null}
+
+      {kits.length > 0 ? (
+        <section aria-labelledby="kits" className="flex flex-col gap-4">
+          <h2 id="kits" className="text-xl font-semibold">
+            Kits
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {kits.map((kit) => (
+              <li key={kit.id}>
+                <KitCard kit={kit} />
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       {menu.departments.map((department) => (

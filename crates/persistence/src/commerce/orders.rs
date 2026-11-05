@@ -743,6 +743,7 @@ struct Coupon {
     status: String,
     product_scope_mode: String,
     product_ids: Vec<String>,
+    kit_ids: Vec<String>,
 }
 
 /// One checkout line after the catalog priced it.
@@ -752,6 +753,39 @@ struct PricedLine<'a> {
     /// otherwise.
     unit_price_cents: i32,
     gross_cents: i32,
+    /// A kit can opt out of coupons; a product line always joins them.
+    coupon_stackable: bool,
+}
+
+/// What the catalog answered for one line: its price, the stock it takes and
+/// whether a coupon may discount it.
+struct ResolvedLine {
+    unit_price_cents: i32,
+    /// `(variation id, quantity)` the line takes from the catalog.
+    composition: Vec<(String, i32)>,
+    coupon_stackable: bool,
+}
+
+/// One dish of a kit, as the checkout reads it.
+#[derive(sqlx::FromRow)]
+struct KitDish {
+    id: String,
+    variation_id: String,
+    product_id: String,
+    group_id: Option<String>,
+    quantity: Option<i32>,
+    min_qty: Option<i32>,
+    max_qty: Option<i32>,
+    step: i32,
+    allow_swap: bool,
+}
+
+/// One group of a kit, with the bounds the buyer's composition must respect.
+#[derive(sqlx::FromRow)]
+struct KitGroupBound {
+    id: String,
+    min_items: Option<i32>,
+    max_items: Option<i32>,
 }
 
 /// The pricing engine's answer, plus the coupons that actually applied.
@@ -849,7 +883,12 @@ pub async fn create(
                        SELECT cp."productId"
                        FROM public."CouponProduct" cp
                        WHERE cp."tenantId" = c."tenantId" AND cp."couponId" = c.id
-                   ) AS "product_ids!"
+                   ) AS "product_ids!",
+                   ARRAY(
+                       SELECT ck."kitId"
+                       FROM public."CouponKit" ck
+                       WHERE ck."tenantId" = c."tenantId" AND ck."couponId" = c.id
+                   ) AS "kit_ids!"
             FROM public."Coupon" c
             WHERE c."tenantId" = $1 AND c.code = $2 AND c.status = 'active'
             "#,
@@ -866,16 +905,36 @@ pub async fn create(
         coupons.push(coupon);
     }
 
-    let mut priced_lines = Vec::with_capacity(input.lines.len());
+    let mut kit_counts: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
 
     for line in &input.lines {
-        let unit_price_cents = resolve_line_price(&mut tx, tenant, line).await?;
+        if let Some(kit_id) = &line.kit_id {
+            *kit_counts.entry(kit_id.clone()).or_default() += line.quantity;
+        }
+    }
+
+    let mut priced_lines = Vec::with_capacity(input.lines.len());
+    let mut stock_totals: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+
+    for line in &input.lines {
+        let kit_count = line
+            .kit_id
+            .as_ref()
+            .and_then(|kit_id| kit_counts.get(kit_id).copied())
+            .unwrap_or(0);
+        let resolved = resolve_line(&mut tx, tenant, line, kit_count).await?;
+        let unit_price_cents = resolved.unit_price_cents;
         let gross_cents = unit_price_cents * line.quantity;
+
+        for (variation_id, quantity) in resolved.composition {
+            *stock_totals.entry(variation_id).or_default() += quantity * line.quantity;
+        }
 
         priced_lines.push(PricedLine {
             line,
             unit_price_cents,
             gross_cents,
+            coupon_stackable: resolved.coupon_stackable,
         });
     }
 
@@ -927,7 +986,7 @@ pub async fn create(
     // The stock is taken before the order is written, under a row lock, so two
     // checkouts cannot take the same last unit. A variation that ran out is a
     // conflict: the buyer sees the fresh availability.
-    reserve_stock(&mut tx, tenant, &input.lines).await?;
+    reserve_stock(&mut tx, tenant, &stock_totals).await?;
 
     let requested_code = input.code.as_deref();
     let attempts = if requested_code.is_some() { 1 } else { 5 };
@@ -1131,14 +1190,17 @@ pub async fn create(
     })
 }
 
-/// The line's server price and the catalog ownership checks `catalog.ts` makes:
-/// a line that names another store's product, variation or kit is invalid, and a
-/// variation of another product is not this line's variation.
-async fn resolve_line_price(
+/// The line's server price and its stock composition. Nothing the cart quoted
+/// is trusted for a kit: the catalog re-resolves the composition, checks the
+/// kit's own minimums and prices it from the chosen variations. `kit_count` is
+/// how many units of this kit the order carries, which the progressive bands
+/// read.
+async fn resolve_line(
     tx: &mut sqlx::PgConnection,
     tenant: &TenantId,
     line: &CreateOrderLine,
-) -> Result<i32, CreateOrderError> {
+    kit_count: i32,
+) -> Result<ResolvedLine, CreateOrderError> {
     if let Some(product_id) = &line.product_id {
         let owned = sqlx::query!(
             r#"SELECT id FROM public."Product" WHERE "tenantId" = $1 AND id = $2"#,
@@ -1154,7 +1216,8 @@ async fn resolve_line_price(
         }
     }
 
-    let mut price = line.unit_price_cents;
+    let mut unit_price_cents = line.unit_price_cents;
+    let mut composition = Vec::new();
 
     if let Some(variation_id) = &line.variation_id {
         let variation = sqlx::query!(
@@ -1178,25 +1241,288 @@ async fn resolve_line_price(
             return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
         }
 
-        price = variation.price_cents;
+        unit_price_cents = variation.price_cents;
+
+        if line.kit_id.is_none() {
+            composition.push((variation_id.clone(), 1));
+        }
     }
 
+    let mut coupon_stackable = true;
+
     if let Some(kit_id) = &line.kit_id {
-        let owned = sqlx::query!(
-            r#"SELECT id FROM public."Kit" WHERE "tenantId" = $1 AND id = $2"#,
+        let kit = sqlx::query!(
+            r#"
+            SELECT kind, "pricingMode" AS pricing_mode, "baseCents" AS base_cents,
+                   "percentOff" AS percent_off,
+                   "maxKitsPerOrder" AS max_kits_per_order,
+                   "minItems" AS min_items, "maxItems" AS max_items,
+                   available, archived, "couponStackable" AS coupon_stackable
+            FROM public."Kit"
+            WHERE "tenantId" = $1 AND id = $2
+            "#,
             tenant.as_str(),
             kit_id,
         )
         .fetch_optional(&mut *tx)
         .await?
-        .is_some();
+        .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
 
-        if !owned {
+        // A kit the store pulled cannot be bought, and its per-order cap is a
+        // hard ceiling: the buyer sees the limit, not a silent truncation.
+        if kit.archived || !kit.available {
+            return Err(CreateOrderError::Validation(ErrorCode::Conflict));
+        }
+
+        if kit
+            .max_kits_per_order
+            .is_some_and(|maximum| kit_count > maximum)
+        {
             return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
         }
+
+        coupon_stackable = kit.coupon_stackable;
+
+        let dishes = sqlx::query_as::<_, KitDish>(
+            r#"
+            SELECT id, "variationId" AS variation_id, "productId" AS product_id,
+                   "groupId" AS group_id, quantity,
+                   "minQty" AS min_qty, "maxQty" AS max_qty,
+                   step, "allowSwap" AS allow_swap
+            FROM public."KitItem"
+            WHERE "tenantId" = $1 AND "kitId" = $2
+            ORDER BY "sortOrder", id
+            "#,
+        )
+        .bind(tenant.as_str())
+        .bind(kit_id)
+        .fetch_all(&mut *tx)
+        .await?;
+
+        if dishes.is_empty() {
+            return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+        }
+
+        let dish_ids: Vec<&str> = dishes.iter().map(|dish| dish.id.as_str()).collect();
+
+        let swaps = sqlx::query!(
+            r#"
+            SELECT "kitItemId" AS kit_item_id, "variationId" AS variation_id
+            FROM public."KitItemVariation"
+            WHERE "tenantId" = $1 AND "kitItemId" = ANY($2)
+            "#,
+            tenant.as_str(),
+            &dish_ids as &[&str],
+        )
+        .fetch_all(&mut *tx)
+        .await?;
+
+        let fixed = kit.kind == "fixed";
+        // `(dish id, variation id, quantity)` per kit dish, in catalog order.
+        let mut chosen: Vec<(String, String, i32)> = Vec::with_capacity(dishes.len());
+
+        if fixed {
+            // The catalog locks the composition; the buyer may only swap a
+            // variation the store opened for swapping.
+            for dish in &dishes {
+                let mut variation_id = dish.variation_id.clone();
+
+                if let Some(entry) = line
+                    .kit_items
+                    .iter()
+                    .find(|entry| entry.kit_item_id == dish.id)
+                {
+                    let allowed = entry.variation_id == dish.variation_id
+                        || (dish.allow_swap
+                            && swaps.iter().any(|swap| {
+                                swap.kit_item_id == dish.id
+                                    && swap.variation_id == entry.variation_id
+                            }));
+
+                    if !allowed {
+                        return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+                    }
+
+                    variation_id = entry.variation_id.clone();
+                }
+
+                chosen.push((
+                    dish.id.clone(),
+                    variation_id,
+                    dish.quantity.unwrap_or(1).max(1),
+                ));
+            }
+        } else {
+            let mut seen: std::collections::HashSet<&str> = std::collections::HashSet::new();
+
+            for entry in &line.kit_items {
+                let dish = dishes
+                    .iter()
+                    .find(|dish| dish.id == entry.kit_item_id)
+                    .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
+
+                if !seen.insert(entry.kit_item_id.as_str()) {
+                    return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+                }
+
+                let allowed = entry.variation_id == dish.variation_id
+                    || (dish.allow_swap
+                        && swaps.iter().any(|swap| {
+                            swap.kit_item_id == dish.id && swap.variation_id == entry.variation_id
+                        }));
+
+                if !allowed
+                    || entry.quantity < 1
+                    || (dish.step > 1 && entry.quantity % dish.step != 0)
+                    || dish.min_qty.is_some_and(|min| entry.quantity < min)
+                    || dish.max_qty.is_some_and(|max| entry.quantity > max)
+                {
+                    return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+                }
+
+                chosen.push((dish.id.clone(), entry.variation_id.clone(), entry.quantity));
+            }
+
+            // A dish the buyer left out still counts against its minimum, so an
+            // unavailable dish cannot be skipped into a valid composition.
+            for dish in &dishes {
+                let quantity = chosen
+                    .iter()
+                    .find(|(dish_id, _, _)| dish_id == &dish.id)
+                    .map_or(0, |(_, _, quantity)| *quantity);
+
+                if dish.min_qty.is_some_and(|min| quantity < min) {
+                    return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+                }
+            }
+
+            let total_items: i32 = chosen.iter().map(|(_, _, quantity)| quantity).sum();
+
+            if kit.min_items.is_some_and(|min| total_items < min)
+                || kit.max_items.is_some_and(|max| total_items > max)
+            {
+                return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+            }
+
+            let groups = sqlx::query_as::<_, KitGroupBound>(
+                r#"
+                SELECT id, "minItems" AS min_items, "maxItems" AS max_items
+                FROM public."KitGroup"
+                WHERE "tenantId" = $1 AND "kitId" = $2
+                "#,
+            )
+            .bind(tenant.as_str())
+            .bind(kit_id)
+            .fetch_all(&mut *tx)
+            .await?;
+
+            for group in groups {
+                let quantity: i32 = dishes
+                    .iter()
+                    .filter(|dish| dish.group_id.as_deref() == Some(group.id.as_str()))
+                    .filter_map(|dish| {
+                        chosen
+                            .iter()
+                            .find(|(dish_id, _, _)| dish_id == &dish.id)
+                            .map(|(_, _, quantity)| *quantity)
+                    })
+                    .sum();
+
+                if group.min_items.is_some_and(|min| quantity < min)
+                    || group.max_items.is_some_and(|max| quantity > max)
+                {
+                    return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+                }
+            }
+        }
+
+        let variation_ids: Vec<&str> = chosen
+            .iter()
+            .map(|(_, variation_id, _)| variation_id.as_str())
+            .collect();
+
+        let prices = sqlx::query!(
+            r#"
+            SELECT id, "productId" AS product_id, "priceCents" AS price_cents
+            FROM public."Variation"
+            WHERE "tenantId" = $1 AND id = ANY($2)
+            "#,
+            tenant.as_str(),
+            &variation_ids as &[&str],
+        )
+        .fetch_all(&mut *tx)
+        .await?;
+
+        let mut dishes_cents = 0_i64;
+
+        for (dish_id, variation_id, quantity) in &chosen {
+            let price = prices
+                .iter()
+                .find(|price| &price.id == variation_id)
+                .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
+
+            // A swap the store never opened, or one pointing at another
+            // product, is not this dish's variation.
+            let dish = dishes
+                .iter()
+                .find(|dish| &dish.id == dish_id)
+                .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
+
+            if price.product_id != dish.product_id {
+                return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+            }
+
+            dishes_cents += i64::from(price.price_cents) * i64::from(*quantity);
+        }
+
+        // A `sum` kit charges the dishes but never below its floor; a `fixed`
+        // kit charges its base and the dishes only shape the stock.
+        let mut cents = if kit.pricing_mode == "sum" {
+            dishes_cents.max(i64::from(kit.base_cents))
+        } else {
+            i64::from(kit.base_cents)
+        };
+
+        if let Some(percent) = kit.percent_off {
+            cents -= percent_of(cents, percent);
+        }
+
+        let band = sqlx::query!(
+            r#"
+            SELECT percent
+            FROM public."KitDiscountBand"
+            WHERE "tenantId" = $1 AND "kitId" = $2 AND "minQuantity" <= $3
+            ORDER BY "minQuantity" DESC
+            LIMIT 1
+            "#,
+            tenant.as_str(),
+            kit_id,
+            kit_count,
+        )
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        if let Some(band) = band {
+            cents -= percent_of(cents, band.percent);
+        }
+
+        unit_price_cents = i32::try_from(cents).unwrap_or(i32::MAX);
+        composition = chosen
+            .into_iter()
+            .map(|(_, variation_id, quantity)| (variation_id, quantity))
+            .collect();
     }
 
-    Ok(price)
+    Ok(ResolvedLine {
+        unit_price_cents,
+        composition,
+        coupon_stackable,
+    })
+}
+
+/// A percentage of a non-negative amount, floored, in integer cents.
+fn percent_of(cents: i64, percent: i32) -> i64 {
+    (cents * i64::from(percent)) / 100
 }
 
 /// Which side closes the payment. A method bound to an `offline` integration is
@@ -1243,47 +1569,22 @@ async fn resolve_payment_mode(
     }
 }
 
-/// Takes the stock of every line, expanding kits into their variations. The
-/// whole set is taken or none of it is: a variation that cannot be satisfied
-/// leaves the transaction to roll back, so a half-taken order never exists.
+/// Takes the stock of every line the catalog already resolved into a variation
+/// composition. The whole set is taken or none of it is: a variation that
+/// cannot be satisfied leaves the transaction to roll back, so a half-taken
+/// order never exists.
 async fn reserve_stock(
     tx: &mut sqlx::PgConnection,
     tenant: &TenantId,
-    lines: &[CreateOrderLine],
+    totals: &std::collections::HashMap<String, i32>,
 ) -> Result<(), CreateOrderError> {
-    let mut totals: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
-
-    for line in lines {
-        if let Some(variation_id) = &line.variation_id {
-            *totals.entry(variation_id.clone()).or_default() += line.quantity;
-        }
-
-        if let Some(kit_id) = &line.kit_id {
-            let items = sqlx::query!(
-                r#"
-                SELECT "variationId" AS variation_id, quantity
-                FROM public."KitItem"
-                WHERE "tenantId" = $1 AND "kitId" = $2
-                "#,
-                tenant.as_str(),
-                kit_id,
-            )
-            .fetch_all(&mut *tx)
-            .await?;
-
-            for item in items {
-                *totals.entry(item.variation_id).or_default() += item.quantity * line.quantity;
-            }
-        }
-    }
-
     // A stable order keeps two concurrent checkouts from locking the same rows
     // in opposite directions.
-    let mut variation_ids: Vec<String> = totals.keys().cloned().collect();
+    let mut variation_ids: Vec<&String> = totals.keys().collect();
     variation_ids.sort();
 
     for variation_id in variation_ids {
-        let quantity = totals[&variation_id];
+        let quantity = totals[variation_id];
 
         let variation = sqlx::query!(
             r#"
@@ -1638,8 +1939,17 @@ fn ineligibility(coupon: &Coupon, subtotal_cents: i32, now: NaiveDateTime) -> Op
 /// Gross subtotal the coupon may discount, or `None` when its product scope
 /// matches no line at all. An empty scope is "every product" in both modes.
 fn scoped_subtotal(coupon: &Coupon, lines: &[PricedLine<'_>]) -> Option<i32> {
-    if coupon.product_ids.is_empty() {
-        return Some(lines.iter().map(|line| line.gross_cents).sum());
+    // A kit can opt out of coupons; those lines are never part of a discount.
+    let stackable = lines.iter().filter(|line| line.coupon_stackable);
+
+    if coupon.product_ids.is_empty() && coupon.kit_ids.is_empty() {
+        let eligible: Vec<&PricedLine<'_>> = stackable.collect();
+
+        if eligible.is_empty() {
+            return None;
+        }
+
+        return Some(eligible.iter().map(|line| line.gross_cents).sum());
     }
 
     let include = coupon.product_scope_mode != "exclude";
@@ -1647,14 +1957,19 @@ fn scoped_subtotal(coupon: &Coupon, lines: &[PricedLine<'_>]) -> Option<i32> {
     let mut subtotal_cents = 0_i32;
     let mut matched_lines = 0_usize;
 
-    for line in lines {
-        // A line without a product id is never listed: out of an `include`
-        // scope, and not blocked by an `exclude` one.
+    for line in stackable {
+        // A line without a product or kit id is never listed: out of an
+        // `include` scope, and not blocked by an `exclude` one.
         let listed = line
             .line
             .product_id
             .as_ref()
-            .is_some_and(|product_id| coupon.product_ids.contains(product_id));
+            .is_some_and(|product_id| coupon.product_ids.contains(product_id))
+            || line
+                .line
+                .kit_id
+                .as_ref()
+                .is_some_and(|kit_id| coupon.kit_ids.contains(kit_id));
 
         if listed == include {
             subtotal_cents += line.gross_cents;

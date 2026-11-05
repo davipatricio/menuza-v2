@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"Kit\"\n               (id, \"tenantId\", name, slug, description, \"imageUrl\", kind,\n                \"pricingMode\", \"baseCents\", \"percentOff\", \"minItems\", \"maxItems\",\n                \"maxKitsPerOrder\", \"unavailableBehavior\", \"couponStackable\",\n                \"sortOrder\", available, archived, \"updatedAt\")\n           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,\n                   $14, $15, $16, $17, $18, $19)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Int4",
+        "Text",
+        "Bool",
+        "Int4",
+        "Bool",
+        "Bool",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "145be817981878da03d7a6662b8d9a689461ab66951a2435d31209632a377ac5"
+}

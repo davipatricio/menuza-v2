@@ -178,6 +178,13 @@
           "firstPurchaseOnly": {
             "type": "boolean"
           },
+          "kitIds": {
+            "description": "Kits the scope covers, same `include`/`exclude` reading as products.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "maximumDiscountCents": {
             "format": "int32",
             "type": ["integer", "null"]
@@ -275,6 +282,98 @@
           }
         },
         "required": ["name", "active"],
+        "type": "object"
+      },
+      "CreateKitInput": {
+        "additionalProperties": false,
+        "description": "A whole kit. Groups, dishes and bands travel with it: the write replaces\nthe full set.",
+        "properties": {
+          "archived": {
+            "type": ["boolean", "null"]
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/KitBandInput"
+            },
+            "type": "array"
+          },
+          "baseCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "couponStackable": {
+            "type": ["boolean", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/KitGroupInput"
+            },
+            "type": "array"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KitItemInput"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/KitKind"
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "maxKitsPerOrder": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "pricingMode": {
+            "$ref": "#/components/schemas/KitPricingMode"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "unavailableBehavior": {
+            "$ref": "#/components/schemas/KitUnavailableBehavior"
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "imageUrl",
+          "kind",
+          "pricingMode",
+          "baseCents",
+          "unavailableBehavior",
+          "available",
+          "groups",
+          "items",
+          "bands"
+        ],
         "type": "object"
       },
       "CreateProductInput": {
@@ -445,6 +544,113 @@
       "IntegrationStatus": {
         "description": "`enabled`, `disabled`, `paused` or `error`, the four stored states.",
         "enum": ["enabled", "disabled", "paused", "error"],
+        "type": "string"
+      },
+      "KitBandInput": {
+        "additionalProperties": false,
+        "description": "One progressive band in a create or update payload.",
+        "properties": {
+          "minQuantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "percent": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["minQuantity", "percent"],
+        "type": "object"
+      },
+      "KitGroupInput": {
+        "additionalProperties": false,
+        "description": "One group in a create or update payload.",
+        "properties": {
+          "id": {
+            "description": "Client-assigned id, stable across a reorder. The editor mints one for a\nnew group so a dish can name it in the same payload.",
+            "type": "string"
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "KitItemInput": {
+        "additionalProperties": false,
+        "description": "One dish in a create or update payload.",
+        "properties": {
+          "allowSwap": {
+            "type": "boolean"
+          },
+          "groupId": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": ["string", "null"]
+          },
+          "maxQty": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minQty": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "productId": {
+            "type": "string"
+          },
+          "quantity": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "step": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "swapVariationIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "variationId": {
+            "type": "string"
+          }
+        },
+        "required": ["productId", "variationId", "allowSwap"],
+        "type": "object"
+      },
+      "KitKind": {
+        "description": "How the dish quantities are locked.",
+        "enum": ["fixed", "custom_quantities", "fixed_total"],
+        "type": "string"
+      },
+      "KitPricingMode": {
+        "description": "How the kit price is computed before the percentage and the bands.",
+        "enum": ["fixed", "sum"],
+        "type": "string"
+      },
+      "KitUnavailableBehavior": {
+        "description": "What the storefront does once the minimums can no longer be composed.",
+        "enum": ["hide", "block"],
         "type": "string"
       },
       "ListSeoEntitiesInput": {
@@ -773,6 +979,12 @@
           "id": {
             "type": "string"
           },
+          "kitIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "maximumDiscountCents": {
             "format": "int32",
             "type": ["integer", "null"]
@@ -833,7 +1045,8 @@
           "firstPurchaseOnly",
           "status",
           "productScopeMode",
-          "productIds"
+          "productIds",
+          "kitIds"
         ],
         "type": "object"
       },
@@ -1040,6 +1253,12 @@
           "id": {
             "type": "string"
           },
+          "kitIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "lastRedeemedAt": {
             "type": ["string", "null"]
           },
@@ -1112,6 +1331,7 @@
           "firstPurchaseOnly",
           "productScopeMode",
           "productIds",
+          "kitIds",
           "effectiveStatus",
           "redemptionCount",
           "discountCents",
@@ -1327,10 +1547,17 @@
         "type": "object"
       },
       "PanelKit": {
-        "description": "`{ id, name, mode, available, itemsCount }`.",
+        "description": "A list row.",
         "properties": {
+          "archived": {
+            "type": "boolean"
+          },
           "available": {
             "type": "boolean"
+          },
+          "baseCents": {
+            "format": "int32",
+            "type": "integer"
           },
           "id": {
             "type": "string"
@@ -1339,14 +1566,324 @@
             "format": "int64",
             "type": "integer"
           },
-          "mode": {
+          "kind": {
+            "$ref": "#/components/schemas/KitKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "pricingMode": {
+            "$ref": "#/components/schemas/KitPricingMode"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "kind",
+          "pricingMode",
+          "baseCents",
+          "available",
+          "archived",
+          "itemsCount",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PanelKitBand": {
+        "description": "One progressive band: from `min_quantity` kits up, take `percent` off.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "minQuantity": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "percent": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "minQuantity", "percent"],
+        "type": "object"
+      },
+      "PanelKitDetail": {
+        "description": "The editor's read: the row plus groups, dishes and bands.",
+        "properties": {
+          "archived": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/PanelKitBand"
+            },
+            "type": "array"
+          },
+          "baseCents": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "couponStackable": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PanelKitGroup"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PanelKitItem"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/KitKind"
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "maxKitsPerOrder": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentOff": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "pricingMode": {
+            "$ref": "#/components/schemas/KitPricingMode"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "unavailableBehavior": {
+            "$ref": "#/components/schemas/KitUnavailableBehavior"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "imageUrl",
+          "kind",
+          "pricingMode",
+          "baseCents",
+          "unavailableBehavior",
+          "couponStackable",
+          "sortOrder",
+          "available",
+          "archived",
+          "updatedAt",
+          "groups",
+          "items",
+          "bands"
+        ],
+        "type": "object"
+      },
+      "PanelKitGroup": {
+        "description": "A group of dishes, with optional bounds on the units it accepts.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "name"],
+        "type": "object"
+      },
+      "PanelKitItem": {
+        "description": "One dish in the kit, bound to the variation the manager chose.",
+        "properties": {
+          "allowSwap": {
+            "description": "When true the buyer may pick another variation from `swapVariationIds`.",
+            "type": "boolean"
+          },
+          "groupId": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "maxQty": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minQty": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "productId": {
+            "type": "string"
+          },
+          "productName": {
+            "type": ["string", "null"]
+          },
+          "quantity": {
+            "description": "Locked quantity; only the `fixed` kind carries it.",
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "step": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "swapVariationIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "variationId": {
+            "type": "string"
+          },
+          "variationName": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "variationId",
+          "allowSwap",
+          "swapVariationIds",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
+      "PanelKitOptionProduct": {
+        "description": "One product the kit editor can add as a dish.",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "categoryName": {
+            "type": ["string", "null"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "variations": {
+            "items": {
+              "$ref": "#/components/schemas/PanelKitOptionVariation"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["id", "name", "available", "variations"],
+        "type": "object"
+      },
+      "PanelKitOptionVariation": {
+        "description": "One variation a dish can point at.",
+        "properties": {
+          "id": {
             "type": "string"
           },
           "name": {
             "type": "string"
+          },
+          "priceCents": {
+            "format": "int32",
+            "type": "integer"
           }
         },
-        "required": ["id", "name", "mode", "available", "itemsCount"],
+        "required": ["id", "name", "priceCents"],
+        "type": "object"
+      },
+      "PanelKitOptionsOutput": {
+        "description": "`{ products }`: the catalog the kit editor picks dishes from.",
+        "properties": {
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/PanelKitOptionProduct"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["products"],
+        "type": "object"
+      },
+      "PanelKitOutput": {
+        "description": "`{ kit }`.",
+        "properties": {
+          "kit": {
+            "$ref": "#/components/schemas/PanelKitDetail"
+          }
+        },
+        "required": ["kit"],
+        "type": "object"
+      },
+      "PanelKitSuccess": {
+        "description": "`{ success }`.",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": ["success"],
         "type": "object"
       },
       "PanelKitsOutput": {
@@ -3218,6 +3755,106 @@
           }
         },
         "required": ["name", "active"],
+        "type": "object"
+      },
+      "UpdateKitInput": {
+        "additionalProperties": false,
+        "description": "A partial update: an omitted field keeps the stored value, `null` clears\nthe nullable ones. Groups, dishes and bands are replaced as a set when\npresent, so the handler validates them against the merged kit.",
+        "properties": {
+          "archived": {
+            "type": ["boolean", "null"]
+          },
+          "available": {
+            "type": ["boolean", "null"]
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/KitBandInput"
+            },
+            "type": ["array", "null"]
+          },
+          "baseCents": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "couponStackable": {
+            "type": ["boolean", "null"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/KitGroupInput"
+            },
+            "type": ["array", "null"]
+          },
+          "imageUrl": {
+            "type": ["string", "null"]
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/KitItemInput"
+            },
+            "type": ["array", "null"]
+          },
+          "kind": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/KitKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "maxKitsPerOrder": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "minItems": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "name": {
+            "type": ["string", "null"]
+          },
+          "percentOff": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "pricingMode": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/KitPricingMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slug": {
+            "type": ["string", "null"]
+          },
+          "sortOrder": {
+            "format": "int32",
+            "type": ["integer", "null"]
+          },
+          "unavailableBehavior": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/KitUnavailableBehavior"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
         "type": "object"
       },
       "UpdateProductInput": {
@@ -6188,6 +6825,89 @@
         "tags": ["panel"]
       }
     },
+    "/panel/stores/{storeSlug}/kit-options": {
+      "get": {
+        "operationId": "listPanelKitOptions",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelKitOptionsOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The catalog the editor picks dishes from: every product with its\nvariations, grouped here so the client does one request.",
+        "tags": ["panel"]
+      }
+    },
     "/panel/stores/{storeSlug}/kits": {
       "get": {
         "operationId": "listPanelKits",
@@ -6267,7 +6987,380 @@
             }
           }
         },
-        "summary": "Kits with their item counts, ordered by name.",
+        "summary": "Kits with their dish counts, ordered by `sortOrder` then name.",
+        "tags": ["panel"]
+      },
+      "post": {
+        "operationId": "createPanelKit",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKitInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelKitOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Creates a kit with its whole composition.",
+        "tags": ["panel"]
+      }
+    },
+    "/panel/stores/{storeSlug}/kits/{kitId}": {
+      "delete": {
+        "operationId": "deletePanelKit",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The kit id.",
+            "in": "path",
+            "name": "kitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelKitSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Archives a kit. Dishes, groups and bands stay: an archived kit is history.",
+        "tags": ["panel"]
+      },
+      "get": {
+        "operationId": "getPanelKit",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The kit id.",
+            "in": "path",
+            "name": "kitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelKitOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "One kit with its groups, dishes and bands.",
+        "tags": ["panel"]
+      },
+      "put": {
+        "operationId": "updatePanelKit",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The kit id.",
+            "in": "path",
+            "name": "kitId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKitInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelKitOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replaces a kit with its whole composition. An omitted field keeps the stored\nvalue; `null` clears a nullable one.",
         "tags": ["panel"]
       }
     },

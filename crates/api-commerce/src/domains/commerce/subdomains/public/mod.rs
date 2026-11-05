@@ -1,11 +1,13 @@
 //! public subdomain routes (ported from `packages/api-commerce/src/domains/commerce/subdomains/public`).
 //!
-//! The storefront's four reads (MEN-260). They are anonymous: the tenant comes
+//! The storefront's reads (MEN-260, MEN-82). They are anonymous: the tenant comes
 //! from `TenantScope`, never from the caller, and a request that resolved none
 //! answers the empty shape instead of failing.
 
+mod get_kit;
 mod get_product;
 mod get_store;
+mod list_kits;
 mod list_menu;
 mod list_sitemap;
 
@@ -38,6 +40,8 @@ pub fn router() -> axum::Router<crate::State> {
             "/products/{productId}",
             axum::routing::get(get_product::get_product),
         )
+        .route("/kits", axum::routing::get(list_kits::list_kits))
+        .route("/kits/{slug}", axum::routing::get(get_kit::get_kit))
         .route("/sitemap", axum::routing::get(list_sitemap::list_sitemap))
 }
 
@@ -49,6 +53,8 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
             get_store::get_store,
             list_menu::list_menu,
             get_product::get_product,
+            list_kits::list_kits,
+            get_kit::get_kit,
             list_sitemap::list_sitemap
         ),
         components(schemas(
@@ -66,6 +72,13 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
             contract::commerce::public::NutritionBasis,
             contract::commerce::public::NutritionLabelFormat,
             contract::commerce::public::NutritionSource,
+            contract::commerce::public::PublicKit,
+            contract::commerce::public::PublicKitGroup,
+            contract::commerce::public::PublicKitItem,
+            contract::commerce::public::PublicKitSwap,
+            contract::commerce::public::PublicKitBand,
+            contract::commerce::public::PublicKitsOutput,
+            contract::commerce::public::PublicKitOutput,
             contract::commerce::public::PublicSitemap,
             contract::commerce::public::PublicSitemapEntry,
             contract::commerce::public::ChangeFrequency,

@@ -25,7 +25,7 @@
 | storefront, vitrine, PWA, subdomain, custom domain, theming                                                                                       | `features/storefronts/README.md`                     |
 | product, variation, complement, nutrition, favorite, review                                                                                       | `features/catalog/README.md`                         |
 | nutrition label, tabela nutricional, %VD, lupa, rotulagem, ANVISA, RDC 429, IN 75                                                                 | `features/catalog/nutrition.md`                      |
-| kit, pre-selected, build-your-own, monte seu kit                                                                                                  | `features/catalog/README.md`                         |
+| kit, fixed, custom_quantities, fixed_total, monte seu kit, composition editor                                                                     | `features/catalog/kits.md`                           |
 | stock, inventory, reservation, oversell, unlimited                                                                                                | `features/catalog/README.md`                         |
 | checkout, cart, guest, minimum order, recipient                                                                                                   | `features/payments/README.md`                        |
 | gateway, Asaas, Pix, boleto, card, voucher                                                                                                        | `features/payments/README.md`                        |
@@ -40,7 +40,8 @@
 | integration, Spoke, Lalamove, Bling, pixel, GA4, webhook                                                                                          | `features/integrations/README.md`                    |
 | stack, architecture, ADR, monorepo, bun, prisma, orpc                                                                                             | `engineering/stack.md`                               |
 | migration, prisma migrate, schema change, contract emit, ref                                                                                      | `engineering/schema-migrations.md`                   |
-| design system, tokens, dashboard UI, component recipe, ToggleGroup, AlertDialog, money entry                                                      | `apps/web/DESIGN.md`                                 |
+| database, postgres down, podman, psql, db:migrate, db:deploy, sqlx cache, seed, migration checksum                                                | `engineering/database.md`                            |
+| design system, tokens, dashboard UI, component recipe, composition editor, nested collection, ToggleGroup, AlertDialog, money entry               | `apps/web/DESIGN.md`                                 |
 | monorepo, workspace, package, catalog, where does it belong                                                                                       | `engineering/monorepo.md`                            |
 | backend, request path, middleware, auth middleware, worker, redis, orpc server                                                                    | `engineering/backend.md`                             |
 | route, ensureStatic, static, prefetch, private cache, dashboard suspense, app shell, cache                                                        | `engineering/route-stages.md`                        |

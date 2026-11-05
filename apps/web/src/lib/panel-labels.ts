@@ -107,6 +107,29 @@ export const STOCK_MODE_LABELS: Record<StockMode, string> = {
 };
 
 /**
+ * Os três tipos de kit. `fixed` trava a quantidade de cada prato;
+ * `custom_quantities` deixa o comprador escolher dentro de um mínimo e um
+ * máximo por prato; `fixed_total` trava só o total de itens do kit.
+ */
+export const KIT_KIND_LABELS: Record<"fixed" | "custom_quantities" | "fixed_total", string> = {
+  fixed: "Fixo",
+  custom_quantities: "Quantidades personalizáveis",
+  fixed_total: "Total fixo",
+};
+
+/** Como o preço do kit nasce: valor do lojista ou soma dos pratos com piso. */
+export const KIT_PRICING_MODE_LABELS: Record<"fixed" | "sum", string> = {
+  fixed: "Preço fixo",
+  sum: "Soma dos pratos",
+};
+
+/** O que acontece quando a composição mínima fica fora de alcance. */
+export const KIT_UNAVAILABLE_BEHAVIOR_LABELS: Record<"hide" | "block", string> = {
+  hide: "Ocultar o kit",
+  block: "Mostrar o kit bloqueado",
+};
+
+/**
  * Tabela nutricional (RDC 429/2020 e IN 75/2020). A base decide se a tabela
  * vale por 100 g ou por 100 mL; o formato escolhe entre a tabela completa e a
  * simplificada, que omite os constituintes sem quantidade significativa.

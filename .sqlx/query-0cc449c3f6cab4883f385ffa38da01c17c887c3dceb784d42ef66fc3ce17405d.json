@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT percent\n            FROM public.\"KitDiscountBand\"\n            WHERE \"tenantId\" = $1 AND \"kitId\" = $2 AND \"minQuantity\" <= $3\n            ORDER BY \"minQuantity\" DESC\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "percent",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"KitDiscountBand\"",
+            "name": "percent"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text", "Int4"]
+    },
+    "nullable": [false]
+  },
+  "hash": "0cc449c3f6cab4883f385ffa38da01c17c887c3dceb784d42ef66fc3ce17405d"
+}

@@ -23,3 +23,13 @@ one and becomes its `owner`, in the same transaction that inserts the tenant, so
 a store never exists without a member who can administer it. A resource module
 keeps its own `router()` and `openapi()`; anything two resources share goes in
 `support.rs`.
+
+Kits write through `catalog:write` like products, but their update is a full
+replace: `persistence::tenant::panel::kits::kit_update` deletes the groups,
+dishes, allowed swaps and discount bands inside one transaction and re-inserts
+them. Never patch a single child row. `kit_create`/`kit_update` mint the group
+ids server-side from the client-minted key the payload carries, so a group id in
+the response is not the one the editor sent.
+
+`kit_get` verifies that every dish variation belongs to the named product and
+the tenant before writing; that check is not the contract's job.

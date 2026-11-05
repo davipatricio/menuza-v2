@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"kitItemId\" AS kit_item_id, \"variationId\" AS variation_id\n            FROM public.\"KitItemVariation\"\n            WHERE \"tenantId\" = $1 AND \"kitItemId\" = ANY($2)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kit_item_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"KitItemVariation\"",
+            "name": "kitItemId"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "variation_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"KitItemVariation\"",
+            "name": "variationId"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "TextArray"]
+    },
+    "nullable": [false, false]
+  },
+  "hash": "c72c4a0ea827414c33d479d63cd3d036a6f6070d7906ac994ceedcbd51e6c7a9"
+}

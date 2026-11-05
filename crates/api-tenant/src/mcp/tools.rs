@@ -726,7 +726,7 @@ async fn coupons_list(handler: &McpHandler, store: &AllowedStore) -> Result<Valu
         .map(|row| {
             let product_ids = product_ids.remove(&row.id).unwrap_or_default();
 
-            panel_coupon(&row, product_ids)
+            panel_coupon(&row, product_ids, Vec::new())
         })
         .collect();
 
@@ -1140,8 +1140,8 @@ async fn coupon_create(
     let product_ids = distinct(&input.product_ids);
     let coupon_id = uuid::Uuid::new_v4().to_string();
     let code = input.code.trim().to_uppercase();
-    let write =
-        prepare_write(&input, &code, &product_ids).map_err(|error| error.0.message().to_owned())?;
+    let write = prepare_write(&input, &code, &product_ids, &input.kit_ids)
+        .map_err(|error| error.0.message().to_owned())?;
 
     if coupon_code_taken(&handler.pool, &store.tenant, write.code)
         .await
@@ -1173,7 +1173,7 @@ async fn coupon_create(
         .collect();
 
     output(PanelCouponOutput {
-        coupon: panel_coupon(&row, product_ids),
+        coupon: panel_coupon(&row, product_ids, Vec::new()),
     })
 }
 

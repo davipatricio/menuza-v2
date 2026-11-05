@@ -32,3 +32,22 @@ Next.js imports, direct calls to the Rust APIs (`@/lib/api/**`).
 ## Verify
 
 `bunx oxfmt apps/web/src/features/catalog && bunx oxlint apps/web/src/features/catalog && bun run --filter '@menuza/web' build`
+
+## Kits
+
+The kit editor is not a dialog: `catalog/kits/new.tsx` and `$kitId.tsx` mount
+`KitForm` with three tabs (identidade, composição & regras, preço), and the tab
+follows the first invalid field on submit. Rules that change composition live at
+the top of the composition tab, never in a tab of their own. `KitItemsEditor`
+owns one card per group plus a `Pratos sem grupo` section; `kit-preview.tsx`
+renders what the buyer sees.
+
+`schemas/kit.ts` mirrors the Rust `validate()` rule for rule — when one side
+changes, change both. `lib/kit-price.ts` is the only place that resolves a kit
+price and `apps/web/tests/kit-price.test.ts` pins its three steps (floor, kit
+percent, progressive band). Never format or compute a kit price inline.
+
+The dish picker reads `panel.listKitOptions` (`GET /panel/stores/{storeSlug}/kit-options`),
+not the product list: a kit item names a product **and** a variation, and only
+that endpoint carries both with prices, plus the product image and category used
+by `product-combobox.tsx`.

@@ -21,7 +21,7 @@ pub const ID_MAX: usize = 64;
 /// Most coupons one bulk delete accepts.
 pub const BULK_MAX: usize = 200;
 
-/// Most products one coupon scope accepts.
+/// Most products or kits one coupon scope accepts.
 pub const SCOPE_MAX: usize = 200;
 
 /// `percentage` or `fixed`.
@@ -92,6 +92,9 @@ pub struct CouponInput {
     pub product_scope_mode: CouponProductScopeMode,
     #[serde(default)]
     pub product_ids: Vec<String>,
+    /// Kits the scope covers, same `include`/`exclude` reading as products.
+    #[serde(default)]
+    pub kit_ids: Vec<String>,
 }
 
 impl CouponInput {
@@ -128,6 +131,11 @@ impl CouponInput {
                 .product_ids
                 .iter()
                 .any(|id| id.is_empty() || id.chars().count() > ID_MAX)
+            || self.kit_ids.len() > SCOPE_MAX
+            || self
+                .kit_ids
+                .iter()
+                .any(|id| id.is_empty() || id.chars().count() > ID_MAX)
         {
             return Err(ErrorCode::ValidationFailed);
         }
@@ -159,6 +167,7 @@ pub struct PanelCoupon {
     pub status: CouponStatus,
     pub product_scope_mode: CouponProductScopeMode,
     pub product_ids: Vec<String>,
+    pub kit_ids: Vec<String>,
 }
 
 /// `{ coupons }`.
@@ -191,6 +200,7 @@ pub struct PanelCouponSummary {
     pub first_purchase_only: bool,
     pub product_scope_mode: CouponProductScopeMode,
     pub product_ids: Vec<String>,
+    pub kit_ids: Vec<String>,
     /// Derived from `endsAt`: a coupon past its window reads as expired.
     pub effective_status: CouponStatus,
     pub redemption_count: i64,

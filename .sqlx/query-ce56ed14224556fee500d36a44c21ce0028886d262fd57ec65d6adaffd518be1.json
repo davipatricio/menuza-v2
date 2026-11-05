@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE \"Kit\"\n              SET archived = true, available = false, \"updatedAt\" = $3\n            WHERE \"tenantId\" = $1 AND id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Timestamp"]
+    },
+    "nullable": []
+  },
+  "hash": "ce56ed14224556fee500d36a44c21ce0028886d262fd57ec65d6adaffd518be1"
+}

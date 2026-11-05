@@ -164,6 +164,16 @@ const PAYMENT_METHODS: [&str; 8] = [
     "card_on_delivery",
 ];
 
+/// One dish the buyer put in a composed kit: which catalog dish, which
+/// variation of it and how many.
+#[derive(Debug, Clone, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateOrderKitItem {
+    pub kit_item_id: String,
+    pub variation_id: String,
+    pub quantity: i32,
+}
+
 /// One line of a checkout: the catalog ids it names and the price the cart
 /// quoted for it.
 #[derive(Debug, Clone, serde::Deserialize, utoipa::ToSchema)]
@@ -172,6 +182,10 @@ pub struct CreateOrderLine {
     pub product_id: Option<String>,
     pub variation_id: Option<String>,
     pub kit_id: Option<String>,
+    /// The composition of a kit the buyer assembles. Absent for a product line
+    /// and for a kit whose dishes the catalog locks.
+    #[serde(default)]
+    pub kit_items: Vec<CreateOrderKitItem>,
     pub name: String,
     pub unit_price_cents: i32,
     pub quantity: i32,
@@ -207,6 +221,14 @@ impl CreateOrderInput {
             line.name.trim().is_empty()
                 || line.unit_price_cents < 0
                 || line.quantity < 1
+                || (line.product_id.is_none()
+                    && line.variation_id.is_none()
+                    && line.kit_id.is_none())
+                || line.kit_items.iter().any(|item| {
+                    item.kit_item_id.trim().is_empty()
+                        || item.variation_id.trim().is_empty()
+                        || item.quantity < 1
+                })
                 || line
                     .catalog_discount_cents
                     .is_some_and(|discount| discount < 0)

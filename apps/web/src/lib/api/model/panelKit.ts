@@ -4,14 +4,23 @@
  * api-tenant
  * OpenAPI spec version: 0.0.0
  */
+import type { KitKind } from "./kitKind.ts";
+import type { KitPricingMode } from "./kitPricingMode.ts";
 
 /**
- * `{ id, name, mode, available, itemsCount }`.
+ * A list row.
  */
 export interface PanelKit {
+  archived: boolean;
   available: boolean;
+  baseCents: number;
   id: string;
   itemsCount: number;
-  mode: string;
+  kind: KitKind;
   name: string;
+  /** @nullable */
+  percentOff: number | null;
+  pricingMode: KitPricingMode;
+  slug: string;
+  updatedAt: string;
 }

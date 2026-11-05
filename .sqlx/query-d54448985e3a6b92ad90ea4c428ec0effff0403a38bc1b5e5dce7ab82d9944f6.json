@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"KitDiscountBand\"\n                   (id, \"kitId\", \"tenantId\", \"minQuantity\", percent)\n               VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": ["Text", "Text", "Text", "Int4", "Int4"]
+    },
+    "nullable": []
+  },
+  "hash": "d54448985e3a6b92ad90ea4c428ec0effff0403a38bc1b5e5dce7ab82d9944f6"
+}

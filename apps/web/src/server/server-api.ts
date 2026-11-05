@@ -14,6 +14,9 @@ import { getRequest } from "@tanstack/react-start/server";
 import type {
   ProductResponse,
   PublicMenu,
+  PublicKit,
+  PublicKitOutput,
+  PublicKitsOutput,
   PublicProductDetail,
   PublicSitemap,
   PublicStore,
@@ -33,6 +36,8 @@ type StorefrontClient = {
       product: PublicProductDetail | null;
     }>;
     listSitemap(): Promise<PublicSitemap>;
+    listKits(): Promise<PublicKitsOutput>;
+    getKit(input: { slug: string }): Promise<{ kit: PublicKit | null }>;
   };
 };
 
@@ -92,6 +97,16 @@ export async function storefrontClient(): Promise<StorefrontClient | null> {
         return { product: product ?? null };
       },
       listSitemap: () => getJson<PublicSitemap>(origin, "/sitemap", tenantId),
+      listKits: () => getJson<PublicKitsOutput>(origin, "/kits", tenantId),
+      getKit: async ({ slug }): Promise<{ kit: PublicKit | null }> => {
+        const { kit } = await getJson<PublicKitOutput>(
+          origin,
+          `/kits/${encodeURIComponent(slug)}`,
+          tenantId,
+        );
+
+        return { kit: kit ?? null };
+      },
     },
   };
 }
