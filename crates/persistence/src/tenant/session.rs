@@ -188,6 +188,9 @@ pub async fn member_by_id(pool: &PgPool, id: &str) -> Result<Option<MemberRow>, 
 
 /// Memberships of a member, joined to the tenant's slug and display name. A
 /// member spans tenants, so this is not a tenant-scoped statement.
+///
+/// An archived tenant stays out of the picker: the store was closed, and
+/// choosing it would only answer `NOT_FOUND` on every panel route.
 pub async fn memberships_by_member(
     pool: &PgPool,
     member_id: &str,
@@ -198,7 +201,7 @@ pub async fn memberships_by_member(
         r#"SELECT m."tenantId", t.slug, t."displayName", m.role
            FROM "TenantMembership" m
            JOIN "Tenant" t ON t.id = m."tenantId"
-           WHERE m."memberId" = $1
+           WHERE m."memberId" = $1 AND t."archivedAt" IS NULL
            ORDER BY m."createdAt", m.id"#,
     )
     .bind(member_id)

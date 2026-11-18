@@ -1,0 +1,14 @@
+{
+  "name": "menuza",
+  "description": "First-party Claude Code harness for the Menuza monorepo.",
+  "owner": {
+    "name": "Menuza"
+  },
+  "plugins": [
+    {
+      "name": "menuza-harness",
+      "source": "./menuza-harness",
+      "description": "Claude Code hooks ported from the OpenCode harness: project memory at session start, shell command rewriting before Bash."
+    }
+  ]
+}

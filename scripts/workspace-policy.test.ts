@@ -65,7 +65,14 @@ const workspaces = [
 const problems: string[] = [];
 
 // Explicit canonical workspace allowlist: blocks accidental or speculative packages
-const ALLOWED_WORKSPACES = new Set(["apps/web", "packages/shared", "packages/db"]);
+const ALLOWED_WORKSPACES = new Set([
+  "apps/web",
+  "apps/mobile-dashboard",
+  "apps/mobile-storefront",
+  "packages/api-client",
+  "packages/shared",
+  "packages/db",
+]);
 
 // The Bun API runtime was replaced by the Rust crates; nothing may depend on it.
 const DELETED_WORKSPACES = new Set([

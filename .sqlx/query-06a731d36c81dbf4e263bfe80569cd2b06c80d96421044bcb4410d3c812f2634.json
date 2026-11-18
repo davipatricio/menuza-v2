@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT kind, \"baseCents\" AS base_cents,\n                   \"percentOff\" AS percent_off,\n                   \"maxKitsPerOrder\" AS max_kits_per_order,\n                   \"minItems\" AS min_items, \"maxItems\" AS max_items,\n                   available, archived, \"couponStackable\" AS coupon_stackable\n            FROM public.\"Kit\"\n            WHERE \"tenantId\" = $1 AND id = $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "base_cents",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "baseCents"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "percent_off",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "percentOff"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "max_kits_per_order",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "maxKitsPerOrder"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "min_items",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "minItems"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "max_items",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "maxItems"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "available",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "available"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "archived",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "archived"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "coupon_stackable",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "\"Kit\"",
+            "name": "couponStackable"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": ["Text", "Text"]
+    },
+    "nullable": [false, false, true, true, true, true, false, false, false]
+  },
+  "hash": "06a731d36c81dbf4e263bfe80569cd2b06c80d96421044bcb4410d3c812f2634"
+}

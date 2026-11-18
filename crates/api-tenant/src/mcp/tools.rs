@@ -1181,9 +1181,13 @@ async fn coupon_create(
 fn order_error(error: orders::OrderError) -> String {
     match error {
         orders::OrderError::NotFound => ErrorCode::NotFound.message().to_owned(),
-        orders::OrderError::Invalid { .. } => ErrorCode::Conflict.message().to_owned(),
+        orders::OrderError::Invalid { .. } | orders::OrderError::NotPayable { .. } => {
+            ErrorCode::Conflict.message().to_owned()
+        }
         orders::OrderError::Forbidden => ErrorCode::Forbidden.message().to_owned(),
-        orders::OrderError::ReasonRequired => ErrorCode::ValidationFailed.message().to_owned(),
+        orders::OrderError::ReasonRequired | orders::OrderError::CodeMismatch => {
+            ErrorCode::ValidationFailed.message().to_owned()
+        }
         orders::OrderError::Db(_) => ErrorCode::Internal.message().to_owned(),
     }
 }

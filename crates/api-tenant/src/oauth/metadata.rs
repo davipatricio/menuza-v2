@@ -8,17 +8,43 @@ use axum::http::HeaderMap;
 use axum::response::Response;
 use contract::oauth::OAuthServerMetadata;
 use domain::oauth::{PKCE_METHOD, SUPPORTED_OAUTH_SCOPES, public_origin};
+use menuza_http::PeerAddr;
+use menuza_http::extract::peer_is_trusted;
 
 use super::support::{METADATA_CACHE, header, json_response, request_host, request_scheme};
 
 /// The authorization-server document.
-pub async fn metadata(State(state): State<crate::State>, headers: HeaderMap) -> Response {
+pub async fn metadata(
+    State(state): State<crate::State>,
+    PeerAddr(peer): PeerAddr,
+    headers: HeaderMap,
+) -> Response {
+    let forwarded_host = header(&headers, "x-forwarded-host");
+    let trusted = peer_is_trusted(
+        peer,
+        &state.config.trusted_proxy_ips,
+        state.config.trusted_proxy_hops,
+        forwarded_host,
+    );
+    // Only honor `x-forwarded-host` when the socket peer itself is loopback or a
+    // listed proxy IP; otherwise a direct caller could poison the 1-hour public
+    // discovery cache with an attacker origin.
+    let effective_hops = if trusted {
+        state.config.trusted_proxy_hops.max(1)
+    } else {
+        0
+    };
+
     let origin = public_origin(
         &request_host(&headers, &state),
-        header(&headers, "x-forwarded-host"),
+        forwarded_host,
         header(&headers, "x-forwarded-proto"),
-        state.config.trusted_proxy_hops,
-        request_scheme(&headers),
+        effective_hops,
+        if trusted {
+            request_scheme(&headers)
+        } else {
+            "http"
+        },
     );
 
     json_response(server_metadata(&origin), &METADATA_CACHE)

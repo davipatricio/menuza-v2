@@ -8,17 +8,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
-import { Label } from "@/components/ui/label.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { kitUnitCents } from "@/features/catalog/lib/kit-price.ts";
-import type { PublicKit } from "@/lib/api/model";
+import type { PublicKit } from "@menuza/api-client/model";
 import { formatBrl } from "@/lib/format.ts";
 
 type Selection = Record<string, number>;
@@ -53,19 +53,21 @@ export function KitComposer({ kit }: { kit: PublicKit }) {
   const [selection, setSelection] = useState<Selection>(() => defaultSelection(kit));
   const [swaps, setSwaps] = useState<Record<string, string>>({});
 
-  const chosen = kit.items.reduce((sum, item) => {
+  const extraCents = kit.items.reduce((sum, item) => {
+    if (!item.chargeExtra) return sum;
+
     const quantity = selection[item.id] ?? 0;
     const variationId = swaps[item.id];
     const swap = item.swapVariations.find((option) => option.id === variationId);
+    const unitPrice = swap?.priceCents ?? item.priceCents;
 
-    return sum + (swap?.priceCents ?? item.priceCents) * quantity;
+    return sum + unitPrice * quantity;
   }, 0);
 
   const price = kitUnitCents({
-    pricingMode: kit.pricingMode === "sum" ? "sum" : "fixed",
     baseCents: kit.baseCents,
     percentOff: kit.percentOff,
-    chosenCents: [chosen],
+    extraCents,
   });
 
   const totals = groupTotals(kit, selection);
@@ -124,76 +126,97 @@ export function KitComposer({ kit }: { kit: PublicKit }) {
     (item) => !item.groupId || !kit.groups.some((g) => g.id === item.groupId),
   );
 
-  const renderDishRow = (item: PublicKit["items"][number]) => (
-    <div key={item.id} className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex flex-col gap-1">
-        <Label htmlFor={`item-${item.id}`}>{item.productName}</Label>
-        <span className="text-xs text-muted-foreground">
-          {item.available ? item.variationName : "Esgotado"}
-          {item.minQty ? ` · mínimo ${item.minQty}` : ""}
-          {item.maxQty !== null ? ` · máximo ${item.maxQty}` : ""}
-        </span>
-      </div>
+  const renderDishRow = (item: PublicKit["items"][number]) => {
+    const variationId = swaps[item.id];
+    const swap = item.swapVariations.find((option) => option.id === variationId);
+    const dishPrice = swap?.priceCents ?? item.priceCents;
 
-      <div className="flex items-center gap-3">
-        {item.swapVariations.length > 0 ? (
-          <Select
-            value={swaps[item.id] ?? item.variationId}
-            onValueChange={(next) => {
-              if (next === null) return;
-
-              setSwaps((current) => ({ ...current, [item.id]: next }));
-            }}
-          >
-            <SelectTrigger className="w-44" aria-label={`Variação de ${item.productName}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={item.variationId}>{item.variationName}</SelectItem>
-              {item.swapVariations.map((option) => (
-                <SelectItem key={option.id} value={option.id} disabled={!option.available}>
-                  {option.name} · {formatBrl(option.priceCents)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : null}
-
-        {kit.kind === "fixed" ? (
-          <span className="text-sm tabular-nums">{item.quantity ?? 1}×</span>
-        ) : (
+    return (
+      <div key={item.id} className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              aria-label={`Remover um de ${item.productName}`}
-              disabled={(selection[item.id] ?? 0) <= (item.minQty ?? 0)}
-              onClick={() => step(item.id, -1, item.step, item.minQty ?? 0, item.maxQty)}
-            >
-              −
-            </Button>
-            <span id={`item-${item.id}`} className="w-8 text-center text-sm tabular-nums">
-              {selection[item.id] ?? 0}
+            <span id={`dish-${item.id}`} className="text-sm leading-none font-medium">
+              {item.productName}
             </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              aria-label={`Adicionar um de ${item.productName}`}
-              disabled={
-                !item.available ||
-                (item.maxQty !== null && (selection[item.id] ?? 0) >= item.maxQty)
-              }
-              onClick={() => step(item.id, 1, item.step, item.minQty ?? 0, item.maxQty)}
-            >
-              +
-            </Button>
+            {item.chargeExtra ? (
+              <Badge variant="secondary" className="text-xs">
+                +{formatBrl(dishPrice)}
+              </Badge>
+            ) : null}
           </div>
-        )}
+          <span className="text-xs text-muted-foreground">
+            {item.available ? (swap?.name ?? item.variationName) : "Esgotado"}
+            {item.minQty ? ` · mínimo ${item.minQty}` : ""}
+            {item.maxQty !== null ? ` · máximo ${item.maxQty}` : ""}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {item.swapVariations.length > 0 ? (
+            <Select
+              value={swaps[item.id] ?? item.variationId}
+              onValueChange={(next) => {
+                if (next === null) return;
+
+                setSwaps((current) => ({ ...current, [item.id]: next }));
+              }}
+            >
+              <SelectTrigger className="w-44" aria-label={`Variação de ${item.productName}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={item.variationId}>{item.variationName}</SelectItem>
+                  {item.swapVariations.map((option) => (
+                    <SelectItem key={option.id} value={option.id} disabled={!option.available}>
+                      {option.name} · {formatBrl(option.priceCents)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          ) : null}
+
+          {kit.kind === "fixed" ? (
+            <span className="text-sm tabular-nums">{item.quantity ?? 1}×</span>
+          ) : (
+            <div
+              role="group"
+              aria-labelledby={`dish-${item.id}`}
+              className="flex items-center gap-2"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={`Remover um de ${item.productName}`}
+                disabled={(selection[item.id] ?? 0) <= (item.minQty ?? 0)}
+                onClick={() => step(item.id, -1, item.step, item.minQty ?? 0, item.maxQty)}
+              >
+                −
+              </Button>
+              <output className="w-8 text-center text-sm tabular-nums">
+                {selection[item.id] ?? 0}
+              </output>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={`Adicionar um de ${item.productName}`}
+                disabled={
+                  !item.available ||
+                  (item.maxQty !== null && (selection[item.id] ?? 0) >= item.maxQty)
+                }
+                onClick={() => step(item.id, 1, item.step, item.minQty ?? 0, item.maxQty)}
+              >
+                +
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -264,13 +287,15 @@ export function KitComposer({ kit }: { kit: PublicKit }) {
         </Button>
       </div>
 
-      {problems.length > 0 ? (
-        <ul className="flex flex-col gap-1 text-sm text-destructive" role="status">
-          {problems.map((problem) => (
-            <li key={problem}>{problem}</li>
-          ))}
-        </ul>
-      ) : null}
+      <div role="status" aria-live="polite">
+        {problems.length > 0 ? (
+          <ul className="flex flex-col gap-1 text-sm text-destructive">
+            {problems.map((problem) => (
+              <li key={problem}>{problem}</li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </div>
   );
 }

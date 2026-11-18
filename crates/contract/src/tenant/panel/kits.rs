@@ -61,17 +61,6 @@ pub enum KitKind {
 }
 
 /// How the kit price is computed before the percentage and the bands.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
-)]
-#[serde(rename_all = "lowercase")]
-pub enum KitPricingMode {
-    /// `baseCents` is the price; the dishes do not sum.
-    Fixed,
-    /// `max(baseCents, sum of the chosen variations)`.
-    Sum,
-}
-
 /// What the storefront does once the minimums can no longer be composed.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
@@ -116,6 +105,8 @@ pub struct PanelKitItem {
     pub allow_swap: bool,
     pub swap_variation_ids: Vec<String>,
     pub sort_order: i32,
+    #[serde(default)]
+    pub charge_extra: bool,
 }
 
 /// One progressive band: from `min_quantity` kits up, take `percent` off.
@@ -135,7 +126,6 @@ pub struct PanelKit {
     pub name: String,
     pub slug: String,
     pub kind: KitKind,
-    pub pricing_mode: KitPricingMode,
     pub base_cents: i32,
     pub percent_off: Option<i32>,
     pub available: bool,
@@ -154,7 +144,6 @@ pub struct PanelKitDetail {
     pub description: Option<String>,
     pub image_url: String,
     pub kind: KitKind,
-    pub pricing_mode: KitPricingMode,
     pub base_cents: i32,
     pub percent_off: Option<i32>,
     pub min_items: Option<i32>,
@@ -252,6 +241,8 @@ pub struct KitItemInput {
     pub swap_variation_ids: Vec<String>,
     #[serde(default)]
     pub sort_order: i32,
+    #[serde(default)]
+    pub charge_extra: bool,
 }
 
 /// One progressive band in a create or update payload.
@@ -272,7 +263,6 @@ pub struct CreateKitInput {
     pub description: Option<String>,
     pub image_url: String,
     pub kind: KitKind,
-    pub pricing_mode: KitPricingMode,
     pub base_cents: i32,
     pub percent_off: Option<i32>,
     pub min_items: Option<i32>,
@@ -333,7 +323,6 @@ pub struct UpdateKitInput {
     pub description: Option<Option<String>>,
     pub image_url: Option<String>,
     pub kind: Option<KitKind>,
-    pub pricing_mode: Option<KitPricingMode>,
     pub base_cents: Option<i32>,
     #[serde(default, deserialize_with = "nullable_i32")]
     pub percent_off: Option<Option<i32>>,
@@ -674,6 +663,7 @@ mod tests {
             allow_swap: false,
             swap_variation_ids: Vec::new(),
             sort_order: 0,
+            charge_extra: false,
         }
     }
 
@@ -684,7 +674,6 @@ mod tests {
             description: None,
             image_url: "https://cdn.example/kit.png".to_string(),
             kind,
-            pricing_mode: KitPricingMode::Fixed,
             base_cents: 10_000,
             percent_off: None,
             min_items: Some(10),
@@ -938,9 +927,6 @@ mod tests {
     fn the_wire_shape_is_lowercase_slugs() {
         let json = serde_json::to_string(&KitKind::CustomQuantities).unwrap();
         assert_eq!(json, "\"custom_quantities\"");
-
-        let json = serde_json::to_string(&KitPricingMode::Sum).unwrap();
-        assert_eq!(json, "\"sum\"");
 
         let json = serde_json::to_string(&KitUnavailableBehavior::Hide).unwrap();
         assert_eq!(json, "\"hide\"");

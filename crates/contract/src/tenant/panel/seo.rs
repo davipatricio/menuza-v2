@@ -125,7 +125,52 @@ pub struct StoreSeoOutput {
     pub resolved: PanelResolvedSeo,
 }
 
-/// The five editable columns of one override row.
+/// The relation an extra `<link>` carries. `sameAs` is the camelCase wire value
+/// SERP tooling expects, not an invented slug.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
+#[serde(rename_all = "camelCase")]
+pub enum SeoLinkRel {
+    Alternate,
+    SameAs,
+    Related,
+}
+
+impl SeoLinkRel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Alternate => "alternate",
+            Self::SameAs => "sameAs",
+            Self::Related => "related",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "alternate" => Some(Self::Alternate),
+            "sameAs" => Some(Self::SameAs),
+            "related" => Some(Self::Related),
+            _ => None,
+        }
+    }
+}
+
+/// One extra `<link>` relation: an `hreflang` alternate, a `sameAs` profile
+/// link or a `related` resource. The canonical URL stays its own single field.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SeoLink {
+    pub rel: SeoLinkRel,
+    pub href: String,
+    #[schema(required)]
+    pub hreflang: Option<String>,
+}
+
+/// The maximum number of extra links one entity can carry.
+pub const SEO_MAX_LINKS: usize = 8;
+
+/// The five editable columns of one override row, plus its extra links.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SeoFields {
@@ -139,6 +184,8 @@ pub struct SeoFields {
     pub social_image_url: Option<String>,
     #[schema(required)]
     pub json_ld: Option<String>,
+    /// Only product and kit rows carry links; every other entity reads empty.
+    pub links: Vec<SeoLink>,
 }
 
 /// `{ settings }` write payload; every field is sent, `null` clears it.
@@ -173,6 +220,10 @@ pub struct SaveSeoInput {
     pub social_image_url: Option<Option<String>>,
     #[serde(default, deserialize_with = "nullable_field")]
     pub json_ld: Option<Option<String>>,
+    /// Omitted keeps the stored links; an array replaces the whole list, and an
+    /// empty array clears it. Only product and kit accept it.
+    #[serde(default)]
+    pub links: Option<Vec<SeoLink>>,
 }
 
 impl SaveSeoInput {
@@ -193,8 +244,30 @@ impl SaveSeoInput {
             }
         }
 
+        if let Some(links) = &self.links {
+            if links.len() > SEO_MAX_LINKS {
+                return Err(ErrorCode::ValidationFailed);
+            }
+
+            for link in links {
+                if !is_http_url(&link.href) {
+                    return Err(ErrorCode::ValidationFailed);
+                }
+
+                bounded(link.hreflang.as_deref(), 20)?;
+            }
+        }
+
         Ok(())
     }
+}
+
+/// Absolute http(s) URL, the same rule the browser applies to the canonical.
+fn is_http_url(value: &str) -> bool {
+    let trimmed = value.trim();
+
+    (trimmed.starts_with("http://") || trimmed.starts_with("https://"))
+        && trimmed.len() > "https://".len()
 }
 
 /// `{ saved, resolved }` after a read, write or revert.

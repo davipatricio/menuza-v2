@@ -140,5 +140,5 @@ reads it. Every dashboard layout loader redirects to `/dashboard/login` when
 - Server-only rule (enforced by `.oxlintrc.json` `no-restricted-imports`):
   routes may not import `@/server/*`. The browser reaches the Rust APIs only
   through `createServerFn` in `src/features/<domain>/server/*.functions.ts`; the
-  generated clients in `src/lib/api/**` are called from those functions and from
+  generated clients in `@menuza/api-client` are called from those functions and from
   `src/server/**`, never from a route or component.

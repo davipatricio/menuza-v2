@@ -212,6 +212,90 @@ pub(crate) async fn credit_cashback(
     Ok(true)
 }
 
+#[derive(sqlx::FromRow)]
+struct WalletBalanceRow {
+    id: String,
+    balance_cents: i32,
+}
+
+/// Claws back up to `amount_cents` of cashback when a paid order is refunded,
+/// clamped to the wallet's available balance so `Wallet."balanceCents"` never
+/// drops below zero (`ledger::reversal`). Returns the cents actually debited.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn reverse_cashback(
+    tx: &mut sqlx::PgConnection,
+    tenant: &TenantId,
+    customer_id: &str,
+    order_id: &str,
+    code: &str,
+    amount_cents: i32,
+    actor_member_id: Option<&str>,
+    now: NaiveDateTime,
+) -> Result<Option<i32>, sqlx::Error> {
+    if amount_cents <= 0 {
+        return Ok(None);
+    }
+
+    let wallet = sqlx::query_as::<_, WalletBalanceRow>(
+        r#"
+        SELECT id, "balanceCents" AS balance_cents
+        FROM public."Wallet"
+        WHERE "tenantId" = $1 AND "customerId" = $2
+        FOR UPDATE
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(customer_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some(wallet) = wallet else {
+        return Ok(None);
+    };
+
+    let taken = amount_cents.min(wallet.balance_cents);
+
+    if taken <= 0 {
+        return Ok(None);
+    }
+
+    sqlx::query(
+        r#"
+        INSERT INTO public."WalletTransaction" (
+            id, "tenantId", "walletId", "orderId", kind, "amountCents",
+            "actorMemberId", reason, "createdAt"
+        )
+        VALUES ($1, $2, $3, $4, 'reversal', $5, $6, $7, $8)
+        "#,
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(tenant.as_str())
+    .bind(&wallet.id)
+    .bind(order_id)
+    .bind(-taken)
+    .bind(actor_member_id)
+    .bind(format!("Estorno de cashback do pedido {code}"))
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE public."Wallet"
+        SET "balanceCents" = $3, "updatedAt" = $4
+        WHERE "tenantId" = $1 AND id = $2
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&wallet.id)
+    .bind(wallet.balance_cents - taken)
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    Ok(Some(taken))
+}
+
 /// Writes one manual correction and rolls the stored balance forward. Returns
 /// the new balance.
 ///

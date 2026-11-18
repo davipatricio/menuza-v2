@@ -24,7 +24,7 @@ pub async fn list_menu(
     State(state): State<crate::State>,
     scope: TenantScope,
 ) -> Result<Json<PublicMenu>, ApiError> {
-    let Some(tenant) = tenant_of(&scope)? else {
+    let Some(tenant) = tenant_of(&state, &scope).await? else {
         return Ok(Json(PublicMenu {
             departments: Vec::new(),
             uncategorized: Vec::new(),

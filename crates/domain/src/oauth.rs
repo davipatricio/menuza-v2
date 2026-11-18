@@ -31,6 +31,8 @@ pub enum OAuthError {
     RedirectUriNotRegistered,
     #[error("Unsupported scope: {0}")]
     UnsupportedScope(String),
+    #[error("Unsupported PKCE code_challenge_method")]
+    UnsupportedPkceMethod,
     #[error("Invalid or expired authorization code")]
     UnknownCode,
     #[error("Client ID mismatch")]
@@ -87,10 +89,27 @@ pub fn is_oauth_scope(value: &str) -> bool {
 }
 
 /// PKCE S256 per RFC 7636: `BASE64URL(SHA256(ASCII(verifier)))` equals the
-/// stored challenge. Any method but `S256` fails closed.
+/// stored challenge. Any method but `S256` fails closed, and the challenge
+/// digest is compared in constant time so a mismatch leaks no prefix length.
 pub fn verify_pkce(verifier: &str, code_challenge: &str, method: &str) -> bool {
-    method == PKCE_METHOD
-        && URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes())) == code_challenge
+    if method != PKCE_METHOD || code_challenge.is_empty() {
+        return false;
+    }
+
+    let computed = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
+    constant_time_eq(computed.as_bytes(), code_challenge.as_bytes())
+}
+
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    let mut diff = usize::from(a.len() != b.len());
+
+    for index in 0..a.len().max(b.len()) {
+        let left = a.get(index).copied().unwrap_or(0);
+        let right = b.get(index).copied().unwrap_or(0);
+        diff |= usize::from(left ^ right);
+    }
+
+    diff == 0
 }
 
 /// An opaque secret: 32 random bytes, base64url without padding — the shape
@@ -217,6 +236,11 @@ mod tests {
             "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
             "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
             "plain"
+        ));
+        assert!(!verify_pkce(
+            "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+            "",
+            "S256"
         ));
     }
 

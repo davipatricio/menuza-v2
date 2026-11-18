@@ -26,7 +26,7 @@ const TENANT_NAMESPACE: &str = "tenant";
 
 /// Every capability a store dashboard gates today, verbatim from
 /// `TENANT_CAPABILITIES` in `apps/orpc-server/src/auth/types.ts`.
-pub const TENANT_CAPABILITIES: [&str; 11] = [
+pub const TENANT_CAPABILITIES: [&str; 12] = [
     "dashboard:read",
     "orders:read",
     "orders:write",
@@ -35,6 +35,7 @@ pub const TENANT_CAPABILITIES: [&str; 11] = [
     "team:read",
     "team:write",
     "seo:write",
+    "branding:write",
     "catalog:write",
     "payments:read",
     "payments:write",

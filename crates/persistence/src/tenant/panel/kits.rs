@@ -20,7 +20,6 @@ pub struct KitRow {
     pub name: String,
     pub slug: String,
     pub kind: String,
-    pub pricing_mode: String,
     pub base_cents: i32,
     pub percent_off: Option<i32>,
     pub available: bool,
@@ -39,8 +38,6 @@ pub struct KitDetailRow {
     #[sqlx(rename = "imageUrl")]
     pub image_url: String,
     pub kind: String,
-    #[sqlx(rename = "pricingMode")]
-    pub pricing_mode: String,
     #[sqlx(rename = "baseCents")]
     pub base_cents: i32,
     #[sqlx(rename = "percentOff")]
@@ -98,6 +95,8 @@ pub struct KitItemRow {
     pub allow_swap: bool,
     #[sqlx(rename = "sortOrder")]
     pub sort_order: i32,
+    #[sqlx(rename = "chargeExtra")]
+    pub charge_extra: bool,
 }
 
 /// One progressive band.
@@ -117,7 +116,6 @@ pub struct KitWrite<'a> {
     pub description: Option<&'a str>,
     pub image_url: &'a str,
     pub kind: &'a str,
-    pub pricing_mode: &'a str,
     pub base_cents: i32,
     pub percent_off: Option<i32>,
     pub min_items: Option<i32>,
@@ -154,6 +152,7 @@ pub struct KitItemWrite<'a> {
     pub allow_swap: bool,
     pub swap_variation_ids: &'a [String],
     pub sort_order: i32,
+    pub charge_extra: bool,
 }
 
 /// A band as the payload names it.
@@ -180,7 +179,6 @@ pub async fn kit_list(pool: &PgPool, tenant: &TenantId) -> Result<Vec<KitRow>, s
         String,
         String,
         String,
-        String,
         i32,
         Option<i32>,
         bool,
@@ -190,7 +188,7 @@ pub async fn kit_list(pool: &PgPool, tenant: &TenantId) -> Result<Vec<KitRow>, s
     );
 
     let rows = sqlx::query_as::<_, Row>(
-        r#"SELECT k.id, k.name, k.slug, k.kind, k."pricingMode", k."baseCents",
+        r#"SELECT k.id, k.name, k.slug, k.kind, k."baseCents",
                   k."percentOff", k.available, k.archived,
                   (SELECT count(*)
                      FROM "KitItem" ki
@@ -211,13 +209,12 @@ pub async fn kit_list(pool: &PgPool, tenant: &TenantId) -> Result<Vec<KitRow>, s
             name: row.1,
             slug: row.2,
             kind: row.3,
-            pricing_mode: row.4,
-            base_cents: row.5,
-            percent_off: row.6,
-            available: row.7,
-            archived: row.8,
-            items_count: row.9,
-            updated_at: row.10,
+            base_cents: row.4,
+            percent_off: row.5,
+            available: row.6,
+            archived: row.7,
+            items_count: row.8,
+            updated_at: row.9,
         })
         .collect())
 }
@@ -229,7 +226,7 @@ pub async fn kit_get(
     kit_id: &str,
 ) -> Result<Option<KitDetail>, sqlx::Error> {
     let kit = sqlx::query_as::<_, KitDetailRow>(
-        r#"SELECT id, name, slug, description, "imageUrl", kind, "pricingMode",
+        r#"SELECT id, name, slug, description, "imageUrl", kind,
                   "baseCents", "percentOff", "minItems", "maxItems",
                   "maxKitsPerOrder", "unavailableBehavior", "couponStackable",
                   "sortOrder", available, archived, "updatedAt"
@@ -260,7 +257,7 @@ pub async fn kit_get(
         r#"SELECT ki.id, ki."productId", p.name AS product_name,
                   ki."variationId", v.name AS variation_name, ki."groupId",
                   ki.quantity, ki."minQty", ki."maxQty", ki.step, ki."allowSwap",
-                  ki."sortOrder"
+                  ki."sortOrder", ki."chargeExtra"
              FROM "KitItem" ki
              LEFT JOIN "Product" p ON p.id = ki."productId" AND p."tenantId" = ki."tenantId"
              LEFT JOIN "Variation" v ON v.id = ki."variationId" AND v."tenantId" = ki."tenantId"
@@ -390,11 +387,11 @@ pub async fn kit_update(
         let updated = sqlx::query!(
             r#"UPDATE "Kit"
               SET name = $3, slug = $4, description = $5, "imageUrl" = $6,
-                  kind = $7, "pricingMode" = $8, "baseCents" = $9,
-                  "percentOff" = $10, "minItems" = $11, "maxItems" = $12,
-                  "maxKitsPerOrder" = $13, "unavailableBehavior" = $14,
-                  "couponStackable" = $15, "sortOrder" = $16, available = $17,
-                  archived = $18, "updatedAt" = $19
+                  kind = $7, "baseCents" = $8,
+                  "percentOff" = $9, "minItems" = $10, "maxItems" = $11,
+                  "maxKitsPerOrder" = $12, "unavailableBehavior" = $13,
+                  "couponStackable" = $14, "sortOrder" = $15, available = $16,
+                  archived = $17, "updatedAt" = $18
             WHERE "tenantId" = $1 AND id = $2"#,
             tenant.as_str(),
             kit_id,
@@ -403,7 +400,6 @@ pub async fn kit_update(
             write.description,
             write.image_url,
             write.kind,
-            write.pricing_mode,
             write.base_cents,
             write.percent_off,
             write.min_items,
@@ -487,11 +483,11 @@ async fn insert_row(
     sqlx::query!(
         r#"INSERT INTO "Kit"
                (id, "tenantId", name, slug, description, "imageUrl", kind,
-                "pricingMode", "baseCents", "percentOff", "minItems", "maxItems",
+                "baseCents", "percentOff", "minItems", "maxItems",
                 "maxKitsPerOrder", "unavailableBehavior", "couponStackable",
                 "sortOrder", available, archived, "updatedAt")
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-                   $14, $15, $16, $17, $18, $19)"#,
+                   $14, $15, $16, $17, $18)"#,
         kit_id,
         tenant.as_str(),
         write.name,
@@ -499,7 +495,6 @@ async fn insert_row(
         write.description,
         write.image_url,
         write.kind,
-        write.pricing_mode,
         write.base_cents,
         write.percent_off,
         write.min_items,
@@ -557,8 +552,8 @@ async fn insert_children(
             r#"INSERT INTO "KitItem"
                    (id, "kitId", "tenantId", "variationId", "productId",
                     "groupId", quantity, "minQty", "maxQty", step, "allowSwap",
-                    "sortOrder")
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"#,
+                    "sortOrder", "chargeExtra")
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"#,
             id,
             kit_id,
             tenant.as_str(),
@@ -571,6 +566,7 @@ async fn insert_children(
             item.step,
             item.allow_swap,
             item.sort_order,
+            item.charge_extra,
         )
         .execute(&mut *tx)
         .await?;

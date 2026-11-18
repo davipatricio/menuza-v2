@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
@@ -6,6 +6,7 @@ import { ArrowRight, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { useAutofillSync } from "@/hooks/use-autofill-sync.ts";
 import { fieldErrors } from "./form-errors.ts";
 
 /**
@@ -24,6 +25,7 @@ const InviteSchema = v.object({
 
 export function InviteForm() {
   const [submitted, setSubmitted] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const form = useForm({
     defaultValues: {
@@ -36,6 +38,12 @@ export function InviteForm() {
     onSubmit: () => {
       setSubmitted(true);
     },
+  });
+
+  useAutofillSync(formRef, ({ name, value }) => {
+    // SAFETY: the control came from a `<form.Field>` this form rendered, so its
+    // `name` is one of the form data's keys.
+    form.setFieldValue(name as never, value as never);
   });
 
   if (submitted) {
@@ -65,6 +73,7 @@ export function InviteForm() {
 
   return (
     <form
+      ref={formRef}
       method="post"
       noValidate
       onSubmit={(event) => {

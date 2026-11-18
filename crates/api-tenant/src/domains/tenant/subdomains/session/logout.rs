@@ -10,7 +10,7 @@ use contract::tenant::session::LogoutOutput;
 use domain::session::hash_session_token;
 use persistence::tenant::session::session_revoke;
 
-use super::support::{clearing_cookie, cookie_token, json_with_cookie, now};
+use super::support::{assert_same_origin, clearing_cookie, cookie_token, json_with_cookie, now};
 use crate::domains::tenant::support::{ApiError, db_error};
 
 #[utoipa::path(
@@ -32,6 +32,7 @@ pub async fn logout(
     State(state): State<crate::State>,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
+    assert_same_origin(&headers)?;
     if let Some(token) = cookie_token(&headers) {
         let digest = hash_session_token(&token);
 

@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./package.json": "./package.json",
     "./commerce": "./src/commerce/index.ts",
     "./errors": "./src/errors/index.ts",
+    "./money": "./src/money/index.ts",
     "./nutrition": "./src/nutrition/index.ts",
+    "./package.json": "./package.json",
     "./push": "./src/push/index.ts",
     "./sentry-privacy": "./src/sentry-privacy/index.ts",
     "./seo": "./src/seo/index.ts",
@@ -27,7 +28,7 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
-    "bun-types": "1.4.3",
+    "bun-types": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:"

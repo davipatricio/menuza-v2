@@ -59,10 +59,12 @@ export function SeoSettingsForm({
   storeSlug,
   storeName,
   initialData,
+  coverage,
 }: {
   storeSlug: string;
   storeName: string;
   initialData: PanelStoreSeo;
+  coverage: { total: number; withOverride: number };
 }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -141,7 +143,12 @@ export function SeoSettingsForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FieldGroup className="gap-4">
+          <p className="text-sm text-muted-foreground">
+            {coverage.withOverride} de {coverage.total} páginas têm SEO próprio; as demais usam os
+            modelos abaixo.
+          </p>
+
+          <FieldGroup className="mt-4 gap-4">
             <form.Field name="seoTitleTemplate">
               {(field: any) => (
                 <Field data-invalid={invalid(field)}>

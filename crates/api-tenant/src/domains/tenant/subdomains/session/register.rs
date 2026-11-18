@@ -12,6 +12,7 @@ use axum::response::Response;
 use contract::ErrorCode;
 use contract::tenant::session::{LoginOutput, RegisterInput};
 use domain::password::hash_password;
+use menuza_http::PeerAddr;
 use persistence::tenant::session::{NewMember, member_by_email, register_member_with_session};
 
 use super::support::{assert_same_origin, json_with_cookie, now, open_session, tenant_cookie};
@@ -45,10 +46,19 @@ fn is_duplicate(error: &sqlx::Error) -> bool {
 )]
 pub async fn register(
     State(state): State<crate::State>,
+    PeerAddr(peer): PeerAddr,
     headers: HeaderMap,
     Json(input): Json<RegisterInput>,
 ) -> Result<Response, ApiError> {
     assert_same_origin(&headers)?;
+
+    if !state
+        .auth_limiter
+        .check_request(peer, &headers, &state.config)
+    {
+        return Err(ApiError(ErrorCode::RateLimited));
+    }
+
     input.validate().map_err(ApiError)?;
 
     let email = input.normalized_email();

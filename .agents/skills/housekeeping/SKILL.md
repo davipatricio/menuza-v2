@@ -2,7 +2,7 @@
 name: housekeeping
 description: >
   Repo-wide housekeeping pass for this monorepo: audit CI, dependency pins, git hooks, tooling
-  config, AGENTS/docs drift, the OpenCode harness, vendored skills, the env contract, and dead
+  config, AGENTS/docs drift, the OpenCode and Claude harnesses, vendored skills, the env contract, and dead
   code. Probe reality first, record everything on a temporary FINDINGS.md checkbox board, then fix
   in parallel with subagents and verify the whole check chain. Use when asked to housekeep, clean
   up the repo, review everything, update deps/skills/instructions/CI, or before a milestone.
@@ -69,7 +69,7 @@ Shell traps (Windows/PowerShell), all of which produce false failures:
 Create `FINDINGS.md` from `references/findings-template.md`. Sections, in this order:
 
 `A` CI · `B` package manager/images · `C` red checks · `D` dependencies · `E` tooling config ·
-`F` git hooks · `G` docs drift · `H` OpenCode harness · `I` vendored skills · `J` security/env ·
+`F` git hooks · `G` docs drift · `H` OpenCode + Claude harness · `I` vendored skills · `J` security/env ·
 `K` cleanup/orphans · `L` verification.
 
 Marks: `[x]` done or verified · `[ ]` open · `[!]` needs a human decision. A `[!]` states the
@@ -82,16 +82,16 @@ is a rumour and gets deleted, not checked.
 
 Five lanes, one read-only subagent each, dispatched **in one message**: doc drift · dependency and
 tooling-config hygiene · dead code and orphans · security and env contract · external facts
-(`researcher`, for library/CI/registry questions).
+(library/CI/registry questions).
 
 Brief them from `references/briefs.md`. Rules:
 
 - Give each lane an explicit scope (paths) and an explicit output shape (`file:line | claim |
   actual | severity`, capped at ~60 rows). Forbid file dumps.
-- Say whether the lane has shell. A scout without shell must say "not verified" rather than imply
-  a clean result; re-run its blocked probes yourself.
-- External claims (action inputs, registry versions, CLI flags) go to `researcher` with the exact
-  URLs to fetch. Do not accept a remembered version number.
+- Say whether the lane has shell. A lane that cannot run probes must say "not verified" rather
+  than imply a clean result; re-run its blocked probes yourself.
+- External claims (action inputs, registry versions, CLI flags) name the exact URLs to fetch.
+  Do not accept a remembered version number.
 - Cap subagent steps. Long lanes die mid-report; keep each lane narrow enough to finish.
 
 ## 3. Fix wave
@@ -112,7 +112,7 @@ with the exit code expected. Adapt `references/briefs.md`.
 
 Watch for the class of fix that hides a defect: silencing a lint rule instead of adding the missing
 `htmlFor`, widening a type instead of fixing the inference, moving a file into `ignorePatterns`
-instead of formatting it. Reject those in the critic step.
+instead of formatting it. Reject those on review.
 
 ## 4. Verify
 

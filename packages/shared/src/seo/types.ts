@@ -19,13 +19,21 @@ export const SEO_ENTITY_TYPES = [
 
 export type SeoEntityType = (typeof SEO_ENTITY_TYPES)[number];
 
-/** The five editable columns of one `SeoMeta` row. */
+/** The five editable columns of one `SeoMeta` row, plus its extra links. */
 export interface SeoFields {
   title: string | null;
   description: string | null;
   canonicalUrl: string | null;
   socialImageUrl: string | null;
   jsonLd: string | null;
+  links: SeoLink[];
+}
+
+/** One extra `<link>` on a product or kit page. `sameAs` keeps its wire spelling. */
+export interface SeoLink {
+  rel: "alternate" | "sameAs" | "related";
+  href: string;
+  hreflang: string | null;
 }
 
 export interface SeoMetaRow extends SeoFields {

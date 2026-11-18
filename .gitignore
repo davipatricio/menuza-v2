@@ -31,6 +31,12 @@ dist/
 # shadcn registry cache
 apps/web/.shadcn-cache/
 
+# Expo local state and generated native projects
+apps/mobile-*/.expo/
+apps/mobile-*/android/
+apps/mobile-*/ios/
+apps/mobile-*/uniwind-types.d.ts
+
 # IDE
 .vscode/
 .idea/
@@ -42,6 +48,12 @@ Thumbs.db
 
 # Local infra data (Compose volumes are outside repo, but ignore host volume mounts if used)
 .podman-data/
+
+# Claude Code local state
+.claude/settings.local.json
+
+# Plan boards, shared by Claude Code and OpenCode
+.agents/plans/
 
 # Rust build artifacts
 /target

@@ -45,12 +45,19 @@ export const health = commerceContract
  * The resolved SEO of one page. The same five fields the panel edits: an
  * entity's own override, the store's row and the store templates behind it.
  */
+export const publicSeoLinkOutput = v.object({
+  rel: v.string(),
+  href: v.string(),
+  hreflang: v.nullable(v.string()),
+});
+
 export const publicSeoOutput = v.object({
   title: v.string(),
   description: v.nullable(v.string()),
   socialImageUrl: v.nullable(v.string()),
   canonicalUrl: v.nullable(v.string()),
   jsonLd: v.nullable(v.string()),
+  links: v.array(publicSeoLinkOutput),
 });
 
 export const publicStoreOutput = v.object({

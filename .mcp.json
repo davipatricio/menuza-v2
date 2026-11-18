@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "context-mode": {
+      "command": "context-mode"
+    },
+    "projectmem": {
+      "command": "${HOME}/.local/bin/pjm-mcp"
+    }
+  }
+}

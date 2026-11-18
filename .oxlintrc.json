@@ -87,7 +87,9 @@
     "**/*.min.*",
     "apps/web/.shadcn-cache/**",
     "apps/web/src/routeTree.gen.ts",
-    "apps/web/src/lib/api/**",
+    "packages/api-client/src/commerce.ts",
+    "packages/api-client/src/tenant.ts",
+    "packages/api-client/src/model/**",
     ".bun/**",
     "**/.bun/**",
     ".agent/**",
@@ -101,6 +103,7 @@
     ".pi/**",
     ".roo/**",
     ".windsurf/**",
+    "plugins/**",
     "tools/oxlint/anti-slop/**"
   ],
   "jsPlugins": [
@@ -156,18 +159,7 @@
       "files": [
         "apps/web/src/components/ui/**",
         "apps/web/src/components/assistant-ui/**",
-        "apps/web/src/lib/address-format.ts",
-        "apps/web/src/lib/filter-params.ts",
-        "apps/web/src/lib/tracking-events.ts",
-        "apps/web/src/hooks/use-mobile.ts",
-        "apps/web/src/hooks/use-copy-to-clipboard.ts",
-        "apps/web/src/hooks/use-attachment-src.ts",
-        "apps/web/src/components/ui/**",
-        "apps/web/src/components/assistant-ui/**",
         "apps/web/src/components/nutrition/**",
-        "apps/web/src/lib/address-format.ts",
-        "apps/web/src/lib/filter-params.ts",
-        "apps/web/src/lib/tracking-events.ts",
         "apps/web/src/hooks/use-mobile.ts",
         "apps/web/src/hooks/use-copy-to-clipboard.ts",
         "apps/web/src/hooks/use-attachment-src.ts"
@@ -188,18 +180,9 @@
       // vendored tree. Behaviour is covered by `bun check`; the accessibility
       // and correctness rules above stay on.
       "files": [
-        "apps/web/src/components/assistant-ui/**",
-        "apps/web/src/lib/address-format.ts",
-        "apps/web/src/lib/filter-params.ts",
-        "apps/web/src/lib/tracking-events.ts",
-        "apps/web/src/hooks/use-copy-to-clipboard.ts",
-        "apps/web/src/hooks/use-attachment-src.ts",
         "apps/web/src/components/ui/**",
         "apps/web/src/components/assistant-ui/**",
         "apps/web/src/components/nutrition/**",
-        "apps/web/src/lib/address-format.ts",
-        "apps/web/src/lib/filter-params.ts",
-        "apps/web/src/lib/tracking-events.ts",
         "apps/web/src/hooks/use-mobile.ts",
         "apps/web/src/hooks/use-copy-to-clipboard.ts",
         "apps/web/src/hooks/use-attachment-src.ts"

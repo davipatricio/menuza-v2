@@ -50,7 +50,7 @@ pub async fn get_product(
         return Err(ApiError(ErrorCode::ValidationFailed));
     }
 
-    let Some(tenant) = tenant_of(&scope)? else {
+    let Some(tenant) = tenant_of(&state, &scope).await? else {
         return Ok(Json(ProductResponse { product: None }));
     };
 

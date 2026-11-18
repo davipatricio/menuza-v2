@@ -13,7 +13,10 @@ import {
 
 export const CACHE_PREFIX = "menuza";
 
-export const CACHE_VERSION = process.env.NEXT_PUBLIC_BUILD_REVISION ?? "v1";
+const rawBuildRevision = import.meta.env?.VITE_BUILD_REVISION;
+
+export const CACHE_VERSION =
+  rawBuildRevision && rawBuildRevision.length > 0 ? rawBuildRevision : "v1";
 
 export const CACHE_NAMES = {
   static: `${CACHE_PREFIX}-static-${CACHE_VERSION}`,

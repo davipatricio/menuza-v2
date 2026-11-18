@@ -9,6 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty.tsx";
+import { TableLoading } from "@/features/catalog/components/table-loading.tsx";
 import { OrdersBoard } from "@/features/orders/components/orders-board.tsx";
 import { listOrdersFn } from "@/features/orders/server/orders.functions.ts";
 import { pageTitle } from "@/lib/seo/title.ts";
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/dashboard/$storeSlug/orders/")({
 
     return { orders: payload.orders, financialStatus, paymentMethod };
   },
+  pendingComponent: () => <TableLoading label="Carregando pedidos" />,
   head: () => ({ meta: [{ title: pageTitle("Pedidos") }] }),
   component: OrdersPage,
 });

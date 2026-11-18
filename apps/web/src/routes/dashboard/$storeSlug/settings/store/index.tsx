@@ -2,20 +2,25 @@ import { createFileRoute, getRouteApi, notFound, redirect } from "@tanstack/reac
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { SeoSettingsForm } from "@/features/settings/components/seo-settings-form.tsx";
 import { SettingsSection } from "@/features/settings/components/settings-section.tsx";
-import { loadStoreSeoFn } from "@/features/settings/server/settings.functions.ts";
+import { ThemeSettingsForm } from "@/features/settings/components/theme-settings-form.tsx";
+import { loadStoreSeoFn, loadStoreThemeFn } from "@/features/settings/server/settings.functions.ts";
 import { pageTitle } from "@/lib/seo/title.ts";
 
 const settingsRoute = getRouteApi("/dashboard/$storeSlug/settings");
 
 export const Route = createFileRoute("/dashboard/$storeSlug/settings/store/")({
   loader: async ({ params }) => {
-    const result = await loadStoreSeoFn({ data: { storeSlug: params.storeSlug } });
+    const [seo, theme] = await Promise.all([
+      loadStoreSeoFn({ data: { storeSlug: params.storeSlug } }),
+      loadStoreThemeFn({ data: { storeSlug: params.storeSlug } }),
+    ]);
 
-    if (result.status === "unauthenticated") throw redirect({ href: "/dashboard/login" });
+    if (seo.status === "unauthenticated" || theme.status === "unauthenticated")
+      throw redirect({ href: "/dashboard/login" });
 
-    if (result.status === "not-found") throw notFound();
+    if (seo.status === "not-found" || theme.status === "not-found") throw notFound();
 
-    return { seo: result.seo };
+    return { seo: seo.seo, coverage: seo.coverage, theme: theme.theme };
   },
   head: () => ({ meta: [{ title: pageTitle("Dados da loja") }] }),
   component: StoreSettingsPage,
@@ -23,7 +28,7 @@ export const Route = createFileRoute("/dashboard/$storeSlug/settings/store/")({
 
 function StoreSettingsPage() {
   const { store } = settingsRoute.useLoaderData();
-  const { seo } = Route.useLoaderData();
+  const { seo, coverage, theme } = Route.useLoaderData();
 
   return (
     <SettingsSection
@@ -45,7 +50,14 @@ function StoreSettingsPage() {
         </CardContent>
       </Card>
 
-      <SeoSettingsForm storeSlug={store.slug} storeName={store.displayName} initialData={seo} />
+      <ThemeSettingsForm storeSlug={store.slug} initialData={theme} />
+
+      <SeoSettingsForm
+        storeSlug={store.slug}
+        storeName={store.displayName}
+        initialData={seo}
+        coverage={coverage}
+      />
     </SettingsSection>
   );
 }

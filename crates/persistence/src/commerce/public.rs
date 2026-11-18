@@ -13,11 +13,13 @@ use contract::commerce::public::{
     ChangeFrequency, NutritionBasis, NutritionLabelFormat, NutritionSource, PublicBadge,
     PublicCategory, PublicDepartment, PublicKit, PublicKitBand, PublicKitGroup, PublicKitItem,
     PublicKitSwap, PublicMenu, PublicNutrition, PublicProduct, PublicProductDetail, PublicSeo,
-    PublicSitemap, PublicSitemapEntry, PublicStore, PublicSubcategory, PublicVariation,
+    PublicSeoLink, PublicSitemap, PublicSitemapEntry, PublicStore, PublicSubcategory, PublicTheme,
+    PublicVariation,
 };
 use domain::seo::{
     ResolvedSeo, SeoContext, SeoEntityType, SeoInput, SeoMetaRow, StoreSeoDefaults, resolve_seo,
 };
+use domain::theme;
 
 use crate::tenant::TenantId;
 
@@ -37,17 +39,48 @@ fn empty_seo() -> PublicSeo {
         social_image_url: None,
         canonical_url: None,
         json_ld: None,
+        links: Vec::new(),
     }
 }
 
-fn to_public_seo(resolved: ResolvedSeo) -> PublicSeo {
+fn to_public_seo(resolved: ResolvedSeo, links: Vec<PublicSeoLink>) -> PublicSeo {
     PublicSeo {
         title: resolved.title,
         description: resolved.description,
         social_image_url: resolved.social_image_url,
         canonical_url: resolved.canonical_url,
         json_ld: resolved.json_ld,
+        links,
     }
+}
+
+/// The extra `<link>` rows of one entity, in their saved order.
+async fn seo_links(
+    pool: &sqlx::PgPool,
+    tenant: &TenantId,
+    entity_type: SeoEntityType,
+    entity_id: &str,
+) -> Result<Vec<PublicSeoLink>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
+        r#"SELECT rel, href, hreflang
+           FROM "SeoLink"
+           WHERE "tenantId" = $1 AND "entityType" = $2 AND "entityId" = $3
+           ORDER BY "sortOrder", id"#,
+    )
+    .bind(tenant.as_str())
+    .bind(seo_entity_type(entity_type))
+    .bind(entity_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(rel, href, hreflang)| PublicSeoLink {
+            rel,
+            href,
+            hreflang,
+        })
+        .collect())
 }
 
 /// The `SeoMeta` slug the column stores.
@@ -236,26 +269,136 @@ fn nutrition_source(value: &str) -> NutritionSource {
 /// The storefront's identity plus its resolved SEO. A tenant id with no row
 /// answers the empty shape, never an error.
 pub async fn store(pool: &sqlx::PgPool, tenant: &TenantId) -> Result<PublicStore, sqlx::Error> {
-    let tenant_row = sqlx::query!(
-        r#"
-        SELECT id, slug, "displayName" AS display_name
-        FROM public."Tenant"
-        WHERE id = $1
-        "#,
-        tenant.as_str(),
+    let Some(tenant_row) = tenant_row_by_id(pool, tenant).await? else {
+        return Ok(empty_store());
+    };
+
+    store_from_row(pool, tenant, tenant_row).await
+}
+
+/// The same store, resolved from the public slug instead of a claimed tenant.
+///
+/// The slug arrives before any tenant is known — a native client has no host to
+/// resolve — so this is the pre-tenant lookup `store_slug_taken` already does,
+/// not a tenant-scoped read.
+///
+/// An archived tenant resolves for nothing: the store was closed when its last
+/// owner deleted their account. Answering here would let a native client keep
+/// binding a dead store and issue every later read against it.
+pub async fn store_by_slug(
+    pool: &sqlx::PgPool,
+    slug: &str,
+) -> Result<Option<PublicStore>, sqlx::Error> {
+    let tenant_row = sqlx::query_as::<_, TenantRow>(
+        r#"SELECT id, slug, "displayName" AS display_name
+           FROM public."Tenant"
+           WHERE slug = $1 AND "archivedAt" IS NULL"#,
     )
+    .bind(slug)
     .fetch_optional(pool)
     .await?;
 
     let Some(tenant_row) = tenant_row else {
-        return Ok(PublicStore {
-            tenant_id: None,
-            slug: String::new(),
-            display_name: String::new(),
-            seo: empty_seo(),
-        });
+        return Ok(None);
     };
 
+    let Ok(tenant) = TenantId::parse(&tenant_row.id) else {
+        return Ok(None);
+    };
+
+    store_from_row(pool, &tenant, tenant_row).await.map(Some)
+}
+
+/// The palette a store paints: its saved values or the platform defaults.
+pub async fn theme(pool: &sqlx::PgPool, tenant: &TenantId) -> Result<PublicTheme, sqlx::Error> {
+    let row = sqlx::query_as::<_, ThemeRow>(
+        r#"SELECT "primaryColor" AS primary_color,
+                  "accentColor" AS accent_color,
+                  "backgroundColor" AS background_color,
+                  radius
+           FROM "StoreSettings"
+           WHERE "tenantId" = $1"#,
+    )
+    .bind(tenant.as_str())
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(resolve_theme(row))
+}
+
+#[derive(sqlx::FromRow)]
+struct TenantRow {
+    id: String,
+    slug: String,
+    display_name: String,
+}
+
+#[derive(sqlx::FromRow)]
+struct ThemeRow {
+    primary_color: Option<String>,
+    accent_color: Option<String>,
+    background_color: Option<String>,
+    radius: Option<i32>,
+}
+
+fn empty_store() -> PublicStore {
+    PublicStore {
+        tenant_id: None,
+        slug: String::new(),
+        display_name: String::new(),
+        seo: empty_seo(),
+        theme: resolve_theme(None),
+    }
+}
+
+/// A saved color or the default, plus the ink that contrast picks for it.
+fn resolve_theme(row: Option<ThemeRow>) -> PublicTheme {
+    let (primary, accent, background, radius) = match row {
+        Some(row) => (
+            row.primary_color,
+            row.accent_color,
+            row.background_color,
+            row.radius,
+        ),
+        None => (None, None, None, None),
+    };
+
+    let resolved = theme::resolve(
+        primary.as_deref(),
+        accent.as_deref(),
+        background.as_deref(),
+        radius,
+    );
+
+    PublicTheme {
+        primary_color: resolved.primary_color,
+        primary_foreground: resolved.primary_foreground,
+        accent_color: resolved.accent_color,
+        background_color: resolved.background_color,
+        foreground_color: resolved.foreground_color,
+        radius: resolved.radius,
+    }
+}
+
+async fn tenant_row_by_id(
+    pool: &sqlx::PgPool,
+    tenant: &TenantId,
+) -> Result<Option<TenantRow>, sqlx::Error> {
+    sqlx::query_as::<_, TenantRow>(
+        r#"SELECT id, slug, "displayName" AS display_name
+           FROM public."Tenant"
+           WHERE id = $1 AND "archivedAt" IS NULL"#,
+    )
+    .bind(tenant.as_str())
+    .fetch_optional(pool)
+    .await
+}
+
+async fn store_from_row(
+    pool: &sqlx::PgPool,
+    tenant: &TenantId,
+    tenant_row: TenantRow,
+) -> Result<PublicStore, sqlx::Error> {
     // The store's own row is the entity; there is no store row behind it.
     let seo = resolve_seo(&SeoInput {
         entity: seo_meta(pool, tenant, SeoEntityType::Store, &tenant_row.id).await?,
@@ -274,7 +417,8 @@ pub async fn store(pool: &sqlx::PgPool, tenant: &TenantId) -> Result<PublicStore
         tenant_id: Some(tenant_row.id),
         slug: tenant_row.slug,
         display_name: tenant_row.display_name,
-        seo: to_public_seo(seo),
+        seo: to_public_seo(seo, Vec::new()),
+        theme: theme(pool, tenant).await?,
     })
 }
 
@@ -687,6 +831,8 @@ pub async fn product(
         fallback_description: row.description.clone(),
     });
 
+    let links = seo_links(pool, tenant, SeoEntityType::Product, &row.id).await?;
+
     Ok(Some(PublicProductDetail {
         product,
         nutrition: nutrition.map(|row| PublicNutrition {
@@ -712,7 +858,7 @@ pub async fn product(
             show_high_sodium: row.show_high_sodium,
             updated_at: to_iso(row.updated_at),
         }),
-        seo: to_public_seo(seo),
+        seo: to_public_seo(seo, links),
     }))
 }
 
@@ -852,7 +998,6 @@ struct KitRow {
     description: Option<String>,
     image_url: String,
     kind: String,
-    pricing_mode: String,
     base_cents: i32,
     percent_off: Option<i32>,
     min_items: Option<i32>,
@@ -885,6 +1030,7 @@ struct KitItemRow {
     max_qty: Option<i32>,
     step: i32,
     allow_swap: bool,
+    charge_extra: bool,
     stock_mode: String,
     stock_qty: Option<i32>,
 }
@@ -933,7 +1079,7 @@ async fn load_kits(
     let kits = sqlx::query_as::<_, KitRow>(
         r#"
         SELECT id, slug, name, description, "imageUrl" AS image_url, kind,
-               "pricingMode" AS pricing_mode, "baseCents" AS base_cents,
+               "baseCents" AS base_cents,
                "percentOff" AS percent_off, "minItems" AS min_items,
                "maxItems" AS max_items,
                "maxKitsPerOrder" AS max_kits_per_order,
@@ -978,7 +1124,7 @@ async fn load_kits(
                v.name AS variation_name, v."priceCents" AS price_cents,
                i."groupId" AS group_id, i.quantity,
                i."minQty" AS min_qty, i."maxQty" AS max_qty, i.step,
-               i."allowSwap" AS allow_swap,
+               i."allowSwap" AS allow_swap, i."chargeExtra" AS charge_extra,
                v."stockMode" AS stock_mode, v."stockQty" AS stock_qty
         FROM public."KitItem" i
         JOIN public."Product" p
@@ -1032,6 +1178,80 @@ async fn load_kits(
 
     let mut out = Vec::with_capacity(kits.len());
 
+    // The store-level inputs are the same for every kit in the response; only
+    // the entity row and its links vary, so both are fetched in one statement.
+    let store_name = sqlx::query_scalar::<_, String>(
+        r#"SELECT "displayName" FROM public."Tenant" WHERE id = $1"#,
+    )
+    .bind(tenant.as_str())
+    .fetch_optional(pool)
+    .await?
+    .unwrap_or_default();
+
+    let settings = store_seo_defaults(pool, tenant).await?;
+    let store_row = seo_meta(pool, tenant, SeoEntityType::Store, tenant.as_str()).await?;
+
+    let seo_rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
+        r#"SELECT "entityId", title, description, "canonicalUrl", "socialImageUrl", "jsonLd"
+           FROM public."SeoMeta"
+           WHERE "tenantId" = $1 AND "entityType" = 'kit' AND "entityId" = ANY($2)"#,
+    )
+    .bind(tenant.as_str())
+    .bind(&kit_ids as &[&str])
+    .fetch_all(pool)
+    .await?;
+
+    let kit_seo: HashMap<String, SeoMetaRow> = seo_rows
+        .into_iter()
+        .map(
+            |(entity_id, title, description, canonical_url, social_image_url, json_ld)| {
+                (
+                    entity_id.clone(),
+                    SeoMetaRow {
+                        entity_type: SeoEntityType::Kit,
+                        entity_id,
+                        title,
+                        description,
+                        canonical_url,
+                        social_image_url,
+                        json_ld,
+                    },
+                )
+            },
+        )
+        .collect();
+
+    let link_rows = sqlx::query_as::<_, (String, String, String, Option<String>)>(
+        r#"SELECT "entityId", rel, href, hreflang
+           FROM public."SeoLink"
+           WHERE "tenantId" = $1 AND "entityType" = 'kit' AND "entityId" = ANY($2)
+           ORDER BY "sortOrder", id"#,
+    )
+    .bind(tenant.as_str())
+    .bind(&kit_ids as &[&str])
+    .fetch_all(pool)
+    .await?;
+
+    let mut kit_links: HashMap<String, Vec<PublicSeoLink>> = HashMap::new();
+
+    for (entity_id, rel, href, hreflang) in link_rows {
+        kit_links.entry(entity_id).or_default().push(PublicSeoLink {
+            rel,
+            href,
+            hreflang,
+        });
+    }
+
     for row in kits {
         let kit_groups: Vec<PublicKitGroup> = groups
             .iter()
@@ -1079,6 +1299,7 @@ async fn load_kits(
                     max_qty: item.max_qty,
                     step: item.step,
                     allow_swap: item.allow_swap,
+                    charge_extra: item.charge_extra,
                     swap_variations: swaps
                         .iter()
                         .filter(|swap| swap.kit_item_id == item.id)
@@ -1102,6 +1323,19 @@ async fn load_kits(
             continue;
         }
 
+        let seo = resolve_seo(&SeoInput {
+            entity: kit_seo.get(&row.id).cloned(),
+            store_row: store_row.clone(),
+            settings: settings.clone(),
+            context: SeoContext {
+                store_name: store_name.clone(),
+                entity_name: row.name.clone(),
+                city: None,
+            },
+            fallback_title: row.name.clone(),
+            fallback_description: row.description.clone(),
+        });
+
         out.push(PublicKit {
             id: row.id.clone(),
             slug: row.slug,
@@ -1109,7 +1343,6 @@ async fn load_kits(
             description: row.description,
             image_url: row.image_url,
             kind: row.kind,
-            pricing_mode: row.pricing_mode,
             base_cents: row.base_cents,
             percent_off: row.percent_off,
             min_items: row.min_items,
@@ -1126,6 +1359,7 @@ async fn load_kits(
                     percent: band.percent,
                 })
                 .collect(),
+            seo: to_public_seo(seo, kit_links.remove(&row.id).unwrap_or_default()),
         });
     }
 

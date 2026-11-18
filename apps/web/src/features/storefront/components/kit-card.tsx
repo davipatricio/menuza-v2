@@ -9,15 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
-import type { PublicKit } from "@/lib/api/model";
+import type { PublicKit } from "@menuza/api-client/model";
+import { kitUnitCents } from "@/features/catalog/lib/kit-price.ts";
 import { formatBrl } from "@/lib/format.ts";
 
 /** The kit card: image, floor price and how many dishes it carries. */
 export function KitCard({ kit }: { kit: PublicKit }) {
-  const price =
-    kit.pricingMode === "sum"
-      ? `a partir de ${formatBrl(kit.baseCents)}`
-      : formatBrl(kit.baseCents);
+  const hasExtra = kit.items.some((item) => item.chargeExtra);
+  const { totalCents } = kitUnitCents({ baseCents: kit.baseCents, percentOff: kit.percentOff });
+  const price = hasExtra ? `a partir de ${formatBrl(totalCents)}` : formatBrl(totalCents);
 
   return (
     <Card

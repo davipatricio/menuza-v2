@@ -6,6 +6,18 @@ import { OfflineListener } from "@/components/offline-listener.tsx";
 import { ThemeProvider } from "@/components/theme-provider.tsx";
 import { QueryProvider } from "@/features/shell/components/query-provider.tsx";
 
+/**
+ * Cancels native form submission from the moment the document parses.
+ *
+ * React attaches `onSubmit` only at hydration, but the server HTML's forms are
+ * already interactive: a submit before then follows the native path, navigating
+ * the browser to a POST of the page URL and discarding everything the user typed
+ * — login credentials included. Every form in this app is driven by JavaScript,
+ * so the native path is always a bug; React handlers are unaffected.
+ */
+const NATIVE_SUBMIT_GUARD =
+  "document.addEventListener('submit', function (event) { event.preventDefault(); }, true)";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -31,6 +43,7 @@ function RootComponent() {
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: NATIVE_SUBMIT_GUARD }} />
       </head>
       <body className="bg-background font-sans text-foreground antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

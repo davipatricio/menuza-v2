@@ -66,7 +66,7 @@ export const Route = createFileRoute("/_storefront/menu/$productId")({
         }),
       );
 
-    return { product, json };
+    return { product, json, url };
   },
   head: ({ loaderData }) => {
     const product = loaderData?.product;
@@ -74,6 +74,13 @@ export const Route = createFileRoute("/_storefront/menu/$productId")({
     if (!product) return { meta: [{ title: "Item · Menuza" }] };
 
     const price = `A partir de ${formatBrl(product.fromPriceCents)}.`;
+    const canonical = product.seo.canonicalUrl ?? loaderData.url;
+
+    const extraLinks = product.seo.links.map((link) => ({
+      rel: link.rel,
+      href: link.href,
+      hrefLang: link.hreflang ?? undefined,
+    }));
 
     return {
       meta: [
@@ -86,6 +93,7 @@ export const Route = createFileRoute("/_storefront/menu/$productId")({
         },
         ...(product.archived ? [{ name: "robots", content: "noindex, nofollow" }] : []),
       ],
+      links: [{ rel: "canonical", href: canonical }, ...extraLinks],
     };
   },
   component: ProductDetailPage,

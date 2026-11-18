@@ -20,7 +20,7 @@ import type {
   PublicProductDetail,
   PublicSitemap,
   PublicStore,
-} from "@/lib/api/model";
+} from "@menuza/api-client/model";
 
 interface HealthOk {
   status: "ok";

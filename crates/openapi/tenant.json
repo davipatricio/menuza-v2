@@ -347,9 +347,6 @@
             "format": "int32",
             "type": ["integer", "null"]
           },
-          "pricingMode": {
-            "$ref": "#/components/schemas/KitPricingMode"
-          },
           "slug": {
             "type": "string"
           },
@@ -366,7 +363,6 @@
           "slug",
           "imageUrl",
           "kind",
-          "pricingMode",
           "baseCents",
           "unavailableBehavior",
           "available",
@@ -465,6 +461,37 @@
           }
         },
         "required": ["member", "memberships", "onboarding"],
+        "type": "object"
+      },
+      "DeleteAccountInput": {
+        "additionalProperties": false,
+        "description": "The confirmation `DELETE /account` requires.\n\nDeleting an account is not undoable, so the body must repeat the member's\nown e-mail address. A stolen session can therefore not erase the account by\nsending an empty body: the attacker has to know the credential it is abusing.",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": ["email"],
+        "type": "object"
+      },
+      "DeleteAccountOutput": {
+        "description": "What a deletion actually did, so the client can say it honestly.\n\n`stores_archived` counts stores the member solely owned: those are emptied\nand archived, never deleted, because their orders are another store's\ntransaction history and a buyer's receipt.",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "membershipsRemoved": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "storesArchived": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": ["deleted", "storesArchived", "membershipsRemoved"],
         "type": "object"
       },
       "DiscountType": {
@@ -596,6 +623,9 @@
           "allowSwap": {
             "type": "boolean"
           },
+          "chargeExtra": {
+            "type": "boolean"
+          },
           "groupId": {
             "type": ["string", "null"]
           },
@@ -643,13 +673,8 @@
         "enum": ["fixed", "custom_quantities", "fixed_total"],
         "type": "string"
       },
-      "KitPricingMode": {
-        "description": "How the kit price is computed before the percentage and the bands.",
-        "enum": ["fixed", "sum"],
-        "type": "string"
-      },
       "KitUnavailableBehavior": {
-        "description": "What the storefront does once the minimums can no longer be composed.",
+        "description": "How the kit price is computed before the percentage and the bands.\nWhat the storefront does once the minimums can no longer be composed.",
         "enum": ["hide", "block"],
         "type": "string"
       },
@@ -1576,9 +1601,6 @@
             "format": "int32",
             "type": ["integer", "null"]
           },
-          "pricingMode": {
-            "$ref": "#/components/schemas/KitPricingMode"
-          },
           "slug": {
             "type": "string"
           },
@@ -1591,7 +1613,6 @@
           "name",
           "slug",
           "kind",
-          "pricingMode",
           "baseCents",
           "available",
           "archived",
@@ -1683,9 +1704,6 @@
             "format": "int32",
             "type": ["integer", "null"]
           },
-          "pricingMode": {
-            "$ref": "#/components/schemas/KitPricingMode"
-          },
           "slug": {
             "type": "string"
           },
@@ -1706,7 +1724,6 @@
           "slug",
           "imageUrl",
           "kind",
-          "pricingMode",
           "baseCents",
           "unavailableBehavior",
           "couponStackable",
@@ -1750,6 +1767,9 @@
         "properties": {
           "allowSwap": {
             "description": "When true the buyer may pick another variation from `swapVariationIds`.",
+            "type": "boolean"
+          },
+          "chargeExtra": {
             "type": "boolean"
           },
           "groupId": {
@@ -3130,6 +3150,39 @@
         "required": ["members"],
         "type": "object"
       },
+      "PanelTheme": {
+        "description": "The store's palette as the settings screen and the public storefront read\nit. `primaryForeground` is derived from `primaryColor`, never saved.",
+        "properties": {
+          "accentColor": {
+            "type": "string"
+          },
+          "backgroundColor": {
+            "type": "string"
+          },
+          "foregroundColor": {
+            "type": "string"
+          },
+          "primaryColor": {
+            "type": "string"
+          },
+          "primaryForeground": {
+            "type": "string"
+          },
+          "radius": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "primaryColor",
+          "primaryForeground",
+          "accentColor",
+          "backgroundColor",
+          "foregroundColor",
+          "radius"
+        ],
+        "type": "object"
+      },
       "PaymentIntegrationStatus": {
         "description": "`active` or `disabled`, the two states the column accepts.",
         "enum": ["active", "disabled"],
@@ -3521,6 +3574,13 @@
           "jsonLd": {
             "type": ["string", "null"]
           },
+          "links": {
+            "description": "Omitted keeps the stored links; an array replaces the whole list, and an\nempty array clears it. Only product and kit accept it.",
+            "items": {
+              "$ref": "#/components/schemas/SeoLink"
+            },
+            "type": ["array", "null"]
+          },
           "socialImageUrl": {
             "type": ["string", "null"]
           },
@@ -3543,6 +3603,27 @@
             "type": ["string", "null"]
           }
         },
+        "type": "object"
+      },
+      "SaveThemeInput": {
+        "additionalProperties": false,
+        "description": "`v.strictObject({ primaryColor, accentColor, backgroundColor, radius })`.",
+        "properties": {
+          "accentColor": {
+            "type": "string"
+          },
+          "backgroundColor": {
+            "type": "string"
+          },
+          "primaryColor": {
+            "type": "string"
+          },
+          "radius": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": ["primaryColor", "accentColor", "backgroundColor", "radius"],
         "type": "object"
       },
       "SeoEntityItem": {
@@ -3583,7 +3664,7 @@
         "type": "string"
       },
       "SeoFields": {
-        "description": "The five editable columns of one override row.",
+        "description": "The five editable columns of one override row, plus its extra links.",
         "properties": {
           "canonicalUrl": {
             "type": ["string", "null"]
@@ -3594,6 +3675,13 @@
           "jsonLd": {
             "type": ["string", "null"]
           },
+          "links": {
+            "description": "Only product and kit rows carry links; every other entity reads empty.",
+            "items": {
+              "$ref": "#/components/schemas/SeoLink"
+            },
+            "type": "array"
+          },
           "socialImageUrl": {
             "type": ["string", "null"]
           },
@@ -3601,8 +3689,29 @@
             "type": ["string", "null"]
           }
         },
-        "required": ["title", "description", "canonicalUrl", "socialImageUrl", "jsonLd"],
+        "required": ["title", "description", "canonicalUrl", "socialImageUrl", "jsonLd", "links"],
         "type": "object"
+      },
+      "SeoLink": {
+        "description": "One extra `<link>` relation: an `hreflang` alternate, a `sameAs` profile\nlink or a `related` resource. The canonical URL stays its own single field.",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "hreflang": {
+            "type": ["string", "null"]
+          },
+          "rel": {
+            "$ref": "#/components/schemas/SeoLinkRel"
+          }
+        },
+        "required": ["rel", "href", "hreflang"],
+        "type": "object"
+      },
+      "SeoLinkRel": {
+        "description": "The relation an extra `<link>` carries. `sameAs` is the camelCase wire value\nSERP tooling expects, not an invented slug.",
+        "enum": ["alternate", "sameAs", "related"],
+        "type": "string"
       },
       "SeoSourceLevel": {
         "description": "Which inheritance level won a field. `Store` covers the settings template\ntoo: it is store-level configuration.",
@@ -3827,16 +3936,6 @@
             "format": "int32",
             "type": ["integer", "null"]
           },
-          "pricingMode": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/KitPricingMode"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "slug": {
             "type": ["string", "null"]
           },
@@ -3919,6 +4018,87 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/account": {
+      "delete": {
+        "operationId": "deleteAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteAccountOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["account"]
+      }
+    },
     "/account/password": {
       "put": {
         "operationId": "changeAccountPassword",
@@ -10373,6 +10553,180 @@
           }
         },
         "summary": "The store's team, oldest membership first.",
+        "tags": ["panel"]
+      }
+    },
+    "/panel/stores/{storeSlug}/theme": {
+      "get": {
+        "operationId": "getPanelStoreTheme",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelTheme"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The store's palette, resolved against the platform defaults.",
+        "tags": ["panel"]
+      },
+      "put": {
+        "operationId": "savePanelStoreTheme",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "storeSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveThemeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PanelTheme"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replaces the store's palette. The foreground follows from the primary color,\nso it is never part of the payload.",
         "tags": ["panel"]
       }
     },

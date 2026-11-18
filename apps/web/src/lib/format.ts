@@ -5,10 +5,11 @@
  * aqui, na borda — o contrato e o banco nunca carregam float. A digitação usa
  * o mesmo arquivo no sentido inverso: o usuário digita reais (`15,50`) e o
  * formulário converte para centavos antes de chamar o contrato.
+ *
+ * `formatBrl` mora em `@menuza/shared/money` porque a vitrine nativa mostra o
+ * mesmo preço; este módulo só o reexporta para os imports existentes.
  */
-export function formatBrl(cents: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
-}
+export { formatBrl } from "@menuza/shared/money";
 
 /** Contagem inteira no formato pt-BR, com separador de milhar. */
 export function formatInteger(value: number): string {

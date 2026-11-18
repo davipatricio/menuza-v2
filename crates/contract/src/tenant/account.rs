@@ -84,3 +84,39 @@ impl RevokeSessionInput {
 pub struct RevokeSessionOutput {
     pub revoked: u64,
 }
+
+/// The confirmation `DELETE /account` requires.
+///
+/// Deleting an account is not undoable, so the body must repeat the member's
+/// own e-mail address. A stolen session can therefore not erase the account by
+/// sending an empty body: the attacker has to know the credential it is abusing.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DeleteAccountInput {
+    pub email: String,
+}
+
+impl DeleteAccountInput {
+    /// `email: nonEmpty + maxLength(320)`, compared case-insensitively by the
+    /// handler against the authenticated member.
+    pub fn validate(&self) -> Result<(), ErrorCode> {
+        if self.email.trim().is_empty() || self.email.chars().count() > 320 {
+            return Err(ErrorCode::ValidationFailed);
+        }
+
+        Ok(())
+    }
+}
+
+/// What a deletion actually did, so the client can say it honestly.
+///
+/// `stores_archived` counts stores the member solely owned: those are emptied
+/// and archived, never deleted, because their orders are another store's
+/// transaction history and a buyer's receipt.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteAccountOutput {
+    pub deleted: bool,
+    pub stores_archived: u64,
+    pub memberships_removed: u64,
+}

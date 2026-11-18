@@ -108,6 +108,7 @@ pub async fn grant_memberships(
              JOIN "Tenant" t ON t.id = m."tenantId"
             WHERE m."memberId" = $1
               AND m."tenantId" = ANY($2)
+              AND t."archivedAt" IS NULL
             ORDER BY m."createdAt", m.id"#,
     )
     .bind(member_id)

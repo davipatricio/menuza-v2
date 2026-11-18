@@ -207,6 +207,10 @@ pub struct CreateOrderInput {
     pub coupon_codes: Vec<String>,
 }
 
+/// Hard upper bound per checkout line or kit item quantity so cart arithmetic
+/// cannot overflow `i32` cents.
+pub const MAX_ORDER_QUANTITY: i32 = 999;
+
 impl CreateOrderInput {
     /// The input schema's own gates, ported from `CreateOrderInputSchema` plus
     /// the duplicate-code check `createOrder` performs before pricing. A refusal
@@ -220,23 +224,25 @@ impl CreateOrderInput {
         let invalid_line = self.lines.iter().any(|line| {
             line.name.trim().is_empty()
                 || line.unit_price_cents < 0
-                || line.quantity < 1
+                || !(1..=MAX_ORDER_QUANTITY).contains(&line.quantity)
                 || (line.product_id.is_none()
                     && line.variation_id.is_none()
                     && line.kit_id.is_none())
                 || line.kit_items.iter().any(|item| {
                     item.kit_item_id.trim().is_empty()
                         || item.variation_id.trim().is_empty()
-                        || item.quantity < 1
+                        || !(1..=MAX_ORDER_QUANTITY).contains(&item.quantity)
                 })
+                // Client-quoted catalog discounts are rejected; pricing comes from catalog rows.
                 || line
                     .catalog_discount_cents
-                    .is_some_and(|discount| discount < 0)
+                    .is_some_and(|discount| discount != 0)
         });
 
+        // ponytail: require shipping_cents == 0 until server-side freight rules land.
         if self.customer_id.trim().is_empty()
             || empty_code
-            || self.shipping_cents < 0
+            || self.shipping_cents != 0
             || self.wallet_requested_cents < 0
             || self.lines.is_empty()
             || self.coupon_codes.iter().any(|code| code.trim().is_empty())
@@ -301,4 +307,77 @@ pub type RecordPaymentInput = OrderCodeInput;
 pub struct RecordPaymentOutput {
     pub financial_status: String,
     pub cashback_cents: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CreateOrderInput, MAX_ORDER_QUANTITY};
+    use crate::ErrorCode;
+
+    fn parse(json: serde_json::Value) -> CreateOrderInput {
+        serde_json::from_value(json).expect("valid CreateOrderInput JSON")
+    }
+
+    #[test]
+    fn create_order_input_rejects_client_shipping_and_discounts_and_huge_quantities() {
+        let valid = parse(serde_json::json!({
+            "customerId": "cust-1",
+            "shippingCents": 0,
+            "walletRequestedCents": 0,
+            "lines": [{
+                "productId": "prod-1",
+                "name": "Marmita",
+                "unitPriceCents": 2500,
+                "quantity": 2
+            }],
+            "couponCodes": []
+        }));
+        assert_eq!(valid.validate(), Ok(()));
+
+        let non_zero_shipping = parse(serde_json::json!({
+            "customerId": "cust-1",
+            "shippingCents": 500,
+            "walletRequestedCents": 0,
+            "lines": [{
+                "productId": "prod-1",
+                "name": "Marmita",
+                "unitPriceCents": 2500,
+                "quantity": 1
+            }],
+            "couponCodes": []
+        }));
+        assert_eq!(
+            non_zero_shipping.validate(),
+            Err(ErrorCode::ValidationFailed)
+        );
+
+        let client_discount = parse(serde_json::json!({
+            "customerId": "cust-1",
+            "shippingCents": 0,
+            "walletRequestedCents": 0,
+            "lines": [{
+                "productId": "prod-1",
+                "name": "Marmita",
+                "unitPriceCents": 2500,
+                "quantity": 1,
+                "catalogDiscountCents": 500
+            }],
+            "couponCodes": []
+        }));
+        assert_eq!(client_discount.validate(), Err(ErrorCode::ValidationFailed));
+
+        let huge_qty = parse(serde_json::json!({
+            "customerId": "cust-1",
+            "shippingCents": 0,
+            "walletRequestedCents": 0,
+            "lines": [{
+                "productId": "prod-1",
+                "name": "Marmita",
+                "unitPriceCents": 2500,
+                "quantity": MAX_ORDER_QUANTITY + 1
+            }],
+            "couponCodes": []
+        }));
+        assert_eq!(huge_qty.validate(), Err(ErrorCode::ValidationFailed));
+    }
 }

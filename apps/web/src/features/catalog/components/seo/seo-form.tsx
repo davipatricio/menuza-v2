@@ -40,6 +40,8 @@ import { useDirtySection } from "@/features/catalog/components/product-editor-gu
 import { JsonLdField } from "./json-ld/json-ld-field.tsx";
 import type { JsonLdPreviewContext } from "./json-ld/json-ld-preview.tsx";
 import { SeoPreviewCard } from "./seo-preview-card.tsx";
+import { SeoLinksField } from "./seo-links-field.tsx";
+import { seoWarnings } from "./seo-warnings.ts";
 import { revertSeoFn, saveSeoFn, type SeoMutationFailure } from "../../server/seo.functions.ts";
 
 const GENERIC_SAVE_ERROR = "Não foi possível salvar o SEO. Tente novamente.";
@@ -53,7 +55,12 @@ const GENERIC_REVERT_ERROR = "Não foi possível reverter o SEO. Tente novamente
  */
 const seoSchema: any = SaveSeoInputSchema;
 
+/** Only pages with their own URL carry the extra links. */
+const LINK_ENTITY_TYPES: SeoEntityType[] = ["product", "kit"];
+
 const SEO_FIELDS = ["title", "description", "canonicalUrl", "socialImageUrl", "jsonLd"] as const;
+
+type SeoScalarField = (typeof SEO_FIELDS)[number];
 
 /** The five editable fields plus the addressing the form carries along. */
 type SeoFormValues = SeoFields & {
@@ -71,6 +78,10 @@ function seoPatch(baseline: SeoFields, values: SeoFields): Partial<SeoFields> {
 
   for (const field of SEO_FIELDS) {
     if (values[field] !== baseline[field]) patch[field] = values[field];
+  }
+
+  if (JSON.stringify(values.links) !== JSON.stringify(baseline.links)) {
+    patch.links = values.links;
   }
 
   return patch;
@@ -136,6 +147,8 @@ export function SeoForm({
 
   const { saved: loaded, resolved } = data;
 
+  const supportsLinks = LINK_ENTITY_TYPES.includes(entityType);
+
   const saveMutation = useMutation({
     mutationFn: async (values: SeoFormValues) => {
       const patch = seoPatch(loaded, values);
@@ -198,6 +211,7 @@ export function SeoForm({
         canonicalUrl: null,
         socialImageUrl: null,
         jsonLd: null,
+        links: [],
       });
       setServerError(null);
       setStatus(null);
@@ -215,6 +229,7 @@ export function SeoForm({
       canonicalUrl: loaded.canonicalUrl,
       socialImageUrl: loaded.socialImageUrl,
       jsonLd: loaded.jsonLd,
+      links: loaded.links,
     },
     validators: {
       onSubmit: seoSchema,
@@ -242,7 +257,7 @@ export function SeoForm({
 
   /** O modelo do produto: o bloco que a página publica quando não há override. */
   const suggestedJson = useMemo(() => {
-    if (entityType !== "product" || !previewContext) return null;
+    if ((entityType !== "product" && entityType !== "kit") || !previewContext) return null;
 
     return JSON.stringify(
       buildProductJsonLd({
@@ -276,7 +291,7 @@ export function SeoForm({
       <FieldError id={`${domId(name)}-error`} errors={fieldErrors(field.state.meta.errors)} />
     ) : null;
 
-  const revertButton = (name: keyof SeoFields) => (
+  const revertButton = (name: SeoScalarField) => (
     <Button
       type="button"
       variant="ghost"
@@ -295,7 +310,7 @@ export function SeoForm({
   );
 
   /** "Herdado da loja" / "Padrão" only while the field has no override of its own. */
-  const sourceNote = (name: keyof SeoFields, source: SeoSource) =>
+  const sourceNote = (name: SeoScalarField, source: SeoSource) =>
     loaded[name] === null ? SOURCE_LABELS[source] : "Definido aqui";
 
   /**
@@ -304,7 +319,7 @@ export function SeoForm({
    * não havia nada gravado para limpar. Sem isso, apagar o título continuaria
    * mostrando o título antigo na prévia.
    */
-  const published = (name: keyof SeoFields): string | null => {
+  const published = (name: SeoScalarField): string | null => {
     const value = formValues[name];
 
     if (value !== null && value !== "") return value;
@@ -322,6 +337,27 @@ export function SeoForm({
   const effectiveUrl = published("canonicalUrl") ?? previewContext?.url ?? `/menu/${entityId}`;
 
   const effectiveSocialImageUrl = published("socialImageUrl");
+
+  const warnings = useMemo(
+    () =>
+      seoWarnings({
+        title: formValues.title ?? null,
+        description: formValues.description ?? null,
+        canonicalUrl: formValues.canonicalUrl ?? null,
+        jsonLd: effectiveJson,
+        links: formValues.links ?? [],
+        pageUrl: previewContext?.url ?? effectiveUrl,
+      }),
+    [
+      formValues.title,
+      formValues.description,
+      formValues.canonicalUrl,
+      formValues.links,
+      effectiveJson,
+      effectiveUrl,
+      previewContext?.url,
+    ],
+  );
 
   return (
     <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
@@ -490,9 +526,36 @@ export function SeoForm({
                   </Field>
                 )}
               </form.Field>
+
+              {supportsLinks ? (
+                <form.Field name="links">
+                  {(field: any) => (
+                    <div className="flex flex-col gap-2">
+                      <SeoLinksField
+                        value={field.state.value ?? []}
+                        onChange={field.handleChange}
+                      />
+                      {error(field, "links")}
+                    </div>
+                  )}
+                </form.Field>
+              ) : null}
             </FieldGroup>
           </CardContent>
         </Card>
+
+        {warnings.length > 0 ? (
+          <Alert>
+            <AlertTitle>Avisos de SEO</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc pl-4">
+                {warnings.map((warning) => (
+                  <li key={`${warning.field}:${warning.message}`}>{warning.message}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         {serverError ? (
           <Alert variant="destructive">

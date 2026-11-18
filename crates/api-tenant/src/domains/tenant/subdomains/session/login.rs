@@ -6,13 +6,17 @@
 
 use axum::Json;
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::response::Response;
+use contract::ErrorCode;
 use contract::tenant::session::{LoginInput, LoginOutput};
 use domain::password::verify_password;
+use menuza_http::PeerAddr;
 use persistence::tenant::session::{member_by_email, session_create};
 
 use super::support::{
-    json_with_cookie, load_memberships, now, open_session, tenant_cookie, to_session_member,
+    assert_same_origin, json_with_cookie, load_memberships, now, open_session, tenant_cookie,
+    to_session_member,
 };
 use crate::domains::tenant::support::{ApiError, db_error};
 
@@ -34,8 +38,19 @@ use crate::domains::tenant::support::{ApiError, db_error};
 )]
 pub async fn login(
     State(state): State<crate::State>,
+    PeerAddr(peer): PeerAddr,
+    headers: HeaderMap,
     Json(input): Json<LoginInput>,
 ) -> Result<Response, ApiError> {
+    assert_same_origin(&headers)?;
+
+    if !state
+        .auth_limiter
+        .check_request(peer, &headers, &state.config)
+    {
+        return Err(ApiError(ErrorCode::RateLimited));
+    }
+
     input.validate().map_err(ApiError)?;
 
     let email = input.email.trim().to_lowercase();
@@ -43,9 +58,12 @@ pub async fn login(
         .await
         .map_err(db_error)?;
 
-    let password_ok = member
+    // Always run `verify_password`, even when `member` is `None`: `None` hashes
+    // against a dummy Argon2id digest so unknown e-mails take the same time.
+    let stored_hash = member
         .as_ref()
-        .is_some_and(|member| verify_password(&input.password, member.password_hash.as_deref()));
+        .and_then(|member| member.password_hash.as_deref());
+    let password_ok = verify_password(&input.password, stored_hash);
 
     let Some(member) = member.filter(|_| password_ok) else {
         return Err(ApiError::unauthorized());

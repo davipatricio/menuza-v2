@@ -18,21 +18,29 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { KitForm } from "@/features/catalog/components/kit-form.tsx";
 import { getKitFn, listKitOptionsFn } from "@/features/catalog/server/kit-editor.functions.ts";
+import { getSeoFn } from "@/features/catalog/server/seo.functions.ts";
 import { deleteKitFn } from "@/features/catalog/server/kit-mutations.functions.ts";
 import { pageTitle } from "@/lib/seo/title.ts";
 
 export const Route = createFileRoute("/dashboard/$storeSlug/catalog/kits/$kitId")({
   loader: async ({ params }) => {
-    const [payload, options] = await Promise.all([
+    const [payload, options, seo] = await Promise.all([
       getKitFn({ data: { storeSlug: params.storeSlug, kitId: params.kitId } }),
       listKitOptionsFn({ data: { storeSlug: params.storeSlug } }),
+      getSeoFn({
+        data: { storeSlug: params.storeSlug, entityType: "kit", entityId: params.kitId },
+      }),
     ]);
 
     if (!payload || !options) throw redirect({ href: "/dashboard/login" });
 
     if (!payload.kit) throw notFound();
 
-    return { kit: payload.kit, options: options.products };
+    if (seo.status === "unauthenticated") throw redirect({ href: "/dashboard/login" });
+
+    if (seo.status === "not-found") throw notFound();
+
+    return { kit: payload.kit, options: options.products, seo: seo.data };
   },
   head: ({ loaderData }) => ({
     meta: [{ title: pageTitle(loaderData?.kit.name ?? "Kit") }],
@@ -41,7 +49,7 @@ export const Route = createFileRoute("/dashboard/$storeSlug/catalog/kits/$kitId"
 });
 
 function EditKitPage() {
-  const { kit, options } = Route.useLoaderData();
+  const { kit, options, seo } = Route.useLoaderData();
   const { storeSlug } = Route.useParams();
   const navigate = useNavigate();
   const [created] = useQueryState("created", parseAsString.withDefault(""));
@@ -115,7 +123,7 @@ function EditKitPage() {
         </Alert>
       ) : null}
 
-      <KitForm storeSlug={storeSlug} options={options} kit={kit} />
+      <KitForm storeSlug={storeSlug} options={options} kit={kit} seo={seo} />
     </section>
   );
 }

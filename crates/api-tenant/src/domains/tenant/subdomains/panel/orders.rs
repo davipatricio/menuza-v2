@@ -404,9 +404,11 @@ pub(crate) fn transitions(
 fn order_error(error: OrderError) -> ApiError {
     match error {
         OrderError::NotFound => ApiError::not_found(),
-        OrderError::Invalid { .. } => ApiError(ErrorCode::Conflict),
+        OrderError::Invalid { .. } | OrderError::NotPayable { .. } => ApiError(ErrorCode::Conflict),
         OrderError::Forbidden => ApiError::forbidden(),
-        OrderError::ReasonRequired => ApiError(ErrorCode::ValidationFailed),
+        OrderError::ReasonRequired | OrderError::CodeMismatch => {
+            ApiError(ErrorCode::ValidationFailed)
+        }
         OrderError::Db(_) => ApiError(ErrorCode::Internal),
     }
 }

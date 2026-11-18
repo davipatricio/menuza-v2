@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { loginSession } from "@/features/auth/server/session-client.ts";
+import { useAutofillSync } from "@/hooks/use-autofill-sync.ts";
 import { fieldErrors } from "@/lib/form-errors.ts";
 import { safeReturnTo } from "@/lib/return-to.ts";
 import { LoginFormSchema, loginErrorMessage } from "../lib/form-schemas.ts";
@@ -16,6 +17,7 @@ import { LoginFormSchema, loginErrorMessage } from "../lib/form-schemas.ts";
  */
 export function LoginForm({ returnTo }: { returnTo?: string | string[] }) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const form = useForm({
     defaultValues: {
@@ -40,10 +42,17 @@ export function LoginForm({ returnTo }: { returnTo?: string | string[] }) {
     },
   });
 
+  useAutofillSync(formRef, ({ name, value }) => {
+    // SAFETY: the control came from a `<form.Field>` this form rendered, so its
+    // `name` is one of the form data's keys.
+    form.setFieldValue(name as never, value as never);
+  });
+
   return (
     <form.Subscribe selector={(state) => state.isSubmitting}>
       {(isSubmitting) => (
         <form
+          ref={formRef}
           method="post"
           noValidate
           aria-busy={isSubmitting}

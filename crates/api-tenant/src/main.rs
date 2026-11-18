@@ -9,7 +9,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = menuza_http::docs::mount(api_tenant::router(), api_tenant::openapi(), config.env);
 
-    menuza_http::serve(api_tenant::State { pool, config }, app).await?;
+    menuza_http::serve(
+        api_tenant::State {
+            pool,
+            config,
+            auth_limiter: menuza_http::RateLimiter::auth_default(),
+        },
+        app,
+    )
+    .await?;
 
     Ok(())
 }

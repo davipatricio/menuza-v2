@@ -7,6 +7,7 @@
 mod get_kit;
 mod get_product;
 mod get_store;
+mod get_store_by_slug;
 mod list_kits;
 mod list_menu;
 mod list_sitemap;
@@ -21,20 +22,37 @@ use crate::domains::commerce::support::ApiError;
 /// The tenant the request claims, or `None` when it claimed none. A claim that
 /// cannot become a `TenantId` is a request error, never a panic or a silent
 /// fallback.
-fn tenant_of(scope: &TenantScope) -> Result<Option<TenantId>, ApiError> {
+///
+/// An archived tenant resolves to `None` as well: the store was closed when its
+/// last owner deleted the account, and a client that cached the id it bound once
+/// must see the same empty storefront a request with no tenant sees. That is why
+/// the check lives here, in the one funnel all five public reads go through,
+/// instead of in each query.
+async fn tenant_of(
+    state: &crate::State,
+    scope: &TenantScope,
+) -> Result<Option<TenantId>, ApiError> {
     let Some(raw) = scope.tenant_id() else {
         return Ok(None);
     };
 
-    TenantId::parse(raw)
-        .map(Some)
-        .map_err(|_| ApiError(ErrorCode::TenantNotResolved))
+    let tenant = TenantId::parse(raw).map_err(|_| ApiError(ErrorCode::TenantNotResolved))?;
+
+    let live = persistence::tenant::membership::tenant_is_live(&state.pool, &tenant)
+        .await
+        .map_err(|_| ApiError(ErrorCode::Internal))?;
+
+    Ok(if live { Some(tenant) } else { None })
 }
 
 /// Routes this subdomain owns.
 pub fn router() -> axum::Router<crate::State> {
     axum::Router::new()
         .route("/store", axum::routing::get(get_store::get_store))
+        .route(
+            "/stores/{slug}",
+            axum::routing::get(get_store_by_slug::get_store_by_slug),
+        )
         .route("/menu", axum::routing::get(list_menu::list_menu))
         .route(
             "/products/{productId}",
@@ -51,6 +69,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
     #[openapi(
         paths(
             get_store::get_store,
+            get_store_by_slug::get_store_by_slug,
             list_menu::list_menu,
             get_product::get_product,
             list_kits::list_kits,
@@ -59,6 +78,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
         ),
         components(schemas(
             contract::commerce::public::PublicStore,
+            contract::commerce::public::PublicTheme,
             contract::commerce::public::PublicSeo,
             contract::commerce::public::PublicMenu,
             contract::commerce::public::PublicDepartment,

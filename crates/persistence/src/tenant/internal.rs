@@ -10,15 +10,22 @@ use super::TenantId;
 
 /// The tenant a storefront host names, or `None` when no `Domain` row has it.
 ///
+/// An archived tenant — a store closed by its last owner deleting their account
+/// — resolves for nothing: the host is not a store any more.
+///
 /// The proxy already lowercases the host; `lower($1)` keeps a direct internal
 /// caller from missing a row over case. A stored id that cannot become a
 /// [`TenantId`] reads as missing, never as a panic.
 pub async fn tenant_by_host(pool: &PgPool, host: &str) -> Result<Option<TenantId>, sqlx::Error> {
-    let row =
-        sqlx::query_as::<_, (String,)>(r#"SELECT "tenantId" FROM "Domain" WHERE host = lower($1)"#)
-            .bind(host)
-            .fetch_optional(pool)
-            .await?;
+    let row = sqlx::query_as::<_, (String,)>(
+        r#"SELECT d."tenantId"
+           FROM "Domain" d
+           JOIN "Tenant" t ON t.id = d."tenantId"
+           WHERE d.host = lower($1) AND t."archivedAt" IS NULL"#,
+    )
+    .bind(host)
+    .fetch_optional(pool)
+    .await?;
 
     Ok(row.and_then(|(id,)| TenantId::parse(&id).ok()))
 }

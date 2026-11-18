@@ -4,6 +4,7 @@
 //! addressed by the SHA-256 digest `GET /account/sessions` exposes, so a digest
 //! echoed back is already the storage key.
 
+mod delete;
 mod list_sessions;
 mod password;
 mod revoke_others;
@@ -15,6 +16,7 @@ use utoipa::OpenApi as _;
 /// Routes this subdomain owns.
 pub fn router() -> axum::Router<crate::State> {
     axum::Router::new()
+        .route("/account", axum::routing::delete(delete::delete_account))
         .route(
             "/account/password",
             axum::routing::put(password::change_password),
@@ -38,6 +40,7 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
     #[derive(utoipa::OpenApi)]
     #[openapi(
         paths(
+            delete::delete_account,
             password::change_password,
             list_sessions::list_sessions,
             revoke_others::revoke_other_sessions,
@@ -48,7 +51,9 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
             contract::tenant::account::ChangePasswordOutput,
             contract::tenant::account::ActiveSession,
             contract::tenant::account::ActiveSessionsOutput,
-            contract::tenant::account::RevokeSessionOutput
+            contract::tenant::account::RevokeSessionOutput,
+            contract::tenant::account::DeleteAccountInput,
+            contract::tenant::account::DeleteAccountOutput
         ))
     )]
     struct Api;

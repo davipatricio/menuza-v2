@@ -270,6 +270,79 @@ Kit dentro de kit, SEO customizado por kit (MEN-233), UI de complemento
 - `mode` e `kind` coexistem até a migração de limpeza. O código novo lê
   `kind`; nada novo grava `mode`.
 
+### Suporte Mobile Expo SDK 58 — Storefront e Dashboard (MEN-313)
+
+Dois apps nativos em Expo SDK 58 (`apps/mobile-storefront` e `apps/mobile-dashboard`), mantendo paridade de fluxo e visual com o web através do contrato OpenAPI comum (`crates/openapi/*.json`), regras de negócio centralizadas em `@menuza/shared`, e design tokens idênticos aplicados via `uniwind` (Tailwind v4 nativo).
+
+#### Fase 1 — Extração de API e Regras Comuns (`packages/api-client`)
+
+- [x] Criar workspace `packages/api-client` e liberar em `scripts/workspace-policy.test.ts`.
+- [x] Configurar Orval para gerar cliente `fetch` TypeScript universal (compatível com Vite, Bun e Hermes/Expo).
+- [x] Desvio deliberado: sem hooks gerados de TanStack Query; o cliente gera funções e cada tela usa `useQuery`/`useMutation`.
+- [x] Centralizar o formatador BRL em `@menuza/shared/money`; carrinho não existe no web, então não há máquina de estados para compartilhar.
+- [x] Refatorar `apps/web` para consumir `packages/api-client`.
+      Verify: `bun run typecheck`, `bun test`, `apps/web` build verde. Feito.
+
+#### Fase 2 — Fundação Expo SDK 58 e Monorepo
+
+- [x] Adicionar `apps/mobile-storefront` e `apps/mobile-dashboard` ao Bun workspaces e `scripts/workspace-policy.test.ts`.
+- [x] Configurar Expo SDK 58 (React Native 0.88, React 19.3, New Architecture).
+- [x] Configurar `uniwind` com Tailwind v4 compartilhando os tokens semânticos de `apps/web/DESIGN.md`.
+- [x] Configurar `@tanstack/react-query` persistido no SQLite local (`expo-sqlite`).
+- [x] Configurar canal EAS Update com bsdiff de bytecode Hermes e `runtimeVersion` estático.
+      Verify: `bun run typecheck` e `bun check` dos dois apps verdes.
+
+#### Fase 3 — `apps/mobile-storefront` (Comprador Multi-tenant)
+
+- [x] Resolução de tenant dinâmica via `applicationId` (build por loja grande), com seletor de slug persistido apenas em desenvolvimento.
+- [x] Injeção de tema dinâmico (`applyStoreTheme`) lendo cores e raio de `PublicStore.theme`.
+- [x] Telas nativas com `expo-router` v58:
+  - Cardápio (`FlashList` com departamentos, categorias, subcategorias e kits).
+  - Detalhe de produto com opções, nutrição, compartilhamento e háptica.
+  - Composição de kit somente leitura, com faixas e grupos.
+- [ ] Carrinho, frete por CEP e checkout Pix/cartão. Não existe no web e o `POST /commerce/orders` exige membro da loja com `orders:write`; um carrinho nativo seria um fluxo só do app, contra a paridade pedida.
+- [ ] Live Activities e push de status. A assinatura push existe, mas nenhum produtor enfileira `push-notifications`; depende de backend.
+      Verify: o cardápio, o produto e o kit refletem o catálogo publicado no banco.
+
+#### Fase 4 — `apps/mobile-dashboard` (Lojista)
+
+- [x] Autenticação com sessão de operador (`api-tenant`) e armazenamento seguro do cookie (`expo-secure-store`).
+- [x] Abas nativas de pedidos (`NativeTabs`): Novos, Preparo, Prontos, Histórico.
+- [x] Aba Gestão espelhando a sidebar web: visão geral, catálogo (produtos, kits, departamentos, categorias, subcategorias, tags, etiquetas), cupons, clientes, auditoria, integrações, configurações.
+- [x] Leitura de todas as seções com `@menuza/api-client`; listas com estado de erro + retry (uma falha nunca vira "loja vazia").
+- [x] Escrita de catálogo: produto criar/editar (variação única), kit editar identidade/preço, taxonomia criar/editar/excluir nas cinco seções.
+- [x] Escrita de cupom: criar/editar, ativar/desativar, excluir; integração: ativar/desativar e listar sessões MCP.
+- [x] Configurações: tema da loja (cores + raio) e SEO com escrita; senha; tema do app (sistema/claro/escuro); sessões ativas somente leitura.
+- [x] Alarme e toque sonoro contínuo de novo pedido via `expo-audio`; notificação local (uma por código novo) e deep link `/order/<code>`.
+- [x] Ação rápida de transição de estado do pedido, com motivo quando o servidor exige.
+- [ ] Paridade restante de catálogo no app: variações múltiplas e estoque, nutrição, SEO por entidade, imagens, composição/grupos de kit. O mobile usa uma variação "Padrão" no create; com 2+ variações a edição de preço aponta para o web em vez de apagar o conjunto. (MEN-316)
+- [ ] Paridade restante de cupom: seletor de produtos/kits (hoje ids crus), `usageLimit`/`stackable`/desconto de frete editáveis. (MEN-318)
+- [x] Pausa emergencial? Não há campo de loja aberta/fechada no backend; widget de tela inicial exige código nativo por plataforma.
+      Verify: a mudança de status feita no app é a mesma que o painel web lê, porque ambos usam `POST …/orders/{code}/transition`.
+
+#### Fase 6 — Plataforma Expo (tema, gestos, notificações, mídia)
+
+- [x] Tema claro/escuro do dashboard em `global.css` (`@layer theme` + `@variant`), espelhando `apps/web/src/styles/globals.css`; escolha sistema/claro/escuro em SQLite (`lib/theme-mode.tsx`), aplicada via `Uniwind.setTheme` (também ajusta `Appearance`). Storefront mantém as cores da loja.
+- [x] `react-native-worklets@0.13` ligado ao Reanimated 4 (peer obrigatório).
+- [x] `expo-notifications@58.1.9`: permissão, canal Android `orders` com vibração, handler, notificação local de pedido novo, toque abre o pedido. Push remoto continua fora do Expo Go no Android (SDK 53+) e depende do produtor River (MEN-317).
+- [x] `expo-haptics`: seleção no toque de linha/card, sucesso/erro global por `MutationCache`, impacto médio em transição de pedido, aviso de pedido novo.
+- [x] `android.predictiveBackGestureEnabled` nos dois apps; `Stack` com `slide_from_right`, `gestureEnabled`, `fullScreenGestureEnabled`; editores seguram back com `usePreventRemove` (`lib/navigation.ts`).
+- [x] Animações curtas: 90 ms de escala no toque, stagger de 25 ms nos hubs, slide nativo; nada de spring em linha reciclada.
+- [x] Cache: `expo-image` com `cachePolicy="memory-disk"` + transição de 120 ms no storefront; Query persistido em SQLite e limpo no login/logout do dashboard.
+- [x] Controles nativos com `@expo/ui` 58.0.28 (camada universal, funciona no Expo Go): `SwitchRow` usa `Host` + `Switch`; o motivo de cancelamento abre em `BottomSheet`. Chips continuam próprios (multi-seleção densa); listas longas continuam em `FlashList`.
+- [ ] Edge-to-edge explícito no Android (`android.edgeToEdgeEnabled` + `expo-navigation-bar`) e conferência em Android 15/16.
+- [ ] App Links/Universal Links para `/order/<code>` e `/menu/<slug>` (hoje o deep link só funciona via notificação local).
+- [ ] `expo-local-authentication` (biometria) para reabrir o dashboard; `expo-background-task` para polling em segundo plano (mínimo ~15 min); `expo-sharing`/`expo-file-system` para exportar clientes.
+      Verify: `bun check` dos dois apps, bundle Metro 200, `expo-doctor` sem erro bloqueante.
+
+#### Fase 5 — Matriz de Compilação de Lojas Grandes
+
+- [x] Manifesto `stores.json` mapeando slug -> nome, ícone, splash e package name Android.
+- [x] Configuração dinâmica no `app.config.ts` via env `STORE_SLUG`.
+- [x] Automação de compilação EAS por loja compartilhando o mesmo `runtimeVersion` (`scripts/build-store-app.ts`, recusa slug com hífen e package fora de `app.menuza.store.*`).
+- [x] Publicação de OTA único via `eas update` (`bun run store:update`).
+      Verify: pendente de credenciais EAS; o script valida a loja e delega o build. Um AAB por loja e o mesmo update aplicado aos dois binários é a prova final.
+
 ## Someday / maybe
 
 ## Shipped

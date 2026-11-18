@@ -3,6 +3,7 @@
 | File                   | Holds                                                                              | Keywords                                                                                   |
 | ---------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `monorepo.md`          | Workspaces, dependency direction, where a change belongs, scripts                  | monorepo, workspace, package, catalog, placement, turbo                                    |
+| `mobile.md`            | Expo apps, shared client/theme pipeline, dashboard management stack, OTA, preview  | mobile, expo, expo go, storefront app, dashboard app, ota, eas, uniwind, expo-symbols      |
 | `backend.md`           | Request path, APIs, middleware, auth/sessions, db scope, worker, observability     | backend, orpc, middleware, request, worker, redis                                          |
 | `stack.md`             | Locked stack, ADRs, technical pendencies                                           | stack, architecture, ADR, bun, prisma, orpc                                                |
 | `route-stages.md`      | apps/web rendering stages, `ensureStatic`, dashboard caching/prefetch model, audit | route, ensureStatic, static, prefetch, private cache, dashboard suspense, app shell, cache |

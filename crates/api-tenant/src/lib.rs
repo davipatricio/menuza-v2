@@ -6,11 +6,13 @@ mod oauth;
 
 use domains::tenant::subdomains;
 
-/// What the shared shell needs from this binary: a pool and a config.
+/// What the shared shell needs from this binary: a pool, a config and the
+/// in-memory auth rate limiter.
 #[derive(Clone)]
 pub struct State {
     pub pool: sqlx::PgPool,
     pub config: menuza_http::Config,
+    pub auth_limiter: menuza_http::RateLimiter,
 }
 
 impl menuza_http::AppState for State {

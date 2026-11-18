@@ -11,6 +11,7 @@ use axum::http::HeaderMap;
 use contract::ErrorCode;
 use contract::tenant::account::{ChangePasswordInput, ChangePasswordOutput};
 use domain::password::{hash_password, verify_password};
+use menuza_http::PeerAddr;
 use persistence::tenant::account::{
     mcp_sessions_revoke_member, member_update_password, sessions_revoke_all_except,
 };
@@ -37,11 +38,20 @@ use crate::domains::tenant::support::{ApiError, db_error};
 )]
 pub async fn change_password(
     State(state): State<crate::State>,
+    PeerAddr(peer): PeerAddr,
     headers: HeaderMap,
     Json(input): Json<ChangePasswordInput>,
 ) -> Result<Json<ChangePasswordOutput>, ApiError> {
-    input.validate().map_err(ApiError)?;
     assert_same_origin(&headers)?;
+
+    if !state
+        .auth_limiter
+        .check_request(peer, &headers, &state.config)
+    {
+        return Err(ApiError(ErrorCode::RateLimited));
+    }
+
+    input.validate().map_err(ApiError)?;
 
     let session = require_tenant_member(&state, &headers).await?;
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { registerAccount } from "@/features/auth/server/session-client.ts";
+import { useAutofillSync } from "@/hooks/use-autofill-sync.ts";
 import { ApiError } from "@/lib/api-error";
 import { DatePicker } from "./date-picker.tsx";
 import { fieldErrors } from "./form-errors.ts";
@@ -53,6 +54,7 @@ export function AccountForm() {
   const navigate = useNavigate();
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const form = useForm({
     defaultValues: {
@@ -89,8 +91,15 @@ export function AccountForm() {
     },
   });
 
+  useAutofillSync(formRef, ({ name, value }) => {
+    // SAFETY: the control came from a `<form.Field>` this form rendered, so its
+    // `name` is one of the form data's keys.
+    form.setFieldValue(name as never, value as never);
+  });
+
   return (
     <form
+      ref={formRef}
       method="post"
       noValidate
       onSubmit={(event) => {

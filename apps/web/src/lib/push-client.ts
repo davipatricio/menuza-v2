@@ -15,7 +15,7 @@ import {
   getSubscribePushUrl,
   getUnsubscribePushUrl,
   getUpdatePushPreferencesUrl,
-} from "@/lib/api/tenant.ts";
+} from "@menuza/api-client/tenant";
 
 type TenantClient = RouterContractClient<typeof tenantContractObject>;
 

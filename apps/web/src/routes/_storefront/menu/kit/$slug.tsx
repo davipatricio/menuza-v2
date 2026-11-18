@@ -18,41 +18,46 @@ export const Route = createFileRoute("/_storefront/menu/kit/$slug")({
 
     return result;
   },
-  head: ({ loaderData }) => ({
-    meta: [
-      {
-        title: loaderData ? `${loaderData.kit.name} · Menuza` : "Kit · Menuza",
-      },
-      {
-        name: "description",
-        content: loaderData?.kit.description ?? "",
-      },
-    ],
-    links: loaderData ? [{ rel: "canonical", href: loaderData.url }] : [],
-    scripts: loaderData?.kit.imageUrl
-      ? [
-          {
-            type: "application/ld+json",
-            children: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              name: loaderData.kit.name,
-              description: loaderData.kit.description ?? undefined,
-              image: loaderData.kit.imageUrl,
-              url: loaderData.url,
-              offers: {
-                "@type": "Offer",
-                price: (loaderData.kit.baseCents / 100).toFixed(2),
-                priceCurrency: "BRL",
-                availability: loaderData.kit.available
-                  ? "https://schema.org/InStock"
-                  : "https://schema.org/OutOfStock",
-              },
-            }),
-          },
-        ]
-      : [],
-  }),
+  head: ({ loaderData }) => {
+    if (!loaderData) return { meta: [{ title: "Kit · Menuza" }] };
+
+    const { kit, url } = loaderData;
+    const canonical = kit.seo.canonicalUrl ?? url;
+
+    const extraLinks = kit.seo.links.map((link) => ({
+      rel: link.rel,
+      href: link.href,
+      hrefLang: link.hreflang ?? undefined,
+    }));
+
+    const json =
+      kit.seo.jsonLd ??
+      JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: kit.name,
+        description: kit.description ?? undefined,
+        image: kit.imageUrl,
+        url,
+        offers: {
+          "@type": "Offer",
+          price: (kit.baseCents / 100).toFixed(2),
+          priceCurrency: "BRL",
+          availability: kit.available
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock",
+        },
+      });
+
+    return {
+      meta: [
+        { title: kit.seo.title },
+        { name: "description", content: kit.seo.description ?? kit.description ?? "" },
+      ],
+      links: [{ rel: "canonical", href: canonical }, ...extraLinks],
+      scripts: [{ type: "application/ld+json", children: json }],
+    };
+  },
   component: KitPage,
 });
 

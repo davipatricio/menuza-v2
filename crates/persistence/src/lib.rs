@@ -18,7 +18,8 @@ pub mod oauth;
 pub mod tenant;
 
 /// Embedded migration set: the baseline, River's job tables, then the kit
-/// expansion. Append new files, never edit an applied one.
+/// expansion, the SEO and theme columns and the tenant archive marker. Append
+/// new files, never edit an applied one.
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 
 #[cfg(test)]
@@ -29,6 +30,6 @@ mod tests {
     fn baseline_then_river_jobs_then_kits_then_cleanups() {
         let versions: Vec<i64> = MIGRATOR.iter().map(|migration| migration.version).collect();
 
-        assert_eq!(versions, vec![1, 2, 3, 4, 5]);
+        assert_eq!(versions, vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
     }
 }

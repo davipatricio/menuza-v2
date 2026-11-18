@@ -10,6 +10,7 @@ const EMPTY: SeoFields = {
   canonicalUrl: null,
   socialImageUrl: null,
   jsonLd: null,
+  links: [],
 };
 
 function row(entityType: SeoMetaRow["entityType"], fields: Partial<SeoFields>): SeoMetaRow {

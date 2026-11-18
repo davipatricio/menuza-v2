@@ -217,11 +217,36 @@ fn shell_config_defaults() {
     assert_eq!(config.trusted_proxy_hops, 0);
     assert!(config.trusted_proxy_ips.is_empty());
     assert_eq!(config.internal_api_secret, None);
-    assert_eq!(config.env, Env::Development);
+    // An unset `MENUZA_ENV` is the safe default: production, never development.
+    assert_eq!(config.env, Env::Production);
     assert_eq!(
         config.mcp_allowed_hosts,
         vec!["localhost", "127.0.0.1", "::1"]
     );
+
+    // Development is opt-in, by the exact word; a misspelling is production.
+    let dev = Config::from_map(
+        &map(&[
+            ("DATABASE_URL", "postgres://x/y"),
+            ("MENUZA_ENV", "development"),
+        ]),
+        3001,
+    )
+    .expect("config");
+
+    assert_eq!(dev.env, Env::Development);
+
+    for raw in ["", "prod", "Production ", "dev"] {
+        assert_eq!(
+            Config::from_map(
+                &map(&[("DATABASE_URL", "postgres://x/y"), ("MENUZA_ENV", raw)]),
+                3001,
+            )
+            .expect("config")
+            .env,
+            Env::Production
+        );
+    }
 }
 
 #[test]

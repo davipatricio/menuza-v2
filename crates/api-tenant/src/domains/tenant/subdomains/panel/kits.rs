@@ -10,8 +10,8 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use contract::tenant::panel::kits::{
-    CreateKitInput, KitGroupInput, KitItemInput, KitKind, KitPricingMode, KitUnavailableBehavior,
-    PanelKit, PanelKitBand, PanelKitDetail, PanelKitGroup, PanelKitItem, PanelKitOptionProduct,
+    CreateKitInput, KitGroupInput, KitItemInput, KitKind, KitUnavailableBehavior, PanelKit,
+    PanelKitBand, PanelKitDetail, PanelKitGroup, PanelKitItem, PanelKitOptionProduct,
     PanelKitOptionVariation, PanelKitOptionsOutput, PanelKitOutput, PanelKitSuccess,
     PanelKitsOutput, UpdateKitInput,
 };
@@ -69,7 +69,6 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
             CreateKitInput,
             UpdateKitInput,
             KitKind,
-            KitPricingMode,
             KitUnavailableBehavior
         ))
     )]
@@ -115,7 +114,6 @@ pub async fn list_kits(
             name: row.name,
             slug: row.slug,
             kind: kind_of(&row.kind),
-            pricing_mode: pricing_mode_of(&row.pricing_mode),
             base_cents: row.base_cents,
             percent_off: row.percent_off,
             available: row.available,
@@ -345,13 +343,6 @@ fn kind_of(value: &str) -> KitKind {
     }
 }
 
-fn pricing_mode_of(value: &str) -> KitPricingMode {
-    match value {
-        "sum" => KitPricingMode::Sum,
-        _ => KitPricingMode::Fixed,
-    }
-}
-
 fn unavailable_behavior_of(value: &str) -> KitUnavailableBehavior {
     match value {
         "block" => KitUnavailableBehavior::Block,
@@ -364,13 +355,6 @@ fn kind_slug(kind: KitKind) -> &'static str {
         KitKind::Fixed => "fixed",
         KitKind::CustomQuantities => "custom_quantities",
         KitKind::FixedTotal => "fixed_total",
-    }
-}
-
-fn pricing_mode_slug(mode: KitPricingMode) -> &'static str {
-    match mode {
-        KitPricingMode::Fixed => "fixed",
-        KitPricingMode::Sum => "sum",
     }
 }
 
@@ -392,7 +376,6 @@ fn detail_out(detail: KitDetail) -> PanelKitDetail {
         description: detail.kit.description,
         image_url: detail.kit.image_url,
         kind: kind_of(&detail.kit.kind),
-        pricing_mode: pricing_mode_of(&detail.kit.pricing_mode),
         base_cents: detail.kit.base_cents,
         percent_off: detail.kit.percent_off,
         min_items: detail.kit.min_items,
@@ -432,6 +415,7 @@ fn detail_out(detail: KitDetail) -> PanelKitDetail {
                 step: item.step,
                 allow_swap: item.allow_swap,
                 sort_order: item.sort_order,
+                charge_extra: item.charge_extra,
             })
             .collect(),
         bands: detail
@@ -454,7 +438,6 @@ fn write_of(input: &CreateKitInput) -> KitWrite<'_> {
         description: input.description.as_deref(),
         image_url: &input.image_url,
         kind: kind_slug(input.kind),
-        pricing_mode: pricing_mode_slug(input.pricing_mode),
         base_cents: input.base_cents,
         percent_off: input.percent_off,
         min_items: input.min_items,
@@ -490,6 +473,7 @@ fn write_of(input: &CreateKitInput) -> KitWrite<'_> {
                 allow_swap: item.allow_swap,
                 swap_variation_ids: &item.swap_variation_ids,
                 sort_order: item.sort_order,
+                charge_extra: item.charge_extra,
             })
             .collect(),
         bands: input
@@ -538,6 +522,7 @@ fn merge(stored: &KitDetail, patch: &UpdateKitInput) -> CreateKitInput {
                 allow_swap: item.allow_swap,
                 swap_variation_ids: stored.swaps.get(&item.id).cloned().unwrap_or_default(),
                 sort_order: item.sort_order,
+                charge_extra: item.charge_extra,
             })
             .collect()
     });
@@ -565,9 +550,6 @@ fn merge(stored: &KitDetail, patch: &UpdateKitInput) -> CreateKitInput {
             .clone()
             .unwrap_or_else(|| kit.image_url.clone()),
         kind: patch.kind.unwrap_or_else(|| kind_of(&kit.kind)),
-        pricing_mode: patch
-            .pricing_mode
-            .unwrap_or_else(|| pricing_mode_of(&kit.pricing_mode)),
         base_cents: patch.base_cents.unwrap_or(kit.base_cents),
         percent_off: pick(patch.percent_off, kit.percent_off),
         min_items: pick(patch.min_items, kit.min_items),

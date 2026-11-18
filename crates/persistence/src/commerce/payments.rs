@@ -77,19 +77,37 @@ pub async fn apply_gateway_event(
             finish(&mut tx, tenant, &event.id, status, Some(&detail)).await?;
             settled(status).unwrap_or(GatewayEventOutcome::Applied)
         }
-        Instruction::Pay(order) => {
-            orders::mark_paid(
-                &mut tx,
-                tenant,
-                &order,
-                None,
-                Some(&format!("Confirmado pelo provedor ({}).", event.event_type)),
-            )
-            .await?;
-
-            finish(&mut tx, tenant, &event.id, "processed", None).await?;
-            GatewayEventOutcome::Applied
-        }
+        Instruction::Pay(order) => match orders::mark_paid(
+            &mut tx,
+            tenant,
+            &order,
+            None,
+            Some(&format!("Confirmado pelo provedor ({}).", event.event_type)),
+        )
+        .await
+        {
+            Ok(()) => {
+                finish(&mut tx, tenant, &event.id, "processed", None).await?;
+                GatewayEventOutcome::Applied
+            }
+            Err(orders::OrderError::NotPayable { from }) => {
+                let detail = format!("Pedido em estado {from} não pode receber pagamento.");
+                finish(&mut tx, tenant, &event.id, "rejected", Some(&detail)).await?;
+                GatewayEventOutcome::Rejected
+            }
+            Err(orders::OrderError::Db(err)) => return Err(GatewayError::Db(err)),
+            Err(_) => {
+                finish(
+                    &mut tx,
+                    tenant,
+                    &event.id,
+                    "rejected",
+                    Some("Pagamento recusado pelo estado do pedido."),
+                )
+                .await?;
+                GatewayEventOutcome::Rejected
+            }
+        },
     };
 
     tx.commit().await?;
@@ -128,6 +146,28 @@ fn settled(status: &str) -> Option<GatewayEventOutcome> {
     }
 }
 
+#[derive(sqlx::FromRow)]
+struct DecideOrderRow {
+    id: String,
+    code: String,
+    customer_id: String,
+    cashback_cents: i32,
+    wallet_applied_cents: i32,
+    financial_status: String,
+    total_cents: i32,
+}
+
+/// Rejects callbacks whose amount is absent or disagrees with `Order.totalCents`.
+fn amount_mismatch(event_amount: Option<i32>, order_total: i32) -> Option<String> {
+    match event_amount {
+        None => Some("Evento sem valor informado.".to_owned()),
+        Some(amount_cents) if amount_cents != order_total => Some(format!(
+            "Valor divergente: recebido {amount_cents}, esperado {order_total}."
+        )),
+        Some(_) => None,
+    }
+}
+
 /// Turns one event into either "close it with this status" or "mark this order
 /// paid". Every refusal is a settled event, never a thrown error: an event the
 /// platform will not act on is still information the store needs to see.
@@ -150,19 +190,20 @@ async fn decide(
         return Ok(close("ignored", "Evento sem código de pedido."));
     };
 
-    let order = sqlx::query!(
+    let order = sqlx::query_as::<_, DecideOrderRow>(
         r#"
         SELECT id, code, "customerId" AS customer_id,
                "cashbackCents" AS cashback_cents,
+               "walletAppliedCents" AS wallet_applied_cents,
                "financialStatus" AS financial_status,
                "totalCents" AS total_cents
         FROM public."Order"
         WHERE "tenantId" = $1 AND code = $2
         FOR UPDATE
         "#,
-        tenant.as_str(),
-        order_code,
     )
+    .bind(tenant.as_str())
+    .bind(order_code)
     .fetch_optional(&mut *tx)
     .await?;
 
@@ -180,19 +221,9 @@ async fn decide(
     }
 
     // The amount is the one thing a callback must not be trusted about blindly:
-    // a confirmation for a different amount would mark the wrong money as paid.
-    if event
-        .amount_cents
-        .is_some_and(|amount_cents| amount_cents != order.total_cents)
-    {
-        return Ok(close(
-            "rejected",
-            format!(
-                "Valor divergente: recebido {}, esperado {}.",
-                event.amount_cents.unwrap_or_default(),
-                order.total_cents
-            ),
-        ));
+    // a missing or mismatched confirmation cannot mark the order as paid.
+    if let Some(detail) = amount_mismatch(event.amount_cents, order.total_cents) {
+        return Ok(close("rejected", detail));
     }
 
     Ok(Instruction::Pay(PaidOrder {
@@ -200,6 +231,7 @@ async fn decide(
         code: order.code,
         customer_id: order.customer_id,
         cashback_cents: order.cashback_cents,
+        wallet_applied_cents: order.wallet_applied_cents,
         financial_status: order.financial_status,
     }))
 }
@@ -246,5 +278,34 @@ fn map_pagar_me_event_type(event_type: &str) -> &'static str {
         "order.paid" | "charge.paid" => "paid",
         "order.payment_failed" | "charge.payment_failed" => "payment_failed",
         _ => "ignored",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use contract::commerce::payments::GatewayEventOutcome;
+
+    use super::{amount_mismatch, settled};
+
+    #[test]
+    fn amount_mismatch_rejects_missing_and_different_amounts() {
+        assert_eq!(
+            amount_mismatch(None, 2500),
+            Some("Evento sem valor informado.".to_owned())
+        );
+        assert_eq!(
+            amount_mismatch(Some(100), 2500),
+            Some("Valor divergente: recebido 100, esperado 2500.".to_owned())
+        );
+        assert_eq!(amount_mismatch(Some(2500), 2500), None);
+        assert_eq!(amount_mismatch(Some(0), 0), None);
+    }
+
+    #[test]
+    fn settled_maps_terminal_statuses() {
+        assert_eq!(settled("processed"), Some(GatewayEventOutcome::Applied));
+        assert_eq!(settled("ignored"), Some(GatewayEventOutcome::Ignored));
+        assert_eq!(settled("rejected"), Some(GatewayEventOutcome::Rejected));
+        assert_eq!(settled("pending"), None);
     }
 }

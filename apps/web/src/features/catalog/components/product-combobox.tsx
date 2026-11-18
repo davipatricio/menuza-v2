@@ -10,7 +10,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox.tsx";
 import { formatBrl } from "@/lib/format.ts";
-import type { PanelKitOptionProduct } from "@/lib/api/model/panelKitOptionProduct.ts";
+import type { PanelKitOptionProduct } from "@menuza/api-client/model/panelKitOptionProduct";
 
 export function ProductCombobox({
   id,

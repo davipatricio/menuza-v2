@@ -8,7 +8,8 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 
-/// Runtime profile. `production` switches logging to JSON.
+/// Runtime profile. Unset `MENUZA_ENV` is production, the safe default;
+/// development is opt-in. `production` switches logging to JSON.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Env {
     Development,
@@ -21,12 +22,15 @@ impl Env {
         matches!(self, Self::Development)
     }
 
-    /// Only the exact word `production`, in any case, selects production.
+    /// Only the exact word `development`, in any case, selects development;
+    /// anything else — including an unset or misspelled `MENUZA_ENV` — is
+    /// production, so a forgotten switch can never expose the development
+    /// surface (JSON logs on, `/docs` off).
     pub fn parse(raw: &str) -> Self {
-        if raw.eq_ignore_ascii_case("production") {
-            Self::Production
-        } else {
+        if raw.eq_ignore_ascii_case("development") {
             Self::Development
+        } else {
+            Self::Production
         }
     }
 }

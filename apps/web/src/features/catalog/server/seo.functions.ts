@@ -24,6 +24,11 @@ export type SeoMutationFailure =
 
 export type SeoMutationResult = { status: "ok"; data: PanelSeo } | SeoMutationFailure;
 
+export type SeoReadResult =
+  | { status: "ok"; data: PanelSeo }
+  | { status: "unauthenticated" }
+  | { status: "not-found" };
+
 export type StoreSeoMutationResult = { status: "ok"; data: PanelStoreSeo } | SeoMutationFailure;
 
 function failure(error: Error): SeoMutationFailure {
@@ -33,6 +38,20 @@ function failure(error: Error): SeoMutationFailure {
 
   return { status: "error", code: "INTERNAL_SERVER_ERROR", message: error.message };
 }
+
+export const getSeoFn = createServerFn({ method: "GET" })
+  .validator(PanelSeoInputSchema)
+  .handler(async ({ data }): Promise<SeoReadResult> => {
+    const client = await panelClient();
+
+    if (!client) return { status: "unauthenticated" };
+
+    try {
+      return { status: "ok", data: await client.panel.getSeo(data) };
+    } catch {
+      return { status: "not-found" };
+    }
+  });
 
 export const saveStoreSeoFn = createServerFn({ method: "POST" })
   .validator(SaveStoreSeoSettingsInputSchema)

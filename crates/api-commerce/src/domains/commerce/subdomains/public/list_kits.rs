@@ -29,7 +29,7 @@ pub async fn list_kits(
     State(state): State<crate::State>,
     scope: TenantScope,
 ) -> Result<Json<PublicKitsOutput>, ApiError> {
-    let Some(tenant) = tenant_of(&scope)? else {
+    let Some(tenant) = tenant_of(&state, &scope).await? else {
         return Ok(Json(PublicKitsOutput { kits: Vec::new() }));
     };
 

@@ -2285,6 +2285,16 @@ function seoUrlSchema(message: string) {
   );
 }
 
+export const SeoLinkRelSchema = v.picklist(["alternate", "sameAs", "related"]);
+
+export const SeoLinkSchema = v.object({
+  rel: SeoLinkRelSchema,
+  href: seoUrlSchema("Informe uma URL completa, começando com http:// ou https://."),
+  hreflang: v.nullable(
+    v.pipe(v.string("Idioma inválido."), v.maxLength(20, "Use no máximo 20 caracteres.")),
+  ),
+});
+
 export const SeoFieldsSchema = v.object({
   title: v.nullable(
     v.pipe(v.string("Título inválido."), v.maxLength(70, "Use no máximo 70 caracteres.")),
@@ -2301,6 +2311,7 @@ export const SeoFieldsSchema = v.object({
   jsonLd: v.nullable(
     v.pipe(v.string("JSON-LD inválido."), v.maxLength(4000, "Use no máximo 4000 caracteres.")),
   ),
+  links: v.pipe(v.array(SeoLinkSchema), v.maxLength(8, "Use no máximo 8 links.")),
 });
 
 /**
@@ -2321,6 +2332,7 @@ export const SaveSeoInputSchema = v.strictObject({
   canonicalUrl: v.optional(SeoFieldsSchema.entries.canonicalUrl),
   socialImageUrl: v.optional(SeoFieldsSchema.entries.socialImageUrl),
   jsonLd: v.optional(SeoFieldsSchema.entries.jsonLd),
+  links: v.optional(SeoFieldsSchema.entries.links),
 });
 
 export const SaveStoreSeoSettingsInputSchema = v.strictObject({

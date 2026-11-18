@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "plansDirectory": ".agents/plans",
+  "enabledMcpjsonServers": ["context-mode", "projectmem"],
+  "permissions": {
+    "deny": ["Bash(git reset --hard:*)", "Bash(git clean *)", "Bash(git branch -D *)"]
+  },
+  "extraKnownMarketplaces": {
+    "menuza": {
+      "source": {
+        "source": "directory",
+        "path": "./plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "menuza-harness@menuza": true
+  }
+}

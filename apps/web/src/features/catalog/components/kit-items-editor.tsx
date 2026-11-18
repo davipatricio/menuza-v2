@@ -35,7 +35,7 @@ import {
 import { Switch } from "@/components/ui/switch.tsx";
 import { formatBrl } from "@/lib/format.ts";
 import { cn } from "@/lib/utils.ts";
-import type { PanelKitOptionProduct } from "@/lib/api/model/panelKitOptionProduct.ts";
+import type { PanelKitOptionProduct } from "@menuza/api-client/model/panelKitOptionProduct";
 import type { KitErrors, KitGroupValues, KitItemValues, KitKindValue } from "../schemas/kit.ts";
 import { ProductCombobox } from "./product-combobox.tsx";
 
@@ -56,6 +56,7 @@ export function newItem(groupId: string | null): KitItemValues {
     step: 1,
     allowSwap: false,
     swapVariationIds: [],
+    chargeExtra: false,
   };
 }
 
@@ -365,6 +366,15 @@ function DishRow({
                 }
               />
               <FieldLabel htmlFor={`item-${item.key}-swap`}>Permitir troca de variação</FieldLabel>
+            </Field>
+
+            <Field orientation="horizontal" className="pt-5">
+              <Switch
+                id={`item-${item.key}-extra`}
+                checked={item.chargeExtra}
+                onCheckedChange={(checked) => onPatch({ chargeExtra: checked })}
+              />
+              <FieldLabel htmlFor={`item-${item.key}-extra`}>Marcar valor extra</FieldLabel>
             </Field>
           </div>
 

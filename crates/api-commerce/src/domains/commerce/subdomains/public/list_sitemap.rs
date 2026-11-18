@@ -24,7 +24,7 @@ pub async fn list_sitemap(
     State(state): State<crate::State>,
     scope: TenantScope,
 ) -> Result<Json<PublicSitemap>, ApiError> {
-    let Some(tenant) = tenant_of(&scope)? else {
+    let Some(tenant) = tenant_of(&state, &scope).await? else {
         return Ok(Json(PublicSitemap {
             entries: Vec::new(),
         }));

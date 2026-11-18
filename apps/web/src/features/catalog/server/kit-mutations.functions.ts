@@ -10,7 +10,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as v from "valibot";
 import { ApiError } from "@/lib/api-error";
-import type { PanelKitDetail } from "@/lib/api/model/panelKitDetail.ts";
+import type { PanelKitDetail } from "@menuza/api-client/model/panelKitDetail";
 import { panelClient } from "@/server/panel-client.ts";
 import { createKitInputSchema, updateKitInputSchema } from "../schemas/kit.ts";
 

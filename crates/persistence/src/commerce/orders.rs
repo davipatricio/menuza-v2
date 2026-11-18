@@ -365,8 +365,37 @@ pub enum OrderError {
     /// The rule demands a reason and the caller sent none.
     #[error("order transition requires a reason")]
     ReasonRequired,
+    /// The order is not in a state that may receive payment.
+    #[error("order in state {from} cannot receive payment")]
+    NotPayable { from: String },
+    /// The body's order code disagrees with the path's.
+    #[error("order code mismatch between body and path")]
+    CodeMismatch,
     #[error(transparent)]
     Db(#[from] sqlx::Error),
+}
+
+/// The financial states a payment may land on. A `pending` order must first
+/// move to `awaiting_payment` or `pending_on_delivery`; money already settled
+/// leaves through `refunded` only.
+fn paid_accepts(financial_status: &str) -> bool {
+    matches!(financial_status, "awaiting_payment" | "pending_on_delivery")
+}
+
+/// Whether the order stops being fulfilled at this pair of axis values: a
+/// cancelled order and an expired one never reach the buyer.
+fn releases_stock(fulfilment: &str, financial: &str) -> bool {
+    fulfilment == "canceled" || financial == "expired" || financial == "canceled"
+}
+
+/// Whether a dead order gives its coupon back. Only when no money was ever
+/// received: a paid order keeps its redemption even when later refunded.
+fn releases_coupon(fulfilment: &str, financial: &str) -> bool {
+    if financial == "paid" || financial == "refunded" {
+        return false;
+    }
+
+    releases_stock(fulfilment, financial)
 }
 
 /// Move one axis of an order to `target` and append the event.
@@ -377,6 +406,12 @@ pub enum OrderError {
 /// [`OrderError::Forbidden`] and a missing required reason is
 /// [`OrderError::ReasonRequired`] — permission is checked before the reason, so
 /// a caller who may not perform the move cannot probe its requirements.
+///
+/// `financial -> paid` settles through [`mark_paid`]: `paidAt`, the cashback
+/// credit and the wallet reserve's `spend` all run. Money the customer still
+/// holds is given back on `financial -> canceled`, and the first edge into a
+/// dead pair restores stock and releases coupon redemptions, exactly as
+/// `expire` does.
 pub async fn transition(
     pool: &PgPool,
     tenant: &TenantId,
@@ -388,17 +423,20 @@ pub async fn transition(
 ) -> Result<TransitionOrderOutput, OrderError> {
     let mut tx = begin_scoped(pool, tenant).await?;
 
-    let order = sqlx::query!(
+    let order = sqlx::query_as::<_, TransitionOrderRow>(
         r#"
-        SELECT id, "financialStatus" AS financial_status,
+        SELECT id, code, "customerId" AS customer_id,
+               "cashbackCents" AS cashback_cents,
+               "walletAppliedCents" AS wallet_applied_cents,
+               "financialStatus" AS financial_status,
                "fulfilmentStatus" AS fulfilment_status
         FROM public."Order"
         WHERE "tenantId" = $1 AND code = $2
         FOR UPDATE
         "#,
-        tenant.as_str(),
-        code,
     )
+    .bind(tenant.as_str())
+    .bind(code)
     .fetch_optional(&mut **tx)
     .await?
     .ok_or(OrderError::NotFound)?;
@@ -426,21 +464,81 @@ pub async fn transition(
 
     let now = chrono::Utc::now().naive_utc();
 
+    // The pair of axes the release rules compare, before and after the move.
+    // Only the moved axis changes, so the other one is read from the row.
+    let was_stock_dead = releases_stock(&order.fulfilment_status, &order.financial_status);
+    let was_coupon_dead = releases_coupon(&order.fulfilment_status, &order.financial_status);
+
+    let after_fulfilment = match axis {
+        OrderAxis::Fulfilment => target,
+        OrderAxis::Financial => order.fulfilment_status.as_str(),
+    };
+
+    let after_financial = match axis {
+        OrderAxis::Financial => target,
+        OrderAxis::Fulfilment => order.financial_status.as_str(),
+    };
+
+    let is_stock_dead = releases_stock(after_fulfilment, after_financial);
+    let is_coupon_dead = releases_coupon(after_fulfilment, after_financial);
+
     match axis {
         OrderAxis::Financial => {
-            sqlx::query!(
-                r#"
-                UPDATE public."Order"
-                SET "financialStatus" = $3, "updatedAt" = $4
-                WHERE "tenantId" = $1 AND id = $2
-                "#,
-                tenant.as_str(),
-                order.id,
-                target,
-                now,
-            )
-            .execute(&mut **tx)
-            .await?;
+            if target == "paid" {
+                // `paid` is the money landing: one guarded settlement that also
+                // writes `paidAt`, the cashback credit and the wallet `spend`.
+                let paid = PaidOrder {
+                    id: order.id.clone(),
+                    code: order.code.clone(),
+                    customer_id: order.customer_id.clone(),
+                    cashback_cents: order.cashback_cents,
+                    wallet_applied_cents: order.wallet_applied_cents,
+                    financial_status: order.financial_status.clone(),
+                };
+
+                mark_paid(&mut tx, tenant, &paid, actor.member_id, reason).await?;
+            } else {
+                sqlx::query(
+                    r#"
+                    UPDATE public."Order"
+                    SET "financialStatus" = $3, "updatedAt" = $4
+                    WHERE "tenantId" = $1 AND id = $2
+                    "#,
+                )
+                .bind(tenant.as_str())
+                .bind(&order.id)
+                .bind(target)
+                .bind(now)
+                .execute(&mut **tx)
+                .await?;
+            }
+
+            if target == "canceled" && order.wallet_applied_cents > 0 {
+                release_wallet_reserve(
+                    &mut tx,
+                    tenant,
+                    &order.id,
+                    &order.code,
+                    &order.customer_id,
+                    order.wallet_applied_cents,
+                    now,
+                )
+                .await?;
+            }
+
+            if target == "refunded" {
+                reverse_cashback_once(
+                    &mut tx,
+                    tenant,
+                    &order.id,
+                    &order.code,
+                    &order.customer_id,
+                    order.cashback_cents,
+                    actor.member_id,
+                    now,
+                )
+                .await?;
+            }
         }
         OrderAxis::Fulfilment => {
             sqlx::query!(
@@ -459,29 +557,43 @@ pub async fn transition(
         }
     }
 
-    sqlx::query!(
-        r#"
-        INSERT INTO public."OrderEvent" (
-            id, "tenantId", "orderId", type, "fromValue", "toValue",
-            "actorMemberId", reason, "createdAt"
+    // The generic axis event. `paid` already wrote `payment_recorded` inside
+    // `mark_paid`; `refunded` adds its cashback receipt inside
+    // `reverse_cashback_once`.
+    if !(axis == OrderAxis::Financial && target == "paid") {
+        sqlx::query(
+            r#"
+            INSERT INTO public."OrderEvent" (
+                id, "tenantId", "orderId", type, "fromValue", "toValue",
+                "actorMemberId", reason, "createdAt"
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            "#,
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        "#,
-        uuid::Uuid::new_v4().to_string(),
-        tenant.as_str(),
-        order.id,
-        match axis {
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(tenant.as_str())
+        .bind(&order.id)
+        .bind(match axis {
             OrderAxis::Financial => "financial_changed",
             OrderAxis::Fulfilment => "fulfilment_changed",
-        },
-        from,
-        target,
-        actor.member_id,
-        reason,
-        now,
-    )
-    .execute(&mut **tx)
-    .await?;
+        })
+        .bind(from)
+        .bind(target)
+        .bind(actor.member_id)
+        .bind(reason)
+        .bind(now)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    // The first edge into a dead pair restores what the order took.
+    if !was_stock_dead && is_stock_dead {
+        restore_stock(&mut tx, tenant, &order.id).await?;
+    }
+
+    if !was_coupon_dead && is_coupon_dead {
+        release_coupon_redemptions(&mut tx, tenant, &order.id).await?;
+    }
 
     tx.commit().await?;
 
@@ -498,28 +610,326 @@ pub async fn transition(
 }
 
 /// One wallet ledger row for the order being expired.
+#[derive(sqlx::FromRow)]
 struct LedgerRow {
     kind: String,
     amount_cents: i32,
 }
 
-/// What is still held for the order: reserved minus released minus spent, never
-/// negative. A spend settles the reserve of the same order.
+/// The columns `transition` reads, as one locked row.
+#[derive(sqlx::FromRow)]
+struct TransitionOrderRow {
+    id: String,
+    code: String,
+    customer_id: String,
+    cashback_cents: i32,
+    wallet_applied_cents: i32,
+    financial_status: String,
+    fulfilment_status: String,
+    /// `expire` reads the window; `transition` never touches it.
+    #[sqlx(default)]
+    expires_at: Option<NaiveDateTime>,
+}
 fn outstanding_reserve(rows: &[LedgerRow]) -> i32 {
-    let mut outstanding = 0_i32;
+    let mut reserved = 0_i32;
+    let mut released = 0_i32;
+    let mut spent = 0_i32;
 
     for row in rows {
         match row.kind.as_str() {
-            "reserve" => {
-                outstanding = outstanding.saturating_add(row.amount_cents.saturating_neg())
-            }
-            "reserve_release" => outstanding = outstanding.saturating_add(row.amount_cents),
-            "spend" => outstanding = outstanding.saturating_add(row.amount_cents.saturating_neg()),
+            "reserve" => reserved = reserved.saturating_add(row.amount_cents.saturating_neg()),
+            // A release is a positive row that gives the reserve back; a spend is a
+            // negative row that settles it. Both reduce what is still held.
+            "reserve_release" => released = released.saturating_add(row.amount_cents),
+            "spend" => spent = spent.saturating_add(row.amount_cents.saturating_neg()),
             _ => {}
         }
     }
 
-    outstanding.max(0)
+    reserved
+        .saturating_sub(released)
+        .saturating_sub(spent)
+        .max(0)
+}
+
+/// Gives back the wallet reserve an order still holds: one `reserve_release`
+/// row and the stored balance rolled forward by the same cents — never more
+/// than is still reserved, so a repeated call is a no-op and a cancel + refund
+/// pair cannot mint credit. Returns whether a release was written.
+#[allow(clippy::too_many_arguments)]
+async fn release_wallet_reserve(
+    tx: &mut sqlx::PgConnection,
+    tenant: &TenantId,
+    order_id: &str,
+    code: &str,
+    customer_id: &str,
+    amount_cents: i32,
+    now: NaiveDateTime,
+) -> Result<bool, sqlx::Error> {
+    // The wallet row is locked first, so the release reads the balance the
+    // other movement left behind and not the one it raced with.
+    let wallet = sqlx::query_as::<_, (String,)>(
+        r#"
+        SELECT id
+        FROM public."Wallet"
+        WHERE "tenantId" = $1 AND "customerId" = $2
+        FOR UPDATE
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(customer_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some(wallet) = wallet else {
+        return Ok(false);
+    };
+
+    let ledger = sqlx::query_as::<_, LedgerRow>(
+        r#"
+        SELECT kind, "amountCents" AS amount_cents
+        FROM public."WalletTransaction"
+        WHERE "tenantId" = $1 AND "walletId" = $2 AND "orderId" = $3
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&wallet.0)
+    .bind(order_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    // Nothing left to release (already spent or released): the order still
+    // moves, there is just no money to give back.
+    if amount_cents > outstanding_reserve(&ledger) {
+        return Ok(false);
+    }
+
+    sqlx::query(
+        r#"
+        INSERT INTO public."WalletTransaction" (
+            id, "tenantId", "walletId", "orderId", kind, "amountCents",
+            reason, "createdAt"
+        )
+        VALUES ($1, $2, $3, $4, 'reserve_release', $5, $6, $7)
+        "#,
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(tenant.as_str())
+    .bind(&wallet.0)
+    .bind(order_id)
+    .bind(amount_cents)
+    .bind(format!("Reserva liberada no pedido {code}"))
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE public."Wallet"
+        SET "balanceCents" = "balanceCents" + $3, "updatedAt" = $4
+        WHERE "tenantId" = $1 AND id = $2
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&wallet.0)
+    .bind(amount_cents)
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO public."OrderEvent" (
+            id, "tenantId", "orderId", type, "fromValue", "toValue", "createdAt"
+        )
+        VALUES ($1, $2, $3, 'wallet_released', NULL, $4, $5)
+        "#,
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(tenant.as_str())
+    .bind(order_id)
+    .bind(amount_cents.to_string())
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    Ok(true)
+}
+
+/// Puts the stock of an order back, for the product and variation lines it
+/// persisted (`OrderItem."variationId"`). A stable lock order keeps two
+/// concurrent releases from deadlocking.
+// ponytail: kit-line component variations are not persisted on `OrderItem` yet;
+// restoring them needs an `OrderItemComponent` migration when kit stock restore lands.
+async fn restore_stock(
+    tx: &mut sqlx::PgConnection,
+    tenant: &TenantId,
+    order_id: &str,
+) -> Result<(), sqlx::Error> {
+    let lines = sqlx::query_as::<_, (String, i32)>(
+        r#"
+        SELECT "variationId", quantity
+        FROM public."OrderItem"
+        WHERE "tenantId" = $1 AND "orderId" = $2 AND "variationId" IS NOT NULL
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(order_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let mut totals: std::collections::HashMap<String, i32> = std::collections::HashMap::new();
+
+    for (variation_id, quantity) in lines {
+        let entry = totals.entry(variation_id).or_default();
+        *entry = entry.saturating_add(quantity);
+    }
+
+    // A stable order keeps two concurrent releases from locking the same rows
+    // in opposite directions.
+    let mut variation_ids: Vec<String> = totals.keys().cloned().collect();
+    variation_ids.sort();
+
+    for variation_id in &variation_ids {
+        let quantity = totals[variation_id];
+
+        sqlx::query(
+            r#"
+            UPDATE public."Variation"
+            SET "stockQty" = "stockQty" + $3
+            WHERE "tenantId" = $1 AND id = $2 AND "stockMode" = 'controlled'
+            "#,
+        )
+        .bind(tenant.as_str())
+        .bind(variation_id)
+        .bind(quantity)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    Ok(())
+}
+
+/// Deletes the coupon redemptions a dead unpaid order recorded and counts each
+/// coupon back down, so a burned `usageLimit` or `perCustomerLimit` slot is
+/// freed for the customer.
+async fn release_coupon_redemptions(
+    tx: &mut sqlx::PgConnection,
+    tenant: &TenantId,
+    order_id: &str,
+) -> Result<(), sqlx::Error> {
+    let coupon_ids = sqlx::query_scalar::<_, String>(
+        r#"
+        DELETE FROM public."CouponRedemption"
+        WHERE "tenantId" = $1 AND "orderId" = $2
+        RETURNING "couponId"
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(order_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    for coupon_id in coupon_ids {
+        sqlx::query(
+            r#"
+            UPDATE public."Coupon"
+            SET "usageCount" = GREATEST("usageCount" - 1, 0)
+            WHERE "tenantId" = $1 AND id = $2
+            "#,
+        )
+        .bind(tenant.as_str())
+        .bind(coupon_id)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    Ok(())
+}
+
+/// Reverses the cashback of a refunded order once: the `cashback_reversed`
+/// event is the receipt that stops a replay from clawing back twice. The
+/// amount actually taken is clamped to the wallet's available balance.
+#[allow(clippy::too_many_arguments)]
+async fn reverse_cashback_once(
+    tx: &mut sqlx::PgConnection,
+    tenant: &TenantId,
+    order_id: &str,
+    code: &str,
+    customer_id: &str,
+    cashback_cents: i32,
+    actor_member_id: Option<&str>,
+    now: NaiveDateTime,
+) -> Result<(), sqlx::Error> {
+    let reversed = sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*)
+        FROM public."OrderEvent"
+        WHERE "tenantId" = $1 AND "orderId" = $2 AND type = 'cashback_reversed'
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(order_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    if reversed > 0 {
+        return Ok(());
+    }
+
+    let credited = sqlx::query_scalar::<_, Option<String>>(
+        r#"
+        SELECT "toValue"
+        FROM public."OrderEvent"
+        WHERE "tenantId" = $1 AND "orderId" = $2 AND type = 'cashback_credited'
+        LIMIT 1
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(order_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some(credited) = credited
+        .flatten()
+        .and_then(|to_value| to_value.parse::<i32>().ok())
+    else {
+        return Ok(());
+    };
+
+    let taken = wallet::reverse_cashback(
+        &mut *tx,
+        tenant,
+        customer_id,
+        order_id,
+        code,
+        credited.min(cashback_cents),
+        actor_member_id,
+        now,
+    )
+    .await?;
+
+    if let Some(taken) = taken {
+        sqlx::query(
+            r#"
+            INSERT INTO public."OrderEvent" (
+                id, "tenantId", "orderId", type, "fromValue", "toValue",
+                "actorMemberId", reason, "createdAt"
+            )
+            VALUES ($1, $2, $3, 'cashback_reversed', NULL, $4, $5, NULL, $6)
+            "#,
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(tenant.as_str())
+        .bind(order_id)
+        .bind(taken.to_string())
+        .bind(actor_member_id)
+        .bind(now)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    Ok(())
 }
 
 /// Expire an unpaid order whose window has closed and give the wallet reserve
@@ -530,28 +940,36 @@ fn outstanding_reserve(rows: &[LedgerRow]) -> i32 {
 /// expires; an order paid in the meantime keeps its money. The outstanding
 /// reserve for the order becomes a `reserve_release` and the stored balance rolls
 /// forward by the same amount — never more than is still reserved, so a
-/// cancel + refund pair cannot mint credit.
+/// cancel + refund pair cannot mint credit. The expiry edge also restores the
+/// stock and the coupon redemptions an unpaid order was still holding.
+#[allow(clippy::too_many_lines)]
 pub async fn expire(pool: &PgPool, tenant: &TenantId, code: &str) -> Result<String, OrderError> {
     let mut tx = begin_scoped(pool, tenant).await?;
 
-    let order = sqlx::query!(
+    let order = sqlx::query_as::<_, TransitionOrderRow>(
         r#"
         SELECT id, code, "customerId" AS customer_id,
-               "financialStatus" AS financial_status,
+               "cashbackCents" AS cashback_cents,
                "walletAppliedCents" AS wallet_applied_cents,
-               "expiresAt" AS expires_at
+               "financialStatus" AS financial_status,
+               "fulfilmentStatus" AS fulfilment_status,
+               "expiresAt"
         FROM public."Order"
         WHERE "tenantId" = $1 AND code = $2
         FOR UPDATE
         "#,
-        tenant.as_str(),
-        code,
     )
+    .bind(tenant.as_str())
+    .bind(code)
     .fetch_optional(&mut **tx)
     .await?
     .ok_or(OrderError::NotFound)?;
 
-    let now = chrono::Utc::now().naive_utc();
+    // The DB clock is the one River schedules against, so the window and
+    // `updatedAt` agree with the job's notion of "past".
+    let now: NaiveDateTime = sqlx::query_scalar(r#"SELECT now() AT TIME ZONE 'utc' AS "now!""#)
+        .fetch_one(&mut **tx)
+        .await?;
 
     // No `expiresAt` means no window was ever opened for this order — a method
     // bound to an `offline` integration, reconciled by the store itself. A
@@ -563,6 +981,11 @@ pub async fn expire(pool: &PgPool, tenant: &TenantId, code: &str) -> Result<Stri
     if order.financial_status != "awaiting_payment" || expires_at > now {
         return Ok(order.financial_status);
     }
+
+    let was_stock_dead = releases_stock(&order.fulfilment_status, &order.financial_status);
+    let was_coupon_dead = releases_coupon(&order.fulfilment_status, &order.financial_status);
+    let is_stock_dead = releases_stock(&order.fulfilment_status, "expired");
+    let is_coupon_dead = releases_coupon(&order.fulfilment_status, "expired");
 
     sqlx::query!(
         r#"
@@ -594,92 +1017,24 @@ pub async fn expire(pool: &PgPool, tenant: &TenantId, code: &str) -> Result<Stri
     .await?;
 
     if order.wallet_applied_cents > 0 {
-        // The wallet row is locked first, so the release reads the balance the
-        // other movement left behind and not the one it raced with.
-        let wallet = sqlx::query!(
-            r#"
-            SELECT id
-            FROM public."Wallet"
-            WHERE "tenantId" = $1 AND "customerId" = $2
-            FOR UPDATE
-            "#,
-            tenant.as_str(),
-            order.customer_id,
+        release_wallet_reserve(
+            &mut tx,
+            tenant,
+            &order.id,
+            &order.code,
+            &order.customer_id,
+            order.wallet_applied_cents,
+            now,
         )
-        .fetch_optional(&mut **tx)
         .await?;
+    }
 
-        if let Some(wallet) = wallet {
-            let ledger = sqlx::query_as!(
-                LedgerRow,
-                r#"
-                SELECT kind, "amountCents" AS amount_cents
-                FROM public."WalletTransaction"
-                WHERE "tenantId" = $1 AND "walletId" = $2 AND "orderId" = $3
-                "#,
-                tenant.as_str(),
-                wallet.id,
-                order.id,
-            )
-            .fetch_all(&mut **tx)
-            .await?;
+    if !was_stock_dead && is_stock_dead {
+        restore_stock(&mut tx, tenant, &order.id).await?;
+    }
 
-            let amount_cents = order.wallet_applied_cents;
-
-            // Nothing left to release (already spent or released): the order
-            // still expires, there is just no money to give back.
-            if amount_cents <= outstanding_reserve(&ledger) {
-                sqlx::query!(
-                    r#"
-                    INSERT INTO public."WalletTransaction" (
-                        id, "tenantId", "walletId", "orderId", kind, "amountCents",
-                        reason, "createdAt"
-                    )
-                    VALUES ($1, $2, $3, $4, 'reserve_release', $5, $6, $7)
-                    "#,
-                    uuid::Uuid::new_v4().to_string(),
-                    tenant.as_str(),
-                    wallet.id,
-                    order.id,
-                    amount_cents,
-                    format!("Reserva liberada no pedido {}", order.code),
-                    now,
-                )
-                .execute(&mut **tx)
-                .await?;
-
-                sqlx::query!(
-                    r#"
-                    UPDATE public."Wallet"
-                    SET "balanceCents" = "balanceCents" + $3, "updatedAt" = $4
-                    WHERE "tenantId" = $1 AND id = $2
-                    "#,
-                    tenant.as_str(),
-                    wallet.id,
-                    amount_cents,
-                    now,
-                )
-                .execute(&mut **tx)
-                .await?;
-
-                sqlx::query!(
-                    r#"
-                    INSERT INTO public."OrderEvent" (
-                        id, "tenantId", "orderId", type, "fromValue", "toValue",
-                        "createdAt"
-                    )
-                    VALUES ($1, $2, $3, 'wallet_released', NULL, $4, $5)
-                    "#,
-                    uuid::Uuid::new_v4().to_string(),
-                    tenant.as_str(),
-                    order.id,
-                    amount_cents.to_string(),
-                    now,
-                )
-                .execute(&mut **tx)
-                .await?;
-            }
-        }
+    if !was_coupon_dead && is_coupon_dead {
+        release_coupon_redemptions(&mut tx, tenant, &order.id).await?;
     }
 
     tx.commit().await?;
@@ -753,6 +1108,9 @@ struct PricedLine<'a> {
     /// otherwise.
     unit_price_cents: i32,
     gross_cents: i32,
+    /// The variation a bare product line resolved to, so `OrderItem` persists
+    /// it and the stock can be given back on cancel or expire.
+    resolved_variation_id: Option<String>,
     /// A kit can opt out of coupons; a product line always joins them.
     coupon_stackable: bool,
 }
@@ -763,6 +1121,7 @@ struct ResolvedLine {
     unit_price_cents: i32,
     /// `(variation id, quantity)` the line takes from the catalog.
     composition: Vec<(String, i32)>,
+    resolved_variation_id: Option<String>,
     coupon_stackable: bool,
 }
 
@@ -778,6 +1137,7 @@ struct KitDish {
     max_qty: Option<i32>,
     step: i32,
     allow_swap: bool,
+    charge_extra: bool,
 }
 
 /// One group of a kit, with the bounds the buyer's composition must respect.
@@ -909,7 +1269,8 @@ pub async fn create(
 
     for line in &input.lines {
         if let Some(kit_id) = &line.kit_id {
-            *kit_counts.entry(kit_id.clone()).or_default() += line.quantity;
+            let entry = kit_counts.entry(kit_id.clone()).or_default();
+            *entry = entry.saturating_add(line.quantity);
         }
     }
 
@@ -924,16 +1285,25 @@ pub async fn create(
             .unwrap_or(0);
         let resolved = resolve_line(&mut tx, tenant, line, kit_count).await?;
         let unit_price_cents = resolved.unit_price_cents;
-        let gross_cents = unit_price_cents * line.quantity;
+        let gross_cents = unit_price_cents
+            .checked_mul(line.quantity)
+            .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
 
         for (variation_id, quantity) in resolved.composition {
-            *stock_totals.entry(variation_id).or_default() += quantity * line.quantity;
+            let per_line = quantity
+                .checked_mul(line.quantity)
+                .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
+            let total = stock_totals.entry(variation_id).or_insert(0);
+            *total = total
+                .checked_add(per_line)
+                .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
         }
 
         priced_lines.push(PricedLine {
             line,
             unit_price_cents,
             gross_cents,
+            resolved_variation_id: resolved.resolved_variation_id,
             coupon_stackable: resolved.coupon_stackable,
         });
     }
@@ -1059,7 +1429,9 @@ pub async fn create(
             tenant.as_str(),
             order_id.as_str(),
             line.line.product_id.as_deref(),
-            line.line.variation_id.as_deref(),
+            line.resolved_variation_id
+                .as_deref()
+                .or(line.line.variation_id.as_deref()),
             line.line.kit_id.as_deref(),
             line.line.name.as_str(),
             line.unit_price_cents,
@@ -1202,21 +1574,31 @@ async fn resolve_line(
     kit_count: i32,
 ) -> Result<ResolvedLine, CreateOrderError> {
     if let Some(product_id) = &line.product_id {
-        let owned = sqlx::query!(
-            r#"SELECT id FROM public."Product" WHERE "tenantId" = $1 AND id = $2"#,
-            tenant.as_str(),
-            product_id,
+        let product = sqlx::query_as::<_, (bool, bool)>(
+            r#"
+            SELECT available, archived
+            FROM public."Product"
+            WHERE "tenantId" = $1 AND id = $2
+            "#,
         )
+        .bind(tenant.as_str())
+        .bind(product_id)
         .fetch_optional(&mut *tx)
-        .await?
-        .is_some();
+        .await?;
 
-        if !owned {
+        // A product the store pulled cannot be bought, and neither can an
+        // unavailable one: the buyer sees the fresh catalog, not a ghost line.
+        let Some((available, archived)) = product else {
             return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+        };
+
+        if archived || !available {
+            return Err(CreateOrderError::Validation(ErrorCode::Conflict));
         }
     }
 
     let mut unit_price_cents = line.unit_price_cents;
+    let mut resolved_variation_id = line.variation_id.clone();
     let mut composition = Vec::new();
 
     if let Some(variation_id) = &line.variation_id {
@@ -1241,11 +1623,57 @@ async fn resolve_line(
             return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
         }
 
+        // A line that names only a variation still owes the product its
+        // availability check: the variation alone proves nothing.
+        if line.product_id.is_none() && line.kit_id.is_none() {
+            let product = sqlx::query_as::<_, (bool, bool)>(
+                r#"
+                SELECT available, archived
+                FROM public."Product"
+                WHERE "tenantId" = $1 AND id = $2
+                "#,
+            )
+            .bind(tenant.as_str())
+            .bind(&variation.product_id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .ok_or(CreateOrderError::Validation(ErrorCode::ValidationFailed))?;
+
+            if product.1 || !product.0 {
+                return Err(CreateOrderError::Validation(ErrorCode::Conflict));
+            }
+        }
+
         unit_price_cents = variation.price_cents;
 
         if line.kit_id.is_none() {
             composition.push((variation_id.clone(), 1));
         }
+    } else if line.product_id.is_some() && line.kit_id.is_none() {
+        // A product line without a variation: `Product` carries no price, so the
+        // catalog must resolve it. A product with exactly one variation is
+        // priced and stocked from it; any other count is a buyer error.
+        let variations = sqlx::query_as::<_, (String, i32)>(
+            r#"
+            SELECT id, "priceCents"
+            FROM public."Variation"
+            WHERE "tenantId" = $1 AND "productId" = $2
+            "#,
+        )
+        .bind(tenant.as_str())
+        .bind(line.product_id.as_deref())
+        .fetch_all(&mut *tx)
+        .await?;
+
+        if variations.len() != 1 {
+            return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
+        }
+
+        let (variation_id, price_cents) = &variations[0];
+
+        unit_price_cents = *price_cents;
+        resolved_variation_id = Some(variation_id.clone());
+        composition.push((variation_id.clone(), 1));
     }
 
     let mut coupon_stackable = true;
@@ -1253,7 +1681,7 @@ async fn resolve_line(
     if let Some(kit_id) = &line.kit_id {
         let kit = sqlx::query!(
             r#"
-            SELECT kind, "pricingMode" AS pricing_mode, "baseCents" AS base_cents,
+            SELECT kind, "baseCents" AS base_cents,
                    "percentOff" AS percent_off,
                    "maxKitsPerOrder" AS max_kits_per_order,
                    "minItems" AS min_items, "maxItems" AS max_items,
@@ -1288,7 +1716,8 @@ async fn resolve_line(
             SELECT id, "variationId" AS variation_id, "productId" AS product_id,
                    "groupId" AS group_id, quantity,
                    "minQty" AS min_qty, "maxQty" AS max_qty,
-                   step, "allowSwap" AS allow_swap
+                   step, "allowSwap" AS allow_swap,
+                   "chargeExtra" AS charge_extra
             FROM public."KitItem"
             WHERE "tenantId" = $1 AND "kitId" = $2
             ORDER BY "sortOrder", id
@@ -1396,7 +1825,9 @@ async fn resolve_line(
                 }
             }
 
-            let total_items: i32 = chosen.iter().map(|(_, _, quantity)| quantity).sum();
+            let total_items: i32 = chosen
+                .iter()
+                .fold(0_i32, |acc, (_, _, quantity)| acc.saturating_add(*quantity));
 
             if kit.min_items.is_some_and(|min| total_items < min)
                 || kit.max_items.is_some_and(|max| total_items > max)
@@ -1426,7 +1857,7 @@ async fn resolve_line(
                             .find(|(dish_id, _, _)| dish_id == &dish.id)
                             .map(|(_, _, quantity)| *quantity)
                     })
-                    .sum();
+                    .fold(0_i32, i32::saturating_add);
 
                 if group.min_items.is_some_and(|min| quantity < min)
                     || group.max_items.is_some_and(|max| quantity > max)
@@ -1472,16 +1903,12 @@ async fn resolve_line(
                 return Err(CreateOrderError::Validation(ErrorCode::ValidationFailed));
             }
 
-            dishes_cents += i64::from(price.price_cents) * i64::from(*quantity);
+            if dish.charge_extra {
+                dishes_cents += i64::from(price.price_cents) * i64::from(*quantity);
+            }
         }
 
-        // A `sum` kit charges the dishes but never below its floor; a `fixed`
-        // kit charges its base and the dishes only shape the stock.
-        let mut cents = if kit.pricing_mode == "sum" {
-            dishes_cents.max(i64::from(kit.base_cents))
-        } else {
-            i64::from(kit.base_cents)
-        };
+        let mut cents = i64::from(kit.base_cents) + dishes_cents;
 
         if let Some(percent) = kit.percent_off {
             cents -= percent_of(cents, percent);
@@ -1516,6 +1943,7 @@ async fn resolve_line(
     Ok(ResolvedLine {
         unit_price_cents,
         composition,
+        resolved_variation_id,
         coupon_stackable,
     })
 }
@@ -1752,6 +2180,9 @@ async fn apply_coupon_redemptions(
 
 /// Port of `priceOrder`. Integer cents only: every percentage is a truncating
 /// division on non-negative values, so it floors, and no float exists to round.
+/// Client-quoted catalog discounts are never applied here: only the coupon
+/// engine takes money off (validation already rejects non-zero
+/// `catalog_discount_cents`).
 fn price(
     lines: &[PricedLine<'_>],
     coupons: &[Coupon],
@@ -1765,14 +2196,7 @@ fn price(
     let mut discount_cents = 0_i32;
 
     for line in lines {
-        // Stale catalog data clamps instead of failing: a line never discounts
-        // below zero and the order still prices.
-        discount_cents += line
-            .line
-            .catalog_discount_cents
-            .unwrap_or(0)
-            .min(line.gross_cents);
-        subtotal_cents += line.gross_cents;
+        subtotal_cents = subtotal_cents.saturating_add(line.gross_cents);
     }
 
     let mut applicable: Vec<(usize, i32)> = Vec::new();
@@ -1845,7 +2269,7 @@ fn price(
         let amount_cents = capped.max(0).min((subtotal_cents - discount_cents).max(0));
 
         if amount_cents > 0 {
-            discount_cents += amount_cents;
+            discount_cents = discount_cents.saturating_add(amount_cents);
             coupon_id.get_or_insert_with(|| coupon.id.clone());
             applied_coupons.push((coupon.id.clone(), amount_cents));
         }
@@ -1867,18 +2291,21 @@ fn price(
         }
     }
 
-    let payable = subtotal_cents - discount_cents + shipping_cents;
+    let payable = subtotal_cents
+        .saturating_sub(discount_cents)
+        .saturating_add(shipping_cents);
 
     let wallet_applied_cents = wallet_requested_cents
         .min(wallet_available_cents)
         .min(payable)
         .max(0);
 
-    let total_cents = (payable - wallet_applied_cents).max(0);
+    let total_cents = payable.saturating_sub(wallet_applied_cents).max(0);
 
     // Net merchandise only, before freight and before wallet.
-    let net_merchandise = (subtotal_cents - discount_cents).max(0);
-    let cashback_cents = net_merchandise * cashback_percent / 100;
+    let net_merchandise = subtotal_cents.saturating_sub(discount_cents).max(0);
+    let cashback_cents =
+        i32::try_from(percent_of(i64::from(net_merchandise), cashback_percent)).unwrap_or(i32::MAX);
 
     Price {
         subtotal_cents,
@@ -1949,7 +2376,11 @@ fn scoped_subtotal(coupon: &Coupon, lines: &[PricedLine<'_>]) -> Option<i32> {
             return None;
         }
 
-        return Some(eligible.iter().map(|line| line.gross_cents).sum());
+        return Some(
+            eligible
+                .iter()
+                .fold(0_i32, |acc, line| acc.saturating_add(line.gross_cents)),
+        );
     }
 
     let include = coupon.product_scope_mode != "exclude";
@@ -1972,7 +2403,7 @@ fn scoped_subtotal(coupon: &Coupon, lines: &[PricedLine<'_>]) -> Option<i32> {
                 .is_some_and(|kit_id| coupon.kit_ids.contains(kit_id));
 
         if listed == include {
-            subtotal_cents += line.gross_cents;
+            subtotal_cents = subtotal_cents.saturating_add(line.gross_cents);
             matched_lines += 1;
         }
     }
@@ -1991,6 +2422,7 @@ pub(crate) struct PaidOrder {
     pub code: String,
     pub customer_id: String,
     pub cashback_cents: i32,
+    pub wallet_applied_cents: i32,
     pub financial_status: String,
 }
 
@@ -2010,27 +2442,25 @@ pub async fn record_payment(
     actor: Option<&str>,
 ) -> Result<RecordPaymentOutput, OrderError> {
     // The path carries the code; the body repeats it in the Bun contract. A
-    // blank body falls back to the path instead of losing the order.
-    let code = if input.code.trim().is_empty() {
-        code
-    } else {
-        input.code.as_str()
-    };
+    // blank body falls back to the path; a different body is the caller's
+    // mistake, not this order.
+    let code = resolve_payment_code(code, input.code.as_str())?;
 
     let mut tx = begin_scoped(pool, tenant).await?;
 
-    let order = sqlx::query!(
+    let order = sqlx::query_as::<_, PaidOrderRow>(
         r#"
         SELECT id, code, "customerId" AS customer_id,
                "cashbackCents" AS cashback_cents,
+               "walletAppliedCents" AS wallet_applied_cents,
                "financialStatus" AS financial_status
         FROM public."Order"
         WHERE "tenantId" = $1 AND code = $2
         FOR UPDATE
         "#,
-        tenant.as_str(),
-        code,
     )
+    .bind(tenant.as_str())
+    .bind(code)
     .fetch_optional(&mut **tx)
     .await?
     .ok_or(OrderError::NotFound)?;
@@ -2040,6 +2470,7 @@ pub async fn record_payment(
         code: order.code,
         customer_id: order.customer_id,
         cashback_cents: order.cashback_cents,
+        wallet_applied_cents: order.wallet_applied_cents,
         financial_status: order.financial_status,
     };
 
@@ -2053,22 +2484,55 @@ pub async fn record_payment(
     })
 }
 
-/// The one place an order becomes paid: stamps the financial axis, credits the
-/// cashback once and appends the two events.
+/// The columns `record_payment` locks the order row on.
+#[derive(sqlx::FromRow)]
+struct PaidOrderRow {
+    id: String,
+    code: String,
+    customer_id: String,
+    cashback_cents: i32,
+    wallet_applied_cents: i32,
+    financial_status: String,
+}
+
+/// The path addresses the order; the body may repeat the code. A blank body
+/// falls back to the path instead of losing the order, and a different body is
+/// a caller mistake the dashboard can fix.
+fn resolve_payment_code<'a>(path: &'a str, body: &'a str) -> Result<&'a str, OrderError> {
+    let body = body.trim();
+
+    if body.is_empty() || body == path {
+        Ok(path)
+    } else {
+        Err(OrderError::CodeMismatch)
+    }
+}
+
+/// The one place an order becomes paid: stamps the financial axis, settles the
+/// wallet reserve, credits the cashback once and appends the events.
 ///
 /// The caller holds the order row lock. Idempotent by construction: an already
 /// paid order is a no-op, and an existing `cashback_credited` receipt stops the
 /// credit without touching the order — the same early return the Bun
-/// `markOrderPaid` makes, so a replay cannot mint cashback twice.
+/// `markOrderPaid` makes, so a replay cannot mint cashback twice. A state that
+/// may not receive payment is [`OrderError::NotPayable`]: `pending` must first
+/// become `awaiting_payment`, and money already settled leaves through
+/// `refunded` only.
 pub(crate) async fn mark_paid(
     tx: &mut sqlx::PgConnection,
     tenant: &TenantId,
     order: &PaidOrder,
     actor_member_id: Option<&str>,
     reason: Option<&str>,
-) -> Result<(), sqlx::Error> {
+) -> Result<(), OrderError> {
     if order.financial_status == "paid" {
         return Ok(());
+    }
+
+    if !paid_accepts(&order.financial_status) {
+        return Err(OrderError::NotPayable {
+            from: order.financial_status.clone(),
+        });
     }
 
     let receipt = sqlx::query!(
@@ -2089,7 +2553,7 @@ pub(crate) async fn mark_paid(
     }
 
     let credited = wallet::credit_cashback(
-        tx,
+        &mut *tx,
         tenant,
         &order.customer_id,
         &order.id,
@@ -2119,6 +2583,15 @@ pub(crate) async fn mark_paid(
         )
         .execute(&mut *tx)
         .await?;
+    }
+
+    // The wallet's reserve for this order becomes the payment: a paired
+    // `reserve_release` + `spend` writes the settlement into the ledger. The
+    // stored balance was already debited at reserve time, so the pair nets to
+    // zero on the balance while `outstanding_reserve` reaches zero — a later
+    // release of the same money is then impossible.
+    if order.wallet_applied_cents > 0 {
+        settle_wallet_reserve(&mut *tx, tenant, order, now).await?;
     }
 
     sqlx::query!(
@@ -2154,4 +2627,191 @@ pub(crate) async fn mark_paid(
     .await?;
 
     Ok(())
+}
+
+/// Settles the order's wallet reserve as the payment that landed: a paired
+/// `reserve_release` (+X) and `spend` (−X), leaving the stored balance
+/// untouched (it was debited at reserve time) and the order's outstanding
+/// reserve at zero, exactly the `ledger.ts` invariant `reconcile` pins.
+async fn settle_wallet_reserve(
+    tx: &mut sqlx::PgConnection,
+    tenant: &TenantId,
+    order: &PaidOrder,
+    now: NaiveDateTime,
+) -> Result<(), sqlx::Error> {
+    let wallet = sqlx::query_as::<_, (String,)>(
+        r#"
+        SELECT id
+        FROM public."Wallet"
+        WHERE "tenantId" = $1 AND "customerId" = $2
+        FOR UPDATE
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&order.customer_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some(wallet) = wallet else {
+        return Ok(());
+    };
+
+    let ledger = sqlx::query_as::<_, LedgerRow>(
+        r#"
+        SELECT kind, "amountCents" AS amount_cents
+        FROM public."WalletTransaction"
+        WHERE "tenantId" = $1 AND "walletId" = $2 AND "orderId" = $3
+        "#,
+    )
+    .bind(tenant.as_str())
+    .bind(&wallet.0)
+    .bind(&order.id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let amount_cents = order.wallet_applied_cents;
+
+    // Nothing still reserved (already released): the pair settles nothing.
+    if amount_cents > outstanding_reserve(&ledger) {
+        return Ok(());
+    }
+
+    sqlx::query(
+        r#"
+        INSERT INTO public."WalletTransaction" (
+            id, "tenantId", "walletId", "orderId", kind, "amountCents",
+            reason, "createdAt"
+        )
+        VALUES ($1, $2, $3, $4, 'reserve_release', $5, $6, $7)
+        "#,
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(tenant.as_str())
+    .bind(&wallet.0)
+    .bind(&order.id)
+    .bind(amount_cents)
+    .bind(format!("Reserva consumida no pedido {}", order.code))
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO public."WalletTransaction" (
+            id, "tenantId", "walletId", "orderId", kind, "amountCents",
+            reason, "createdAt"
+        )
+        VALUES ($1, $2, $3, $4, 'spend', $5, $6, $7)
+        "#,
+    )
+    .bind(uuid::Uuid::new_v4().to_string())
+    .bind(tenant.as_str())
+    .bind(&wallet.0)
+    .bind(&order.id)
+    .bind(-amount_cents)
+    .bind(format!("Reserva consumida no pedido {}", order.code))
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LedgerRow, outstanding_reserve, paid_accepts, releases_coupon, releases_stock};
+
+    fn ledger(rows: &[(&str, i32)]) -> Vec<LedgerRow> {
+        rows.iter()
+            .map(|(kind, amount_cents)| LedgerRow {
+                kind: (*kind).to_owned(),
+                amount_cents: *amount_cents,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn paid_accepts_only_the_awaiting_states() {
+        assert!(paid_accepts("awaiting_payment"));
+        assert!(paid_accepts("pending_on_delivery"));
+        assert!(!paid_accepts("pending"));
+        assert!(!paid_accepts("paid"));
+        assert!(!paid_accepts("refunded"));
+        assert!(!paid_accepts("expired"));
+        assert!(!paid_accepts("canceled"));
+    }
+
+    #[test]
+    fn a_release_subtracts_instead_of_adding() {
+        // Reserve 100: outstanding is 100, not 200 after the release.
+        let reserved = ledger(&[("reserve", -100)]);
+
+        assert_eq!(outstanding_reserve(&reserved), 100);
+
+        let released = ledger(&[("reserve", -100), ("reserve_release", 100)]);
+
+        // Before the fix this was 200, which allowed the same money to
+        // release twice.
+        assert_eq!(outstanding_reserve(&released), 0);
+
+        let twice = ledger(&[
+            ("reserve", -100),
+            ("reserve_release", 100),
+            ("reserve_release", 100),
+        ]);
+
+        // A forged second release still cannot go below zero.
+        assert_eq!(outstanding_reserve(&twice), 0);
+    }
+
+    #[test]
+    fn a_spend_settles_the_reserve() {
+        let settled = ledger(&[("reserve", -100), ("spend", -100)]);
+
+        assert_eq!(outstanding_reserve(&settled), 0);
+
+        // The `mark_paid` pair: release + spend also reaches zero, and a
+        // later release of the same money is impossible.
+        let pair = ledger(&[("reserve", -100), ("reserve_release", 100), ("spend", -100)]);
+
+        assert_eq!(outstanding_reserve(&pair), 0);
+    }
+
+    #[test]
+    fn unknown_kinds_do_not_count() {
+        let rows = ledger(&[("cashback_credit", 500), ("adjustment", -200)]);
+
+        assert_eq!(outstanding_reserve(&rows), 0);
+    }
+
+    #[test]
+    fn release_edges_follow_the_domain_rules() {
+        // Stock goes back when the order never reaches the buyer.
+        assert!(releases_stock("canceled", "paid"));
+        assert!(releases_stock("pending", "expired"));
+        assert!(releases_stock("pending", "canceled"));
+        assert!(!releases_stock("completed", "paid"));
+
+        // Coupons only when no money was received.
+        assert!(releases_coupon("canceled", "awaiting_payment"));
+        assert!(releases_coupon("pending", "expired"));
+        assert!(!releases_coupon("canceled", "paid"));
+        assert!(!releases_coupon("pending", "refunded"));
+    }
+
+    #[test]
+    fn payment_code_must_repeat_the_path_or_stay_blank() {
+        use super::{OrderError, resolve_payment_code};
+
+        assert!(matches!(resolve_payment_code("ABC123", ""), Ok("ABC123")));
+        assert!(matches!(resolve_payment_code("ABC123", "  "), Ok("ABC123")));
+        assert!(matches!(
+            resolve_payment_code("ABC123", "ABC123"),
+            Ok("ABC123")
+        ));
+        assert!(matches!(
+            resolve_payment_code("ABC123", "DEF456"),
+            Err(OrderError::CodeMismatch)
+        ));
+    }
 }

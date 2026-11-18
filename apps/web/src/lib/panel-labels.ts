@@ -117,12 +117,6 @@ export const KIT_KIND_LABELS: Record<"fixed" | "custom_quantities" | "fixed_tota
   fixed_total: "Total fixo",
 };
 
-/** Como o preço do kit nasce: valor do lojista ou soma dos pratos com piso. */
-export const KIT_PRICING_MODE_LABELS: Record<"fixed" | "sum", string> = {
-  fixed: "Preço fixo",
-  sum: "Soma dos pratos",
-};
-
 /** O que acontece quando a composição mínima fica fora de alcance. */
 export const KIT_UNAVAILABLE_BEHAVIOR_LABELS: Record<"hide" | "block", string> = {
   hide: "Ocultar o kit",

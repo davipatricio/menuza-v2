@@ -13,6 +13,19 @@ pub struct PublicSeo {
     pub social_image_url: Option<String>,
     pub canonical_url: Option<String>,
     pub json_ld: Option<String>,
+    /// Extra `<link>` relations; empty for every entity that has no page of its own.
+    pub links: Vec<PublicSeoLink>,
+}
+
+/// One extra `<link>` the storefront emits: an `hreflang` alternate, a
+/// `sameAs` profile or a `related` resource.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicSeoLink {
+    pub rel: String,
+    pub href: String,
+    #[schema(required)]
+    pub hreflang: Option<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
@@ -22,6 +35,22 @@ pub struct PublicStore {
     pub slug: String,
     pub display_name: String,
     pub seo: PublicSeo,
+    pub theme: PublicTheme,
+}
+
+/// The palette the storefront paints, resolved: a saved value or the platform
+/// default, never empty. Colors are `#rrggbb`; `primaryForeground` is the ink
+/// that keeps contrast on `primaryColor`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PublicTheme {
+    pub primary_color: String,
+    pub primary_foreground: String,
+    pub accent_color: String,
+    pub background_color: String,
+    pub foreground_color: String,
+    /// Base corner radius in pixels. Other radii scale from it.
+    pub radius: i32,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
@@ -209,6 +238,8 @@ pub struct PublicKitItem {
     /// False when the chosen variation has no stock left; the dish stays
     /// visible and the composer blocks it.
     pub available: bool,
+    #[serde(default)]
+    pub charge_extra: bool,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
@@ -236,8 +267,7 @@ pub struct PublicKitBand {
     pub percent: i32,
 }
 
-/// A kit as the storefront composes it. `base_cents` is what the card shows:
-/// the charged price for a fixed kit, the floor for a summed one.
+/// A kit as the storefront composes it. `base_cents` is what the card shows.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PublicKit {
@@ -247,7 +277,6 @@ pub struct PublicKit {
     pub description: Option<String>,
     pub image_url: String,
     pub kind: String,
-    pub pricing_mode: String,
     pub base_cents: i32,
     pub percent_off: Option<i32>,
     pub min_items: Option<i32>,
@@ -258,6 +287,7 @@ pub struct PublicKit {
     pub groups: Vec<PublicKitGroup>,
     pub items: Vec<PublicKitItem>,
     pub bands: Vec<PublicKitBand>,
+    pub seo: PublicSeo,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]

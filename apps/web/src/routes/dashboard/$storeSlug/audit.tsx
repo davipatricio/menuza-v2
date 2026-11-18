@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AuditTable } from "@/features/audit/components/audit-table.tsx";
 import { listAuditLogsFn } from "@/features/audit/server/audit.functions.ts";
+import { TableLoading } from "@/features/catalog/components/table-loading.tsx";
 import { pageTitle } from "@/lib/seo/title.ts";
 
 export const Route = createFileRoute("/dashboard/$storeSlug/audit")({
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/dashboard/$storeSlug/audit")({
 
     return { logs: payload.logs };
   },
+  pendingComponent: () => <TableLoading label="Carregando auditoria" />,
   head: () => ({ meta: [{ title: pageTitle("Auditoria") }] }),
   component: AuditPage,
 });

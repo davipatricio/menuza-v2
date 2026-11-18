@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { Loader2 } from "lucide-react";
 import { CreateStoreInputSchema } from "@menuza/shared/tenant";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/field.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { createStore } from "@/features/auth/server/session-client.ts";
+import { useAutofillSync } from "@/hooks/use-autofill-sync.ts";
 import { ApiError } from "@/lib/api-error";
 import { slugify } from "@/lib/slug.ts";
 import { fieldErrors } from "./form-errors.ts";
@@ -28,6 +29,7 @@ const GENERIC_ERROR = "Não foi possível criar a loja. Tente novamente.";
 export function StoreForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const form = useForm({
     defaultValues: {
@@ -56,8 +58,21 @@ export function StoreForm() {
     },
   });
 
+  useAutofillSync(formRef, ({ name, value }) => {
+    // SAFETY: the control came from a `<form.Field>` this form rendered, so its
+    // `name` is one of the form data's keys.
+    form.setFieldValue(name as never, value as never);
+
+    // The slug follows the name until the user edits it, and an autofilled name
+    // never fired `onChange`, so seed it here.
+    if (name === "displayName" && form.state.values.slug === "") {
+      form.setFieldValue("slug", slugify(value));
+    }
+  });
+
   return (
     <form
+      ref={formRef}
       method="post"
       noValidate
       onSubmit={(event) => {

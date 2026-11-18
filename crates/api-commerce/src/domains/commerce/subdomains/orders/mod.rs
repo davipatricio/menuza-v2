@@ -42,9 +42,11 @@ fn capabilities_of(role: TenantRole) -> Vec<&'static str> {
 fn error_of(error: OrderError) -> ApiError {
     match error {
         OrderError::NotFound => ApiError::not_found(),
-        OrderError::Invalid { .. } => ApiError(ErrorCode::Conflict),
+        OrderError::Invalid { .. } | OrderError::NotPayable { .. } => ApiError(ErrorCode::Conflict),
         OrderError::Forbidden => ApiError::forbidden(),
-        OrderError::ReasonRequired => ApiError(ErrorCode::ValidationFailed),
+        OrderError::ReasonRequired | OrderError::CodeMismatch => {
+            ApiError(ErrorCode::ValidationFailed)
+        }
         OrderError::Db(_) => ApiError(ErrorCode::Internal),
     }
 }
@@ -119,17 +121,28 @@ mod tests {
             .0,
             ErrorCode::Conflict
         );
+        assert_eq!(
+            error_of(OrderError::NotPayable {
+                from: "expired".to_owned()
+            })
+            .0,
+            ErrorCode::Conflict
+        );
         assert_eq!(error_of(OrderError::NotFound).0, ErrorCode::NotFound);
         assert_eq!(error_of(OrderError::Forbidden).0, ErrorCode::Forbidden);
         assert_eq!(
             error_of(OrderError::ReasonRequired).0,
             ErrorCode::ValidationFailed
         );
+        assert_eq!(
+            error_of(OrderError::CodeMismatch).0,
+            ErrorCode::ValidationFailed
+        );
     }
 
     #[test]
     fn capabilities_follow_the_role_matrix() {
-        assert_eq!(capabilities_of(TenantRole::Owner).len(), 11);
+        assert_eq!(capabilities_of(TenantRole::Owner).len(), 12);
         assert!(!capabilities_of(TenantRole::Staff).contains(&"orders:refund"));
         assert!(capabilities_of(TenantRole::Staff).contains(&"orders:write"));
     }

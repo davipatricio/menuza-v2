@@ -11,8 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx";
 import { formatBrl } from "@/lib/format.ts";
-import type { PanelKitOptionProduct } from "@/lib/api/model/panelKitOptionProduct.ts";
-import { kitBandFor, kitUnitCents } from "../lib/kit-price.ts";
+import type { PanelKitOptionProduct } from "@menuza/api-client/model/panelKitOptionProduct";
+import { kitOrderCents, kitUnitCents } from "../lib/kit-price.ts";
 import type { KitFormValues } from "../schemas/kit.ts";
 
 export function KitPreview({
@@ -22,23 +22,23 @@ export function KitPreview({
   values: KitFormValues;
   options: PanelKitOptionProduct[];
 }) {
-  const chosenCents = values.items.map((item) => {
+  const extraCents = values.items.reduce((total, item) => {
+    if (!item.chargeExtra) return total;
     const product = options.find((option) => option.id === item.productId);
     const variation = product?.variations.find((entry) => entry.id === item.variationId);
 
-    return variation?.priceCents ?? 0;
-  });
+    return total + (variation?.priceCents ?? 0);
+  }, 0);
 
   const price = kitUnitCents({
-    pricingMode: values.pricingMode,
     baseCents: values.baseCents,
     percentOff: values.percentOff,
-    chosenCents,
+    extraCents,
   });
 
   const counts = [1, ...values.bands.map((band) => band.minQuantity)].map((kitCount) => ({
     kitCount,
-    band: kitBandFor(values.bands, kitCount),
+    ...kitOrderCents({ unitCents: price.totalCents, kitCount, bands: values.bands }),
   }));
 
   return (
@@ -46,9 +46,9 @@ export function KitPreview({
       <CardHeader>
         <CardTitle>Prévia</CardTitle>
         <CardDescription>
-          {values.pricingMode === "fixed"
-            ? "Preço fixo do kit, sem somar os pratos."
-            : "Soma dos pratos escolhidos, respeitando o piso."}
+          {extraCents > 0
+            ? "Preço base somado aos adicionais dos pratos com valor extra."
+            : "Preço base do kit (sem adicionais extras)."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -89,19 +89,13 @@ export function KitPreview({
                 </tr>
               </thead>
               <tbody>
-                {counts.map(({ kitCount, band }) => {
-                  const total = Math.round(
-                    price.totalCents * kitCount * (1 - (band?.percent ?? 0) / 100),
-                  );
-
-                  return (
-                    <tr key={kitCount} className="border-t border-border">
-                      <td className="py-1 pr-4 tabular-nums">{kitCount}</td>
-                      <td className="py-1 pr-4 tabular-nums">{band ? `${band.percent}%` : "—"}</td>
-                      <td className="py-1 tabular-nums">{formatBrl(total)}</td>
-                    </tr>
-                  );
-                })}
+                {counts.map(({ kitCount, band, totalCents }) => (
+                  <tr key={kitCount} className="border-t border-border">
+                    <td className="py-1 pr-4 tabular-nums">{kitCount}</td>
+                    <td className="py-1 pr-4 tabular-nums">{band ? `${band.percent}%` : "—"}</td>
+                    <td className="py-1 tabular-nums">{formatBrl(totalCents)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

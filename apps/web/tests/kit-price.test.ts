@@ -3,64 +3,62 @@ import { describe, expect, test } from "bun:test";
 import { kitOrderCents, kitUnitCents } from "../src/features/catalog/lib/kit-price.ts";
 
 describe("kitUnitCents", () => {
-  test("fixed cobra o piso e ignora a soma dos pratos", () => {
+  test("cobra baseCents quando não há valor extra", () => {
     const price = kitUnitCents({
-      pricingMode: "fixed",
       baseCents: 4_990,
       percentOff: null,
-      chosenCents: [1_000, 2_000, 3_000],
     });
 
     expect(price.subtotalCents).toBe(4_990);
+    expect(price.discountCents).toBe(0);
     expect(price.totalCents).toBe(4_990);
   });
 
-  test("sum cobra a soma quando ela supera o piso", () => {
+  test("soma extraCents ao baseCents", () => {
     const price = kitUnitCents({
-      pricingMode: "sum",
-      baseCents: 1_000,
-      percentOff: null,
-      chosenCents: [2_500, 3_000],
-    });
-
-    expect(price.subtotalCents).toBe(5_500);
-  });
-
-  test("sum respeita o piso quando a soma é menor", () => {
-    const price = kitUnitCents({
-      pricingMode: "sum",
       baseCents: 5_000,
       percentOff: null,
-      chosenCents: [1_000],
+      extraCents: 1_500,
     });
 
-    expect(price.subtotalCents).toBe(5_000);
+    expect(price.subtotalCents).toBe(6_500);
+    expect(price.discountCents).toBe(0);
+    expect(price.totalCents).toBe(6_500);
   });
 
-  test("o percentual do kit incide depois do piso", () => {
+  test("o percentual do kit incide sobre baseCents + extraCents", () => {
     const price = kitUnitCents({
-      pricingMode: "sum",
       baseCents: 5_000,
       percentOff: 10,
-      chosenCents: [1_000],
+      extraCents: 1_000,
     });
 
-    expect(price.discountCents).toBe(500);
-    expect(price.totalCents).toBe(4_500);
+    expect(price.subtotalCents).toBe(6_000);
+    expect(price.discountCents).toBe(600);
+    expect(price.totalCents).toBe(5_400);
   });
 
   test("percentual nulo ou zero não desconta", () => {
     for (const percentOff of [null, 0]) {
       const price = kitUnitCents({
-        pricingMode: "fixed",
         baseCents: 3_000,
         percentOff,
-        chosenCents: [],
+        extraCents: 500,
       });
 
       expect(price.discountCents).toBe(0);
-      expect(price.totalCents).toBe(3_000);
+      expect(price.totalCents).toBe(3_500);
     }
+  });
+
+  test("trunca fração de centavo no desconto do kit igual ao Rust percent_of", () => {
+    const price = kitUnitCents({
+      baseCents: 999,
+      percentOff: 15,
+    });
+
+    expect(price.discountCents).toBe(149);
+    expect(price.totalCents).toBe(850);
   });
 });
 
@@ -90,5 +88,12 @@ describe("kitOrderCents", () => {
 
     expect(order.band?.minQuantity).toBe(3);
     expect(order.totalCents).toBe(19_000);
+  });
+
+  test("trunca fração de centavo na faixa progressiva igual ao Rust percent_of", () => {
+    const order = kitOrderCents({ unitCents: 333, kitCount: 3, bands });
+
+    expect(order.discountCents).toBe(49);
+    expect(order.totalCents).toBe(950);
   });
 });

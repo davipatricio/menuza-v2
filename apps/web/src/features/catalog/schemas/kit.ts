@@ -10,8 +10,6 @@ import * as v from "valibot";
 
 export type KitKindValue = "fixed" | "custom_quantities" | "fixed_total";
 
-export type KitPricingModeValue = "fixed" | "sum";
-
 export type KitUnavailableValue = "hide" | "block";
 
 export type KitGroupValues = {
@@ -33,6 +31,7 @@ export type KitItemValues = {
   step: number;
   allowSwap: boolean;
   swapVariationIds: string[];
+  chargeExtra: boolean;
 };
 
 export type KitBandValues = { minQuantity: number; percent: number };
@@ -43,7 +42,6 @@ export type KitFormValues = {
   description: string;
   imageUrl: string;
   kind: KitKindValue;
-  pricingMode: KitPricingModeValue;
   baseCents: number;
   percentOff: number | null;
   minItems: number | null;
@@ -60,8 +58,6 @@ export type KitFormValues = {
 };
 
 export const KIT_KINDS: KitKindValue[] = ["fixed", "custom_quantities", "fixed_total"];
-
-export const KIT_PRICING_MODES: KitPricingModeValue[] = ["fixed", "sum"];
 
 export const KIT_UNAVAILABLE_BEHAVIORS: KitUnavailableValue[] = ["hide", "block"];
 
@@ -87,7 +83,6 @@ export function emptyKit(slugSeed = ""): KitFormValues {
     description: "",
     imageUrl: "",
     kind: "fixed",
-    pricingMode: "fixed",
     baseCents: 0,
     percentOff: null,
     minItems: 1,
@@ -325,6 +320,7 @@ export function kitPayload(values: KitFormValues) {
     imageUrl: values.imageUrl.trim(),
     items: values.items.map((item, index) => ({
       allowSwap: item.allowSwap,
+      chargeExtra: item.chargeExtra ?? false,
       groupId: item.groupId,
       id: null,
       maxQty: item.maxQty,
@@ -342,7 +338,6 @@ export function kitPayload(values: KitFormValues) {
     minItems: values.minItems,
     name: values.name.trim(),
     percentOff: values.percentOff,
-    pricingMode: values.pricingMode,
     slug: values.slug,
     sortOrder: values.sortOrder,
     unavailableBehavior: values.unavailableBehavior,
@@ -364,6 +359,7 @@ const kitGroupSchema = v.object({
 
 const kitItemSchema = v.object({
   allowSwap: v.boolean(),
+  chargeExtra: v.optional(v.boolean(), false),
   groupId: v.nullable(v.string()),
   id: v.nullable(v.string()),
   maxQty: v.nullable(v.number()),
@@ -394,7 +390,6 @@ const kitWriteFields = {
   minItems: v.nullable(v.number()),
   name: v.string(),
   percentOff: v.nullable(v.number()),
-  pricingMode: v.picklist(KIT_PRICING_MODES),
   slug: v.string(),
   sortOrder: v.optional(v.number()),
   unavailableBehavior: v.picklist(KIT_UNAVAILABLE_BEHAVIORS),

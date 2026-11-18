@@ -7,17 +7,13 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import * as v from "valibot";
-import {
-  publicMenuOutput,
-  publicStoreOutput,
-  PublicProductDetailSchema,
-} from "@menuza/shared/commerce";
+import { publicMenuOutput, PublicProductDetailSchema } from "@menuza/shared/commerce";
 import type * as vv from "valibot";
-import type { PublicKit } from "@/lib/api/model";
+import type { PublicKit, PublicStore } from "@menuza/api-client/model";
 import { getCommerceStatus, storefrontClient } from "@/server/server-api.ts";
 import { absoluteUrl } from "@/server/seo/base-url.ts";
 
-export type StorefrontStore = vv.InferOutput<typeof publicStoreOutput>;
+export type StorefrontStore = PublicStore;
 
 export type StorefrontMenu = vv.InferOutput<typeof publicMenuOutput>;
 

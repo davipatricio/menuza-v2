@@ -12,6 +12,7 @@ use contract::oauth::{OAuthErrorOutput, OAuthTokenOutput, OAuthTokenRequest};
 use domain::oauth::{
     DEFAULT_ACCESS_TOKEN_TTL_SECONDS, OAuthError, hash_oauth_token, new_oauth_secret, verify_pkce,
 };
+use menuza_http::PeerAddr;
 use persistence::oauth::{NewOAuthToken, oauth_code_consume, oauth_code_find, oauth_token_insert};
 
 use super::support::{NO_STORE, TOKEN_CACHE, json_response, parse_body};
@@ -23,7 +24,22 @@ enum ExchangeError {
 }
 
 /// The token endpoint.
-pub async fn token(State(state): State<crate::State>, request: Request) -> Response {
+pub async fn token(
+    State(state): State<crate::State>,
+    PeerAddr(peer): PeerAddr,
+    request: Request,
+) -> Response {
+    if !state
+        .auth_limiter
+        .check_request(peer, request.headers(), &state.config)
+    {
+        return error_response(
+            StatusCode::TOO_MANY_REQUESTS,
+            "invalid_request",
+            "Rate limit exceeded",
+        );
+    }
+
     let Some(params) = parse_body::<OAuthTokenRequest>(request, &state).await else {
         return invalid_request("Invalid request payload");
     };
@@ -40,15 +56,14 @@ pub async fn token(State(state): State<crate::State>, request: Request) -> Respo
         );
     }
 
-    let (Some(code), Some(verifier), Some(client_id)) = (
+    let (Some(code), Some(verifier), Some(client_id), Some(redirect_uri)) = (
         non_empty(params.code.as_deref()),
         non_empty(params.code_verifier.as_deref()),
         non_empty(params.client_id.as_deref()),
+        non_empty(params.redirect_uri.as_deref()),
     ) else {
-        return invalid_request("code, code_verifier, and client_id are required");
+        return invalid_request("code, code_verifier, client_id, and redirect_uri are required");
     };
-
-    let redirect_uri = non_empty(params.redirect_uri.as_deref());
 
     match exchange(&state, code, verifier, client_id, redirect_uri).await {
         Ok(output) => json_response(output, &TOKEN_CACHE),
@@ -70,7 +85,7 @@ async fn exchange(
     code: &str,
     verifier: &str,
     client_id: &str,
-    redirect_uri: Option<&str>,
+    redirect_uri: &str,
 ) -> Result<OAuthTokenOutput, ExchangeError> {
     let stored = oauth_code_find(&state.pool, &hash_oauth_token(code))
         .await
@@ -81,7 +96,7 @@ async fn exchange(
         return Err(ExchangeError::Refused(OAuthError::ClientMismatch));
     }
 
-    if redirect_uri.is_some_and(|uri| stored.redirect_uri != uri) {
+    if stored.redirect_uri != redirect_uri {
         return Err(ExchangeError::Refused(OAuthError::RedirectUriMismatch));
     }
 

@@ -19,7 +19,7 @@
     "VAPID_SUBJECT",
     "VAPID_PUBLIC_KEY",
     "VAPID_PRIVATE_KEY",
-    "NEXT_PUBLIC_BUILD_REVISION"
+    "VITE_BUILD_REVISION"
   ],
   "tasks": {
     // Per-workspace turbo.json overrides the outputs that differ (.next, prisma/generated).
@@ -33,9 +33,9 @@
         "SENTRY_DSN",
         "SENTRY_ENV",
         "SENTRY_TRACES_SAMPLE_RATE",
-        "NEXT_PUBLIC_SENTRY_DSN",
-        "NEXT_PUBLIC_SENTRY_ENV",
-        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
+        "VITE_SENTRY_DSN",
+        "VITE_SENTRY_ENV",
+        "VITE_SENTRY_TRACES_SAMPLE_RATE"
       ]
     },
     "typecheck": {

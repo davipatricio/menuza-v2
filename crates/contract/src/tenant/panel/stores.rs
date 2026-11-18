@@ -52,3 +52,56 @@ pub struct PanelStore {
     pub role: TenantRole,
     pub member: SessionMember,
 }
+
+/// The store's palette as the settings screen and the public storefront read
+/// it. `primaryForeground` is derived from `primaryColor`, never saved.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PanelTheme {
+    pub primary_color: String,
+    pub primary_foreground: String,
+    pub accent_color: String,
+    pub background_color: String,
+    pub foreground_color: String,
+    pub radius: i32,
+}
+
+/// `v.strictObject({ primaryColor, accentColor, backgroundColor, radius })`.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SaveThemeInput {
+    pub primary_color: String,
+    pub accent_color: String,
+    pub background_color: String,
+    pub radius: i32,
+}
+
+impl SaveThemeInput {
+    /// Every color is `#rrggbb` and the radius stays inside the range the
+    /// check constraint accepts, so a bad save is a 400 before the SQL runs.
+    pub fn validate(&self) -> Result<(), ErrorCode> {
+        let colors = [
+            &self.primary_color,
+            &self.accent_color,
+            &self.background_color,
+        ];
+
+        let valid =
+            colors.iter().all(|color| is_hex_color(color)) && (0..=32).contains(&self.radius);
+
+        if valid {
+            Ok(())
+        } else {
+            Err(ErrorCode::ValidationFailed)
+        }
+    }
+}
+
+/// `#rrggbb`, lowercase or uppercase, and nothing else. `domain::theme` owns the
+/// same rule for the resolved palette; the contract layer validates before it
+/// depends on any other crate.
+fn is_hex_color(value: &str) -> bool {
+    let bytes = value.as_bytes();
+
+    bytes.len() == 7 && bytes[0] == b'#' && bytes[1..].iter().all(u8::is_ascii_hexdigit)
+}

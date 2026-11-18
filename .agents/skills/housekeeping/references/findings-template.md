@@ -29,7 +29,7 @@ Final state: <same, after>
 
 ## G. Docs drift
 
-## H. OpenCode harness
+## H. OpenCode + Claude harness
 
 ## I. Vendored skills
 
@@ -54,17 +54,17 @@ Final state: <same, after>
 
 ## Section intents
 
-| Section                    | What belongs there                                                             |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| A CI                       | workflow validity, job graph, caching, permissions, secret scoping             |
-| B package manager / images | runtime pins across dev/CI/containers, lockfile policy                         |
-| C red checks               | anything that makes `lint`, `fmt:check`, `typecheck`, `test`, `build` non-zero |
-| D dependencies             | outdated pins, catalog hygiene, transitive surprises, supply-chain checks      |
-| E tooling config           | oxlint/oxfmt/turbo settings that no longer match the tree                      |
-| F git hooks                | install state, hook scope, bypass policy                                       |
-| G docs drift               | claims in AGENTS/README/skills that contradict the tree                        |
-| H OpenCode harness         | agents, permissions, formatter, instructions, MCP reality                      |
-| I vendored skills          | lock vs disk drift, local edits at risk, refresh result                        |
-| J security / env           | secrets, env contract, action pinning, exposure                                |
-| K cleanup / orphans        | dead files, dead exports, archives, stray artifacts                            |
-| L verification             | one `[x]` per command actually run at the end                                  |
+| Section                     | What belongs there                                                             |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| A CI                        | workflow validity, job graph, caching, permissions, secret scoping             |
+| B package manager / images  | runtime pins across dev/CI/containers, lockfile policy                         |
+| C red checks                | anything that makes `lint`, `fmt:check`, `typecheck`, `test`, `build` non-zero |
+| D dependencies              | outdated pins, catalog hygiene, transitive surprises, supply-chain checks      |
+| E tooling config            | oxlint/oxfmt/turbo settings that no longer match the tree                      |
+| F git hooks                 | install state, hook scope, bypass policy                                       |
+| G docs drift                | claims in AGENTS/README/skills that contradict the tree                        |
+| H OpenCode + Claude harness | agents, permissions, formatter, instructions, MCP reality, plugin/hook wiring  |
+| I vendored skills           | lock vs disk drift, local edits at risk, refresh result                        |
+| J security / env            | secrets, env contract, action pinning, exposure                                |
+| K cleanup / orphans         | dead files, dead exports, archives, stray artifacts                            |
+| L verification              | one `[x]` per command actually run at the end                                  |

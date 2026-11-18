@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
+import type { PanelSeo } from "@menuza/shared/tenant";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert.tsx";
 import { Button } from "@/components/ui/button.tsx";
@@ -37,13 +38,9 @@ import { Switch } from "@/components/ui/switch.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
 import { Textarea } from "@/components/ui/textarea.tsx";
 import { formatBrlInput } from "@/lib/format.ts";
-import {
-  KIT_KIND_LABELS,
-  KIT_PRICING_MODE_LABELS,
-  KIT_UNAVAILABLE_BEHAVIOR_LABELS,
-} from "@/lib/panel-labels.ts";
-import type { PanelKitDetail } from "@/lib/api/model/panelKitDetail.ts";
-import type { PanelKitOptionProduct } from "@/lib/api/model/panelKitOptionProduct.ts";
+import { KIT_KIND_LABELS, KIT_UNAVAILABLE_BEHAVIOR_LABELS } from "@/lib/panel-labels.ts";
+import type { PanelKitDetail } from "@menuza/api-client/model/panelKitDetail";
+import type { PanelKitOptionProduct } from "@menuza/api-client/model/panelKitOptionProduct";
 import {
   createKitFn,
   updateKitFn,
@@ -51,7 +48,6 @@ import {
 } from "../server/kit-mutations.functions.ts";
 import {
   KIT_KINDS,
-  KIT_PRICING_MODES,
   KIT_UNAVAILABLE_BEHAVIORS,
   emptyKit,
   kitPayload,
@@ -62,8 +58,10 @@ import {
 } from "../schemas/kit.ts";
 import { KitItemsEditor } from "./kit-items-editor.tsx";
 import { KitPreview } from "./kit-preview.tsx";
+import { SeoForm } from "./seo/seo-form.tsx";
+import { kitUnitCents } from "../lib/kit-price.ts";
 
-const TABS = ["dados", "composicao", "preco"] as const;
+const TABS = ["dados", "composicao", "preco", "seo"] as const;
 
 const GENERIC_CREATE_ERROR = "Não foi possível criar o kit. Tente novamente.";
 
@@ -94,7 +92,6 @@ function valuesFromDetail(kit: PanelKitDetail): KitFormValues {
     description: kit.description ?? "",
     imageUrl: kit.imageUrl,
     kind: kit.kind,
-    pricingMode: kit.pricingMode,
     baseCents: kit.baseCents,
     percentOff: kit.percentOff,
     minItems: kit.minItems,
@@ -122,6 +119,7 @@ function valuesFromDetail(kit: PanelKitDetail): KitFormValues {
       step: item.step ?? 1,
       allowSwap: item.allowSwap,
       swapVariationIds: item.swapVariationIds,
+      chargeExtra: item.chargeExtra ?? false,
     })),
     bands: kit.bands.map((band) => ({ minQuantity: band.minQuantity, percent: band.percent })),
   };
@@ -191,10 +189,12 @@ export function KitForm({
   storeSlug,
   options,
   kit,
+  seo,
 }: {
   storeSlug: string;
   options: PanelKitOptionProduct[];
   kit?: PanelKitDetail;
+  seo?: PanelSeo;
 }) {
   const router = useRouter();
   const navigate = useNavigate();
@@ -218,6 +218,24 @@ export function KitForm({
   const set = (patch: Partial<KitFormValues>) => setValues((current) => ({ ...current, ...patch }));
 
   const errorCount = useMemo(() => Object.keys(errors).length, [errors]);
+
+  /** O preço que a prévia do SEO usa: a mesma conta do checkout para um kit. */
+  const kitPriceCents = useMemo(() => {
+    const extraCents = values.items.reduce((total, item) => {
+      if (!item.chargeExtra) return total;
+
+      const product = options.find((option) => option.id === item.productId);
+      const variation = product?.variations.find((entry) => entry.id === item.variationId);
+
+      return total + (variation?.priceCents ?? 0);
+    }, 0);
+
+    return kitUnitCents({
+      baseCents: values.baseCents,
+      percentOff: values.percentOff,
+      extraCents,
+    }).totalCents;
+  }, [values.items, values.baseCents, values.percentOff, options]);
 
   const mutation = useMutation({
     mutationFn: async (next: KitFormValues) => {
@@ -270,7 +288,8 @@ export function KitForm({
       <Tabs
         value={tab}
         onValueChange={(next) => {
-          if (next === "dados" || next === "composicao" || next === "preco") void setTab(next);
+          if (next === "dados" || next === "composicao" || next === "preco" || next === "seo")
+            void setTab(next);
         }}
       >
         <div className="-mt-1 -mb-2 w-full [scrollbar-width:none] overflow-x-auto overflow-y-hidden pt-1 pb-2 [&::-webkit-scrollbar]:hidden">
@@ -278,6 +297,7 @@ export function KitForm({
             <TabsTrigger value="dados">Identidade</TabsTrigger>
             <TabsTrigger value="composicao">Composição & Regras</TabsTrigger>
             <TabsTrigger value="preco">Preço</TabsTrigger>
+            {kit && seo ? <TabsTrigger value="seo">SEO</TabsTrigger> : null}
           </TabsList>
         </div>
 
@@ -551,45 +571,14 @@ export function KitForm({
               <CardHeader>
                 <CardTitle>Preço</CardTitle>
                 <CardDescription>
-                  O percentual incide depois do piso; a faixa progressiva, por último.
+                  Preço base do kit. Pratos marcados com valor extra somam à base; o desconto incide
+                  sobre o total e a faixa progressiva por último.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <Field>
-                  <FieldLabel>Modo de preço</FieldLabel>
-                  <Select
-                    items={KIT_PRICING_MODES.map((mode) => ({
-                      value: mode,
-                      label: KIT_PRICING_MODE_LABELS[mode],
-                    }))}
-                    value={values.pricingMode}
-                    onValueChange={(next) => {
-                      if (next === "fixed" || next === "sum") set({ pricingMode: next });
-                    }}
-                  >
-                    <SelectTrigger className="w-[16rem]" aria-label="Modo de preço">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {KIT_PRICING_MODES.map((mode) => (
-                          <SelectItem key={mode} value={mode}>
-                            {KIT_PRICING_MODE_LABELS[mode]}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    {values.pricingMode === "fixed"
-                      ? "O preço do kit é o valor abaixo, e os pratos não somam."
-                      : "Vale a soma dos pratos escolhidos, mas nunca abaixo do valor abaixo."}
-                  </FieldDescription>
-                </Field>
-
                 <MoneyField
                   id="kit-base"
-                  label={values.pricingMode === "fixed" ? "Preço do kit" : "Piso de preço"}
+                  label="Preço base do kit"
                   value={values.baseCents}
                   error={errors.baseCents}
                   onChange={(baseCents) => set({ baseCents })}
@@ -714,6 +703,25 @@ export function KitForm({
             <KitPreview values={values} options={options} />
           </div>
         </TabsContent>
+
+        {kit && seo ? (
+          <TabsContent value="seo" keepMounted>
+            <SeoForm
+              storeSlug={storeSlug}
+              entityType="kit"
+              entityId={kit.id}
+              entityName={values.name}
+              initialData={seo}
+              previewContext={{
+                name: values.name,
+                description: values.description || null,
+                url: `/menu/kit/${values.slug}`,
+                available: values.available,
+                priceCents: [kitPriceCents],
+              }}
+            />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       {serverError ? (

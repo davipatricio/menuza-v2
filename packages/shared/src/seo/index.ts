@@ -5,6 +5,7 @@ export type {
   SeoContext,
   SeoEntityType,
   SeoFields,
+  SeoLink,
   SeoMetaRow,
   SeoSource,
   StoreSeoDefaults,

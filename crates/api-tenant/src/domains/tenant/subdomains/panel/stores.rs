@@ -9,14 +9,16 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use contract::ErrorCode;
-use contract::tenant::panel::stores::{CreateStoreInput, PanelStore};
+use contract::tenant::panel::stores::{CreateStoreInput, PanelStore, PanelTheme, SaveThemeInput};
 use contract::tenant::session::{MemberKind, SessionMember, TenantRole};
 use domain::session::{TENANT_COOKIE, cookie_value, is_same_origin, parse_cookies, public_host};
 use persistence::tenant::TenantId;
-use persistence::tenant::panel::stores::{store_create, store_read, store_slug_taken};
+use persistence::tenant::panel::stores::{
+    store_create, store_read, store_slug_taken, theme_read, theme_save,
+};
 use persistence::tenant::session::{MemberRow, member_by_id};
 
-use super::support::{PanelContext, context, now};
+use super::support::{PanelContext, context, guard, now};
 use crate::domains::tenant::support::{
     ApiError, TenantRole as MemberRole, db_error, require_member,
 };
@@ -26,16 +28,22 @@ pub fn router() -> axum::Router<crate::State> {
     axum::Router::new()
         .route("/panel/stores", axum::routing::post(create_store))
         .route("/panel/stores/{storeSlug}", axum::routing::get(get_store))
+        .route(
+            "/panel/stores/{storeSlug}/theme",
+            axum::routing::get(get_store_theme).put(save_store_theme),
+        )
 }
 
 /// Paths this resource contributes to the panel document.
 pub fn openapi() -> utoipa::openapi::OpenApi {
     #[derive(utoipa::OpenApi)]
     #[openapi(
-        paths(create_store, get_store),
+        paths(create_store, get_store, get_store_theme, save_store_theme),
         components(schemas(
             contract::tenant::panel::stores::CreateStoreInput,
-            contract::tenant::panel::stores::PanelStore
+            contract::tenant::panel::stores::PanelStore,
+            contract::tenant::panel::stores::PanelTheme,
+            contract::tenant::panel::stores::SaveThemeInput
         ))
     )]
     struct Api;
@@ -214,4 +222,82 @@ fn session_member(member: &MemberRow) -> SessionMember {
             _ => MemberKind::Human,
         },
     }
+}
+
+/// The store's palette, resolved against the platform defaults.
+#[utoipa::path(
+    get,
+    path = "/panel/stores/{storeSlug}/theme",
+    operation_id = "getPanelStoreTheme",
+    tag = "panel",
+    params(
+        ("storeSlug" = String, Path, description = "The store's public slug.")
+    ),
+    responses(
+        (status = 200, body = PanelTheme),
+        (status = 400, body = contract::ApiErrorBody),
+        (status = 401, body = contract::ApiErrorBody),
+        (status = 403, body = contract::ApiErrorBody),
+        (status = 404, body = contract::ApiErrorBody),
+        (status = 409, body = contract::ApiErrorBody),
+        (status = 500, body = contract::ApiErrorBody)
+    )
+)]
+pub async fn get_store_theme(
+    State(state): State<crate::State>,
+    headers: HeaderMap,
+    Path(store_slug): Path<String>,
+) -> Result<Json<PanelTheme>, ApiError> {
+    let ctx = context(&state, &headers, &store_slug).await?;
+
+    guard(&ctx, "dashboard:read")?;
+
+    let theme = theme_read(&state.pool, &ctx.tenant)
+        .await
+        .map_err(db_error)?;
+
+    Ok(Json(theme))
+}
+
+/// Replaces the store's palette. The foreground follows from the primary color,
+/// so it is never part of the payload.
+#[utoipa::path(
+    put,
+    path = "/panel/stores/{storeSlug}/theme",
+    operation_id = "savePanelStoreTheme",
+    tag = "panel",
+    params(
+        ("storeSlug" = String, Path, description = "The store's public slug.")
+    ),
+    request_body = SaveThemeInput,
+    responses(
+        (status = 200, body = PanelTheme),
+        (status = 400, body = contract::ApiErrorBody),
+        (status = 401, body = contract::ApiErrorBody),
+        (status = 403, body = contract::ApiErrorBody),
+        (status = 404, body = contract::ApiErrorBody),
+        (status = 409, body = contract::ApiErrorBody),
+        (status = 500, body = contract::ApiErrorBody)
+    )
+)]
+pub async fn save_store_theme(
+    State(state): State<crate::State>,
+    headers: HeaderMap,
+    Path(store_slug): Path<String>,
+    Json(input): Json<SaveThemeInput>,
+) -> Result<Json<PanelTheme>, ApiError> {
+    let ctx = context(&state, &headers, &store_slug).await?;
+
+    guard(&ctx, "branding:write")?;
+    input.validate().map_err(ApiError)?;
+
+    theme_save(&state.pool, &ctx.tenant, &input, now())
+        .await
+        .map_err(db_error)?;
+
+    let theme = theme_read(&state.pool, &ctx.tenant)
+        .await
+        .map_err(db_error)?;
+
+    Ok(Json(theme))
 }

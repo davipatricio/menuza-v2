@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import "uniwind";
+
+/*
+ * The dashboard palette: the platform default, not a store theme. Values mirror
+ * `apps/web/src/styles/globals.css` so a screenshot of the web panel and the app
+ * agree. `src/lib/theme-mode.tsx` switches the variant; nothing here is per-store.
+ */
+@layer theme {
+  :root {
+    @variant light {
+      --color-background: #faf8f5;
+      --color-foreground: #191614;
+      --color-card: #ffffff;
+      --color-card-foreground: #191614;
+      --color-primary: #191614;
+      --color-primary-foreground: #faf8f5;
+      --color-accent: #eeeae4;
+      --color-accent-foreground: #191614;
+      --color-muted: #f1ede8;
+      --color-muted-foreground: #6b655f;
+      --color-border: #e4ded7;
+      --color-destructive: #b91c1c;
+      --color-success: #15803d;
+    }
+
+    @variant dark {
+      --color-background: #131210;
+      --color-foreground: #f3f1ec;
+      --color-card: #1c1a17;
+      --color-card-foreground: #f3f1ec;
+      --color-primary: #f3f1ec;
+      --color-primary-foreground: #131210;
+      --color-accent: #2b2926;
+      --color-accent-foreground: #f3f1ec;
+      --color-muted: #292624;
+      --color-muted-foreground: #a6a096;
+      --color-border: #363330;
+      --color-destructive: #e34f45;
+      --color-success: #65a478;
+    }
+  }
+}
+
+@theme {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-3xl: 22px;
+  --radius-full: 9999px;
+}

@@ -1,14 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  // Project agents live in .opencode/agents/. Orchestrator is the entry point.
-  "default_agent": "orchestrator",
+  // No project agents: the repo runs on OpenCode's built-in agents (explore, general,
+  // plan, build). `.opencode/agents/` was removed on purpose; keep it that way.
   "snapshots": false,
   // Activates the built-in oxfmt formatter (repo depends on oxfmt and has .oxfmtrc.json).
   "formatter": true,
-  // Orchestrator -> architect/implementer -> scout/researcher/critic is depth 2.
-  "experimental": {
-    "subagent_depth": 2,
-  },
   // Generated dirs and caches must not trigger filesystem updates.
   "watcher": {
     "ignore": ["**/.next/**", "**/.turbo/**", "**/node_modules/**", "**/dist/**"],

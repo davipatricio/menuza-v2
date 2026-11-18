@@ -15,8 +15,10 @@ pub mod config;
 pub mod docs;
 pub mod extract;
 pub mod layers;
+pub mod rate_limit;
 pub use config::{Config, ConfigError, Env};
-pub use extract::{CommerceSession, InternalToken, SessionToken, TenantScope};
+pub use extract::{CommerceSession, InternalToken, PeerAddr, SessionToken, TenantScope};
+pub use rate_limit::RateLimiter;
 
 /// What both binaries must hand the shared router: a pool and a config.
 pub trait AppState: Clone + Send + Sync + 'static {

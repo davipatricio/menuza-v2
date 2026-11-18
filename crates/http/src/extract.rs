@@ -127,6 +127,23 @@ impl<S: AppState> FromRequestParts<S> for InternalToken {
     }
 }
 
+/// Direct socket peer address from `ConnectInfo`, or `None` in tests that
+/// dispatch a bare `Request` without a TCP listener. Never rejects.
+#[derive(Debug, Clone, Copy)]
+pub struct PeerAddr(pub Option<SocketAddr>);
+
+impl<S: Send + Sync> FromRequestParts<S> for PeerAddr {
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let peer = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(peer)| *peer);
+        Ok(Self(peer))
+    }
+}
+
 /// Proof that the tenant header arrived from a trusted hop. The value stays a
 /// plain string: `persistence` owns `TenantId`, this extractor only proves
 /// provenance.

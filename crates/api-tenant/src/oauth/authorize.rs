@@ -9,7 +9,7 @@
 use std::collections::HashSet;
 
 use axum::extract::{Request, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::Response;
 use chrono::{Duration, Utc};
 use contract::ErrorCode;
@@ -18,15 +18,19 @@ use domain::oauth::{
     DEFAULT_AUTH_CODE_TTL_SECONDS, OAuthError, PKCE_METHOD, hash_oauth_token, new_oauth_secret,
     resolve_requested_scopes,
 };
-use domain::session::{TENANT_COOKIE, parse_cookies};
+use domain::session::{TENANT_COOKIE, is_same_origin, parse_cookies, public_host};
 use persistence::oauth::{NewOAuthCode, oauth_client_find, oauth_code_insert};
 use persistence::tenant::session::memberships_by_member;
 
-use super::support::{CORS, header, json_response, parse_json};
+use super::support::{header, json_response, parse_json};
 use crate::domains::tenant::support::{ApiError, require_member};
 
 /// Issues an authorization code for the session's member.
 pub async fn authorize(State(state): State<crate::State>, request: Request) -> Response {
+    if !same_origin(request.headers()) {
+        return forbidden("Cross-origin authorization refused");
+    }
+
     let token = parse_cookies(header(request.headers(), "cookie"))
         .get(TENANT_COOKIE)
         .filter(|token| !token.is_empty())
@@ -43,11 +47,21 @@ pub async fn authorize(State(state): State<crate::State>, request: Request) -> R
     };
 
     let Some(input) = parse_json::<OAuthAuthorizeRequest>(request, &state).await else {
-        return json_response(
-            OAuthErrorOutput::new("invalid_request", "Missing or invalid required fields"),
-            &[],
-        );
+        return invalid_request("Missing or invalid required fields");
     };
+
+    if input.code_challenge.trim().is_empty() {
+        return invalid_request("Missing or invalid required fields");
+    }
+
+    let method = input
+        .code_challenge_method
+        .as_deref()
+        .unwrap_or(PKCE_METHOD);
+
+    if method != PKCE_METHOD {
+        return refused(&OAuthError::UnsupportedPkceMethod);
+    }
 
     let tenants = match granted_tenant_ids(&state, &member.member_id, &input).await {
         Ok(tenants) => tenants,
@@ -76,10 +90,7 @@ pub async fn authorize(State(state): State<crate::State>, request: Request) -> R
             client_id: input.client_id.clone(),
             member_id: member.member_id.clone(),
             code_challenge: input.code_challenge.clone(),
-            code_challenge_method: input
-                .code_challenge_method
-                .clone()
-                .unwrap_or_else(|| PKCE_METHOD.to_owned()),
+            code_challenge_method: PKCE_METHOD.to_owned(),
             redirect_uri: input.redirect_uri.clone(),
             scopes,
             tenant_ids: tenants,
@@ -166,10 +177,34 @@ fn unauthorized(description: &str) -> Response {
     response
 }
 
+fn same_origin(headers: &HeaderMap) -> bool {
+    is_same_origin(
+        header(headers, "origin"),
+        header(headers, "referer"),
+        public_host(header(headers, "x-forwarded-host"), header(headers, "host")),
+    )
+}
+
+fn forbidden(description: &str) -> Response {
+    let mut response = json_response(OAuthErrorOutput::new("access_denied", description), &[]);
+
+    *response.status_mut() = StatusCode::FORBIDDEN;
+
+    response
+}
+
+fn invalid_request(description: &str) -> Response {
+    let mut response = json_response(OAuthErrorOutput::new("invalid_request", description), &[]);
+
+    *response.status_mut() = StatusCode::BAD_REQUEST;
+
+    response
+}
+
 fn refused(error: &OAuthError) -> Response {
     let mut response = json_response(
         OAuthErrorOutput::new("invalid_request", error.to_string()),
-        &CORS,
+        &[],
     );
 
     *response.status_mut() = StatusCode::BAD_REQUEST;

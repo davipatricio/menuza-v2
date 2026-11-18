@@ -52,7 +52,7 @@ a loader or a `*.functions.ts` call.
 Loaders are **isomorphic**: the same function runs on the server for SSR and in the browser
 on client navigation. Therefore they may import only `*.functions.ts` server functions
 (`src/features/<domain>/server/*.functions.ts`) and isomorphic helpers — never
-`@/lib/api/**`, `process.env` secrets or `src/server/**`, because that module graph
+`@menuza/api-client`, `process.env` secrets or `src/server/**`, because that module graph
 is shipped to the client and evaluated there.
 
 Design tokens and dashboard rules: `../../DESIGN.md`.

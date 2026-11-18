@@ -1,0 +1,30 @@
+{
+  "name": "@menuza/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    "./commerce": "./src/commerce.ts",
+    "./tenant": "./src/tenant.ts",
+    "./model": "./src/model/index.ts",
+    "./model/*": "./src/model/*.ts",
+    "./http": "./src/http.ts"
+  },
+  "scripts": {
+    "api:generate": "orval --config orval.config.ts && oxfmt src",
+    "fmt": "oxfmt .",
+    "fmt:check": "oxfmt --check .",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "typecheck": "bun check"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "catalog:",
+    "bun-types": "catalog:",
+    "orval": "^8.46.0",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

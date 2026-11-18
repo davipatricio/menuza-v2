@@ -45,7 +45,7 @@ Verify (report the exit code of each):
 Reply with: files changed, per-finding fix in one line, each command + exit code, anything skipped.
 ```
 
-## Mechanical batch
+## Mechanical edit
 
 ```
 Apply exactly this transformation to every listed file. No judgment calls.

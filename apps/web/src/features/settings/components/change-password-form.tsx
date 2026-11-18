@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { useAutofillSync } from "@/hooks/use-autofill-sync.ts";
 import { ApiError } from "@/lib/api-error";
 import { changePassword } from "@/lib/session-client.ts";
 
@@ -23,6 +24,15 @@ export function ChangePasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useAutofillSync(formRef, ({ name, value }) => {
+    if (name === "currentPassword") setCurrentPassword(value);
+
+    if (name === "newPassword") setNewPassword(value);
+
+    if (name === "confirmPassword") setConfirmation(value);
+  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,7 +74,13 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form method="post" onSubmit={handleSubmit} aria-busy={pending} className="flex flex-col gap-5">
+    <form
+      ref={formRef}
+      method="post"
+      onSubmit={handleSubmit}
+      aria-busy={pending}
+      className="flex flex-col gap-5"
+    >
       <div className="flex flex-col gap-2">
         <Label htmlFor="currentPassword">Senha atual</Label>
         <Input

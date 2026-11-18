@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "uniwind";
+
+/*
+ * The storefront palette. Every value here is the platform default the API
+ * returns when a store saved none, so the first frame and the themed frame use
+ * the same tokens. `src/lib/theme.ts` overwrites them at runtime from
+ * `PublicStore.theme`; nothing per-store is compiled into the bundle.
+ */
+@theme {
+  --color-background: #faf8f5;
+  --color-foreground: #191614;
+  --color-card: #ffffff;
+  --color-card-foreground: #191614;
+  --color-primary: #191614;
+  --color-primary-foreground: #faf8f5;
+  --color-accent: #eeeae4;
+  --color-accent-foreground: #191614;
+  --color-muted: #f1ede8;
+  --color-muted-foreground: #6b655f;
+  --color-border: #e4ded7;
+  --color-destructive: #b91c1c;
+  --color-success: #15803d;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-3xl: 22px;
+  --radius-full: 9999px;
+}

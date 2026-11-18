@@ -39,6 +39,21 @@ pub struct NamedEntity {
     pub name: String,
 }
 
+/// One row of the extra `<link>` list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SeoLinkRow {
+    pub rel: String,
+    pub href: String,
+    pub hreflang: Option<String>,
+}
+
+/// One `<link>` as the save payload writes it.
+pub struct SeoLinkWrite<'a> {
+    pub rel: &'a str,
+    pub href: &'a str,
+    pub hreflang: Option<&'a str>,
+}
+
 /// One override row, or `None` when the entity has no SEO of its own.
 pub async fn seo_meta_find(
     pool: &PgPool,
@@ -79,7 +94,8 @@ pub async fn seo_meta_find(
     ))
 }
 
-/// Every `(entityType, entityId)` that carries at least one non-empty field.
+/// Every `(entityType, entityId)` that carries at least one non-empty field or
+/// at least one extra link.
 pub async fn seo_override_keys(
     pool: &PgPool,
     tenant: &TenantId,
@@ -88,11 +104,15 @@ pub async fn seo_override_keys(
         r#"SELECT "entityType", "entityId"
            FROM "SeoMeta"
            WHERE "tenantId" = $1
-             AND ((title IS NOT NULL AND title <> '')
+             AND (((title IS NOT NULL AND title <> '')
                OR (description IS NOT NULL AND description <> '')
                OR ("canonicalUrl" IS NOT NULL AND "canonicalUrl" <> '')
                OR ("socialImageUrl" IS NOT NULL AND "socialImageUrl" <> '')
-               OR ("jsonLd" IS NOT NULL AND "jsonLd" <> ''))"#,
+               OR ("jsonLd" IS NOT NULL AND "jsonLd" <> ''))
+               OR EXISTS (SELECT 1 FROM "SeoLink" AS link
+                          WHERE link."tenantId" = "SeoMeta"."tenantId"
+                            AND link."entityType" = "SeoMeta"."entityType"
+                            AND link."entityId" = "SeoMeta"."entityId"))"#,
     )
     .bind(tenant.as_str())
     .fetch_all(pool)
@@ -104,6 +124,77 @@ pub async fn seo_override_keys(
             SeoEntityType::parse(&entity_type).map(|entity_type| (entity_type, entity_id))
         })
         .collect())
+}
+
+/// The extra `<link>` rows of one entity, in their saved order.
+pub async fn seo_links_find(
+    pool: &PgPool,
+    tenant: &TenantId,
+    entity_type: SeoEntityType,
+    entity_id: &str,
+) -> Result<Vec<SeoLinkRow>, sqlx::Error> {
+    let rows = sqlx::query_as::<_, (String, String, Option<String>)>(
+        r#"SELECT rel, href, hreflang
+           FROM "SeoLink"
+           WHERE "tenantId" = $1 AND "entityType" = $2 AND "entityId" = $3
+           ORDER BY "sortOrder", id"#,
+    )
+    .bind(tenant.as_str())
+    .bind(entity_type.as_str())
+    .bind(entity_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(rel, href, hreflang)| SeoLinkRow {
+            rel,
+            href,
+            hreflang,
+        })
+        .collect())
+}
+
+/// Replaces every extra `<link>` of one entity in one transaction. An empty
+/// slice clears the list.
+pub async fn seo_links_replace(
+    pool: &PgPool,
+    tenant: &TenantId,
+    entity_type: SeoEntityType,
+    entity_id: &str,
+    links: &[SeoLinkWrite<'_>],
+) -> Result<(), sqlx::Error> {
+    let mut tx = super::super::begin_scoped(pool, tenant).await?;
+
+    sqlx::query(
+        r#"DELETE FROM "SeoLink"
+           WHERE "tenantId" = $1 AND "entityType" = $2 AND "entityId" = $3"#,
+    )
+    .bind(tenant.as_str())
+    .bind(entity_type.as_str())
+    .bind(entity_id)
+    .execute(&mut **tx)
+    .await?;
+
+    for (sort_order, link) in links.iter().enumerate() {
+        sqlx::query(
+            r#"INSERT INTO "SeoLink"
+                   (id, "tenantId", "entityType", "entityId", rel, href, hreflang, "sortOrder")
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"#,
+        )
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(tenant.as_str())
+        .bind(entity_type.as_str())
+        .bind(entity_id)
+        .bind(link.rel)
+        .bind(link.href)
+        .bind(link.hreflang)
+        .bind(sort_order as i32)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    tx.commit().await
 }
 
 /// Upserts one entity's override on the unique `(tenantId, entityType,
@@ -142,13 +233,26 @@ pub async fn seo_meta_upsert(
     Ok(())
 }
 
-/// Drops one entity's override; a missing row is a no-op, not an error.
+/// Drops one entity's override and its extra links; a missing row is a no-op,
+/// not an error.
 pub async fn seo_meta_delete(
     pool: &PgPool,
     tenant: &TenantId,
     entity_type: SeoEntityType,
     entity_id: &str,
 ) -> Result<u64, sqlx::Error> {
+    let mut tx = super::super::begin_scoped(pool, tenant).await?;
+
+    sqlx::query(
+        r#"DELETE FROM "SeoLink"
+           WHERE "tenantId" = $1 AND "entityType" = $2 AND "entityId" = $3"#,
+    )
+    .bind(tenant.as_str())
+    .bind(entity_type.as_str())
+    .bind(entity_id)
+    .execute(&mut **tx)
+    .await?;
+
     let result = sqlx::query(
         r#"DELETE FROM "SeoMeta"
            WHERE "tenantId" = $1 AND "entityType" = $2 AND "entityId" = $3"#,
@@ -156,8 +260,10 @@ pub async fn seo_meta_delete(
     .bind(tenant.as_str())
     .bind(entity_type.as_str())
     .bind(entity_id)
-    .execute(pool)
+    .execute(&mut **tx)
     .await?;
+
+    tx.commit().await?;
 
     Ok(result.rows_affected())
 }

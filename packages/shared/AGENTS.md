@@ -6,8 +6,11 @@
   `crates/openapi/{commerce,tenant}.json`.
 - Subpath entrypoints only (no root export, no `src/index.ts`): `@menuza/shared/commerce`,
   `@menuza/shared/tenant`, `@menuza/shared/errors`, `@menuza/shared/push`,
-  `@menuza/shared/sentry-privacy`.
+  `@menuza/shared/sentry-privacy`, `@menuza/shared/money`.
 - Contracts are defined first; implementations consume them. Changes go contract → server, never the reverse.
+- `@menuza/shared/money` is the one BRL formatter; the dashboard, the web
+  storefront and the native app re-export or import it instead of keeping a
+  second copy. Cents stay integers until this formatter.
 - All inputs/outputs validated with Valibot (Standard Schema).
 - Tenant management contract exposes the health probe, the push routes
   (`/push/public-key`, `/push/preferences`, `/push/subscriptions`), and the staff

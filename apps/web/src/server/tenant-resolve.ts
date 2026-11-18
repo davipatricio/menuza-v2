@@ -35,8 +35,8 @@
  * header is honored, so client-supplied headers from arbitrary IPs cannot spoof
  * the host.
  */
-import type { ResolveHostOutput } from "@/lib/api/model/resolveHostOutput.ts";
-import { getResolveTenantByStorefrontHostUrl } from "@/lib/api/tenant.ts";
+import type { ResolveHostOutput } from "@menuza/api-client/model/resolveHostOutput";
+import { getResolveTenantByStorefrontHostUrl } from "@menuza/api-client/tenant";
 
 type Mode = "main" | "storefront";
 
@@ -78,11 +78,17 @@ const DEV_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 // `*.trycloudflare.com` host. Development only, same as `DEV_HOSTS`.
 const DEV_TUNNEL_SUFFIX = ".trycloudflare.com";
 
+export function normalizePeerIp(ip: string | null | undefined): string {
+  const trimmed = (ip ?? "").trim().toLowerCase();
+
+  return trimmed.startsWith("::ffff:") ? trimmed.slice("::ffff:".length) : trimmed;
+}
+
 const TRUSTED_PROXY_HOPS = Math.max(0, Number(process.env.TRUSTED_PROXY_HOPS ?? 0));
 
 const TRUSTED_PROXY_IPS = (process.env.TRUSTED_PROXY_HOP_IPS ?? "")
   .split(",")
-  .map((s) => s.trim())
+  .map((s) => normalizePeerIp(s))
   .filter(Boolean);
 
 const ALWAYS_ALLOW = [
@@ -91,7 +97,6 @@ const ALWAYS_ALLOW = [
   "/favicon.ico",
   "/sitemap.xml",
   "/robots.txt",
-  "/.well-known",
 ];
 
 const PREFIXES = {
@@ -105,10 +110,16 @@ const PREFIXES = {
 // allowlist has already rejected unknown hosts before `isAllowed` runs.
 // `/webhooks` carries provider callbacks: the integration token in the path is
 // what authenticates them, so no tenant or session applies.
-// `/mcp` carries the remote MCP server: external clients address it on the
-// public origin and authenticate with an OAuth bearer token, so it must pass
-// on any resolved host just like the API mounts.
-const API_PREFIXES = ["/commerce", "/tenant", "/webhooks", "/mcp"] as const;
+// `/mcp` and `/.well-known/oauth-authorization-server` carry the remote MCP
+// server and its RFC 8414 discovery document: external clients address them on
+// the public origin, so both must resolve the host and reach `proxyUpstream`.
+const API_PREFIXES = [
+  "/commerce",
+  "/tenant",
+  "/webhooks",
+  "/mcp",
+  "/.well-known/oauth-authorization-server",
+] as const;
 
 // TanStack Start posts server functions (mutations and client-side loader
 // calls) to this mount. It is same-origin RPC the app itself serves, so it must
@@ -199,7 +210,7 @@ function resolveMode(host: string): Mode | null {
 // A Host header carries an optional port, but a bracketed IPv6 literal contains
 // colons of its own, so cutting at the first colon would truncate `[::1]:3000`
 // to `[` and silently miss the development allowlist entry.
-function stripPort(value: string): string {
+export function stripPort(value: string): string {
   const bracketed = /^\[([^\]]+)\]/.exec(value);
 
   if (bracketed) return `[${bracketed[1]!}]`;
@@ -209,39 +220,41 @@ function stripPort(value: string): string {
   return colon === -1 ? value : value.slice(0, colon);
 }
 
-/** True when the request comes from an allowlisted reverse proxy within the hop budget. */
-function isTrustedProxy(request: Request): boolean {
-  if (TRUSTED_PROXY_HOPS <= 0 || TRUSTED_PROXY_IPS.length === 0) return false;
+/**
+ * The forwarded host, honored only when the direct TCP socket peer (`peerIp`)
+ * is an allowlisted reverse proxy. Never reads `x-forwarded-for` to establish
+ * proxy trust — a client can forge that header directly.
+ */
+export function trustedForwardedHost(
+  request: Request,
+  peerIp: string | null | undefined,
+  hops: number = TRUSTED_PROXY_HOPS,
+  trustedIps: readonly string[] = TRUSTED_PROXY_IPS,
+): string | null {
+  if (hops <= 0 || trustedIps.length === 0) return null;
 
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  const peer = normalizePeerIp(peerIp);
 
-  if (!forwardedFor) return false;
-
-  const remote = forwardedFor.split(",")[0]?.trim() ?? "";
-
-  if (!remote) return false;
-
-  if (!TRUSTED_PROXY_IPS.includes(remote)) return false;
-
-  return forwardedFor.split(",").length - 1 <= TRUSTED_PROXY_HOPS;
-}
-
-/** The forwarded host, honored only when the requesting proxy is trusted and set it. */
-function trustedForwardedHost(request: Request): string | null {
-  if (!isTrustedProxy(request)) return null;
+  if (!peer || !trustedIps.includes(peer)) return null;
 
   const forwardedHost = request.headers.get("x-forwarded-host");
 
   if (!forwardedHost) return null;
 
-  return forwardedHost.split(",")[0]?.trim() ?? null;
+  const parts = forwardedHost
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return null;
+
+  return parts[Math.max(0, parts.length - hops)] ?? null;
 }
 
 /** proxy.ts:210 `resolveHost` — the host string, without a port. */
-function requestHost(request: Request): string {
-  // Trust forwarded-host only when the remote address matches a trusted proxy IP
-  // and the number of forwarding hops doesn't exceed TRUSTED_PROXY_HOPS.
-  const host = trustedForwardedHost(request) ?? request.headers.get("host") ?? "";
+function requestHost(request: Request, peerIp?: string | null): string {
+  // Trust forwarded-host only when the direct socket peer matches a trusted proxy IP.
+  const host = trustedForwardedHost(request, peerIp) ?? request.headers.get("host") ?? "";
 
   return stripPort(host.toLowerCase());
 }
@@ -251,12 +264,15 @@ function requestHost(request: Request): string {
  * would have returned. `pass` mirrors the always-allowed short circuit at
  * proxy.ts:221, which runs before the host is even read.
  */
-export async function resolveHost(request: Request): Promise<HostResolution> {
+export async function resolveHost(
+  request: Request,
+  peerIp?: string | null,
+): Promise<HostResolution> {
   const pathname = new URL(request.url).pathname;
 
   if (isAlwaysAllowed(pathname)) return { pass: true };
 
-  const host = requestHost(request);
+  const host = requestHost(request, peerIp);
   const mode = resolveMode(host);
 
   // Deny hosts that are not allowlisted before any surface is served.

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { injectManifest } from "@serwist/build";
-import { defineConfig, loadEnv, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -21,6 +21,15 @@ for (const [key, value] of Object.entries(
 const commerceInternal = process.env.COMMERCE_INTERNAL_URL ?? "http://127.0.0.1:3001";
 
 const tenantInternal = process.env.TENANT_INTERNAL_URL ?? "http://127.0.0.1:3002";
+
+const stripInternalHeaders: NonNullable<ProxyOptions["configure"]> = (proxy) => {
+  proxy.on("proxyReq", (proxyReq) => {
+    proxyReq.removeHeader("x-menuza-internal-token");
+    proxyReq.removeHeader("x-menuza-tenant-id");
+    proxyReq.removeHeader("x-menuza-mode");
+    proxyReq.removeHeader("x-menuza-host");
+  });
+};
 
 // Dev-only mirror of the rewrites in apps/web/next.config.ts:37-55; production
 // serves them from the server proxy instead (S14). Keys are anchored RegExp
@@ -63,8 +72,15 @@ function serwistWorker(): Plugin {
       await build({
         configFile: false,
         root,
+        envDir: repoRoot,
         publicDir: false,
         logLevel: "warn",
+        define: {
+          "process.env.NODE_ENV": JSON.stringify("production"),
+          "import.meta.env.VITE_BUILD_REVISION": JSON.stringify(
+            process.env.VITE_BUILD_REVISION ?? "",
+          ),
+        },
         build: {
           outDir: bundleDir,
           emptyOutDir: true,
@@ -115,29 +131,60 @@ export default defineConfig(({ command }) => ({
         changeOrigin: true,
         xfwd: true,
         rewrite: (path) => path.replace(/^\/commerce/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            proxyReq.removeHeader("x-menuza-internal-token");
+            proxyReq.removeHeader("x-menuza-mode");
+            proxyReq.removeHeader("x-menuza-host");
+
+            // Expo Go dev preview sends x-menuza-tenant-id on anonymous GET catalog reads;
+            // strip it on every state-changing method so mutations cannot spoof a tenant over loopback.
+            if (req.method !== "GET" && req.method !== "HEAD") {
+              proxyReq.removeHeader("x-menuza-tenant-id");
+            }
+          });
+        },
       },
       "^/tenant(?:[/?]|$)": {
         target: tenantInternal,
         changeOrigin: true,
         xfwd: true,
         rewrite: (path) => path.replace(/^\/tenant/, ""),
+        configure: stripInternalHeaders,
       },
       // Exactly these two paths, no subpaths (Next: `/oauth/token`, `/oauth/revoke`).
-      "^/oauth/token(?:\\?|$)": { target: tenantInternal, changeOrigin: true, xfwd: true },
-      "^/oauth/revoke(?:\\?|$)": { target: tenantInternal, changeOrigin: true, xfwd: true },
+      "^/oauth/token(?:\\?|$)": {
+        target: tenantInternal,
+        changeOrigin: true,
+        xfwd: true,
+        configure: stripInternalHeaders,
+      },
+      "^/oauth/revoke(?:\\?|$)": {
+        target: tenantInternal,
+        changeOrigin: true,
+        xfwd: true,
+        configure: stripInternalHeaders,
+      },
       "^/\\.well-known/oauth-authorization-server(?:\\?|$)": {
         target: tenantInternal,
         changeOrigin: true,
         xfwd: true,
+        configure: stripInternalHeaders,
       },
       // Next splits this into `/mcp` + `/mcp/:path*`; one anchored key covers both.
-      "^/mcp(?:[/?]|$)": { target: tenantInternal, changeOrigin: true, xfwd: true },
+      "^/mcp(?:[/?]|$)": {
+        target: tenantInternal,
+        changeOrigin: true,
+        xfwd: true,
+        configure: stripInternalHeaders,
+      },
       // Next: `/webhooks/:path*` — the bare mount is not a route.
       "^/webhooks/.+": {
         target: commerceInternal,
         changeOrigin: true,
         xfwd: true,
         rewrite: (path) => path.replace(/^\/webhooks/, ""),
+        configure: stripInternalHeaders,
       },
     },
   },

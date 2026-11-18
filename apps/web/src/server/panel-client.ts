@@ -43,6 +43,7 @@ import {
   getGetPanelProductUrl,
   getGetPanelSeoUrl,
   getGetPanelStoreSeoUrl,
+  getGetPanelStoreThemeUrl,
   getGetPanelStoreUrl,
   getGetTenantSessionUrl,
   getListAccountSessionsUrl,
@@ -77,6 +78,7 @@ import {
   getSavePanelProductNutritionUrl,
   getSavePanelSeoUrl,
   getSavePanelStoreSeoUrl,
+  getSavePanelStoreThemeUrl,
   getSearchPanelUrl,
   getSetPanelCouponStatusUrl,
   getTransitionPanelOrderUrl,
@@ -88,12 +90,14 @@ import {
   getUpdatePanelProductUrl,
   getUpdatePanelSubcategoryUrl,
   getUpdatePanelTagUrl,
-} from "@/lib/api/tenant.ts";
-import type { CreateKitInput } from "@/lib/api/model/createKitInput.ts";
-import type { PanelKitDetail } from "@/lib/api/model/panelKitDetail.ts";
-import type { PanelKitOptionsOutput } from "@/lib/api/model/panelKitOptionsOutput.ts";
-import type { PanelKitsOutput } from "@/lib/api/model/panelKitsOutput.ts";
-import type { UpdateKitInput } from "@/lib/api/model/updateKitInput.ts";
+} from "@menuza/api-client/tenant";
+import type { CreateKitInput } from "@menuza/api-client/model/createKitInput";
+import type { PanelKitDetail } from "@menuza/api-client/model/panelKitDetail";
+import type { PanelKitOptionsOutput } from "@menuza/api-client/model/panelKitOptionsOutput";
+import type { PanelKitsOutput } from "@menuza/api-client/model/panelKitsOutput";
+import type { PanelTheme } from "@menuza/api-client/model/panelTheme";
+import type { SaveThemeInput } from "@menuza/api-client/model/saveThemeInput";
+import type { UpdateKitInput } from "@menuza/api-client/model/updateKitInput";
 import { ApiError } from "@/lib/api-error";
 
 const TENANT_SESSION_COOKIE = "menuza_tenant_sid";
@@ -124,6 +128,15 @@ type KitPanelMethods = {
   }) => Promise<{ kit: PanelKitDetail }>;
   deleteKit: (input: { storeSlug: string; kitId: string }) => Promise<{ success: boolean }>;
   listKitOptions: (input: { storeSlug: string }) => Promise<PanelKitOptionsOutput>;
+};
+
+/**
+ * The store palette landed after the oRPC contract was frozen, so its two
+ * methods are typed from the generated OpenAPI models like the kits.
+ */
+type ThemePanelMethods = {
+  getStoreTheme: (input: { storeSlug: string }) => Promise<PanelTheme>;
+  saveStoreTheme: (input: SaveThemeInput & { storeSlug: string }) => Promise<PanelTheme>;
 };
 
 /**
@@ -201,7 +214,8 @@ export type TenantClient = {
     | "listTeamMembers"
     | "search"
   > &
-    KitPanelMethods;
+    KitPanelMethods &
+    ThemePanelMethods;
 };
 
 /** The dashboard session payload, derived from `session.current`'s contract output. */
@@ -672,6 +686,16 @@ function createClient(origin: string, headers: HeadersInit): TenantClient {
         write<PanelResult<"saveStoreSeo">>(
           origin,
           getSavePanelStoreSeoUrl(storeSlug),
+          headers,
+          "PUT",
+          input,
+        ),
+      getStoreTheme: ({ storeSlug }) =>
+        read<PanelTheme>(origin, getGetPanelStoreThemeUrl(storeSlug), headers),
+      saveStoreTheme: ({ storeSlug, ...input }) =>
+        write<PanelTheme, SaveThemeInput>(
+          origin,
+          getSavePanelStoreThemeUrl(storeSlug),
           headers,
           "PUT",
           input,

@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { TableLoading } from "@/features/catalog/components/table-loading.tsx";
 import { CustomersTable } from "@/features/customers/components/customers-table.tsx";
 import { listCustomersFn } from "@/features/customers/server/customers.functions.ts";
 import { pageTitle } from "@/lib/seo/title.ts";
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/dashboard/$storeSlug/customers/")({
 
     return { customers: payload.customers };
   },
+  pendingComponent: () => <TableLoading label="Carregando clientes" />,
   head: () => ({ meta: [{ title: pageTitle("Clientes") }] }),
   component: CustomersPage,
 });

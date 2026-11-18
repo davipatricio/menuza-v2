@@ -16,7 +16,11 @@
   - `crates/http` (package `menuza-http`) — the one tower stack and the extractors both binaries mount.
   - `crates/worker` — River consumer over the same Postgres pool. No listening port (ADR-0008).
   - `crates/openapi` — emit binary → `crates/openapi/{commerce,tenant}.json`.
-- `packages/shared`: browser-safe types (`/commerce`, `/tenant`, `/push`, `/errors`); its Valibot/oRPC contracts are legacy, the runtime contract is OpenAPI.
+- `packages/shared`: browser-safe types (`/commerce`, `/tenant`, `/push`, `/errors`), the shared money formatter (`/money`); its Valibot/oRPC contracts are legacy, the runtime contract is OpenAPI.
+- `packages/api-client`: the one generated HTTP client for both Rust APIs — `src/{commerce,tenant}.ts` and `src/model/**` come from `crates/openapi/*.json` through Orval, `src/http.ts` is the hand-written mutator (`configureApi`, `resetApi`, `apiFetch`) that keeps web relative and makes native absolute.
+- Two Expo apps sharing the same contract, money formatter and palette (MEN-313):
+  - `apps/mobile-storefront` — buyer storefront; one published binary per large store, identified by `app.menuza.store.<tenantSlug>`, with the tenant read from `applicationId` at runtime and one EAS Update channel for every binary.
+  - `apps/mobile-dashboard` — the operator app; one binary for every store, session cookie in `expo-secure-store`, native order-board tabs plus the Gestão stack mirroring the web sidebar.
 - `packages/db`: historical husk — `prisma/contract.prisma` and the Prisma migration history only; the live schema is `crates/persistence/migrations/`.
 - `apps/web/src/offline`: IndexedDB persister, mutation queue, Background Sync drain.
 - `infra/compose.yaml`: Postgres + Redis + Jaeger via Podman Compose.
@@ -24,8 +28,25 @@
 ### Docs map
 
 - `crates/AGENTS.md` is the workspace rule set; each crate carries its own (`contract`, `persistence`, `domain`, `http`, `api-commerce`, `api-tenant`, `worker`, `openapi`).
+- `docs/agents/mobile.md` — Expo architecture and the Expo Go preview recipe; read it before touching either mobile app. Expo Go cannot load native modules it does not bundle, and a tunneled preview needs `EXPO_PACKAGER_PROXY_URL` plus the web origin.
 - Nested `src/**/AGENTS.md` files state what is wrong or misleading one folder up: both `domains/` trees, the tenant subdomains (`panel`, `account`, `session`, `profile`, `push`, `public`, `internal`), `mcp/` and `oauth/`.
-- Per-workspace rules: `apps/web/AGENTS.md`, `packages/shared/AGENTS.md`, `packages/db/AGENTS.md`.
+- Per-workspace rules: `apps/web/AGENTS.md`, `apps/mobile-storefront/AGENTS.md`, `apps/mobile-dashboard/AGENTS.md`, `packages/shared/AGENTS.md`, `packages/api-client/AGENTS.md`, `packages/db/AGENTS.md`.
+
+### Mobile architecture (Expo SDK 58)
+
+- Data pipeline: `screen → @menuza/api-client → apiFetch(origin, headers) → Rust API`. The client is generated from `crates/openapi/*.json`; no app hand-writes a fetch. Web calls the mounts relatively (`/commerce`, `/tenant`) and the proxy strips them; native binds an absolute origin once in `configureApi`.
+- Storefront tenant: `applicationId` (`app.menuza.store.<slug>`) → `GET /commerce/stores/{slug}` → `tenantId` bound as `x-menuza-tenant-id`. A dev build asks for the slug once and stores it in SQLite.
+- Dashboard tenant: `POST /tenant/session/login` → `menuza_tenant_sid` in SecureStore, bound as the `cookie` header by `bindSessionToken`; `/session/current` on boot; memberships drive the store picker.
+- Theme: `PublicStore.theme` is resolved by the API (colors, WCAG ink, radius). Native writes the token names through `Uniwind.updateCSSVariables`; web writes CSS variables. Never derive a store color or compile one into the bundle.
+- Dashboard navigation: four native tabs mirroring the web sidebar (Início, Pedidos, Catálogo, Mais); the order board's four queues are segments inside Pedidos, and Mais opens `src/app/management/**` (catálogo, cupons, clientes, auditoria, integrações, configurações) plus the store switch and sign-out.
+- `NativeTabs.Trigger.Icon md="…"` needs `expo-symbols`; without it Android tab icons fail at runtime.
+- Dashboard has a light/dark palette (`global.css` + `lib/theme-mode.tsx`, system/light/dark stored in SQLite); the storefront keeps the store's colors. `expo-image` + `memory-disk` caches storefront covers.
+- New `pending` orders raise a local notification (`expo-notifications`) and deep-link to `/order/<code>`; remote push still needs a dev build and MEN-317.
+- Predictive back (`android.predictiveBackGestureEnabled`) plus `Stack` slide gestures; editors guard unsaved work with `usePreventRemove`.
+- Native controls come from `@expo/ui` (universal layer, in Expo Go): toggles are `Host` + `Switch`, the order-reason prompt is a `BottomSheet`. Never add `@gorhom/bottom-sheet` or a JS imitation of a native control.
+- Motion is deliberately short: 90 ms press scale + haptic, 25 ms hub stagger, native stack slides.
+- OTA: one EAS Update channel per app, static `runtimeVersion`; every store binary shares the storefront bundle.
+- Preview: `docs/agents/mobile.md` has the Expo Go + tunnel recipe (`EXPO_PACKAGER_PROXY_URL`, `EXPO_PUBLIC_COMMERCE_URL` / `EXPO_PUBLIC_TENANT_URL`).
 
 ## Versions (locked)
 
@@ -35,10 +56,11 @@
 - axum 0.8.9, sqlx 0.9.0, utoipa 6.0.0 + `utoipa-scalar` 0.4.0, `rmcp` 3.8.0, `riverqueue` 0.4.0 — all pre-1.0, so every one is pinned with `=` in the workspace `Cargo.toml`.
 - TanStack Start 1.169.4, TanStack Router 1.170.46, TanStack Query 5.104.4, Vite 8.3.5 (`@vitejs/plugin-react` 6.2.1); no Next.js in the repo.
 - React 19.3.1, React DOM 19.3.1.
-- Valibot 1.5.0 and oRPC 2.0.0-beta.35 (`@orpc/contract`, `@orpc/openapi`) — legacy contracts in `packages/shared` only; the web app is typed from the Rust OpenAPI documents. No Zod in first-party code; transitive Zod via `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
+- Expo SDK 58.0.25, React Native 0.88.1, `expo-router` 58.0.31, Expo Modules 58.x and `@shopify/flash-list` 2.3.2 on the New Architecture; Uniwind 1.13.2 binds Tailwind 4 tokens to native. Native controls and sheets come from `@expo/ui` 58.0.28 (universal layer, works in Expo Go). `expo-updates` 58.0.22 with one static `runtimeVersion` per app; builds and OTA run through `eas-cli` 27.10.0.
+- Valibot 1.5.0 and oRPC 2.0.0-beta.35 (`@orpc/contract`, `@orpc/openapi`) — legacy contracts in `packages/shared` only; every client is typed from the Rust OpenAPI documents. No Zod in first-party code; transitive Zod via `@serwist/*`, `shadcn`, `@modelcontextprotocol/sdk`.
 - Tailwind 4.3.3 + `@tailwindcss/vite` 4.3.3.
 - shadcn (Base UI variant on `@base-ui/react` 1.9.0; components in `apps/web/src/components/ui/`).
-- orval 8.46.0 generates `apps/web/src/lib/api/{commerce,tenant}.ts` from `crates/openapi/*.json` (`bun run api:generate` in `apps/web`); operation ids are the API, so renaming one breaks every caller.
+- orval 8.46.0 generates `packages/api-client/src/{commerce,tenant}.ts` and `src/model/**` from `crates/openapi/*.json` (`bun run api:generate` in `packages/api-client`); operation ids are the API, so renaming one breaks every caller.
 - Turborepo 2.11.9 (task DAG + local cache; no remote cache).
 - Sentry `@sentry/react`/`@sentry/node` 11.8.0 (web only, no framework integration); init no-op without DSN; LGPD PII scrubbing in `@menuza/shared/sentry-privacy`.
 - TanStack Query 5.104.4 (`QueryProvider` in the root route, persisted to IndexedDB; `staleTime: 30_000` only for the product editor/create taxonomy).
@@ -71,6 +93,10 @@
 ## Commands
 
 - `bun run dev` — `apps/web` on Vite (`:3003`); the Rust binaries are separate processes.
+- `cd apps/mobile-storefront && bun run dev` / `cd apps/mobile-dashboard && bun run dev` — Expo dev server; `bunx expo run:android` builds a native dev client. The mobile apps are not covered by `bun run dev`.
+- `bun run store:build <slug> --platform android|ios` — one EAS production build from `stores.json`; the script refuses a slug that cannot be a package segment.
+- `bun run store:update <slug> --message "…"` — one EAS Update for the shared `storefront` channel (every store binary at once).
+- `cd packages/api-client && bun run api:generate` — Orval regenerates the clients from the committed OpenAPI documents.
 - `cargo run -p api-commerce` / `-p api-tenant` / `-p worker` — one process each. Cargo lives in `~/.cargo/bin`: `export PATH="$HOME/.cargo/bin:$PATH"` in a fresh shell.
 - `bun run typecheck` — `bun check` (Bun's built-in TS 7 checker) across workspaces, after `typegen`.
 - `cargo test --workspace` / `bun test` — unit tests (no infra).
@@ -100,6 +126,25 @@
 
 Run in this order, report each result: `bun run design:check` (dashboard UI only, `apps/web/DESIGN.md`), `bun run typecheck`, `cargo test --workspace`, `bun test`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all --check`, `cargo run -p openapi -- --check`, `bun run lint`, `bun run fmt:check`, `bun run build`.
 
+## Agent rosters
+
+Both harnesses run without a custom agent roster, on purpose.
+
+- **OpenCode** — no project agents: `.opencode/agents/` is gone and `.opencode/opencode.jsonc` sets no `default_agent`. OpenCode uses its built-in `explore` (read-only search) plus `general`, `plan` and `build`.
+- **Claude Code** — no `.claude/agents/` either. It uses its built-in `Explore`, `Plan` and `general-purpose` agents.
+- If a roster ever comes back, justify it against the built-ins and say what the built-in cannot do.
+
+## Claude Code harness
+
+Parallel to `.opencode/`, which is otherwise untouched. Claude Code reads `AGENTS.md` natively, but the committed `CLAUDE.md` imports it and suppresses automatic nested reads, so `CLAUDE.md` carries the rule to read the nearest nested `AGENTS.md` before editing in a subtree.
+
+- `CLAUDE.md` (root) — `@AGENTS.md` plus Claude-only rules. No agents; see Agent rosters.
+- `.claude/settings.json` — `permissions.deny` for `git reset --hard`, `git clean`, `git branch -D`; `enabledMcpjsonServers` for the two committed servers; `plansDirectory: .agents/plans`; the local marketplace and plugin. No `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` — Code Mode cannot run alongside agent teams.
+- `.claude/skills` — symlink to `../.agents/skills`. Skills are authored there, not through the link.
+- `plugins/.claude-plugin/marketplace.json` + `plugins/menuza-harness/` — first-party plugin carrying two hooks: `SessionStart` injects `.projectmem` context, `PreToolUse` rewrites `Bash` through `tokless rtk-rewrite`. Both no-op without `tokless` or `.projectmem/`. `plugins/**` is lint-exempt and outside every workspace, so it is not type-checked.
+- `.mcp.json` (root) — `context-mode` and `projectmem` (`${HOME}/.local/bin/pjm-mcp`), local stdio. `codegraph` is not registered, so the CodeGraph rule below does not apply to Claude Code. `linear`, `context7`, `deepwiki`, `web-search` need credentials and stay user-scope; `.projectmem` context also arrives via the `SessionStart` hook.
+- Code Mode is user-scope: Claude Code ignores `CLAUDE_CODE_EXPERIMENTAL_CODE_MODE` in project settings. Set it in the shell or `~/.claude/settings.json`.
+
 ## Security
 
 - No secrets in `.env`/tracked files; only `.env.example`.
@@ -108,7 +153,7 @@ Run in this order, report each result: `bun run design:check` (dashboard UI only
 - Internal calls carry `x-menuza-internal-token`, compared in constant time against `INTERNAL_API_SECRET`; an unset secret fails closed.
 - `/mcp` answers only Hosts in `MCP_ALLOWED_HOSTS` (loopback default, never empty and never disabled) and only stores that enabled the integration.
 - APIs loopback-bound; the image sets `HOST=0.0.0.0`; production reverse proxy explicitly out of scope for this foundation.
-- `NEXT_PUBLIC_*` never carries secrets.
+- `VITE_*` and `EXPO_PUBLIC_*` never carry secrets.
 - Management endpoints deny-by-default; capability checks run in the handler next to the query they protect.
 
 ## Testing
@@ -148,6 +193,14 @@ Bias toward caution over speed; trivial tasks use judgment.
 - Task → verifiable goal ("fix bug" → "failing repro, then green").
 - Multi-step: plan with a verify check per step; loop until verified.
 
+### Plans
+
+Every non-trivial plan is a file under `.agents/plans/<kebab-task-name>.md`. One board per task; replace an earlier file for the same task instead of adding a second.
+
+- Claude Code and OpenCode both write there — `plansDirectory` in `.claude/settings.json` points at it.
+- Do not write `.opencode/plan/`; that is the retired roster's board, kept only as history.
+- Step line: `- [ ] S1 <action> | files: <paths> | verify: <command>`. Marks: `[ ]` todo, `[~]` in flight, `[x]` done, `[!]` blocked with a one-line reason.
+
 ### Version control
 
 - No `git commit` / `git push` unless the user explicitly asks; completing a task is not permission to commit.
@@ -180,11 +233,13 @@ Bias toward caution over speed; trivial tasks use judgment.
 - **Cargo workspace**: six crates, two listening binaries (`:3001`, `:3002`), one River worker and one OpenAPI emit binary; every pre-1.0 dependency pinned with `=`.
 - **sqlx**: hand-written SQL in `crates/persistence`, checked at compile time by `query!`/`query_as!`; the committed `.sqlx` cache is what CI builds against (`SQLX_OFFLINE=true`), so no database is needed for a build.
 - **River**: `riverqueue` 0.4 over the same Postgres (ADR-0008); three queues (`orders-expiry`, `payment-events`, `push-notifications`), each idempotent, each drained by one module in `crates/worker`. Redis stays in `infra/compose.yaml` with no application consumer.
-- **OpenAPI**: `crates/openapi` emits `commerce.json` / `tenant.json`; `--check` fails on drift; orval generates the web client from them. `/docs` (Scalar) is mounted only when `MENUZA_ENV=development`.
+- **OpenAPI**: `crates/openapi` emits `commerce.json` / `tenant.json`; `--check` fails on drift; orval generates `@menuza/api-client` from them. `/docs` (Scalar) is mounted only when `MENUZA_ENV=development`.
+- **Store theme**: `StoreSettings.{primaryColor,accentColor,backgroundColor,radius}` (migration `0008`), resolved by `domain::theme` and served on `PublicStore.theme` and `GET/PUT /panel/stores/{slug}/theme` (`branding:write`). The web storefront writes it as CSS variables; the native app writes the same tokens through Uniwind. Colors are `#rrggbb`; the ink is derived, never saved.
+- **Expo apps**: `apps/mobile-storefront` and `apps/mobile-dashboard` share `@menuza/api-client`, `@menuza/shared` and the palette; the storefront resolves its tenant from `applicationId` and the dashboard from the session cookie. Both use TanStack Query persisted in `expo-sqlite`, `expo-router`, and Uniwind; the dashboard's Gestão tab opens the `management/` stack (catálogo, cupons, clientes, auditoria, integrações, configurações). `expo-symbols` backs the Android `md` tab icons. `eas.json` puts each app on its own Update channel (`storefront`, `dashboard`).
 - **TanStack Query**: `QueryProvider` in root layout, IndexedDB-persisted; coupons screens first consumers (`useQuery`/`useMutation` in `coupons-table.tsx` / `coupon-form.tsx`); `apps/web/src/offline` queue drains it.
 - **Serwist (PWA)**: first-party `serwistWorker()` in `apps/web/vite.config.ts` bundles `src/sw.ts` (Vite lib, iife), injects precache manifest via `@serwist/build`; worker `/serwist/sw.js`; manifest `/manifest.webmanifest`; `OfflineListener` in root route; Background Sync drain wired.
 - **Web Push**: VAPID end to end; sender and dispatcher in `crates/worker` (`push_sender.rs`, `push_dispatch.rs`); subscription/preference routes in the `api-tenant` push subdomain; contract `@menuza/shared/push`; `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` in `.env.example`, any empty disables push. No producer enqueues `push-notifications` yet.
-- **Sentry**: `@sentry/react`/`@sentry/node` in `apps/web` (client + server); no-op without `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`; never commit a DSN; 10% traces (`SENTRY_TRACES_SAMPLE_RATE`, `0` disables tracing); LGPD lock-down from `@menuza/shared/sentry-privacy` (`dataCollection` off + `beforeSend` scrubber). The Rust binaries log through `tracing` and have no Sentry integration.
+- **Sentry**: `@sentry/react`/`@sentry/node` in `apps/web` (client + server); no-op without `SENTRY_DSN`/`VITE_SENTRY_DSN`; never commit a DSN; 10% traces (`SENTRY_TRACES_SAMPLE_RATE`, `0` disables tracing); LGPD lock-down from `@menuza/shared/sentry-privacy` (`dataCollection` off + `beforeSend` scrubber). The Rust binaries log through `tracing` and have no Sentry integration.
 - **GitHub Actions**: eleven jobs (`policy`, `typecheck`, `test`, `lint`, `fmt-check`, `build`, `rust-fmt`, `rust-clippy`, `rust-test`, `rust-build`, `rust-schema`), SHA-pinned actions, Bun `canary`, `SQLX_OFFLINE=true` for the Rust jobs; no image pipeline, no deploy.
 
 ## Agent skills

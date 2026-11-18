@@ -566,7 +566,7 @@
         "type": "object"
       },
       "PublicKit": {
-        "description": "A kit as the storefront composes it. `base_cents` is what the card shows:\nthe charged price for a fixed kit, the floor for a summed one.",
+        "description": "A kit as the storefront composes it. `base_cents` is what the card shows.",
         "properties": {
           "available": {
             "description": "False when the kit cannot reach its own minimums right now.",
@@ -625,8 +625,8 @@
             "format": "int32",
             "type": ["integer", "null"]
           },
-          "pricingMode": {
-            "type": "string"
+          "seo": {
+            "$ref": "#/components/schemas/PublicSeo"
           },
           "slug": {
             "type": "string"
@@ -638,12 +638,12 @@
           "name",
           "imageUrl",
           "kind",
-          "pricingMode",
           "baseCents",
           "available",
           "groups",
           "items",
-          "bands"
+          "bands",
+          "seo"
         ],
         "type": "object"
       },
@@ -689,6 +689,9 @@
           },
           "available": {
             "description": "False when the chosen variation has no stock left; the dish stays\nvisible and the composer blocks it.",
+            "type": "boolean"
+          },
+          "chargeExtra": {
             "type": "boolean"
           },
           "groupId": {
@@ -1008,6 +1011,13 @@
           "jsonLd": {
             "type": ["string", "null"]
           },
+          "links": {
+            "description": "Extra `<link>` relations; empty for every entity that has no page of its own.",
+            "items": {
+              "$ref": "#/components/schemas/PublicSeoLink"
+            },
+            "type": "array"
+          },
           "socialImageUrl": {
             "type": ["string", "null"]
           },
@@ -1015,7 +1025,23 @@
             "type": "string"
           }
         },
-        "required": ["title"],
+        "required": ["title", "links"],
+        "type": "object"
+      },
+      "PublicSeoLink": {
+        "description": "One extra `<link>` the storefront emits: an `hreflang` alternate, a\n`sameAs` profile or a `related` resource.",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "hreflang": {
+            "type": ["string", "null"]
+          },
+          "rel": {
+            "type": "string"
+          }
+        },
+        "required": ["rel", "href", "hreflang"],
         "type": "object"
       },
       "PublicSitemap": {
@@ -1062,9 +1088,12 @@
           },
           "tenantId": {
             "type": ["string", "null"]
+          },
+          "theme": {
+            "$ref": "#/components/schemas/PublicTheme"
           }
         },
-        "required": ["slug", "displayName", "seo"],
+        "required": ["slug", "displayName", "seo", "theme"],
         "type": "object"
       },
       "PublicSubcategory": {
@@ -1087,6 +1116,40 @@
           }
         },
         "required": ["id", "name", "sortOrder", "products"],
+        "type": "object"
+      },
+      "PublicTheme": {
+        "description": "The palette the storefront paints, resolved: a saved value or the platform\ndefault, never empty. Colors are `#rrggbb`; `primaryForeground` is the ink\nthat keeps contrast on `primaryColor`.",
+        "properties": {
+          "accentColor": {
+            "type": "string"
+          },
+          "backgroundColor": {
+            "type": "string"
+          },
+          "foregroundColor": {
+            "type": "string"
+          },
+          "primaryColor": {
+            "type": "string"
+          },
+          "primaryForeground": {
+            "type": "string"
+          },
+          "radius": {
+            "description": "Base corner radius in pixels. Other radii scale from it.",
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "primaryColor",
+          "primaryForeground",
+          "accentColor",
+          "backgroundColor",
+          "foregroundColor",
+          "radius"
+        ],
         "type": "object"
       },
       "PublicVariation": {
@@ -1953,6 +2016,52 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicStore"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["public"]
+      }
+    },
+    "/stores/{slug}": {
+      "get": {
+        "operationId": "getPublicStoreBySlug",
+        "parameters": [
+          {
+            "description": "The store's public slug.",
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStore"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
                 }
               }
             }

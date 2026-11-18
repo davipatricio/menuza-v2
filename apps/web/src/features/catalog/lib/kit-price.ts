@@ -1,8 +1,7 @@
 /**
  * Preço de um kit, em centavos, na mesma ordem que o servidor usa:
  *
- * 1. `fixed` cobra `baseCents`; `sum` cobra o maior entre `baseCents` e a soma
- *    das variações escolhidas (o piso).
+ * 1. O subtotal é `baseCents` mais o adicional dos pratos com valor extra (`extraCents`).
  * 2. O percentual do kit incide sobre esse total.
  * 3. A faixa progressiva incide por último, pela quantidade de kits no pedido.
  *
@@ -10,24 +9,19 @@
  * cobre os três passos.
  */
 
-export type KitPricingModeValue = "fixed" | "sum";
-
 export type KitBand = { minQuantity: number; percent: number };
 
 /** O total de um kit antes das faixas progressivas. */
 export function kitUnitCents(input: {
-  pricingMode: KitPricingModeValue;
   baseCents: number;
   percentOff: number | null;
-  chosenCents: number[];
+  extraCents?: number;
 }) {
-  const sum = input.chosenCents.reduce((total, cents) => total + cents, 0);
-
-  const subtotalCents =
-    input.pricingMode === "fixed" ? input.baseCents : Math.max(input.baseCents, sum);
+  const extra = Math.max(0, input.extraCents ?? 0);
+  const subtotalCents = Math.max(0, input.baseCents) + extra;
 
   const percent = clampPercent(input.percentOff);
-  const discountCents = Math.round((subtotalCents * percent) / 100);
+  const discountCents = Math.floor((subtotalCents * percent) / 100);
 
   return { subtotalCents, discountCents, totalCents: subtotalCents - discountCents };
 }
@@ -53,7 +47,7 @@ export function kitOrderCents(input: { unitCents: number; kitCount: number; band
   const gross = input.unitCents * input.kitCount;
   const band = kitBandFor(input.bands, input.kitCount);
   const percent = band === null ? 0 : clampPercent(band.percent);
-  const discountCents = Math.round((gross * percent) / 100);
+  const discountCents = Math.floor((gross * percent) / 100);
 
   return { band, discountCents, totalCents: gross - discountCents };
 }

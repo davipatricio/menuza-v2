@@ -1,0 +1,9 @@
+{
+  "name": "menuza-harness",
+  "version": "1.0.0",
+  "description": "Claude Code hooks ported from the OpenCode harness: project memory at session start, shell command rewriting before Bash.",
+  "author": {
+    "name": "Menuza"
+  },
+  "hooks": "./hooks/hooks.json"
+}

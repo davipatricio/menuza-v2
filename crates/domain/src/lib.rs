@@ -8,3 +8,4 @@ pub mod password;
 pub mod search;
 pub mod seo;
 pub mod session;
+pub mod theme;

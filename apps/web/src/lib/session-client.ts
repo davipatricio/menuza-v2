@@ -12,13 +12,14 @@ import type { Onboarding, tenantContractObject } from "@menuza/shared/tenant";
 import {
   getChangeAccountPasswordUrl,
   getCreatePanelStoreUrl,
+  getDeleteAccountUrl,
   getLoginTenantSessionUrl,
   getLogoutTenantSessionUrl,
   getRegisterTenantAccountUrl,
   getRevokeAccountSessionUrl,
   getRevokeOtherAccountSessionsUrl,
   getSavePanelOnboardingUrl,
-} from "@/lib/api/tenant.ts";
+} from "@menuza/api-client/tenant";
 import { ApiError } from "@/lib/api-error";
 
 type TenantClient = RouterContractClient<typeof tenantContractObject>;
@@ -133,4 +134,20 @@ export async function revokeSession(sessionId: string): Promise<number> {
 export async function revokeOtherSessions(): Promise<number> {
   return (await send<{ revoked: number }, undefined>(getRevokeOtherAccountSessionsUrl(), "POST"))
     .revoked;
+}
+
+/**
+ * Deletes the account behind this session, and returns what the server did.
+ *
+ * The server archives a store the member solely owned rather than deleting it,
+ * so the call answers `storesArchived`; the copy that follows must not promise a
+ * clean erase it cannot deliver. The session dies with the member row, so the
+ * caller only has to navigate away.
+ */
+export async function deleteAccount(email: string): Promise<{
+  deleted: boolean;
+  storesArchived: number;
+  membershipsRemoved: number;
+}> {
+  return await send(getDeleteAccountUrl(), "DELETE", { email });
 }

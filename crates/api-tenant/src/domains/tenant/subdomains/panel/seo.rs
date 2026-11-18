@@ -14,15 +14,16 @@ use contract::ErrorCode;
 use contract::tenant::panel::seo::{
     EntitySeoOutput, ListSeoEntitiesInput, PanelResolvedSeo, PanelSeoSource, SEO_ENTITY_TYPES,
     SaveSeoInput, SaveStoreSeoInput, SeoEntityItem, SeoEntityList, SeoEntityType, SeoFields,
-    SeoSourceLevel, StoreSeoOutput, StoreSeoSettings,
+    SeoLink, SeoLinkRel, SeoSourceLevel, StoreSeoOutput, StoreSeoSettings,
 };
 use domain::seo::{
     ResolvedSeo, SeoContext, SeoInput, SeoMetaRow, SeoSource, StoreSeoDefaults, resolve_seo,
 };
 use persistence::tenant::TenantId;
 use persistence::tenant::panel::seo::{
-    NamedEntity, SeoFieldsWrite, seo_entity_name, seo_entity_names, seo_meta_delete, seo_meta_find,
-    seo_meta_upsert, seo_override_keys, store_seo_defaults, store_seo_defaults_upsert,
+    NamedEntity, SeoFieldsWrite, SeoLinkWrite, seo_entity_name, seo_entity_names, seo_links_find,
+    seo_links_replace, seo_meta_delete, seo_meta_find, seo_meta_upsert, seo_override_keys,
+    store_seo_defaults, store_seo_defaults_upsert,
 };
 use persistence::tenant::panel::stores::store_read;
 
@@ -65,6 +66,8 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
             contract::tenant::panel::seo::PanelSeoSource,
             contract::tenant::panel::seo::PanelResolvedSeo,
             contract::tenant::panel::seo::SeoFields,
+            contract::tenant::panel::seo::SeoLink,
+            contract::tenant::panel::seo::SeoLinkRel,
             contract::tenant::panel::seo::EntitySeoOutput,
             contract::tenant::panel::seo::SaveSeoInput,
             contract::tenant::panel::seo::SeoEntityType,
@@ -365,6 +368,10 @@ pub async fn save_seo(
     let store_name = store_name(&state, &ctx.tenant).await?;
     let entity_name = entity_name(&state, &ctx, entity_type, &entity_id, &store_name).await?;
 
+    if input.links.is_some() && !supports_links(entity_type) {
+        return Err(ApiError(ErrorCode::ValidationFailed));
+    }
+
     let existing = seo_meta_find(&state.pool, &ctx.tenant, entity_type, &entity_id)
         .await
         .map_err(db_error)?;
@@ -394,7 +401,15 @@ pub async fn save_seo(
         ),
     };
 
-    if fields.is_empty() {
+    let has_links = match &input.links {
+        Some(links) => !links.is_empty(),
+        None => !seo_links_find(&state.pool, &ctx.tenant, entity_type, &entity_id)
+            .await
+            .map_err(db_error)?
+            .is_empty(),
+    };
+
+    if fields.is_empty() && !has_links {
         seo_meta_delete(&state.pool, &ctx.tenant, entity_type, &entity_id)
             .await
             .map_err(db_error)?;
@@ -402,6 +417,25 @@ pub async fn save_seo(
         seo_meta_upsert(&state.pool, &ctx.tenant, entity_type, &entity_id, &fields)
             .await
             .map_err(db_error)?;
+
+        if let Some(links) = &input.links {
+            let rows: Vec<SeoLinkWrite<'_>> = links
+                .iter()
+                .map(|link| SeoLinkWrite {
+                    rel: link.rel.as_str(),
+                    href: link.href.trim(),
+                    hreflang: link
+                        .hreflang
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|value| !value.is_empty()),
+                })
+                .collect();
+
+            seo_links_replace(&state.pool, &ctx.tenant, entity_type, &entity_id, &rows)
+                .await
+                .map_err(db_error)?;
+        }
     }
 
     Ok(Json(
@@ -523,6 +557,10 @@ async fn resolve_with(
         .map_err(db_error)?
     };
 
+    let links = seo_links_find(&state.pool, &ctx.tenant, entity_type, entity_id)
+        .await
+        .map_err(db_error)?;
+
     let resolved = resolve_seo(&SeoInput {
         entity: entity.clone(),
         store_row,
@@ -537,9 +575,14 @@ async fn resolve_with(
     });
 
     Ok(EntitySeoOutput {
-        saved: saved_fields(entity.as_ref()),
+        saved: saved_fields(entity.as_ref(), links),
         resolved: resolved_dto(resolved),
     })
+}
+
+/// Only pages with their own URL carry extra links.
+fn supports_links(entity_type: SeoEntityType) -> bool {
+    matches!(entity_type, SeoEntityType::Product | SeoEntityType::Kit)
 }
 
 /// The entity's own name (the coupon's code), or `NOT_FOUND`. The store is its
@@ -605,17 +648,32 @@ fn settings_dto(settings: Option<StoreSeoDefaults>) -> StoreSeoSettings {
     }
 }
 
-fn saved_fields(row: Option<&SeoMetaRow>) -> SeoFields {
-    match row {
+fn saved_fields(
+    row: Option<&SeoMetaRow>,
+    links: Vec<persistence::tenant::panel::seo::SeoLinkRow>,
+) -> SeoFields {
+    let mut fields = match row {
         Some(row) => SeoFields {
             title: row.title.clone(),
             description: row.description.clone(),
             canonical_url: row.canonical_url.clone(),
             social_image_url: row.social_image_url.clone(),
             json_ld: row.json_ld.clone(),
+            links: Vec::new(),
         },
         None => SeoFields::default(),
-    }
+    };
+
+    fields.links = links
+        .into_iter()
+        .map(|link| SeoLink {
+            rel: SeoLinkRel::parse(&link.rel).unwrap_or(SeoLinkRel::Related),
+            href: link.href,
+            hreflang: link.hreflang,
+        })
+        .collect();
+
+    fields
 }
 
 fn resolved_dto(resolved: ResolvedSeo) -> PanelResolvedSeo {

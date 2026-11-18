@@ -1,5 +1,7 @@
 //! Argon2id password hashing, mirroring `apps/orpc-server/src/auth/password.ts`.
 
+use std::sync::LazyLock;
+
 use argon2::password_hash::{PasswordHasher, PasswordVerifier};
 use argon2::{Algorithm, Argon2, Params, Version};
 
@@ -40,16 +42,28 @@ pub fn hash_password(password: &str) -> Result<String, PasswordError> {
     Ok(hash.to_string())
 }
 
-/// Fails closed: a missing hash (bot or Google-only account), a malformed or
-/// foreign hash, and a wrong password all return `false`, never an error.
-pub fn verify_password(password: &str, hash: Option<&str>) -> bool {
-    let Some(hash) = hash else {
-        return false;
-    };
+/// Precomputed Argon2id dummy hash so a missing e-mail or null `passwordHash`
+/// pays the exact same KDF cost as a real account (no account-enumeration timing
+/// oracle).
+static DUMMY_HASH: LazyLock<String> = LazyLock::new(|| {
+    hash_password("__menuza_dummy_timing_equalizer__")
+        .expect("fixed Argon2id parameters always produce a valid hash")
+});
 
+/// Fails closed: a missing hash (unknown e-mail, bot or Google-only account), a
+/// malformed or foreign hash, and a wrong password all return `false`, never an
+/// error. When `hash` is `None`, still runs Argon2id against [`DUMMY_HASH`] so
+/// response latency does not confirm whether an account exists.
+pub fn verify_password(password: &str, hash: Option<&str>) -> bool {
     let Ok(hasher) = hasher() else {
         return false;
     };
 
-    hasher.verify_password(password.as_bytes(), hash).is_ok()
+    match hash {
+        Some(hash) => hasher.verify_password(password.as_bytes(), hash).is_ok(),
+        None => {
+            let _ = hasher.verify_password(password.as_bytes(), DUMMY_HASH.as_str());
+            false
+        }
+    }
 }

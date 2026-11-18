@@ -1,0 +1,7 @@
+{
+  "demo": {
+    "name": "Menuza Demo",
+    "package": "app.menuza.store.demo",
+    "iosBundleId": "app.menuza.store.demo"
+  }
+}

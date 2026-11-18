@@ -38,7 +38,7 @@ pub async fn get_kit(
         return Err(ApiError(ErrorCode::ValidationFailed));
     }
 
-    let Some(tenant) = tenant_of(&scope)? else {
+    let Some(tenant) = tenant_of(&state, &scope).await? else {
         return Ok(Json(PublicKitOutput { kit: None }));
     };
 

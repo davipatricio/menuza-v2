@@ -5,13 +5,14 @@ account.
 
 ## Layout
 
-- `server/settings.functions.ts` — `loadSettingsStoreFn` (layout guard) and
-  `loadStoreSeoFn`.
+- `server/settings.functions.ts` — `loadSettingsStoreFn` (layout guard),
+  `loadStoreSeoFn` and the store theme pair (`loadStoreThemeFn`,
+  `saveStoreThemeFn`).
 - `server/account.functions.ts` — `loadSessionsFn` (member-level, no store slug)
   and `loadTeamFn` (`FORBIDDEN` → `forbidden`, everything else rethrown).
 - `components/settings-section.tsx` — the shared title + description shell.
-- `components/seo-settings-form.tsx`, `change-password-form.tsx`,
-  `sessions-list.tsx`, `team-table.tsx`.
+- `components/seo-settings-form.tsx`, `theme-settings-form.tsx`,
+  `change-password-form.tsx`, `sessions-list.tsx`, `team-table.tsx`.
 
 ## Invariants
 
@@ -26,7 +27,8 @@ account.
 
 ## Forbidden
 
-Next.js imports, direct calls to the Rust APIs (`@/lib/api/**`).
+Next.js imports, direct calls to the Rust APIs (`@menuza/api-client`) outside
+`server/*.functions.ts`.
 
 ## Verify
 

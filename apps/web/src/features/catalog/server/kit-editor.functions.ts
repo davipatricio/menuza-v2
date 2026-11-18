@@ -5,8 +5,8 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import * as v from "valibot";
-import type { PanelKitDetail } from "@/lib/api/model/panelKitDetail.ts";
-import type { PanelKitOptionsOutput } from "@/lib/api/model/panelKitOptionsOutput.ts";
+import type { PanelKitDetail } from "@menuza/api-client/model/panelKitDetail";
+import type { PanelKitOptionsOutput } from "@menuza/api-client/model/panelKitOptionsOutput";
 import { panelClient } from "@/server/panel-client.ts";
 
 export const getKitFn = createServerFn({ method: "GET" })

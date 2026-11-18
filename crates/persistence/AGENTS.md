@@ -44,13 +44,12 @@ and the worker call typed functions here and never see a `PgRow`.
 
 ## Kits (MEN-82/MEN-83)
 
-`Kit` carries `kind` (`fixed`/`custom_quantities`/`fixed_total`), `pricingMode`
-(`fixed`/`sum`), `baseCents` as the charged price or the floor, `percentOff`,
-the kit `minItems`/`maxItems`, `maxKitsPerOrder`, `unavailableBehavior` and
-`couponStackable`. Children live in `KitGroup`, `KitItem` (now with
-`productId`, `groupId`, `minQty`, `maxQty`, `step`, `allowSwap`, nullable
-`quantity`), `KitItemVariation` (the swaps the manager allowed) and
-`KitDiscountBand`. `CouponKit` mirrors `CouponProduct`.
+`Kit` carries `kind` (`fixed`/`custom_quantities`/`fixed_total`), `baseCents`
+as the base price charged for the kit, `percentOff`, the kit `minItems`/`maxItems`,
+`maxKitsPerOrder`, `unavailableBehavior` and `couponStackable`. Children live in
+`KitGroup`, `KitItem` (now with `productId`, `groupId`, `minQty`, `maxQty`, `step`,
+`allowSwap`, `chargeExtra`, nullable `quantity`), `KitItemVariation` (the swaps the
+manager allowed) and `KitDiscountBand`. `CouponKit` mirrors `CouponProduct`.
 
 `kit_update` replaces every child in one transaction; do not build partial
 updates. `quantity` is nullable on purpose: a locked kit stores it, a composed

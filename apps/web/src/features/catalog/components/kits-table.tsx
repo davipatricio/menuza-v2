@@ -38,7 +38,7 @@ import { Switch } from "@/components/ui/switch.tsx";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx";
 import { formatBrl, formatDateTime } from "@/lib/format.ts";
 import { KIT_KIND_LABELS } from "@/lib/panel-labels.ts";
-import type { PanelKit } from "@/lib/api/model/panelKit.ts";
+import type { PanelKit } from "@menuza/api-client/model/panelKit";
 import { setKitAvailableFn } from "../server/kit-mutations.functions.ts";
 import { kitSearchParams } from "../schemas/kit-search.ts";
 

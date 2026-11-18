@@ -7,7 +7,7 @@ Nothing here may be imported by a route file, a component or a loader. Routes
 render in the browser as well, so their module graph is shipped to the client and
 evaluated there; `.oxlintrc.json` enforces the boundary with
 `no-restricted-imports` on `apps/web/src/routes/**` for `@/server/*`. The
-generated clients in `src/lib/api/**` are called from here and from
+generated clients in `@menuza/api-client` are called from here and from
 `*.functions.ts`, never from a route or a component.
 
 ## What lives here
@@ -19,9 +19,8 @@ generated clients in `src/lib/api/**` are called from here and from
 - `tenant-resolve.ts` — host → mode/tenant resolution for the request middleware.
 - `proxy-upstream.ts` — the dev/prod passthrough for `/commerce`, `/tenant`,
   `/mcp`, OAuth and webhook paths.
-- `cache.ts` — request-scoped memoisation helpers.
 - `seo/` — `requestOrigin()`, `absoluteUrl(path)` and `isIndexableHost()`; the
-  only place the request host is turned into a URL. See `seo/AGENTS.md`.
+  only place the request host is turned into a URL.
 
 ## How a route reaches this code
 

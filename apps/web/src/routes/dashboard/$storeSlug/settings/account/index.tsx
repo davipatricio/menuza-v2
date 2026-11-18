@@ -7,12 +7,15 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx";
 import { ChangePasswordForm } from "@/features/settings/components/change-password-form.tsx";
+import { DeleteAccountCard } from "@/features/settings/components/delete-account-card.tsx";
 import { SessionsList } from "@/features/settings/components/sessions-list.tsx";
 import { SettingsSection } from "@/features/settings/components/settings-section.tsx";
 import { loadSessionsFn } from "@/features/settings/server/account.functions.ts";
 import { pageTitle } from "@/lib/seo/title.ts";
 
 const settingsRoute = getRouteApi("/dashboard/$storeSlug/settings");
+
+const storeRoute = getRouteApi("/dashboard/$storeSlug");
 
 /**
  * The account route lives under the store shell for navigation, not for
@@ -34,6 +37,7 @@ export const Route = createFileRoute("/dashboard/$storeSlug/settings/account/")(
 function AccountSettingsPage() {
   const { store } = settingsRoute.useLoaderData();
   const { sessions } = Route.useLoaderData();
+  const { session } = storeRoute.useLoaderData();
 
   return (
     <SettingsSection
@@ -65,6 +69,8 @@ function AccountSettingsPage() {
             <SessionsList sessions={sessions} />
           </CardContent>
         </Card>
+
+        <DeleteAccountCard email={session.member.email} />
       </div>
     </SettingsSection>
   );

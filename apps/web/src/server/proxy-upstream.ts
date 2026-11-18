@@ -25,7 +25,12 @@ const HOP_BY_HOP = ["connection", "keep-alive", "transfer-encoding", "upgrade"];
 // Written by `src/server.ts` from the resolved host, never by the client. The
 // client's copy is dropped here too, so an upstream only ever sees the values
 // host resolution produced — even if a caller forgets to sanitize first.
-const RESOLVED_HOST_HEADERS = ["x-menuza-tenant-id", "x-menuza-mode", "x-menuza-host"];
+const RESOLVED_HOST_HEADERS = [
+  "x-menuza-tenant-id",
+  "x-menuza-mode",
+  "x-menuza-host",
+  "x-menuza-internal-token",
+];
 
 /** The host verdict `src/server.ts` resolved for this request. */
 export interface ResolvedHost {
